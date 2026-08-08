@@ -19,7 +19,13 @@ pub fn example(name: &str) -> PathBuf {
 }
 
 /// Sample decks in the repository, covered by the golden tests.
-pub const EXAMPLE_DECKS: &[&str] = &["pitch.md", "showcase.md", "cookbook.md", "seminar.md", "media.md"];
+pub const EXAMPLE_DECKS: &[&str] = &[
+    "pitch.md",
+    "showcase.md",
+    "cookbook.md",
+    "seminar.md",
+    "media.md",
+];
 
 /// Normalizes output for snapshot comparison.
 /// Data URIs (fonts, images, video) are reduced to their length to keep diffs readable.

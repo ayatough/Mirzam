@@ -59,6 +59,19 @@ Heading panes (`head`, `title`) are allowed to overflow rather than be silently
 cut, so the text stays legible while you fix the band. That is a diagnostic, not
 a layout technique: run the checker below and the overflow is reported.
 
+### Converting an existing document
+
+`--split h2` turns a README or a set of notes into a deck without editing it, and
+some sections will simply be longer than a slide. The checker reports each one.
+In order of effort:
+
+- split at a deeper level (`--split h3`) so sections are smaller
+- add `---` where you want a break; it is still valid Markdown for the document
+- move the long part into a `<details>` block or trim it
+
+A document that reads well is not automatically a deck that presents well. The
+conversion is a starting point, not a finished deck.
+
 ## Spacing
 
 - Panes are separated by the grid gap; set it in your theme with

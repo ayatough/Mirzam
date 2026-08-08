@@ -45,15 +45,45 @@ fn re(cell: &'static OnceLock<Regex>, pattern: &str) -> &'static Regex {
     cell.get_or_init(|| Regex::new(pattern).expect("static regex"))
 }
 
+/// Tracks fence state across lines, honouring fence length so a longer fence can
+/// quote shorter ones.
+struct Fences(Option<usize>);
+
+impl Fences {
+    fn new() -> Self {
+        Fences(None)
+    }
+
+    /// Feeds a line and reports whether it lies inside a fence (the fence lines
+    /// themselves count as inside).
+    fn inside(&mut self, line: &str) -> bool {
+        let trimmed = line.trim_start();
+        match self.0 {
+            Some(open) => {
+                if mirzam_syntax::fence_len(trimmed)
+                    .is_some_and(|n| n >= open && trimmed.trim_end().chars().all(|c| c == '`'))
+                {
+                    self.0 = None;
+                }
+                true
+            }
+            None => match mirzam_syntax::fence_len(trimmed) {
+                Some(n) => {
+                    self.0 = Some(n);
+                    true
+                }
+                None => false,
+            },
+        }
+    }
+}
+
 /// Applies `f` only to lines outside code fences.
 fn map_outside_fences(src: &str, f: impl Fn(&str) -> String) -> String {
     let mut out = String::with_capacity(src.len());
-    let mut in_code = false;
+    let mut fences = Fences::new();
     for line in src.lines() {
-        if line.trim_start().starts_with("```") {
-            in_code = !in_code;
-            out.push_str(line);
-        } else if in_code {
+        if fences.inside(line) {
             out.push_str(line);
         } else {
             out.push_str(&f(line));
@@ -67,17 +97,15 @@ fn map_outside_fences(src: &str, f: impl Fn(&str) -> String) -> String {
 fn map_fence_segments(src: &str, f: impl Fn(&str) -> String) -> String {
     let mut out = String::with_capacity(src.len());
     let mut segment = String::new();
-    let mut in_code = false;
+    let mut fences = Fences::new();
     for line in src.lines() {
-        if line.trim_start().starts_with("```") {
-            if !in_code {
+        let was_open = fences.0.is_some();
+        if fences.inside(line) {
+            // Flush the pending segment when a fence opens.
+            if !was_open {
                 out.push_str(&f(&segment));
                 segment.clear();
             }
-            in_code = !in_code;
-            out.push_str(line);
-            out.push('\n');
-        } else if in_code {
             out.push_str(line);
             out.push('\n');
         } else {

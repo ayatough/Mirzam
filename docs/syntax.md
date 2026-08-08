@@ -7,6 +7,7 @@ Markdown parser still renders as readable text — that rule is enforced by
 | Extension | What a plain Markdown parser shows |
 |---|---|
 | Fenced blocks (`pane`, `shape`, `connect`, `chart`) | A code block |
+| Those same blocks inside a longer fence (````` ```` `````) | Quoted, not executed — this is how a document shows Mirzam syntax |
 | Fenced divs (`::: pane main`) | A paragraph of text |
 | Inline attributes `{#id .class k=v}` | Literal text (Pandoc reads them as attributes) |
 | Variables `{{ price * 12 }}` | Literal text |
@@ -32,6 +33,23 @@ vars:
 ### Slide breaks
 
 Slides are separated by a horizontal rule (`---`) outside code fences.
+
+A document written without slide breaks — a README, a set of notes — becomes a
+deck by starting a new slide at every heading:
+
+```bash
+mirzam build README.md --split h2      # or h1, h3
+```
+
+or, for a file you own, in frontmatter:
+
+```yaml
+split: h2
+```
+
+`---` still breaks slides either way. Content before the first heading becomes the
+opening slide. A section longer than a slide will overflow; the layout checker
+reports it and [the layout guide](layout.md) says what to do about it.
 
 ### Splitting a deck across files
 

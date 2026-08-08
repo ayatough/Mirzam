@@ -16,6 +16,8 @@ cargo build --release --bin mirzam
 for deck in "${DECKS[@]}"; do
   ./target/release/mirzam build "examples/$deck.md" -o "$OUT/decks/$deck"
 done
+# The README with no Mirzam syntax at all, split at its own headings.
+./target/release/mirzam build README.md -o "$OUT/decks/readme" --split h2
 
 # Markdown docs are rendered by GitHub Pages' Jekyll, so copy them as-is.
 echo "==> copying docs"
@@ -71,6 +73,7 @@ cat > "$OUT/index.html" <<'HTML'
     <a class="card" href="decks/cookbook/"><b>Layout cookbook</b><span>One layout rule per slide</span></a>
     <a class="card" href="decks/seminar/"><b>Research talk</b><span>Math, tables, Japanese typography</span></a>
     <a class="card" href="decks/media/"><b>Media</b><span>Video and GIF embedding</span></a>
+    <a class="card" href="decks/readme/"><b>This README, as a deck</b><span>No Mirzam syntax: <code>--split h2</code> on an ordinary document</span></a>
   </div>
 
   <h2>Read</h2>

@@ -16,6 +16,7 @@ fn main() -> ExitCode {
         Some("build") => {
             let mut input: Option<PathBuf> = None;
             let mut out_dir = PathBuf::from("out");
+            let mut split: Option<u8> = None;
             let mut i = 1;
             while i < args.len() {
                 match args[i].as_str() {
@@ -26,6 +27,15 @@ fn main() -> ExitCode {
                             None => return usage("-o requires an output path"),
                         }
                     }
+                    "--split" => {
+                        i += 1;
+                        match args.get(i).map(String::as_str) {
+                            Some("h1") => split = Some(1),
+                            Some("h2") => split = Some(2),
+                            Some("h3") => split = Some(3),
+                            _ => return usage("--split takes h1, h2 or h3"),
+                        }
+                    }
                     other if input.is_none() => input = Some(PathBuf::from(other)),
                     other => return usage(&format!("unknown argument: {other}")),
                 }
@@ -34,7 +44,7 @@ fn main() -> ExitCode {
             let Some(input) = input else {
                 return usage("an input file is required");
             };
-            run(build(&input, &out_dir))
+            run(build(&input, &out_dir, split))
         }
         Some("serve") => {
             let mut input: Option<PathBuf> = None;
@@ -124,8 +134,10 @@ fn usage(msg: &str) -> ExitCode {
     }
     eprintln!(
         "mirzam {} - a Markdown-based slide renderer\n\n\
-         Usage:\n  mirzam build <input.md> [-o <out_dir>]\n  mirzam serve <input.md> [-p <port>]\n  mirzam export pdf <input.md> [-o <out.pdf>] [--chromium <bin>]\n\n\
+         Usage:\n  mirzam build <input.md> [-o <out_dir>] [--split h1|h2|h3]\n  mirzam serve <input.md> [-p <port>]\n  mirzam export pdf <input.md> [-o <out.pdf>] [--chromium <bin>]\n\n\
          build : write <out_dir>/index.html, a single file with the viewer embedded\n\
+                 --split starts a new slide at every heading of that level, which\n\
+                 turns an ordinary document into a deck without editing it\n\
          serve : development server with hot reload (default port 4321)\n\
          export: render a PDF with headless Chromium (also honors MIRZAM_CHROMIUM)",
         env!("CARGO_PKG_VERSION")
@@ -133,10 +145,10 @@ fn usage(msg: &str) -> ExitCode {
     ExitCode::FAILURE
 }
 
-fn build(input: &Path, out_dir: &Path) -> Result<(), String> {
+fn build(input: &Path, out_dir: &Path, split: Option<u8>) -> Result<(), String> {
     let t0 = Instant::now();
     let mut cache = HashMap::new();
-    let out = pipeline::build_deck(input, &mut cache)?;
+    let out = pipeline::build_deck_with(input, &mut cache, split)?;
     let opts = mirzam_render::PageOptions {
         live_version: None,
         custom_css: out.custom_css.clone(),

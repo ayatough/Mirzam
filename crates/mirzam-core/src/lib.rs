@@ -18,6 +18,9 @@ pub struct DeckMeta {
     pub aspect: Option<String>,
     /// Path to a custom stylesheet, relative to the input file.
     pub css: Option<String>,
+    /// Start a new slide at every heading of this level: "h1", "h2", "h3".
+    /// Slides always break on `---` as well.
+    pub split: Option<String>,
     pub vars: BTreeMap<String, serde_yaml::Value>,
 }
 
@@ -27,6 +30,16 @@ impl DeckMeta {
         match self.aspect.as_deref() {
             Some("4:3") => (1024, 768),
             _ => (1280, 720),
+        }
+    }
+
+    /// Heading level that starts a new slide, if `split:` asks for one.
+    pub fn split_level(&self) -> Option<u8> {
+        match self.split.as_deref()?.trim().to_ascii_lowercase().as_str() {
+            "h1" | "1" => Some(1),
+            "h2" | "2" => Some(2),
+            "h3" | "3" => Some(3),
+            _ => None,
         }
     }
 
@@ -112,6 +125,15 @@ mod tests {
             substitute_vars("{{product}} costs {{price * 12}} per year", &v),
             "Mirzam costs 14400 per year"
         );
+    }
+
+    #[test]
+    fn split_level_parses_forms() {
+        let meta = |v: &str| parse_meta(&format!("split: {v}\n")).unwrap();
+        assert_eq!(meta("h2").split_level(), Some(2));
+        assert_eq!(meta("3").split_level(), Some(3));
+        assert_eq!(meta("none").split_level(), None);
+        assert_eq!(DeckMeta::default().split_level(), None);
     }
 
     #[test]

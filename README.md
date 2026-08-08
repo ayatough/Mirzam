@@ -18,7 +18,7 @@ with one column and a title. Mirzam is an attempt at both: the source is ordinar
 Markdown that renders fine on GitHub, and the output is a deck you would actually
 present.
 
-```markdown
+````markdown
 ```pane
 +------------------+-----------------+
 |  head                              |
@@ -51,7 +51,7 @@ data: |
 ```connect
 #win -> #latency-1-2 : color=@accent2
 ```
-```
+````
 
 The layout is the box drawing. The chart comes from the data next to it. The arrow
 points from a phrase in the sentence to an individual bar, and re-routes itself
@@ -84,6 +84,7 @@ cargo build --release          # target/release/mirzam
 
 ```bash
 mirzam build deck.md -o out          # single self-contained HTML
+mirzam build README.md --split h2    # any document becomes a deck, unedited
 mirzam serve deck.md                 # live preview at localhost:4321
 mirzam export pdf deck.md -o deck.pdf
 ```

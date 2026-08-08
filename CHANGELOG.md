@@ -28,6 +28,9 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   rendered as a live page (`scripts/build-site.sh`, `.github/workflows/pages.yml`).
 - `AGENTS.md` and `CLAUDE.md`: working agreement for coding agents, including how
   to split work across several agents without colliding.
+- Heading-based slide splitting: `mirzam build doc.md --split h2`, or `split: h2`
+  in frontmatter, turns an ordinary document into a deck without editing it. The
+  project README is published as a deck on the docs site to demonstrate it.
 
 ### Changed
 - Documentation is English-first; Japanese translations live under `docs/ja/`.
@@ -52,6 +55,10 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - Asset-only changes (replacing an image file) now reach connected clients.
 - `scripts/build-wasm.sh` read the wasm-bindgen version from `Cargo.toml` instead
   of the resolved version in `Cargo.lock`, producing a confusing schema mismatch.
+- Fenced blocks were matched without regard to fence length, so a `pane` or
+  `chart` block quoted inside a longer fence was executed instead of shown. This
+  is how documentation about Mirzam is written, and it also fixed the README's own
+  example block.
 
 ## [0.0.1] - unreleased
 

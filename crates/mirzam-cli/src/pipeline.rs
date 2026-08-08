@@ -45,6 +45,16 @@ impl CacheEntry {
 pub type RenderCache = HashMap<u64, CacheEntry>;
 
 pub fn build_deck(input: &Path, cache: &mut RenderCache) -> Result<BuildOutput, String> {
+    build_deck_with(input, cache, None)
+}
+
+/// `split_override` forces heading-based slide splitting regardless of
+/// frontmatter, which is how `--split` turns an unmodified document into a deck.
+pub fn build_deck_with(
+    input: &Path,
+    cache: &mut RenderCache,
+    split_override: Option<u8>,
+) -> Result<BuildOutput, String> {
     let src = std::fs::read_to_string(input)
         .map_err(|e| format!("cannot read {}: {e}", input.display()))?;
     let base_dir = input
@@ -94,7 +104,8 @@ pub fn build_deck(input: &Path, cache: &mut RenderCache) -> Result<BuildOutput, 
     let body = substitute_outside_fences(&body, &vars);
 
     // 4. Split into slides and render each one through the cache.
-    let slide_sources = mirzam_syntax::split_slides(&body);
+    let level = split_override.or_else(|| meta.split_level());
+    let slide_sources = mirzam_syntax::split_slides_at(&body, level);
     let mut sections = Vec::with_capacity(slide_sources.len());
     let mut hashes = Vec::with_capacity(slide_sources.len());
     let mut rendered = 0usize;
@@ -149,6 +160,7 @@ pub fn build_deck(input: &Path, cache: &mut RenderCache) -> Result<BuildOutput, 
         meta.author.hash(&mut h);
         meta.aspect.hash(&mut h);
         custom_css.hash(&mut h);
+        level.hash(&mut h);
         // Whether math is present decides if the math font is bundled.
         mirzam_render::sections_have_math(&sections).hash(&mut h);
         h.finish()

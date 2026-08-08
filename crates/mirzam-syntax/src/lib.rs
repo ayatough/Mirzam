@@ -70,16 +70,24 @@ fn expand_includes_inner(
     files: &mut BTreeSet<PathBuf>,
 ) -> String {
     let mut out = String::with_capacity(body.len());
-    let mut in_code = false;
+    let mut fence: Option<usize> = None;
     for line in body.lines() {
         let trimmed = line.trim();
-        if trimmed.starts_with("```") {
-            in_code = !in_code;
+        match fence {
+            Some(open) if closes_fence(trimmed, open) => fence = None,
+            None => {
+                if let Some(n) = fence_len(trimmed) {
+                    fence = Some(n);
+                }
+            }
+            _ => {}
+        }
+        if fence.is_some() || closes_fence(trimmed, 3) {
             out.push_str(line);
             out.push('\n');
             continue;
         }
-        if !in_code {
+        {
             if let Some(target) = parse_include_line(trimmed) {
                 let path = base_dir.join(target);
                 let canon = path.canonicalize().unwrap_or_else(|_| path.clone());
@@ -118,6 +126,22 @@ fn expand_includes_inner(
     out
 }
 
+/// Number of leading backticks when a line opens or closes a fence.
+/// CommonMark lets a longer fence contain shorter ones, which is how a document
+/// shows Mirzam syntax without the inner blocks being taken literally.
+pub fn fence_len(trimmed: &str) -> Option<usize> {
+    let n = trimmed.chars().take_while(|c| *c == '`').count();
+    (n >= 3).then_some(n)
+}
+
+/// Whether `trimmed` closes a fence opened with `open` backticks.
+fn closes_fence(trimmed: &str, open: usize) -> bool {
+    match fence_len(trimmed) {
+        Some(n) => n >= open && trimmed.chars().all(|c| c == '`'),
+        None => false,
+    }
+}
+
 /// Returns the target when the whole line is `![[...]]`.
 fn parse_include_line(line: &str) -> Option<&str> {
     let inner = line.strip_prefix("![[")?.strip_suffix("]]")?;
@@ -129,17 +153,37 @@ fn parse_include_line(line: &str) -> Option<&str> {
 
 /// Splits the body into slides on `---` lines outside code fences.
 pub fn split_slides(body: &str) -> Vec<String> {
+    split_slides_at(body, None)
+}
+
+/// Splits into slides on `---`, and additionally before every heading of
+/// `level` when given. Heading splitting is what lets an ordinary document -
+/// a README, a set of notes - become a deck without editing it.
+pub fn split_slides_at(body: &str, level: Option<u8>) -> Vec<String> {
     let mut slides = Vec::new();
     let mut current = String::new();
-    let mut in_code = false;
+    let mut fence: Option<usize> = None;
     for line in body.lines() {
         let trimmed = line.trim();
-        if trimmed.starts_with("```") {
-            in_code = !in_code;
+        match fence {
+            Some(open) if closes_fence(trimmed, open) => fence = None,
+            None => {
+                if let Some(n) = fence_len(trimmed) {
+                    fence = Some(n);
+                }
+            }
+            _ => {}
         }
+        let in_code = fence.is_some();
         if !in_code && is_slide_break(trimmed) {
             slides.push(std::mem::take(&mut current));
             continue;
+        }
+        if !in_code && level.is_some_and(|l| heading_level(trimmed) == Some(l)) {
+            // The first heading opens the deck rather than an empty slide.
+            if !current.trim().is_empty() {
+                slides.push(std::mem::take(&mut current));
+            }
         }
         current.push_str(line);
         current.push('\n');
@@ -150,6 +194,15 @@ pub fn split_slides(body: &str) -> Vec<String> {
         .into_iter()
         .filter(|s| !s.trim().is_empty())
         .collect()
+}
+
+/// The ATX heading level of a line, if it is one.
+fn heading_level(trimmed: &str) -> Option<u8> {
+    let hashes = trimmed.chars().take_while(|c| *c == '#').count();
+    (1..=6)
+        .contains(&hashes)
+        .then(|| trimmed[hashes..].starts_with(' ').then_some(hashes as u8))
+        .flatten()
 }
 
 fn is_slide_break(trimmed: &str) -> bool {
@@ -214,15 +267,24 @@ pub fn parse_slide(src: &str) -> SlideSource {
         let trimmed = line.trim();
 
         // fenced code block
-        if let Some(info) = trimmed.strip_prefix("```") {
-            let info = info.trim();
+        if let Some(open) = fence_len(trimmed) {
+            let info = trimmed[open..].trim();
             let mut body = String::new();
             for inner in lines.by_ref() {
-                if inner.trim() == "```" {
+                if closes_fence(inner.trim(), open) {
                     break;
                 }
                 body.push_str(inner);
                 body.push('\n');
+            }
+            // A longer fence quotes Mirzam syntax rather than using it.
+            if open > 3 {
+                slide.loose.push_str(&format!(
+                    "{}{info}\n{body}{}\n",
+                    "`".repeat(open),
+                    "`".repeat(open)
+                ));
+                continue;
             }
             if info == "pane" || info.starts_with("pane ") {
                 slide.layout = Some(body);
@@ -244,13 +306,19 @@ pub fn parse_slide(src: &str) -> SlideSource {
             let rest = rest.trim();
             if let Some((pane_name, attrs)) = parse_pane_open(rest) {
                 let mut body = String::new();
-                let mut in_code = false;
+                let mut inner_fence: Option<usize> = None;
                 for inner in lines.by_ref() {
                     let t = inner.trim();
-                    if t.starts_with("```") {
-                        in_code = !in_code;
+                    match inner_fence {
+                        Some(open) if closes_fence(t, open) => inner_fence = None,
+                        None => {
+                            if let Some(n) = fence_len(t) {
+                                inner_fence = Some(n);
+                            }
+                        }
+                        _ => {}
                     }
-                    if !in_code && t == ":::" {
+                    if inner_fence.is_none() && t == ":::" {
                         break;
                     }
                     body.push_str(inner);
@@ -347,6 +415,33 @@ mod tests {
     }
 
     #[test]
+    fn heading_split_starts_a_slide_per_heading() {
+        let body = "# Title\n\nintro\n\n## A\n\nbody a\n\n## B\n\nbody b\n";
+        let slides = split_slides_at(body, Some(2));
+        assert_eq!(slides.len(), 3);
+        assert!(slides[0].contains("# Title") && slides[0].contains("intro"));
+        assert!(slides[1].starts_with("## A"));
+        assert!(slides[2].starts_with("## B"));
+    }
+
+    #[test]
+    fn heading_split_ignores_other_levels_and_fences() {
+        let body = "## A\n\n### sub\n\n```\n## not a heading\n```\n\n## B\n";
+        let slides = split_slides_at(body, Some(2));
+        assert_eq!(slides.len(), 2);
+        assert!(slides[0].contains("### sub"));
+        assert!(slides[0].contains("## not a heading"));
+    }
+
+    #[test]
+    fn heading_level_recognises_atx_only() {
+        assert_eq!(heading_level("## x"), Some(2));
+        assert_eq!(heading_level("######## x"), None);
+        assert_eq!(heading_level("##x"), None);
+        assert_eq!(heading_level("text"), None);
+    }
+
+    #[test]
     fn slide_split_ignores_fences() {
         let body = "a\n---\nb\n```\n---\n```\nc\n";
         let slides = split_slides(body);
@@ -387,6 +482,28 @@ loose text
         assert_eq!(s.connects.len(), 1);
         assert!(s.connects[0].contains("#x -> #y"));
         assert_eq!(s.notes, vec!["remember this"]);
+    }
+
+    #[test]
+    fn longer_fence_quotes_mirzam_syntax() {
+        // A document that *shows* Mirzam syntax wraps it in a longer fence; the
+        // inner blocks must stay text rather than being executed.
+        let src =
+            "````markdown\n```pane\n+---+\n| a |\n+---+\n```\n\n```connect\n#a -> #b\n```\n````\n";
+        let s = parse_slide(src);
+        assert!(s.layout.is_none(), "inner pane block must not be applied");
+        assert!(
+            s.connects.is_empty(),
+            "inner connect block must not be applied"
+        );
+        assert!(s.loose.contains("```pane"));
+        assert!(s.loose.contains("#a -> #b"));
+    }
+
+    #[test]
+    fn longer_fence_hides_slide_breaks() {
+        let body = "a\n\n````\n---\n````\n\nb\n";
+        assert_eq!(split_slides(body).len(), 1);
     }
 
     #[test]

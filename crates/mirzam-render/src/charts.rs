@@ -15,7 +15,8 @@ pub fn extract(md: &str) -> (String, Vec<String>) {
     let mut blocks = Vec::new();
     let mut lines = md.lines();
     while let Some(line) = lines.next() {
-        if line.trim() == "```chart" {
+        let trimmed = line.trim();
+        if trimmed == "```chart" {
             let mut body = String::new();
             for inner in lines.by_ref() {
                 if inner.trim() == "```" {
@@ -26,6 +27,18 @@ pub fn extract(md: &str) -> (String, Vec<String>) {
             }
             out.push_str(&format!("\n<!--mz-chart:{}-->\n", blocks.len()));
             blocks.push(body);
+        } else if let Some(open) = mirzam_syntax::fence_len(trimmed).filter(|n| *n > 3) {
+            // A longer fence quotes chart syntax instead of using it.
+            out.push_str(line);
+            out.push('\n');
+            for inner in lines.by_ref() {
+                out.push_str(inner);
+                out.push('\n');
+                let t = inner.trim();
+                if t.chars().all(|c| c == '`') && t.len() >= open {
+                    break;
+                }
+            }
         } else {
             out.push_str(line);
             out.push('\n');
@@ -113,6 +126,13 @@ mod tests {
         assert!(md.contains("<!--mz-chart:0-->"));
         assert!(md.contains("before") && md.contains("after"));
         assert!(!md.contains("```chart"));
+    }
+
+    #[test]
+    fn longer_fence_quotes_chart_syntax() {
+        let (md, blocks) = extract("````markdown\n```chart\ntype: bar\n```\n````\n");
+        assert!(blocks.is_empty(), "quoted chart must not be rendered");
+        assert!(md.contains("```chart"));
     }
 
     #[test]
