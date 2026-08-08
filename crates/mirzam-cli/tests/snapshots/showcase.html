@@ -1,6 +1,6 @@
 <section class="slide" data-index="0">
 <div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
-<div class="pane pane-main" style="grid-area:main"><h1 class="title-slide">Component gallery</h1>
+<div class="pane pane-main" data-pane="main" style="grid-area:main"><h1 class="title-slide">Component gallery</h1>
 <p>Every block on the following slides is plain Markdown. View the source alongside.</p>
 </div>
 </div>
@@ -9,10 +9,10 @@
 </section>
 <section class="slide" data-index="1">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
-<div class="pane pane-head" style="grid-area:head"><p><span class="eyebrow">Layout</span></p>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Layout</span></p>
 <h2>The layout <em>is</em> the ASCII you draw</h2>
 </div>
-<div class="pane pane-src card" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">+----------+----------+
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">+----------+----------+
 |  head               |
 +----------+----------+
 |          |          |
@@ -21,7 +21,7 @@
 +----------+----------+
 </code></pre>
 </div>
-<div class="pane pane-out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><ul>
+<div class="pane pane-out" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><ul>
 <li>Column widths follow the character widths</li>
 <li>Row heights follow the line counts</li>
 <li>Repeat a name to merge cells</li>
@@ -33,28 +33,28 @@
 </section>
 <section class="slide" data-index="2">
 <div class="grid" style='grid-template-columns:9fr 9fr 16fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head head" "m1 m2 m3"'>
-<div class="pane pane-head" style="grid-area:head"><p><span class="eyebrow">Components</span></p>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Components</span></p>
 <h2>Metric tiles</h2>
 </div>
-<div class="pane pane-m1 card" style="grid-area:m1;text-align:center;display:flex;flex-direction:column;justify-content:center"><div class="metric metric-up">99.95%</div>
+<div class="pane pane-m1 card" data-pane="m1" style="grid-area:m1;text-align:center;display:flex;flex-direction:column;justify-content:center"><div class="metric metric-up">99.95%</div>
 <div class="metric-label">uptime, trailing 90 days</div>
 </div>
-<div class="pane pane-m2 card" style="grid-area:m2;text-align:center;display:flex;flex-direction:column;justify-content:center"><div class="metric">6</div>
+<div class="pane pane-m2 card" data-pane="m2" style="grid-area:m2;text-align:center;display:flex;flex-direction:column;justify-content:center"><div class="metric">6</div>
 <div class="metric-label">regions served</div>
 </div>
-<div class="pane pane-m3 card" style="grid-area:m3;text-align:center;display:flex;flex-direction:column;justify-content:center"><div class="metric">18</div>
+<div class="pane pane-m3 card" data-pane="m3" style="grid-area:m3;text-align:center;display:flex;flex-direction:column;justify-content:center"><div class="metric">18</div>
 <div class="metric-label">availability zones</div>
 </div>
 </div>
 </section>
 <section class="slide" data-index="3">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "bars line"'>
-<div class="pane pane-head" style="grid-area:head"><p><span class="eyebrow">Charts</span></p>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Charts</span></p>
 <h2>Data in, chart out</h2>
 </div>
-<div class="pane pane-bars" style="grid-area:bars"><div class="mz-chart-wrap"><svg class="mz-chart" id="latency" viewBox="0 0 720 440" preserveAspectRatio="xMidYMid meet" role="img"><text class="mz-chart-title" x="360" y="26" text-anchor="middle">p95 latency by region (ms)</text><line class="mz-chart-grid" x1="66" y1="374.0" x2="700.0" y2="374.0"/><text class="mz-chart-tick" x="56.0" y="378.0" text-anchor="end">0</text><line class="mz-chart-grid" x1="66" y1="292.0" x2="700.0" y2="292.0"/><text class="mz-chart-tick" x="56.0" y="296.0" text-anchor="end">125</text><line class="mz-chart-grid" x1="66" y1="210.0" x2="700.0" y2="210.0"/><text class="mz-chart-tick" x="56.0" y="214.0" text-anchor="end">250</text><line class="mz-chart-grid" x1="66" y1="128.0" x2="700.0" y2="128.0"/><text class="mz-chart-tick" x="56.0" y="132.0" text-anchor="end">375</text><line class="mz-chart-grid" x1="66" y1="46.0" x2="700.0" y2="46.0"/><text class="mz-chart-tick" x="56.0" y="50.0" text-anchor="end">500</text><text class="mz-chart-tick" x="171.7" y="396.0" text-anchor="middle">us-east</text><text class="mz-chart-tick" x="383.0" y="396.0" text-anchor="middle">eu-west</text><text class="mz-chart-tick" x="594.3" y="396.0" text-anchor="middle">ap-ne</text><rect class="mz-chart-bar" id="latency-0-0" x="99.8" y="236.2" width="68.9" height="137.8" rx="3" fill="var(--mz-accent1)"/><text class="mz-chart-value" x="134.2" y="230.2" text-anchor="middle">210</text><rect class="mz-chart-bar" id="latency-0-1" x="311.1" y="203.4" width="68.9" height="170.6" rx="3" fill="var(--mz-accent1)"/><text class="mz-chart-value" x="345.6" y="197.4" text-anchor="middle">260</text><rect class="mz-chart-bar" id="latency-0-2" x="522.5" y="124.7" width="68.9" height="249.3" rx="3" fill="var(--mz-accent1)"/><text class="mz-chart-value" x="556.9" y="118.7" text-anchor="middle">380</text><rect class="mz-chart-bar" id="latency-1-0" x="171.7" y="295.3" width="68.9" height="78.7" rx="3" fill="var(--mz-accent2)"/><text class="mz-chart-value" x="206.1" y="289.3" text-anchor="middle">120</text><rect class="mz-chart-bar" id="latency-1-1" x="383.0" y="282.2" width="68.9" height="91.8" rx="3" fill="var(--mz-accent2)"/><text class="mz-chart-value" x="417.4" y="276.2" text-anchor="middle">140</text><rect class="mz-chart-bar" id="latency-1-2" x="594.3" y="255.9" width="68.9" height="118.1" rx="3" fill="var(--mz-accent2)"/><text class="mz-chart-value" x="628.8" y="249.9" text-anchor="middle">180</text><rect x="70" y="422" width="14" height="14" rx="3" fill="var(--mz-accent1)"/><text class="mz-chart-legend" x="90" y="434">before</text><rect x="158" y="422" width="14" height="14" rx="3" fill="var(--mz-accent2)"/><text class="mz-chart-legend" x="178" y="434">after</text></svg></div>
+<div class="pane pane-bars" data-pane="bars" style="grid-area:bars"><div class="mz-chart-wrap"><svg class="mz-chart" id="latency" viewBox="0 0 720 440" preserveAspectRatio="xMidYMid meet" role="img"><text class="mz-chart-title" x="360" y="26" text-anchor="middle">p95 latency by region (ms)</text><line class="mz-chart-grid" x1="66" y1="374.0" x2="700.0" y2="374.0"/><text class="mz-chart-tick" x="56.0" y="378.0" text-anchor="end">0</text><line class="mz-chart-grid" x1="66" y1="292.0" x2="700.0" y2="292.0"/><text class="mz-chart-tick" x="56.0" y="296.0" text-anchor="end">125</text><line class="mz-chart-grid" x1="66" y1="210.0" x2="700.0" y2="210.0"/><text class="mz-chart-tick" x="56.0" y="214.0" text-anchor="end">250</text><line class="mz-chart-grid" x1="66" y1="128.0" x2="700.0" y2="128.0"/><text class="mz-chart-tick" x="56.0" y="132.0" text-anchor="end">375</text><line class="mz-chart-grid" x1="66" y1="46.0" x2="700.0" y2="46.0"/><text class="mz-chart-tick" x="56.0" y="50.0" text-anchor="end">500</text><text class="mz-chart-tick" x="171.7" y="396.0" text-anchor="middle">us-east</text><text class="mz-chart-tick" x="383.0" y="396.0" text-anchor="middle">eu-west</text><text class="mz-chart-tick" x="594.3" y="396.0" text-anchor="middle">ap-ne</text><rect class="mz-chart-bar" id="latency-0-0" x="99.8" y="236.2" width="68.9" height="137.8" rx="3" fill="var(--mz-accent1)"/><text class="mz-chart-value" x="134.2" y="230.2" text-anchor="middle">210</text><rect class="mz-chart-bar" id="latency-0-1" x="311.1" y="203.4" width="68.9" height="170.6" rx="3" fill="var(--mz-accent1)"/><text class="mz-chart-value" x="345.6" y="197.4" text-anchor="middle">260</text><rect class="mz-chart-bar" id="latency-0-2" x="522.5" y="124.7" width="68.9" height="249.3" rx="3" fill="var(--mz-accent1)"/><text class="mz-chart-value" x="556.9" y="118.7" text-anchor="middle">380</text><rect class="mz-chart-bar" id="latency-1-0" x="171.7" y="295.3" width="68.9" height="78.7" rx="3" fill="var(--mz-accent2)"/><text class="mz-chart-value" x="206.1" y="289.3" text-anchor="middle">120</text><rect class="mz-chart-bar" id="latency-1-1" x="383.0" y="282.2" width="68.9" height="91.8" rx="3" fill="var(--mz-accent2)"/><text class="mz-chart-value" x="417.4" y="276.2" text-anchor="middle">140</text><rect class="mz-chart-bar" id="latency-1-2" x="594.3" y="255.9" width="68.9" height="118.1" rx="3" fill="var(--mz-accent2)"/><text class="mz-chart-value" x="628.8" y="249.9" text-anchor="middle">180</text><rect x="70" y="422" width="14" height="14" rx="3" fill="var(--mz-accent1)"/><text class="mz-chart-legend" x="90" y="434">before</text><rect x="158" y="422" width="14" height="14" rx="3" fill="var(--mz-accent2)"/><text class="mz-chart-legend" x="178" y="434">after</text></svg></div>
 </div>
-<div class="pane pane-line" style="grid-area:line"><div class="mz-chart-wrap"><svg class="mz-chart" id="errors" viewBox="0 0 720 440" preserveAspectRatio="xMidYMid meet" role="img"><text class="mz-chart-title" x="360" y="26" text-anchor="middle">Error rate (%)</text><line class="mz-chart-grid" x1="66" y1="374.0" x2="700.0" y2="374.0"/><text class="mz-chart-tick" x="56.0" y="378.0" text-anchor="end">0</text><line class="mz-chart-grid" x1="66" y1="292.0" x2="700.0" y2="292.0"/><text class="mz-chart-tick" x="56.0" y="296.0" text-anchor="end">0.5</text><line class="mz-chart-grid" x1="66" y1="210.0" x2="700.0" y2="210.0"/><text class="mz-chart-tick" x="56.0" y="214.0" text-anchor="end">1</text><line class="mz-chart-grid" x1="66" y1="128.0" x2="700.0" y2="128.0"/><text class="mz-chart-tick" x="56.0" y="132.0" text-anchor="end">1.5</text><line class="mz-chart-grid" x1="66" y1="46.0" x2="700.0" y2="46.0"/><text class="mz-chart-tick" x="56.0" y="50.0" text-anchor="end">2</text><text class="mz-chart-axis" transform="rotate(-90 16 210.0)" x="16" y="210.0" text-anchor="middle">%</text><text class="mz-chart-tick" x="145.2" y="396.0" text-anchor="middle">W1</text><text class="mz-chart-tick" x="303.8" y="396.0" text-anchor="middle">W2</text><text class="mz-chart-tick" x="462.2" y="396.0" text-anchor="middle">W3</text><text class="mz-chart-tick" x="620.8" y="396.0" text-anchor="middle">W4</text><polyline class="mz-chart-line" points="145.2,78.8 303.8,177.2 462.2,259.2 620.8,308.4" fill="none" stroke="var(--mz-accent1)" stroke-width="3"/><circle class="mz-chart-point" id="errors-0-0" cx="145.2" cy="78.8" r="5" fill="var(--mz-accent1)"/><circle class="mz-chart-point" id="errors-0-1" cx="303.8" cy="177.2" r="5" fill="var(--mz-accent1)"/><circle class="mz-chart-point" id="errors-0-2" cx="462.2" cy="259.2" r="5" fill="var(--mz-accent1)"/><circle class="mz-chart-point" id="errors-0-3" cx="620.8" cy="308.4" r="5" fill="var(--mz-accent1)"/><polyline class="mz-chart-line" points="145.2,226.4 303.8,242.8 462.2,275.6 620.8,292.0" fill="none" stroke="var(--mz-accent2)" stroke-width="3"/><circle class="mz-chart-point" id="errors-1-0" cx="145.2" cy="226.4" r="5" fill="var(--mz-accent2)"/><circle class="mz-chart-point" id="errors-1-1" cx="303.8" cy="242.8" r="5" fill="var(--mz-accent2)"/><circle class="mz-chart-point" id="errors-1-2" cx="462.2" cy="275.6" r="5" fill="var(--mz-accent2)"/><circle class="mz-chart-point" id="errors-1-3" cx="620.8" cy="292.0" r="5" fill="var(--mz-accent2)"/><rect x="70" y="422" width="14" height="14" rx="3" fill="var(--mz-accent1)"/><text class="mz-chart-legend" x="90" y="434">checkout</text><rect x="176" y="422" width="14" height="14" rx="3" fill="var(--mz-accent2)"/><text class="mz-chart-legend" x="196" y="434">search</text></svg></div>
+<div class="pane pane-line" data-pane="line" style="grid-area:line"><div class="mz-chart-wrap"><svg class="mz-chart" id="errors" viewBox="0 0 720 440" preserveAspectRatio="xMidYMid meet" role="img"><text class="mz-chart-title" x="360" y="26" text-anchor="middle">Error rate (%)</text><line class="mz-chart-grid" x1="66" y1="374.0" x2="700.0" y2="374.0"/><text class="mz-chart-tick" x="56.0" y="378.0" text-anchor="end">0</text><line class="mz-chart-grid" x1="66" y1="292.0" x2="700.0" y2="292.0"/><text class="mz-chart-tick" x="56.0" y="296.0" text-anchor="end">0.5</text><line class="mz-chart-grid" x1="66" y1="210.0" x2="700.0" y2="210.0"/><text class="mz-chart-tick" x="56.0" y="214.0" text-anchor="end">1</text><line class="mz-chart-grid" x1="66" y1="128.0" x2="700.0" y2="128.0"/><text class="mz-chart-tick" x="56.0" y="132.0" text-anchor="end">1.5</text><line class="mz-chart-grid" x1="66" y1="46.0" x2="700.0" y2="46.0"/><text class="mz-chart-tick" x="56.0" y="50.0" text-anchor="end">2</text><text class="mz-chart-axis" transform="rotate(-90 16 210.0)" x="16" y="210.0" text-anchor="middle">%</text><text class="mz-chart-tick" x="145.2" y="396.0" text-anchor="middle">W1</text><text class="mz-chart-tick" x="303.8" y="396.0" text-anchor="middle">W2</text><text class="mz-chart-tick" x="462.2" y="396.0" text-anchor="middle">W3</text><text class="mz-chart-tick" x="620.8" y="396.0" text-anchor="middle">W4</text><polyline class="mz-chart-line" points="145.2,78.8 303.8,177.2 462.2,259.2 620.8,308.4" fill="none" stroke="var(--mz-accent1)" stroke-width="3"/><circle class="mz-chart-point" id="errors-0-0" cx="145.2" cy="78.8" r="5" fill="var(--mz-accent1)"/><circle class="mz-chart-point" id="errors-0-1" cx="303.8" cy="177.2" r="5" fill="var(--mz-accent1)"/><circle class="mz-chart-point" id="errors-0-2" cx="462.2" cy="259.2" r="5" fill="var(--mz-accent1)"/><circle class="mz-chart-point" id="errors-0-3" cx="620.8" cy="308.4" r="5" fill="var(--mz-accent1)"/><polyline class="mz-chart-line" points="145.2,226.4 303.8,242.8 462.2,275.6 620.8,292.0" fill="none" stroke="var(--mz-accent2)" stroke-width="3"/><circle class="mz-chart-point" id="errors-1-0" cx="145.2" cy="226.4" r="5" fill="var(--mz-accent2)"/><circle class="mz-chart-point" id="errors-1-1" cx="303.8" cy="242.8" r="5" fill="var(--mz-accent2)"/><circle class="mz-chart-point" id="errors-1-2" cx="462.2" cy="275.6" r="5" fill="var(--mz-accent2)"/><circle class="mz-chart-point" id="errors-1-3" cx="620.8" cy="292.0" r="5" fill="var(--mz-accent2)"/><rect x="70" y="422" width="14" height="14" rx="3" fill="var(--mz-accent1)"/><text class="mz-chart-legend" x="90" y="434">checkout</text><rect x="176" y="422" width="14" height="14" rx="3" fill="var(--mz-accent2)"/><text class="mz-chart-legend" x="196" y="434">search</text></svg></div>
 </div>
 </div>
 <aside class="notes"><p>Both charts are written as CSV in the slide; no image files involved.</p>
@@ -62,13 +62,13 @@
 </section>
 <section class="slide" data-index="4" data-connectors="[{&quot;arrow&quot;:&quot;end&quot;,&quot;color&quot;:&quot;var(--mz-accent2)&quot;,&quot;curve&quot;:null,&quot;dashed&quot;:false,&quot;from&quot;:&quot;t-edge&quot;,&quot;fromEdge&quot;:null,&quot;to&quot;:&quot;edge&quot;,&quot;toEdge&quot;:&quot;w&quot;},{&quot;arrow&quot;:&quot;end&quot;,&quot;color&quot;:&quot;var(--mz-accent2)&quot;,&quot;curve&quot;:null,&quot;dashed&quot;:false,&quot;from&quot;:&quot;t-origin&quot;,&quot;fromEdge&quot;:null,&quot;to&quot;:&quot;origin&quot;,&quot;toEdge&quot;:&quot;w&quot;},{&quot;arrow&quot;:&quot;end&quot;,&quot;color&quot;:&quot;var(--mz-accent2)&quot;,&quot;curve&quot;:null,&quot;dashed&quot;:false,&quot;from&quot;:&quot;t-db&quot;,&quot;fromEdge&quot;:null,&quot;to&quot;:&quot;db&quot;,&quot;toEdge&quot;:&quot;w&quot;}]">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "text fig"'>
-<div class="pane pane-head" style="grid-area:head"><p><span class="eyebrow">Connectors</span></p>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Connectors</span></p>
 <h2>Sentences that point at things</h2>
 </div>
-<div class="pane pane-text" style="grid-area:text;display:flex;flex-direction:column;justify-content:center"><p>Traffic reaches the <span id="t-edge" class="u">edge cache</span> first. On a miss it falls through to the <span id="t-origin" class="u">origin</span>, and only then to the <span id="t-db" class="u">database</span>.</p>
+<div class="pane pane-text" data-pane="text" style="grid-area:text;display:flex;flex-direction:column;justify-content:center"><p>Traffic reaches the <span id="t-edge" class="u">edge cache</span> first. On a miss it falls through to the <span id="t-origin" class="u">origin</span>, and only then to the <span id="t-db" class="u">database</span>.</p>
 <p>Move the boxes, resize the window, change the theme - the arrows re-route themselves, because endpoints are resolved from the live layout.</p>
 </div>
-<div class="pane pane-fig" style="grid-area:fig"></div>
+<div class="pane pane-fig" data-pane="fig" style="grid-area:fig"></div>
 </div>
 <svg class="mz-shapes" viewBox="0 0 1280 720" preserveAspectRatio="none" aria-hidden="true">
 <rect id="edge" x="780.8" y="140.4" width="384.0" height="93.6" rx="10" style="fill:var(--mz-shape-fill);stroke:var(--mz-accent2)" stroke-width="2.5"/>
@@ -85,10 +85,10 @@
 </section>
 <section class="slide" data-index="5">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "type math"'>
-<div class="pane pane-head" style="grid-area:head"><p><span class="eyebrow">Typography</span></p>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Typography</span></p>
 <h2>Text, tables and math</h2>
 </div>
-<div class="pane pane-type" style="grid-area:type;display:flex;flex-direction:column;justify-content:center"><p><strong>Bold</strong>, <em>italic</em>, <del>struck</del>, <code>inline code</code>, and <a href="https://example.com">links</a>.</p>
+<div class="pane pane-type" data-pane="type" style="grid-area:type;display:flex;flex-direction:column;justify-content:center"><p><strong>Bold</strong>, <em>italic</em>, <del>struck</del>, <code>inline code</code>, and <a href="https://example.com">links</a>.</p>
 <blockquote>
 <p>Pull quotes get an accent rule and quieter text.</p>
 </blockquote>
@@ -119,7 +119,7 @@
 </tbody>
 </table>
 </div>
-<div class="pane pane-math" style="grid-area:math;display:flex;flex-direction:column;justify-content:center"><p>Inline math such as <math><mi>O</mi><mo stretchy="false">(</mo><mn>1</mn><mo stretchy="false">)</mo></math> sits in running text.</p>
+<div class="pane pane-math" data-pane="math" style="grid-area:math;display:flex;flex-direction:column;justify-content:center"><p>Inline math such as <math><mi>O</mi><mo stretchy="false">(</mo><mn>1</mn><mo stretchy="false">)</mo></math> sits in running text.</p>
 <p><math display="block"><msub><mi>p</mi><mn>95</mn></msub><mo>=</mo><mi>μ</mi><mo>+</mo><mn>1.645</mn><mspace width="0.16666667em"/><mi>σ</mi><msqrt><mfrac><mi>n</mi><mrow><mi>n</mi><mo>−</mo><mn>1</mn></mrow></mfrac></msqrt></math></p>
 <p><em>Converted to MathML at build time - no client-side JavaScript.</em></p>
 </div>
@@ -127,10 +127,10 @@
 </section>
 <section class="slide" data-index="6">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "desc clip"'>
-<div class="pane pane-head" style="grid-area:head"><p><span class="eyebrow">Media</span></p>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Media</span></p>
 <h2>Video is a first-class citizen</h2>
 </div>
-<div class="pane pane-desc" style="grid-area:desc;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">![Demo](media/demo.webm){.autoplay .loop .controls}
+<div class="pane pane-desc" data-pane="desc" style="grid-area:desc;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">![Demo](media/demo.webm){.autoplay .loop .controls}
 </code></pre>
 <ul>
 <li>Plays inline in the HTML export</li>
@@ -138,16 +138,16 @@
 <li>The file is embedded, so one HTML is the whole deck</li>
 </ul>
 </div>
-<div class="pane pane-clip" style="grid-area:clip"><p><video src="<data-uri len=93951>" title="Demo clip" poster="<data-uri len=38274>" autoplay muted loop controls playsinline style="object-fit:contain;width:100%;height:100%;"></video></p>
+<div class="pane pane-clip" data-pane="clip" style="grid-area:clip"><p><video src="<data-uri len=93951>" title="Demo clip" poster="<data-uri len=38274>" autoplay muted loop controls playsinline style="object-fit:contain;width:100%;height:100%;"></video></p>
 </div>
 </div>
 </section>
 <section class="slide" data-index="7">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src hero"'>
-<div class="pane pane-head" style="grid-area:head"><p><span class="eyebrow">Backgrounds</span></p>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Backgrounds</span></p>
 <h2>A photo behind the words</h2>
 </div>
-<div class="pane pane-src card" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">::: pane hero {bg=media/bg/mountains.jpg
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">::: pane hero {bg=media/bg/mountains.jpg
                dim=0.35 blur=2 scrim=bottom}
 ## Ship the story, not the slide
 :::
@@ -159,18 +159,18 @@
 <li>Text flips to light automatically</li>
 </ul>
 </div>
-<div class="pane pane-hero has-bg bg-text-light" style="grid-area:hero;display:flex;flex-direction:column;justify-content:flex-end"><img class="mz-bg" src="<data-uri len=29139>" alt="" style="object-fit:cover;object-position:center;filter:blur(2px);transform:scale(1.033);"><div class="mz-scrim" style="background:rgba(0,0,0,0.3)"></div><div class="mz-scrim" style="background:linear-gradient(to top, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.11) 45%, rgba(0,0,0,0) 100%)"></div><div class="mz-bg-content"><h3>Ship the story, not the slide</h3>
+<div class="pane pane-hero has-bg bg-text-light" data-pane="hero" style="grid-area:hero;display:flex;flex-direction:column;justify-content:flex-end"><img class="mz-bg" src="<data-uri len=29139>" alt="" style="object-fit:cover;object-position:center;filter:blur(2px);transform:scale(1.033);"><div class="mz-scrim" style="background:rgba(0,0,0,0.3)"></div><div class="mz-scrim" style="background:linear-gradient(to top, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.11) 45%, rgba(0,0,0,0) 100%)"></div><div class="mz-bg-content"><h3>Ship the story, not the slide</h3>
 <p>The photo is inlined with everything else, so the deck is still one file.</p>
 </div></div>
 </div>
 </section>
 <section class="slide" data-index="8">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:3fr 1fr;grid-template-areas:"main" "foot"'>
-<div class="pane pane-main" style="grid-area:main;text-align:center;display:flex;flex-direction:column;justify-content:center"><h2>That is the whole vocabulary</h2>
+<div class="pane pane-main" data-pane="main" style="grid-area:main;text-align:center;display:flex;flex-direction:column;justify-content:center"><h2>That is the whole vocabulary</h2>
 <p><code>pane</code> · <code>::: pane</code> · <code>shape</code> · <code>connect</code> · <code>chart</code> · attributes · variables</p>
 <p><em>Nothing here needs a mouse.</em></p>
 </div>
-<div class="pane pane-foot" style="grid-area:foot;text-align:right"><p><span class="foot">examples/showcase.md</span></p>
+<div class="pane pane-foot" data-pane="foot" style="grid-area:foot;text-align:right"><p><span class="foot">examples/showcase.md</span></p>
 </div>
 </div>
 </section>

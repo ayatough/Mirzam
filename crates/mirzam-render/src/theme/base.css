@@ -1,0 +1,221 @@
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; height: 100%;
+  background: var(--mz-bg);
+  overflow: hidden;
+  /* Name Japanese fonts explicitly: without them, some systems fall back to a
+     non-Japanese CJK font and render kanji with the wrong glyph shapes.
+     PDF export uses the fonts installed on the exporting machine. */
+  font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans',
+    'Noto Sans CJK JP', 'Noto Sans JP', 'Yu Gothic Medium', 'Yu Gothic', Meiryo, sans-serif;
+}
+#deck {
+  position: absolute; top: 50%; left: 50%;
+  transform-origin: center center;
+  background: var(--mz-slide-bg);
+  border-radius: 6px;
+  box-shadow: 0 12px 60px rgba(0,0,0,.5);
+  overflow: hidden;
+}
+section.slide {
+  position: absolute; inset: 0;
+  display: none;
+  color: var(--mz-fg);
+}
+section.slide.active { display: block; }
+.grid {
+  display: grid; width: 100%; height: 100%;
+  gap: 20px; padding: 44px 60px;
+}
+.pane { min-width: 0; min-height: 0; overflow: hidden; padding: 2px 4px; }
+/* A heading band that is drawn too short would silently clip its heading.
+   Allow the text to stay legible instead, and let the author widen the band. */
+.pane-head, .pane-title { overflow: visible; }
+.pane > :first-child { margin-top: 0; }
+.pane > :last-child { margin-bottom: 0; }
+
+/* Pane backgrounds. The photo is a real <img> so it is inlined like any other
+   asset; the scrims and the content sit above it in the same stacking context. */
+.pane.has-bg {
+  position: relative; overflow: hidden;
+  border-radius: 8px; padding: 18px 22px;
+}
+.mz-bg {
+  position: absolute; inset: 0; z-index: 0;
+  width: 100%; height: 100%; max-width: none; max-height: none;
+  object-fit: cover; object-position: center;
+}
+.mz-scrim { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+/* The wrapper is a flex item when the pane uses valign=, so give it the width. */
+.mz-bg-content { position: relative; z-index: 2; width: 100%; }
+.bg-text-light, .bg-text-light h1, .bg-text-light h2, .bg-text-light h3 {
+  color: #fff;
+}
+.bg-text-light strong, .bg-text-light a { color: var(--mz-accent2); }
+.bg-text-light .small, .bg-text-light blockquote { color: rgba(255,255,255,.78); }
+.bg-text-light h2 { border-bottom-color: var(--mz-accent2); }
+.bg-text-dark, .bg-text-dark h1, .bg-text-dark h2, .bg-text-dark h3 { color: var(--mz-fg); }
+/* `.bleed` takes a background to the slide edge. It drops the grid's padding,
+   so it belongs on a slide whose background covers everything - a title or a
+   section divider - not on one pane among several. */
+.grid:has(> .pane.bleed) { padding: 0; gap: 0; }
+.pane.has-bg.bleed {
+  /* place-self, not place-items on the grid: a theme may centre its title
+     slide, and an item's own placement wins over the container's default. */
+  place-self: stretch;
+  border-radius: 0; padding: 44px 60px;
+  /* A hero centres itself; an explicit valign= is an inline style and still wins. */
+  display: flex; flex-direction: column; justify-content: center;
+}
+/* The title slide dims its subtitle, which is the wrong contrast over a photo. */
+section.slide:has(.title-slide) .bg-text-light p { color: rgba(255,255,255,.82); }
+
+h1 { font-size: 2.6em; margin: .2em 0; letter-spacing: .01em; }
+h2 {
+  font-size: 1.85em; margin: 0 0 .4em; line-height: 1.25;
+  padding-bottom: .25em;
+  border-bottom: 3px solid var(--mz-accent1);
+}
+h3 { font-size: 1.3em; color: var(--mz-accent1); }
+p, li { font-size: 1.35em; line-height: 1.65; }
+li { margin: .25em 0; }
+strong { color: var(--mz-accent1); }
+a { color: var(--mz-accent1); }
+
+.u { text-decoration: underline; text-decoration-color: var(--mz-accent2); text-decoration-thickness: 3px; text-underline-offset: 4px; }
+.center { text-align: center; }
+.right { text-align: right; }
+.small { font-size: .8em; color: var(--mz-muted); }
+
+/* Title slide */
+section.slide:has(.title-slide) .grid {
+  place-items: center; text-align: center;
+  grid-template: 1fr / 1fr;
+}
+section.slide:has(.title-slide) .pane { overflow: visible; }
+/* except a background pane, which has to clip its photo */
+section.slide:has(.title-slide) .pane.has-bg { overflow: hidden; }
+.title-slide { font-size: 3.4em; border: none; }
+section.slide:has(.title-slide) p { color: var(--mz-muted); font-size: 1.5em; }
+
+/* Math: converted to MathML at build time and drawn natively by the browser */
+math { font-size: 1.15em; }
+math[display="block"] { font-size: 1.35em; margin: .5em 0; }
+/* Fallback when conversion fails: show the TeX source */
+.math-error {
+  font-family: 'SF Mono', Consolas, monospace; font-style: normal;
+  background: #fff0f0; color: #b3261e; border-radius: 4px; padding: 0 .3em;
+}
+.math-block { display: block; text-align: center; margin: .6em 0; padding: .4em; }
+
+/* Tables */
+table { border-collapse: collapse; font-size: 1.15em; margin: .5em 0; }
+th, td { border: 1px solid var(--mz-border); padding: .35em .8em; }
+th { background: #f3f5fb; }
+
+/* Code */
+pre {
+  background: #f6f8fa; border: 1px solid var(--mz-border); border-radius: 8px;
+  padding: .8em 1em; font-size: 1.05em; overflow: auto;
+}
+code { font-family: 'SF Mono', Consolas, Menlo, monospace; }
+p code, li code { background: #f3f5fb; border-radius: 4px; padding: .1em .35em; font-size: .9em; }
+blockquote { border-left: 4px solid var(--mz-accent2); margin: .5em 0; padding: .1em 1em; color: var(--mz-muted); }
+
+img, video { max-width: 100%; max-height: 100%; }
+/* An image alone in a paragraph is a figure, not a word. Laying it out as a
+   block drops the baseline gap that otherwise pushes it past the pane. */
+p > img:only-child, p > video:only-child,
+.pane > img:only-child, .pane > video:only-child,
+.mz-bg-content > img:only-child, .mz-bg-content > video:only-child {
+  display: block; margin: 0 auto;
+}
+video { background: #000; border-radius: 6px; }
+
+/* Video placeholder in PDF output, when no poster is given */
+.mz-video-still {
+  display: flex; align-items: center; justify-content: center; gap: .6em;
+  min-height: 200px; height: 100%;
+  background: #f3f5fb; border: 2px dashed var(--mz-border); border-radius: 8px;
+  color: var(--mz-muted);
+}
+.mz-video-still span { font-size: 2em; color: var(--mz-accent1); }
+.mz-video-still em { font-style: normal; font-size: 1.1em; }
+
+/* Charts (build-time SVG from data) */
+:root {
+  --mz-chart3: #f2994a; --mz-chart4: #9b51e0; --mz-chart5: #eb5757; --mz-chart6: #2d9cdb;
+}
+.mz-chart-wrap { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+svg.mz-chart { width: 100%; height: 100%; max-height: 100%; }
+.mz-chart-title { font-size: 20px; font-weight: 600; fill: var(--mz-fg); }
+.mz-chart-grid { stroke: var(--mz-border); stroke-width: 1; }
+.mz-chart-tick { font-size: 15px; fill: var(--mz-muted); }
+.mz-chart-axis { font-size: 14px; fill: var(--mz-muted); }
+.mz-chart-legend { font-size: 15px; fill: var(--mz-fg); }
+.mz-chart-value { font-size: 14px; fill: var(--mz-muted); }
+.mz-chart-slice { stroke: var(--mz-slide-bg); stroke-width: 2; }
+
+/* Shape layer (build-time SVG) and connector layer (drawn at runtime) */
+:root { --mz-shape-fill: #eef1fb; }
+svg.mz-shapes, svg.mz-connect {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; overflow: visible;
+}
+.mz-shape-label { font-size: 22px; fill: var(--mz-fg); font-family: inherit; }
+.mz-shape-label.small, text.small { font-size: 16px; fill: var(--mz-muted); }
+
+/* Blocks reserved for a later phase */
+.mz-reserved {
+  position: absolute; right: 14px; bottom: 12px;
+  font-size: 12px; color: var(--mz-muted); opacity: .75;
+  max-width: 40%;
+}
+.mz-reserved summary { cursor: pointer; }
+.mz-reserved pre { font-size: 11px; margin: 4px 0 0; padding: .4em .6em; }
+
+/* Parse error display */
+.mz-error {
+  border: 2px solid #e5484d; background: #fff0f0; color: #b3261e;
+  border-radius: 8px; padding: .6em 1em; font-size: 1em; margin-bottom: 1em;
+}
+
+aside.notes { display: none; }
+
+/* HUD */
+#hud {
+  position: fixed; right: 18px; bottom: 12px;
+  color: #9aa1b8; font-size: 14px; user-select: none;
+}
+#hint {
+  position: fixed; left: 18px; bottom: 12px;
+  color: #5c6378; font-size: 12px; user-select: none;
+}
+#notes-panel {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  background: rgba(20, 22, 29, .95); color: #dde1ee;
+  padding: 16px 24px 40px; font-size: 15px; line-height: 1.7;
+  border-top: 2px solid var(--mz-accent2);
+  max-height: 40%; overflow: auto;
+}
+#notes-panel h4 { margin: 0 0 6px; color: var(--mz-accent2); font-size: 12px; letter-spacing: .1em; }
+#notes-panel[hidden] { display: none; }
+
+/* Layout debug overlay: `L` toggles `mz-debug` on <html> in the viewer;
+   `mirzam build --debug-layout` bakes it on for headless screenshots. Off by
+   default, and never applied to print (see print.css). */
+html.mz-debug .grid { background: rgba(255, 45, 120, .35); }
+html.mz-debug .pane {
+  position: relative;
+  background: var(--mz-slide-bg);
+  outline: 2px dashed rgba(255, 45, 120, .9);
+  outline-offset: -2px;
+}
+html.mz-debug .pane::before {
+  content: attr(data-pane);
+  position: absolute; top: 0; left: 0; z-index: 1000;
+  background: rgba(255, 45, 120, .9); color: #fff;
+  font: 11px/1.4 'SF Mono', Consolas, monospace;
+  padding: 1px 5px; border-radius: 0 0 4px 0;
+  pointer-events: none;
+}

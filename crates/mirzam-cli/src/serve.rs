@@ -147,6 +147,7 @@ fn handle(request: tiny_http::Request, shared: Arc<Shared>) {
             let opts = mirzam_render::PageOptions {
                 live_version: Some(snap.version),
                 custom_css: snap.custom_css.clone(),
+                ..Default::default()
             };
             let html = mirzam_render::assemble_page(&snap.meta, &snap.sections, &opts);
             html_response(html)

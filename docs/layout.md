@@ -179,3 +179,19 @@ It reports, per slide and pane:
 
 The same check runs in CI over every sample deck, so the samples stay a reliable
 reference.
+
+## Debugging layout visually
+
+Press **`L`** in the viewer to toggle a debug overlay: every pane gets a dashed
+outline and a name label in its corner (from the drawing's own band names), and
+the grid gaps are tinted so you can see space you did not mean to leave. It is
+off by default and never appears in PDF export.
+
+```bash
+mirzam build examples/pitch.md --debug-layout -o /tmp/debug
+```
+
+`--debug-layout` bakes the overlay on at load instead of requiring a keypress,
+for screenshotting a broken deck headlessly (`check-layout.mjs` and CI use the
+same rendered output, without the overlay, since the overlay is a human aid, not
+part of what the checker measures).

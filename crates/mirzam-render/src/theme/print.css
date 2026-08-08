@@ -1,0 +1,20 @@
+html, body { background: #fff; overflow: visible; height: auto; }
+#deck {
+  position: static; transform: none; width: auto; height: auto;
+  box-shadow: none; border-radius: 0; background: transparent;
+}
+section.slide {
+  position: relative; display: block; overflow: hidden;
+  background: var(--mz-slide-bg);
+  break-after: page; page-break-after: always;
+}
+.mz-reserved { display: none; }
+/* Chromium drops background colours when printing, which would remove the
+   scrims and leave text on an undimmed photo. */
+.mz-scrim { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+/* The debug overlay is a screen/editing aid; the export path never sets
+   `--debug-layout`, but this keeps a resting-state guarantee even if the same
+   markup were ever printed from a debug build. */
+html.mz-debug .grid { background: none; }
+html.mz-debug .pane { outline: none; background: none; }
+html.mz-debug .pane::before { display: none; }

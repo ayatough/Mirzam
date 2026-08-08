@@ -62,6 +62,9 @@ pub struct PageOptions {
     pub live_version: Option<u64>,
     /// Contents of the stylesheet named by frontmatter `css:`.
     pub custom_css: Option<String>,
+    /// Bakes the layout debug overlay on at load, instead of leaving it to the
+    /// viewer's `L` key. For screenshotting a broken deck headlessly.
+    pub debug_layout: bool,
 }
 
 /// Whether any section contains math, deciding if the math font is bundled.
@@ -85,9 +88,14 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
         ),
         None => String::new(),
     };
+    let html_class = if opts.debug_layout {
+        " class=\"mz-debug\""
+    } else {
+        ""
+    };
     format!(
         r#"<!doctype html>
-<html lang="en">
+<html lang="en"{html_class}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -101,7 +109,7 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <div id="deck" data-slide-w="{w}" data-slide-h="{h}">
 {sections}</div>
 <div id="hud"></div>
-<div id="hint">← → navigate / N notes / F fullscreen</div>
+<div id="hint">← → navigate / N notes / F fullscreen / L layout</div>
 <div id="notes-panel" hidden></div>
 <script>{js}</script>
 {live_js}</body>
@@ -361,7 +369,7 @@ fn render_grid_slide(
         }
         let bg = background_layers(&attrs);
         panes_html.push_str(&format!(
-            "<div class=\"pane pane-{name}{extra_cls}{}\" style=\"{style}\">{}{body}{}</div>\n",
+            "<div class=\"pane pane-{name}{extra_cls}{}\" data-pane=\"{name}\" style=\"{style}\">{}{body}{}</div>\n",
             bg.pane_class, bg.layers, bg.close
         ));
     }
@@ -535,7 +543,7 @@ fn render_single_pane_slide(
         .collect::<String>();
     let bg = background_layers(&attrs);
     format!(
-        "<div class=\"grid\" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:\"main\"'>\n<div class=\"pane pane-main{extra_cls}{}\" style=\"grid-area:main\">{}{body}{}</div>\n</div>\n",
+        "<div class=\"grid\" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:\"main\"'>\n<div class=\"pane pane-main{extra_cls}{}\" data-pane=\"main\" style=\"grid-area:main\">{}{body}{}</div>\n</div>\n",
         bg.pane_class, bg.layers, bg.close
     )
 }
@@ -557,6 +565,42 @@ mod tests {
             .contains("grid-template-areas:\"main main\" \"a b\""));
         assert!(out.html.contains("pane-a"));
         assert!(out.html.contains("hello"));
+    }
+
+    #[test]
+    fn panes_carry_a_data_pane_attribute() {
+        let slide = parse_slide(
+            "```pane\n+---+---+\n| a | b |\n+---+---+\n```\n\n::: pane a\nhello\n:::\n",
+        );
+        let meta = DeckMeta::default();
+        let out = render_deck(&meta, &[slide], Path::new("."));
+        assert!(out.html.contains("data-pane=\"a\""));
+        assert!(out.html.contains("data-pane=\"b\""));
+    }
+
+    #[test]
+    fn single_pane_slide_carries_a_data_pane_attribute() {
+        let slide = parse_slide("# Hello\n\nworld\n");
+        let meta = DeckMeta::default();
+        let out = render_deck(&meta, &[slide], Path::new("."));
+        assert!(out.html.contains("data-pane=\"main\""));
+    }
+
+    #[test]
+    fn debug_layout_option_bakes_on_the_overlay_class() {
+        let opts = PageOptions {
+            debug_layout: true,
+            ..Default::default()
+        };
+        let html = assemble_page(&DeckMeta::default(), &[], &opts);
+        assert!(html.contains("<html lang=\"en\" class=\"mz-debug\">"));
+    }
+
+    #[test]
+    fn debug_layout_off_by_default() {
+        let html = assemble_page(&DeckMeta::default(), &[], &PageOptions::default());
+        assert!(html.contains("<html lang=\"en\">"));
+        assert!(!html.contains("<html lang=\"en\" class=\"mz-debug\">"));
     }
 
     #[test]

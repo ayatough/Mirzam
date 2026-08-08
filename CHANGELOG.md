@@ -37,6 +37,9 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - Heading-based slide splitting: `mirzam build doc.md --split h2`, or `split: h2`
   in frontmatter, turns an ordinary document into a deck without editing it. The
   project README is published as a deck on the docs site to demonstrate it.
+- Layout debug overlay: `L` in the viewer (or `mirzam build --debug-layout`)
+  outlines every pane, labels it with its band name, and tints the grid gaps.
+  Off by default and never in print.
 
 ### Changed
 - Documentation is English-first; Japanese translations live under `docs/ja/`.

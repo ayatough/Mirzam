@@ -17,6 +17,7 @@ fn main() -> ExitCode {
             let mut input: Option<PathBuf> = None;
             let mut out_dir = PathBuf::from("out");
             let mut split: Option<u8> = None;
+            let mut debug_layout = false;
             let mut i = 1;
             while i < args.len() {
                 match args[i].as_str() {
@@ -36,6 +37,7 @@ fn main() -> ExitCode {
                             _ => return usage("--split takes h1, h2 or h3"),
                         }
                     }
+                    "--debug-layout" => debug_layout = true,
                     other if input.is_none() => input = Some(PathBuf::from(other)),
                     other => return usage(&format!("unknown argument: {other}")),
                 }
@@ -44,7 +46,7 @@ fn main() -> ExitCode {
             let Some(input) = input else {
                 return usage("an input file is required");
             };
-            run(build(&input, &out_dir, split))
+            run(build(&input, &out_dir, split, debug_layout))
         }
         Some("serve") => {
             let mut input: Option<PathBuf> = None;
@@ -182,13 +184,15 @@ fn help_text() -> String {
         env!("CARGO_PKG_VERSION"),
         r#"
 Usage:
-  mirzam build <input.md> [-o <out_dir>] [--split h1|h2|h3]
+  mirzam build <input.md> [-o <out_dir>] [--split h1|h2|h3] [--debug-layout]
   mirzam serve <input.md> [-p <port>]
   mirzam export pdf <input.md> [-o <out.pdf>] [--chromium <bin>]
 
   build   write <out_dir>/index.html, a single file with the viewer embedded
           --split starts a new slide at every heading of that level, which
           turns an ordinary document into a deck without editing it
+          --debug-layout bakes on the pane outline overlay, for screenshotting
+          a broken deck (toggle it live in the viewer with the L key instead)
   serve   development server with hot reload (default port 4321)
   export  render a PDF with headless Chromium (also honors MIRZAM_CHROMIUM)
 
@@ -199,13 +203,19 @@ Examples:
     )
 }
 
-fn build(input: &Path, out_dir: &Path, split: Option<u8>) -> Result<(), String> {
+fn build(
+    input: &Path,
+    out_dir: &Path,
+    split: Option<u8>,
+    debug_layout: bool,
+) -> Result<(), String> {
     let t0 = Instant::now();
     let mut cache = HashMap::new();
     let out = pipeline::build_deck_with(input, &mut cache, split)?;
     let opts = mirzam_render::PageOptions {
         live_version: None,
         custom_css: out.custom_css.clone(),
+        debug_layout,
     };
     let html = mirzam_render::assemble_page(&out.meta, &out.sections, &opts);
 
