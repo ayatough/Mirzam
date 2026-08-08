@@ -20,6 +20,10 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - Video and GIF embedding, with poster-frame substitution in PDF export.
 - Quality gates in CI: CommonMark compatibility, golden snapshots, incremental
   build equivalence, and a standing performance benchmark.
+- `docs/layout.md` and `examples/cookbook.md`: a layout guide whose every rule is
+  demonstrated by a deck that CI renders and checks.
+- `scripts/check-layout.mjs`: renders decks in a browser and fails on clipped or
+  overlapping content and undrawn connectors — problems HTML snapshots cannot see.
 
 ### Changed
 - Documentation is English-first; Japanese translations live under `docs/ja/`.
@@ -27,11 +31,6 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - Math conversion moved from `latex2mathml` to `math-core`, fixing sub/superscript
   placement; decks containing math now bundle STIX Two Math.
 - Upgraded comrak to 0.54 and enabled CJK-friendly emphasis.
-
-- `docs/layout.md` and `examples/cookbook.md`: a layout guide whose every rule is
-  demonstrated by a deck that CI renders and checks.
-- `scripts/check-layout.mjs`: renders decks in a browser and fails on clipped or
-  overlapping content and undrawn connectors — problems HTML snapshots cannot see.
 
 ### Fixed
 - Clicking to select text in the viewer turned the page. A click is only a page
