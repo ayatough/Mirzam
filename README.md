@@ -6,7 +6,7 @@ single HTML file or a PDF.
 
 > Mirzam (β Canis Majoris) — "the announcer", the star that rises before Sirius.
 
-[Syntax](docs/syntax.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](docs/development.md) · [日本語](docs/ja/README.md)
+[Syntax](docs/syntax.md) · [Layout guide](docs/layout.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](docs/development.md) · [日本語](docs/ja/README.md)
 
 ---
 
@@ -112,6 +112,7 @@ the slide you touched, and moving the cursor scrolls the preview to match.
 |---|---|
 | [`examples/pitch.md`](examples/pitch.md) | A sales pitch: metric tiles, charts from CSV, a custom dark theme |
 | [`examples/showcase.md`](examples/showcase.md) | Every component, side by side with its source |
+| [`examples/cookbook.md`](examples/cookbook.md) | Layout rules, one per slide — the companion to [docs/layout.md](docs/layout.md) |
 | [`examples/seminar.md`](examples/seminar.md) | A research talk in Japanese: math, tables, CJK typography |
 | [`examples/media.md`](examples/media.md) | Video and GIF embedding |
 

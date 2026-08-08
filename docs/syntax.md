@@ -52,6 +52,9 @@ Press `N` in the viewer to show them.
 
 ## Layout
 
+For how space is allocated and what to do when content does not fit, see the
+[layout guide](layout.md).
+
 A slide's layout is one `pane` block. Without it the slide is a single pane.
 
 ````markdown

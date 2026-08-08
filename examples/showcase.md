@@ -18,6 +18,7 @@ Every block on the following slides is plain Markdown. View the source alongside
 
 ```pane
 +------------------------------------+
+|                                    |
 |  head                              |
 +------------------+-----------------+
 |                  |                 |
@@ -58,6 +59,7 @@ Every block on the following slides is plain Markdown. View the source alongside
 
 ```pane
 +------------------------------------+
+|                                    |
 |  head                              |
 +---------+---------+----------------+
 |         |         |                |
@@ -92,6 +94,7 @@ Every block on the following slides is plain Markdown. View the source alongside
 
 ```pane
 +------------------------------------+
+|                                    |
 |  head                              |
 +------------------+-----------------+
 |                  |                 |
@@ -141,6 +144,7 @@ data: |
 
 ```pane
 +------------------------------------+
+|                                    |
 |  head                              |
 +------------------+-----------------+
 |                  |                 |
@@ -183,6 +187,7 @@ arrow from(#origin.s) to(#db.n) style=dashed
 
 ```pane
 +------------------------------------+
+|                                    |
 |  head                              |
 +------------------+-----------------+
 |                  |                 |
@@ -224,6 +229,7 @@ $$
 
 ```pane
 +------------------------------------+
+|                                    |
 |  head                              |
 +------------------+-----------------+
 |                  |                 |

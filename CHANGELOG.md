@@ -28,7 +28,20 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   placement; decks containing math now bundle STIX Two Math.
 - Upgraded comrak to 0.54 and enabled CJK-friendly emphasis.
 
+- `docs/layout.md` and `examples/cookbook.md`: a layout guide whose every rule is
+  demonstrated by a deck that CI renders and checks.
+- `scripts/check-layout.mjs`: renders decks in a browser and fails on clipped or
+  overlapping content and undrawn connectors — problems HTML snapshots cannot see.
+
 ### Fixed
+- Clicking to select text in the viewer turned the page. A click is only a page
+  turn when it is not a drag, no text is selected, and it did not land on a
+  control.
+- Connectors from a text anchor left sideways and struck through their own
+  sentence. They now leave from the centre of the underline, through the edge
+  facing the target, and follow direction-aware curves.
+- A heading band drawn too short silently hid its heading behind the pane below;
+  heading panes now stay legible and the layout checker reports the overflow.
 - `history.replaceState` threw inside srcdoc iframes, aborting preview updates in
   embedded viewers such as the VS Code webview.
 - Multi-line `$$...$$` blocks were not converted.

@@ -35,9 +35,29 @@ jobs:
 
       - name: build sample decks
         run: |
-          for deck in pitch showcase seminar media; do
+          for deck in pitch showcase cookbook seminar media; do
             cargo run -q --bin mirzam -- build "examples/$deck.md" -o "/tmp/out-$deck"
           done
+
+  layout:
+    name: layout check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # Renders each deck in a browser and fails on clipped or overlapping
+      # content - the class of bug HTML snapshots cannot see.
+      - name: install browser
+        run: npm i playwright-core && npx playwright install --with-deps chromium
+      - name: check layout
+        run: |
+          node scripts/check-layout.mjs --build \
+            examples/pitch.md examples/showcase.md examples/cookbook.md \
+            examples/seminar.md examples/media.md
 
   bench:
     name: benchmark

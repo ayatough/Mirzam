@@ -40,13 +40,16 @@ section.slide.active { display: block; }
   display: grid; width: 100%; height: 100%;
   gap: 20px; padding: 44px 60px;
 }
-.pane { min-width: 0; min-height: 0; overflow: hidden; }
+.pane { min-width: 0; min-height: 0; overflow: hidden; padding: 2px 4px; }
+/* A heading band that is drawn too short would silently clip its heading.
+   Allow the text to stay legible instead, and let the author widen the band. */
+.pane-head, .pane-title { overflow: visible; }
 .pane > :first-child { margin-top: 0; }
 .pane > :last-child { margin-bottom: 0; }
 
 h1 { font-size: 2.6em; margin: .2em 0; letter-spacing: .01em; }
 h2 {
-  font-size: 1.85em; margin: 0 0 .5em;
+  font-size: 1.85em; margin: 0 0 .4em; line-height: 1.25;
   padding-bottom: .25em;
   border-bottom: 3px solid var(--mz-accent1);
 }
@@ -220,10 +223,14 @@ pub const VIEWER_JS: &str = r#"
     const box = (id) => {
       const el = sec.querySelector('#' + CSS.escape(id));
       if (!el) return null;
-      const r = el.getBoundingClientRect();
+      // A span wrapped across lines reports a union rect covering both lines,
+      // which is not where the text is. Use the last client rect instead.
+      const rects = el.getClientRects();
+      const r = rects.length ? rects[rects.length - 1] : el.getBoundingClientRect();
+      const inline = getComputedStyle(el).display.startsWith('inline');
       return {
         x: (r.left - secRect.left) * sx, y: (r.top - secRect.top) * sy,
-        w: r.width * sx, h: r.height * sy,
+        w: r.width * sx, h: r.height * sy, inline,
       };
     };
     const edgePt = (b, e) => ({
@@ -241,23 +248,34 @@ pub const VIEWER_JS: &str = r#"
       const dx = (b.x + b.w / 2) - (a.x + a.w / 2);
       const dy = (b.y + b.h / 2) - (a.y + a.h / 2);
       const horiz = Math.abs(dx) > Math.abs(dy);
-      const ae = c.fromEdge || (horiz ? (dx > 0 ? 'e' : 'w') : (dy > 0 ? 's' : 'n'));
+      // Inline anchors leave from the horizontal centre of their underline, on
+      // whichever side faces the target. Leaving sideways would run the line
+      // straight through the sentence it is anchored to.
+      const ae = c.fromEdge || (a.inline ? (dy < 0 ? 'n' : 's')
+                                         : (horiz ? (dx > 0 ? 'e' : 'w') : (dy > 0 ? 's' : 'n')));
       const be = c.toEdge || (horiz ? (dx > 0 ? 'w' : 'e') : (dy > 0 ? 'n' : 's'));
       const p = edgePt(a, ae), q = edgePt(b, be);
+      // Step clear of the text before curving, so the line leaves cleanly.
+      if (a.inline && !c.fromEdge) p.y += ae === 'n' ? -6 : 6;
       const color = c.color || 'var(--mz-accent1)';
       const dash = c.dashed ? ' stroke-dasharray="8 6"' : '';
-      // Join with a gentle bezier; curve=0 gives a straight line.
-      const k = c.curve == null ? 0.25 : c.curve;
-      const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
-      const nx = -(q.y - p.y) * k, ny = (q.x - p.x) * k;
-      out += `<path d="M ${p.x} ${p.y} Q ${mx + nx} ${my + ny} ${q.x} ${q.y}" fill="none" stroke="${color}" stroke-width="2.5"${dash}/>`;
+      // Leave and arrive along the edge normals. A curve that ignores the exit
+      // direction swings back across the text it is anchored to.
+      const dir = { n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0], c: [0, 0] };
+      const [ax, ay] = dir[ae], [bx, by] = dir[be];
+      const span = Math.hypot(q.x - p.x, q.y - p.y);
+      const k = c.curve == null ? 0.45 : c.curve;
+      const d = Math.max(40, span * k);
+      const c1 = { x: p.x + ax * d, y: p.y + ay * d };
+      const c2 = { x: q.x + bx * d, y: q.y + by * d };
+      out += `<path d="M ${p.x} ${p.y} C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${q.x} ${q.y}" fill="none" stroke="${color}" stroke-width="2.5"${dash}/>`;
       const head = (tip, from) => {
         const ang = Math.atan2(tip.y - from.y, tip.x - from.x);
         const L = 12, S = 0.45;
         return `<polygon points="${tip.x},${tip.y} ${tip.x - L * Math.cos(ang - S)},${tip.y - L * Math.sin(ang - S)} ${tip.x - L * Math.cos(ang + S)},${tip.y - L * Math.sin(ang + S)}" fill="${color}"/>`;
       };
-      if (c.arrow === 'end' || c.arrow === 'both') out += head(q, { x: mx + nx, y: my + ny });
-      if (c.arrow === 'both') out += head(p, { x: mx + nx, y: my + ny });
+      if (c.arrow === 'end' || c.arrow === 'both') out += head(q, c2);
+      if (c.arrow === 'both') out += head(p, c1);
     }
     svg.innerHTML = out;
   }
@@ -284,7 +302,18 @@ pub const VIEWER_JS: &str = r#"
     }
   });
 
+  // Click to advance, but never while the reader is selecting text or using a
+  // control: a drag that ends on the deck is a selection, not a page turn.
+  let downAt = null;
+  deck.addEventListener('pointerdown', (e) => { downAt = { x: e.clientX, y: e.clientY }; });
   deck.addEventListener('click', (e) => {
+    const moved = downAt
+      ? Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 6
+      : false;
+    downAt = null;
+    if (moved) return;
+    if ((getSelection()?.toString() || '').trim()) return;
+    if (e.target.closest('a, video, details, summary, button, input')) return;
     const r = deck.getBoundingClientRect();
     (e.clientX - r.left) / r.width < 0.3 ? show(cur - 1) : show(cur + 1);
   });

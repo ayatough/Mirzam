@@ -1,0 +1,127 @@
+<section class="slide" data-index="0">
+<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
+<div class="pane pane-main" style="grid-area:main"><h1 class="title-slide">Layout cookbook</h1>
+<p>Each slide states one rule and demonstrates it. Read it beside <code>examples/cookbook.md</code>.</p>
+</div>
+</div>
+<aside class="notes"><p>This deck is checked by scripts/check-layout.mjs in CI, so every rule here is verified, not asserted.</p>
+</aside>
+</section>
+<section class="slide" data-index="1">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
+<div class="pane pane-head" style="grid-area:head"><p><span class="eyebrow">Rule 1</span></p>
+<h2>Bands get the share you draw</h2>
+</div>
+<div class="pane pane-src card" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">+--------+------------+
+|  side  |  main      |
++--------+------------+
+</code></pre>
+<p><code>side : main = 8 : 12</code></p>
+<p>Row heights work the same way: a band
+of five lines gets five shares.</p>
+</div>
+<div class="pane pane-out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><p>The drawing is the specification, not a sketch.</p>
+<p>Borders are <strong>not</strong> part of a band, so a one-line
+heading band is genuinely one line tall — even
+though the ASCII makes it look bigger.</p>
+<p>Draw the band as tall as the content deserves.</p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="2">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "bad good"'>
+<div class="pane pane-head" style="grid-area:head"><p><span class="eyebrow">Rule 2</span></p>
+<h2>A heading needs two lines, three if it wraps</h2>
+</div>
+<div class="pane pane-bad card" style="grid-area:bad;display:flex;flex-direction:column;justify-content:center"><h3>Too tight</h3>
+<pre><code class="language-markdown">+-------------+
+|  head       |
++-------------+
+</code></pre>
+<p>An eyebrow plus a heading does not fit one
+share. The heading is clipped, and a pane with
+a background below it looks like it ate the title.</p>
+</div>
+<div class="pane pane-good card" style="grid-area:good;display:flex;flex-direction:column;justify-content:center"><h3>Right</h3>
+<pre><code class="language-markdown">+-------------+
+|             |
+|  head       |
++-------------+
+</code></pre>
+<p>One blank line is usually enough. The checker
+tells you when it is not.</p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="3">
+<div class="grid" style='grid-template-columns:9fr 9fr 16fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head head" "top middle air"'>
+<div class="pane pane-head" style="grid-area:head"><p><span class="eyebrow">Rule 3</span></p>
+<h2>Alignment is per pane</h2>
+</div>
+<div class="pane pane-top card" style="grid-area:top"><h3>Default</h3>
+<p>Content starts at the top. Best when a pane is
+nearly full.</p>
+</div>
+<div class="pane pane-middle card" style="grid-area:middle;display:flex;flex-direction:column;justify-content:center"><h3>valign=middle</h3>
+<p>Centred in the band. Looks deliberate for short
+content, airy for tall content.</p>
+</div>
+<div class="pane pane-air card" style="grid-area:air;text-align:center;display:flex;flex-direction:column;justify-content:center"><h3>Empty cells</h3>
+<p>A blank cell in the drawing reserves space. It is
+the cleanest way to add breathing room.</p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="4" data-connectors="[{&quot;arrow&quot;:&quot;end&quot;,&quot;color&quot;:&quot;var(--mz-accent2)&quot;,&quot;curve&quot;:null,&quot;dashed&quot;:false,&quot;from&quot;:&quot;c-cache&quot;,&quot;fromEdge&quot;:null,&quot;to&quot;:&quot;k-cache&quot;,&quot;toEdge&quot;:&quot;w&quot;},{&quot;arrow&quot;:&quot;end&quot;,&quot;color&quot;:&quot;var(--mz-accent2)&quot;,&quot;curve&quot;:null,&quot;dashed&quot;:false,&quot;from&quot;:&quot;c-origin&quot;,&quot;fromEdge&quot;:null,&quot;to&quot;:&quot;k-origin&quot;,&quot;toEdge&quot;:&quot;w&quot;}]">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "note fig"'>
+<div class="pane pane-head" style="grid-area:head"><p><span class="eyebrow">Rule 4</span></p>
+<h2>Anchor near the edge that faces the figure</h2>
+</div>
+<div class="pane pane-note" style="grid-area:note;display:flex;flex-direction:column;justify-content:center"><p>A connector from a phrase leaves through the top or
+bottom of its underline, never sideways.</p>
+<p>Put the anchored phrase at the end of a line, or on
+a line of its own, and the arrow has a clear path:</p>
+<p>the request first hits the <span id="c-cache" class="u">cache</span></p>
+<p>on a miss it reaches the <span id="c-origin" class="u">origin</span></p>
+</div>
+<div class="pane pane-fig" style="grid-area:fig"></div>
+</div>
+<svg class="mz-shapes" viewBox="0 0 1280 720" preserveAspectRatio="none" aria-hidden="true">
+<rect id="k-cache" x="780.8" y="190.8" width="384.0" height="108.0" rx="10" style="fill:var(--mz-shape-fill);stroke:var(--mz-accent2)" stroke-width="2.5"/>
+<text x="972.8" y="244.8" text-anchor="middle" dominant-baseline="central" class="mz-shape-label">Cache</text>
+<rect id="k-origin" x="780.8" y="450.0" width="384.0" height="108.0" rx="10" style="fill:var(--mz-shape-fill);stroke:var(--mz-accent1)" stroke-width="2.5"/>
+<text x="972.8" y="504.0" text-anchor="middle" dominant-baseline="central" class="mz-shape-label">Origin</text>
+</svg>
+</section>
+<section class="slide" data-index="5" data-connectors="[{&quot;arrow&quot;:&quot;end&quot;,&quot;color&quot;:&quot;var(--mz-accent2)&quot;,&quot;curve&quot;:null,&quot;dashed&quot;:false,&quot;from&quot;:&quot;c-q3&quot;,&quot;fromEdge&quot;:null,&quot;to&quot;:&quot;cook-1-2&quot;,&quot;toEdge&quot;:null}]">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "chart note"'>
+<div class="pane pane-head" style="grid-area:head"><p><span class="eyebrow">Rule 5</span></p>
+<h2>Point at the data, not at a picture</h2>
+</div>
+<div class="pane pane-chart" style="grid-area:chart"><div class="mz-chart-wrap"><svg class="mz-chart" id="cook" viewBox="0 0 720 440" preserveAspectRatio="xMidYMid meet" role="img"><text class="mz-chart-title" x="360" y="26" text-anchor="middle">Requests served (millions)</text><line class="mz-chart-grid" x1="66" y1="374.0" x2="700.0" y2="374.0"/><text class="mz-chart-tick" x="56.0" y="378.0" text-anchor="end">0</text><line class="mz-chart-grid" x1="66" y1="292.0" x2="700.0" y2="292.0"/><text class="mz-chart-tick" x="56.0" y="296.0" text-anchor="end">2.5</text><line class="mz-chart-grid" x1="66" y1="210.0" x2="700.0" y2="210.0"/><text class="mz-chart-tick" x="56.0" y="214.0" text-anchor="end">5</text><line class="mz-chart-grid" x1="66" y1="128.0" x2="700.0" y2="128.0"/><text class="mz-chart-tick" x="56.0" y="132.0" text-anchor="end">7.5</text><line class="mz-chart-grid" x1="66" y1="46.0" x2="700.0" y2="46.0"/><text class="mz-chart-tick" x="56.0" y="50.0" text-anchor="end">10</text><text class="mz-chart-tick" x="171.7" y="396.0" text-anchor="middle">Q1</text><text class="mz-chart-tick" x="383.0" y="396.0" text-anchor="middle">Q2</text><text class="mz-chart-tick" x="594.3" y="396.0" text-anchor="middle">Q3</text><rect class="mz-chart-bar" id="cook-0-0" x="99.8" y="272.3" width="68.9" height="101.7" rx="3" fill="var(--mz-accent1)"/><text class="mz-chart-value" x="134.2" y="266.3" text-anchor="middle">3.1</text><rect class="mz-chart-bar" id="cook-0-1" x="311.1" y="223.1" width="68.9" height="150.9" rx="3" fill="var(--mz-accent1)"/><text class="mz-chart-value" x="345.6" y="217.1" text-anchor="middle">4.6</text><rect class="mz-chart-bar" id="cook-0-2" x="522.5" y="170.6" width="68.9" height="203.4" rx="3" fill="var(--mz-accent1)"/><text class="mz-chart-value" x="556.9" y="164.6" text-anchor="middle">6.2</text><rect class="mz-chart-bar" id="cook-1-0" x="171.7" y="311.7" width="68.9" height="62.3" rx="3" fill="var(--mz-accent2)"/><text class="mz-chart-value" x="206.1" y="305.7" text-anchor="middle">1.9</text><rect class="mz-chart-bar" id="cook-1-1" x="383.0" y="318.2" width="68.9" height="55.8" rx="3" fill="var(--mz-accent2)"/><text class="mz-chart-value" x="417.4" y="312.2" text-anchor="middle">1.7</text><rect class="mz-chart-bar" id="cook-1-2" x="594.3" y="328.1" width="68.9" height="45.9" rx="3" fill="var(--mz-accent2)"/><text class="mz-chart-value" x="628.8" y="322.1" text-anchor="middle">1.4</text><rect x="70" y="422" width="14" height="14" rx="3" fill="var(--mz-accent1)"/><text class="mz-chart-legend" x="90" y="434">cached</text><rect x="158" y="422" width="14" height="14" rx="3" fill="var(--mz-accent2)"/><text class="mz-chart-legend" x="178" y="434">origin</text></svg></div>
+</div>
+<div class="pane pane-note" style="grid-area:note;display:flex;flex-direction:column;justify-content:center"><p>Every mark has an id: <code>#cook-&lt;series&gt;-&lt;row&gt;</code>.</p>
+<p>Origin traffic keeps falling even as volume grows —
+<span id="c-q3" class="u">by Q3 it is the smaller half</span></p>
+<p>Give a chart at least three lines of band, or the
+axis labels crowd.</p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="6">
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:2fr 5fr;grid-template-areas:"head" "body"'>
+<div class="pane pane-head" style="grid-area:head"><p><span class="eyebrow">Rule 6</span></p>
+<h2>Let the checker find what your eye misses</h2>
+</div>
+<div class="pane pane-body" style="grid-area:body;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-bash">node scripts/check-layout.mjs --build examples/cookbook.md
+</code></pre>
+<p>It renders every slide and reports what HTML snapshots cannot see:</p>
+<ul>
+<li><strong>clipped</strong> — content taller or wider than its pane</li>
+<li><strong>overlap</strong> — an overflowing pane running into its neighbour</li>
+<li><strong>connector</strong> — declared but not drawn, usually a typo in an id</li>
+</ul>
+<p>This deck passes it in CI, which is the only reason to trust the rules above.</p>
+</div>
+</div>
+</section>

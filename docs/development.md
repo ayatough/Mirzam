@@ -28,7 +28,12 @@ cargo run --release -p mirzam-cli --bin mirzam-bench   # performance benchmark
 ./scripts/build-wasm.sh                                # WASM package into pkg/
 ./scripts/serve-wasm-demo.sh                           # browser playground
 ./scripts/build-vsix.sh                                # VS Code extension
+
+node scripts/check-layout.mjs --build examples/pitch.md   # layout validation
 ```
+
+The layout checker needs a browser: `npm i playwright-core && npx playwright
+install chromium`, or point `MIRZAM_CHROMIUM` at an existing Chromium.
 
 ## Repository layout
 
@@ -72,6 +77,7 @@ will break the browser build, so route it through these traits.
 | Golden snapshots | `tests/golden.rs`, `tests/snapshots/` | Rendered output of every sample deck; data URIs are normalized to their length |
 | Incremental equivalence | `tests/incremental.rs` | An incremental build equals a full rebuild, and only affected slides re-render |
 | Benchmark | `bin/mirzam-bench` | Edit latency stays flat as decks grow; values are logged, not asserted |
+| Layout check | `scripts/check-layout.mjs` | Renders every sample deck in a browser and fails on clipped or overlapping content, which HTML snapshots cannot detect |
 | Lint | CI | `cargo fmt --check` and `cargo clippy` with warnings denied |
 
 When you intentionally change rendered output:
@@ -92,6 +98,9 @@ of checking them in.
 - Comments explain *why*, not *what*. The surrounding code already says what.
 - Every new syntax feature needs three things: a parser test, a line in
   `docs/syntax.md`, and an appearance in `examples/showcase.md`.
+- Anything that affects how content is placed also needs a rule in
+  `docs/layout.md` and a slide in `examples/cookbook.md`, so the guidance is
+  verified by the layout checker rather than merely asserted.
 - New rendering behavior means updating the golden snapshots deliberately.
 
 ## Adding a syntax feature
@@ -125,6 +134,7 @@ workspace version.
 
 1. `cargo test --workspace` and `cargo clippy --workspace --all-targets` are clean
 2. `cargo run --release -p mirzam-cli --bin mirzam-bench` shows no regression
-3. Sample decks build and look right: `pitch`, `showcase`, `seminar`, `media`
+3. Sample decks build and pass the layout check: `pitch`, `showcase`, `cookbook`,
+   `seminar`, `media`
 4. `./scripts/build-wasm.sh` and `./scripts/build-vsix.sh` succeed
 5. `CHANGELOG.md` updated, version bumped, tag pushed
