@@ -81,7 +81,12 @@ and dependency-free.
 
 ## Running several agents at once
 
-Work splits cleanly along crate boundaries. These streams rarely collide:
+The current batch of work is already split into streams, with the shared
+contracts written down: see [docs/workstreams.md](docs/workstreams.md). If you
+were handed a stream number, that is your brief.
+
+In general, work splits cleanly along crate boundaries. These streams rarely
+collide:
 
 | Stream | Files | Notes |
 |---|---|---|

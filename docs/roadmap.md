@@ -23,7 +23,11 @@ The MVP is feature-complete and covered by regression tests in CI.
 | Custom themes, speaker notes | Done |
 | WebAssembly core, VS Code extension | Done |
 | Quality gates and benchmark in CI | Done |
-| Animation (`anim`) | Next |
+| Animation (`anim`), slide transitions | Next |
+| Named themes (Nord, Solarized, VS Code) and dark mode | Next |
+| Annotations on images and charts, adjusted in the preview | Next |
+| Typst-flavoured math syntax | Next |
+| Layout debug overlay, presentation effects | Next |
 | Presenter mode | Next |
 | Plugins, PPTX export, mobile editing | Later |
 
@@ -42,6 +46,10 @@ Exactly one slide re-renders per edit. The residual growth is the linear cost of
 re-reading and hashing the source, not rendering.
 
 ## Next: animation and presenting
+
+The next batch is broken into parallel streams, with the interfaces between them
+fixed in advance, in [workstreams.md](workstreams.md). What follows is the
+rationale behind those streams.
 
 **`anim` blocks.** The syntax is reserved and parsed today, so decks written now
 keep working:
