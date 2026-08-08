@@ -306,7 +306,41 @@ Compiling the DSL to a timeline is implemented; driving it in the viewer
 
 ## Theming
 
-Set `css:` in frontmatter and override the theme tokens:
+### Named themes
+
+```yaml
+---
+theme: nord
+---
+```
+
+| Name | Source |
+|---|---|
+| `default` | ours |
+| `nord` | [Nord](https://www.nordtheme.com/), MIT |
+| `solarized` | [Solarized](https://ethanschoonover.com/solarized/), MIT |
+| `vscode` | VS Code Light+/Dark+, MIT |
+
+An unknown `theme:` name is a warning, not a build failure, and falls back to
+`default`. See
+[`themes/CREDITS.md`](../crates/mirzam-render/src/theme/themes/CREDITS.md) for
+where each palette comes from and how it maps to Mirzam's tokens.
+
+### Dark mode
+
+Every built-in theme defines both a light and a dark palette. Which one shows:
+
+1. `mode: dark` (or `mode: light`) in frontmatter, if set - baked into the
+   deck, so there is no flash of the wrong palette on load.
+2. `?mode=dark` in the URL, read by the viewer before it draws anything.
+3. `D` in the viewer, which toggles for that reading session only.
+4. Otherwise, the reader's `prefers-color-scheme` - a deck with no explicit
+   `mode:` just follows the system, live, with no reload.
+
+### Custom CSS
+
+Set `css:` in frontmatter and override the theme tokens - this layers on top
+of whichever `theme:` is selected, built-in or default:
 
 ```css
 :root {

@@ -73,6 +73,8 @@ pub fn build_deck_with(
         None => mirzam_core::DeckMeta::default(),
     };
     let mut warnings = Vec::new();
+    warnings.extend(mirzam_render::theme_warning(meta.theme.as_deref()));
+    warnings.extend(mirzam_render::mode_warning(meta.mode.as_deref()));
 
     // Load the custom stylesheet; failures are warnings, not errors.
     let custom_css = match &meta.css {
@@ -158,6 +160,8 @@ pub fn build_deck_with(
         let mut h = std::collections::hash_map::DefaultHasher::new();
         meta.title.hash(&mut h);
         meta.author.hash(&mut h);
+        meta.theme.hash(&mut h);
+        meta.mode.hash(&mut h);
         meta.aspect.hash(&mut h);
         custom_css.hash(&mut h);
         level.hash(&mut h);

@@ -14,6 +14,9 @@ pub struct DeckMeta {
     pub title: Option<String>,
     pub author: Option<String>,
     pub theme: Option<String>,
+    /// Forces light or dark mode. Unset defers to the viewer's
+    /// `prefers-color-scheme`, overridable there with `?mode=` or `D`.
+    pub mode: Option<String>,
     /// Aspect ratio, e.g. "16:9" or "4:3".
     pub aspect: Option<String>,
     /// Path to a custom stylesheet, relative to the input file.
@@ -125,6 +128,13 @@ mod tests {
             substitute_vars("{{product}} costs {{price * 12}} per year", &v),
             "Mirzam costs 14400 per year"
         );
+    }
+
+    #[test]
+    fn theme_and_mode_are_parsed_from_frontmatter() {
+        let meta = parse_meta("theme: nord\nmode: dark\n").unwrap();
+        assert_eq!(meta.theme.as_deref(), Some("nord"));
+        assert_eq!(meta.mode.as_deref(), Some("dark"));
     }
 
     #[test]

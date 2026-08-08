@@ -48,6 +48,17 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   already in the HTML. A target that matches nothing is a warning, not a
   build failure. Driving the timeline in the viewer is not part of this
   change; see `docs/roadmap.md`.
+- Named themes: `theme: nord | solarized | vscode` in frontmatter, alongside
+  the existing `default`. Every theme defines both light and dark tokens
+  explicitly (dark is never derived from light by inversion), verified by a
+  unit test that computes the WCAG contrast ratio for every token against
+  `--mz-slide-bg` in every theme and mode. See
+  `crates/mirzam-render/src/theme/themes/CREDITS.md` for each palette's origin
+  and licence.
+- Dark mode: `mode: dark`/`mode: light` in frontmatter, `?mode=` in the
+  viewer's URL, `D` to toggle for the session, and `prefers-color-scheme`
+  when nothing is set - in that priority order, with no reload needed for the
+  OS-preference case.
 
 ### Changed
 - Documentation is English-first; Japanese translations live under `docs/ja/`.

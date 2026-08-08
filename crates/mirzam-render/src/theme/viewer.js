@@ -1,4 +1,10 @@
 (() => {
+  const html = document.documentElement;
+  // ?mode=dark|light overrides frontmatter's baked mode for this view only,
+  // applied before anything else so there is no flash of the wrong palette.
+  const qMode = new URLSearchParams(location.search).get('mode');
+  if (qMode === 'dark' || qMode === 'light') html.dataset.mode = qMode;
+
   const deck = document.getElementById('deck');
   const hud = document.getElementById('hud');
   const notesPanel = document.getElementById('notes-panel');
@@ -129,6 +135,14 @@
     }
     else if (e.key === 'l' || e.key === 'L') {
       document.documentElement.classList.toggle('mz-debug');
+    }
+    else if (e.key === 'd' || e.key === 'D') {
+      // No data-mode attribute yet means the OS preference is in effect;
+      // read that to know which way "toggle" should go the first time.
+      const isDark = html.dataset.mode
+        ? html.dataset.mode === 'dark'
+        : matchMedia('(prefers-color-scheme: dark)').matches;
+      html.dataset.mode = isDark ? 'light' : 'dark';
     }
   });
 
