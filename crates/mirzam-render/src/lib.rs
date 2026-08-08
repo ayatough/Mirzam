@@ -359,8 +359,10 @@ fn render_grid_slide(
             body = with_charts;
             chart_files.extend(files);
         }
+        let bg = background_layers(&attrs);
         panes_html.push_str(&format!(
-            "<div class=\"pane pane-{name}{extra_cls}\" style=\"{style}\">{body}</div>\n"
+            "<div class=\"pane pane-{name}{extra_cls}{}\" style=\"{style}\">{}{body}{}</div>\n",
+            bg.pane_class, bg.layers, bg.close
         ));
     }
 
@@ -384,6 +386,114 @@ fn render_grid_slide(
     )
 }
 
+/// The markup a pane needs for a background image: the image itself, an optional
+/// scrim, and a wrapper that keeps content above both.
+struct Background {
+    pane_class: String,
+    layers: String,
+    close: String,
+}
+
+/// Builds the background layers for `bg=` and its treatments.
+///
+/// The image is a real `<img>` rather than a CSS `background-image` so it goes
+/// through the same asset inlining as any other image, keeping a deck a single
+/// self-contained file.
+fn background_layers(attrs: &inline::Attrs) -> Background {
+    let Some(src) = attrs.kv.get("bg") else {
+        return Background {
+            pane_class: String::new(),
+            layers: String::new(),
+            close: String::new(),
+        };
+    };
+
+    let fit = match attrs.kv.get("bg-fit").map(String::as_str) {
+        Some("contain") => "contain",
+        _ => "cover",
+    };
+    let pos = attrs
+        .kv
+        .get("bg-pos")
+        .map(|p| sanitize_css(p))
+        .unwrap_or_else(|| "center".into());
+    let blur = attrs
+        .kv
+        .get("blur")
+        .and_then(|b| b.trim_end_matches("px").parse::<f32>().ok())
+        .filter(|b| *b > 0.0);
+    // `dim` darkens the whole image; `scrim` darkens one edge so text placed
+    // there stays legible while the rest of the photo shows through.
+    let dim = attrs
+        .kv
+        .get("dim")
+        .and_then(|d| d.parse::<f32>().ok())
+        .map(|d| d.clamp(0.0, 1.0));
+    let scrim = attrs.kv.get("scrim").map(String::as_str);
+
+    let mut img_style = format!("object-fit:{fit};object-position:{pos};");
+    if let Some(b) = blur {
+        // Scale up slightly so the blurred edges do not show the pane behind.
+        img_style.push_str(&format!(
+            "filter:blur({b}px);transform:scale({:.3});",
+            1.0 + b / 60.0
+        ));
+    }
+
+    let mut overlays = String::new();
+    if let Some(d) = dim.filter(|d| *d > 0.0) {
+        overlays.push_str(&format!(
+            "<div class=\"mz-scrim\" style=\"background:rgba(0,0,0,{d})\"></div>"
+        ));
+    }
+    if let Some(edge) = scrim {
+        let strength = dim.unwrap_or(0.75);
+        let direction = match edge {
+            "top" => "to bottom",
+            "left" => "to right",
+            "right" => "to left",
+            _ => "to top",
+        };
+        overlays.push_str(&format!(
+            "<div class=\"mz-scrim\" style=\"background:linear-gradient({direction}, rgba(0,0,0,{strength}) 0%, rgba(0,0,0,{:.2}) 45%, rgba(0,0,0,0) 100%)\"></div>",
+            strength * 0.35
+        ));
+    }
+
+    // Light text is the sensible default over a darkened photo.
+    let text = match attrs.kv.get("text").map(String::as_str) {
+        Some("dark") => " bg-text-dark",
+        Some("light") => " bg-text-light",
+        _ if dim.is_some_and(|d| d > 0.0) || scrim.is_some() => " bg-text-light",
+        _ => "",
+    };
+
+    Background {
+        pane_class: format!(" has-bg{text}"),
+        layers: format!(
+            "<img class=\"mz-bg\" src=\"{src}\" alt=\"\" style=\"{img_style}\">{overlays}<div class=\"mz-bg-content\">",
+            src = escape_attr(src)
+        ),
+        close: "</div>".into(),
+    }
+}
+
+/// Keeps a user-supplied value from escaping the style attribute.
+fn sanitize_css(v: &str) -> String {
+    v.chars()
+        .filter(|c| c.is_alphanumeric() || " %.-".contains(*c))
+        .collect()
+}
+
+/// Keeps a user-supplied value from escaping a double-quoted attribute.
+/// `embed_assets` matches `src="…"`, so the quoting has to hold.
+fn escape_attr(v: &str) -> String {
+    v.replace('&', "&amp;")
+        .replace('"', "&quot;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
 fn render_single_pane_slide(
     slide: &SlideSource,
     index: usize,
@@ -405,8 +515,28 @@ fn render_single_pane_slide(
         body = with_charts;
         chart_files.extend(files);
     }
+    // Without a layout there is a single pane, so the first `::: pane` block that
+    // asks for a background dresses the whole slide.
+    let all: Vec<inline::Attrs> = slide
+        .panes
+        .iter()
+        .map(|pb| parse_attrs(&pb.attrs))
+        .collect();
+    let attrs = all
+        .iter()
+        .find(|a| a.kv.contains_key("bg"))
+        .or(all.first())
+        .cloned()
+        .unwrap_or_default();
+    let extra_cls = attrs
+        .classes
+        .iter()
+        .map(|c| format!(" {c}"))
+        .collect::<String>();
+    let bg = background_layers(&attrs);
     format!(
-        "<div class=\"grid\" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:\"main\"'>\n<div class=\"pane pane-main\" style=\"grid-area:main\">{body}</div>\n</div>\n"
+        "<div class=\"grid\" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:\"main\"'>\n<div class=\"pane pane-main{extra_cls}{}\" style=\"grid-area:main\">{}{body}{}</div>\n</div>\n",
+        bg.pane_class, bg.layers, bg.close
     )
 }
 
@@ -435,6 +565,38 @@ mod tests {
         let meta = DeckMeta::default();
         let out = render_deck(&meta, &[slide], Path::new("."));
         assert!(out.warnings.iter().any(|w| w.contains("zzz")));
+    }
+
+    #[test]
+    fn pane_background_adds_image_and_scrim() {
+        let slide = parse_slide(
+            "```pane\n+-----+\n|     |\n| hero|\n|     |\n+-----+\n```\n\n::: pane hero {bg=img/p.jpg dim=0.5 blur=4 scrim=bottom}\nTitle\n:::\n",
+        );
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(out.html.contains("class=\"mz-bg\""));
+        assert!(out.html.contains("object-fit:cover"));
+        assert!(out.html.contains("filter:blur(4px)"));
+        assert!(out.html.contains("rgba(0,0,0,0.5)"));
+        assert!(out.html.contains("linear-gradient(to top"));
+        assert!(out.html.contains("has-bg bg-text-light"));
+        assert!(out.html.contains("mz-bg-content"));
+    }
+
+    #[test]
+    fn pane_without_background_is_unchanged() {
+        let slide = parse_slide("```pane\n+-----+\n| a   |\n+-----+\n```\n\n::: pane a\nx\n:::\n");
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(!out.html.contains("class=\"mz-bg\""));
+        assert!(out.html.contains("class=\"pane pane-a\""));
+    }
+
+    #[test]
+    fn background_position_is_sanitized() {
+        let slide = parse_slide(
+            "```pane\n+-----+\n| a   |\n+-----+\n```\n\n::: pane a {bg=p.jpg bg-pos=\"top;color:red\"}\nx\n:::\n",
+        );
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(!out.html.contains("color:red"));
     }
 
     #[test]

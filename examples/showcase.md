@@ -264,6 +264,46 @@ $$
 ```pane
 +------------------------------------+
 |                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|  src             |  hero           |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Backgrounds]{.eyebrow}
+## A photo behind the words
+:::
+
+::: pane src {.card valign=middle}
+```markdown
+::: pane hero {bg=media/bg/mountains.jpg
+               dim=0.35 blur=2 scrim=bottom}
+## Ship the story, not the slide
+:::
+```
+
+- `dim` darkens the whole photo
+- `blur` pushes it out of focus
+- `scrim` fades one edge to black
+- Text flips to light automatically
+:::
+
+::: pane hero {bg=media/bg/mountains.jpg dim=0.3 blur=2 scrim=bottom valign=bottom}
+### Ship the story, not the slide
+
+The photo is inlined with everything else, so the deck is still one file.
+:::
+
+---
+
+```pane
++------------------------------------+
+|                                    |
 |  main                              |
 |                                    |
 +------------------------------------+

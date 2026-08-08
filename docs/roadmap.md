@@ -18,6 +18,7 @@ The MVP is feature-complete and covered by regression tests in CI.
 | Charts from inline CSV or `.csv` files | Done |
 | Shapes and live-routed connectors | Done |
 | Video and GIF | Done |
+| Background images (`bg`, `dim`, `blur`, `scrim`) | Done |
 | `build`, `serve` (hot reload), `export pdf` | Done |
 | Custom themes, speaker notes | Done |
 | WebAssembly core, VS Code extension | Done |

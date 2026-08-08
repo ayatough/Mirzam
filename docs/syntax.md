@@ -110,6 +110,47 @@ Pane attributes: `align=left|center|right`, `valign=middle|bottom`, and any extr
 `.class` names your stylesheet defines. Content that is not assigned to a pane
 flows into `main`, or the first pane if there is none.
 
+### Background images
+
+A pane can carry a photograph behind its text, with the treatments that make the
+text readable over it.
+
+```markdown
+::: pane hero {.bleed bg=media/bg/city.jpg dim=0.4 blur=3 scrim=bottom}
+# Ship the story
+Plain Markdown in. Presentation-grade decks out.
+:::
+```
+
+| Attribute | Values | Effect |
+|---|---|---|
+| `bg=` | a path | The image. Local files are inlined like any other asset. |
+| `bg-fit=` | `cover` (default), `contain` | How the image fills the pane. |
+| `bg-pos=` | a CSS position, e.g. `top`, `20% 40%` | Which part survives the crop. |
+| `dim=` | `0`–`1` | Darkens the whole image. `0.4` is a good starting point. |
+| `blur=` | pixels | Pushes the photo out of focus so text reads first. |
+| `scrim=` | `bottom` (default), `top`, `left`, `right` | Fades that edge to black, leaving the rest of the photo visible. |
+| `text=` | `light`, `dark` | Overrides the text colour. Light is chosen automatically whenever `dim` or `scrim` is set. |
+| `.bleed` | class | Takes the background to the slide edge. Meant for a slide whose background covers everything, such as a title; it removes the grid's padding. |
+
+`dim` and `scrim` combine: `dim` sets the floor, `scrim` adds the gradient on top
+of it. If you set only `scrim`, the gradient runs from 0.75 to transparent.
+
+Photographs are the one asset that can dominate a deck's file size. A
+1600px-wide JPEG at quality 70 is around 100 KB; a 4000px original is several
+megabytes, and it is inlined into every build. Downscale before you commit.
+
+To pull photos from Unsplash, with the attribution the API requires:
+
+```bash
+export UNSPLASH_ACCESS_KEY=...
+./scripts/fetch-backgrounds.sh mountains "city at night"
+```
+
+The images in `examples/media/bg/` are drawn by
+`scripts/make-sample-backgrounds.py`, not downloaded, so the repository builds
+with no network access.
+
 ## Inline syntax
 
 ### Attributes

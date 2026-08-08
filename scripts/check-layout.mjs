@@ -49,18 +49,34 @@ async function checkDeck(page, file) {
           const name = (pane.className.match(/pane-([\w-]+)/) || [])[1] || "?";
           // Content taller or wider than the pane is clipped by overflow:hidden,
           // which is exactly the "the heading disappeared" failure.
-          if (pane.scrollHeight - pane.clientHeight > tol) {
+          //
+          // A background pane deliberately overflows: the photo is scaled up so
+          // its blurred edges stay off screen. Measure the content wrapper
+          // against the pane's content box instead, so the decoration is
+          // ignored but clipped text is still caught.
+          const wrap = pane.querySelector(":scope > .mz-bg-content");
+          let overY, overX;
+          if (wrap) {
+            const cs = getComputedStyle(pane);
+            const pad = (a, b) => parseFloat(cs[a]) + parseFloat(cs[b]);
+            overY = wrap.scrollHeight - (pane.clientHeight - pad("paddingTop", "paddingBottom"));
+            overX = wrap.scrollWidth - (pane.clientWidth - pad("paddingLeft", "paddingRight"));
+          } else {
+            overY = pane.scrollHeight - pane.clientHeight;
+            overX = pane.scrollWidth - pane.clientWidth;
+          }
+          if (overY > tol) {
             issues.push({
               kind: "clipped",
               pane: name,
-              detail: `content is ${pane.scrollHeight - pane.clientHeight}px taller than the pane`,
+              detail: `content is ${Math.round(overY)}px taller than the pane`,
             });
           }
-          if (pane.scrollWidth - pane.clientWidth > tol) {
+          if (overX > tol) {
             issues.push({
               kind: "clipped",
               pane: name,
-              detail: `content is ${pane.scrollWidth - pane.clientWidth}px wider than the pane`,
+              detail: `content is ${Math.round(overX)}px wider than the pane`,
             });
           }
           // Panes allowed to overflow (headings) must not run into a neighbour.

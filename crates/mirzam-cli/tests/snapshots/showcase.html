@@ -143,6 +143,28 @@
 </div>
 </section>
 <section class="slide" data-index="7">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src hero"'>
+<div class="pane pane-head" style="grid-area:head"><p><span class="eyebrow">Backgrounds</span></p>
+<h2>A photo behind the words</h2>
+</div>
+<div class="pane pane-src card" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">::: pane hero {bg=media/bg/mountains.jpg
+               dim=0.35 blur=2 scrim=bottom}
+## Ship the story, not the slide
+:::
+</code></pre>
+<ul>
+<li><code>dim</code> darkens the whole photo</li>
+<li><code>blur</code> pushes it out of focus</li>
+<li><code>scrim</code> fades one edge to black</li>
+<li>Text flips to light automatically</li>
+</ul>
+</div>
+<div class="pane pane-hero has-bg bg-text-light" style="grid-area:hero;display:flex;flex-direction:column;justify-content:flex-end"><img class="mz-bg" src="<data-uri len=29139>" alt="" style="object-fit:cover;object-position:center;filter:blur(2px);transform:scale(1.033);"><div class="mz-scrim" style="background:rgba(0,0,0,0.3)"></div><div class="mz-scrim" style="background:linear-gradient(to top, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.11) 45%, rgba(0,0,0,0) 100%)"></div><div class="mz-bg-content"><h3>Ship the story, not the slide</h3>
+<p>The photo is inlined with everything else, so the deck is still one file.</p>
+</div></div>
+</div>
+</section>
+<section class="slide" data-index="8">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:3fr 1fr;grid-template-areas:"main" "foot"'>
 <div class="pane pane-main" style="grid-area:main;text-align:center;display:flex;flex-direction:column;justify-content:center"><h2>That is the whole vocabulary</h2>
 <p><code>pane</code> · <code>::: pane</code> · <code>shape</code> · <code>connect</code> · <code>chart</code> · attributes · variables</p>

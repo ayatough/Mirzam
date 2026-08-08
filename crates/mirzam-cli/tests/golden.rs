@@ -68,8 +68,8 @@ fn examples_match_snapshots() {
 fn example_slide_counts() {
     for (deck, expected) in [
         ("pitch.md", 9),
-        ("showcase.md", 8),
-        ("cookbook.md", 7),
+        ("showcase.md", 9),
+        ("cookbook.md", 8),
         ("seminar.md", 10),
         ("media.md", 2),
     ] {

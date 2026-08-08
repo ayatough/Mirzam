@@ -10,9 +10,11 @@ vars:
   price_per_seat: 12
 ---
 
+::: pane hero {.bleed bg=media/bg/city-night.jpg dim=0.35 scrim=bottom}
 # Slides that live in<br>your repository {.title-slide}
 
 Plain Markdown in. Presentation-grade decks out.
+:::
 
 ---
 

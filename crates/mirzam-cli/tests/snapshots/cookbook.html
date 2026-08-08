@@ -109,8 +109,23 @@ axis labels crowd.</p>
 </div>
 </section>
 <section class="slide" data-index="6">
-<div class="grid" style='grid-template-columns:36fr;grid-template-rows:2fr 5fr;grid-template-areas:"head" "body"'>
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "bad good"'>
 <div class="pane pane-head" style="grid-area:head"><p><span class="eyebrow">Rule 6</span></p>
+<h2>Over a photo, buy contrast before you spend it</h2>
+</div>
+<div class="pane pane-bad has-bg" style="grid-area:bad;text-align:center;display:flex;flex-direction:column;justify-content:center"><img class="mz-bg" src="<data-uri len=18387>" alt="" style="object-fit:cover;object-position:center;"><div class="mz-bg-content"><h3>Bare photo</h3>
+<p>Every word competes with the picture behind it.</p>
+</div></div>
+<div class="pane pane-good has-bg bg-text-light" style="grid-area:good;text-align:center;display:flex;flex-direction:column;justify-content:center"><img class="mz-bg" src="<data-uri len=18387>" alt="" style="object-fit:cover;object-position:center;filter:blur(3px);transform:scale(1.050);"><div class="mz-scrim" style="background:rgba(0,0,0,0.5)"></div><div class="mz-bg-content"><h3><code>dim=0.5 blur=3</code></h3>
+<p>The photo becomes texture, and the words come forward.</p>
+</div></div>
+</div>
+<aside class="notes"><p>Same image, same text, both panes. Only the treatment differs.</p>
+</aside>
+</section>
+<section class="slide" data-index="7">
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:2fr 5fr;grid-template-areas:"head" "body"'>
+<div class="pane pane-head" style="grid-area:head"><p><span class="eyebrow">Rule 7</span></p>
 <h2>Let the checker find what your eye misses</h2>
 </div>
 <div class="pane pane-body" style="grid-area:body;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-bash">node scripts/check-layout.mjs --build examples/cookbook.md

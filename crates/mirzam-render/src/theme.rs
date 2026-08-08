@@ -47,6 +47,42 @@ section.slide.active { display: block; }
 .pane > :first-child { margin-top: 0; }
 .pane > :last-child { margin-bottom: 0; }
 
+/* Pane backgrounds. The photo is a real <img> so it is inlined like any other
+   asset; the scrims and the content sit above it in the same stacking context. */
+.pane.has-bg {
+  position: relative; overflow: hidden;
+  border-radius: 8px; padding: 18px 22px;
+}
+.mz-bg {
+  position: absolute; inset: 0; z-index: 0;
+  width: 100%; height: 100%; max-width: none; max-height: none;
+  object-fit: cover; object-position: center;
+}
+.mz-scrim { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+/* The wrapper is a flex item when the pane uses valign=, so give it the width. */
+.mz-bg-content { position: relative; z-index: 2; width: 100%; }
+.bg-text-light, .bg-text-light h1, .bg-text-light h2, .bg-text-light h3 {
+  color: #fff;
+}
+.bg-text-light strong, .bg-text-light a { color: var(--mz-accent2); }
+.bg-text-light .small, .bg-text-light blockquote { color: rgba(255,255,255,.78); }
+.bg-text-light h2 { border-bottom-color: var(--mz-accent2); }
+.bg-text-dark, .bg-text-dark h1, .bg-text-dark h2, .bg-text-dark h3 { color: var(--mz-fg); }
+/* `.bleed` takes a background to the slide edge. It drops the grid's padding,
+   so it belongs on a slide whose background covers everything - a title or a
+   section divider - not on one pane among several. */
+.grid:has(> .pane.bleed) { padding: 0; gap: 0; }
+.pane.has-bg.bleed {
+  /* place-self, not place-items on the grid: a theme may centre its title
+     slide, and an item's own placement wins over the container's default. */
+  place-self: stretch;
+  border-radius: 0; padding: 44px 60px;
+  /* A hero centres itself; an explicit valign= is an inline style and still wins. */
+  display: flex; flex-direction: column; justify-content: center;
+}
+/* The title slide dims its subtitle, which is the wrong contrast over a photo. */
+section.slide:has(.title-slide) .bg-text-light p { color: rgba(255,255,255,.82); }
+
 h1 { font-size: 2.6em; margin: .2em 0; letter-spacing: .01em; }
 h2 {
   font-size: 1.85em; margin: 0 0 .4em; line-height: 1.25;
@@ -70,6 +106,8 @@ section.slide:has(.title-slide) .grid {
   grid-template: 1fr / 1fr;
 }
 section.slide:has(.title-slide) .pane { overflow: visible; }
+/* except a background pane, which has to clip its photo */
+section.slide:has(.title-slide) .pane.has-bg { overflow: hidden; }
 .title-slide { font-size: 3.4em; border: none; }
 section.slide:has(.title-slide) p { color: var(--mz-muted); font-size: 1.5em; }
 
@@ -98,6 +136,13 @@ p code, li code { background: #f3f5fb; border-radius: 4px; padding: .1em .35em; 
 blockquote { border-left: 4px solid var(--mz-accent2); margin: .5em 0; padding: .1em 1em; color: var(--mz-muted); }
 
 img, video { max-width: 100%; max-height: 100%; }
+/* An image alone in a paragraph is a figure, not a word. Laying it out as a
+   block drops the baseline gap that otherwise pushes it past the pane. */
+p > img:only-child, p > video:only-child,
+.pane > img:only-child, .pane > video:only-child,
+.mz-bg-content > img:only-child, .mz-bg-content > video:only-child {
+  display: block; margin: 0 auto;
+}
 video { background: #000; border-radius: 6px; }
 
 /* Video placeholder in PDF output, when no poster is given */
@@ -357,6 +402,9 @@ section.slide {
   break-after: page; page-break-after: always;
 }
 .mz-reserved { display: none; }
+/* Chromium drops background colours when printing, which would remove the
+   scrims and leave text on an undimmed photo. */
+.mz-scrim { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 "#;
 
 /// Hot-reload client injected in `serve` mode.

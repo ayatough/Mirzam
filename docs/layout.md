@@ -120,6 +120,34 @@ When an arrow crosses text you did not want it to cross, the fix is compositiona
 - **Point at a different element.** Arrows into a chart can target one bar
   (`#chart-0-2`); arrows out of a long sentence rarely need to.
 
+## Text over a photograph
+
+A background image is the easiest way to make a slide look worse. Photographs
+carry detail at every scale, and body text is exactly the scale they compete
+with. Buy the contrast back before you spend it:
+
+```markdown
+::: pane hero {bg=media/bg/city.jpg dim=0.4 blur=3 scrim=bottom}
+```
+
+- **`dim`** is the blunt instrument and usually enough. Start at `0.4`; go to
+  `0.55` for body text, and you can drop to `0.25` for a short heading.
+- **`blur`** removes the detail rather than the light, so the photo keeps its
+  colour. Two or three pixels is plenty; it reads as depth of field, not as a
+  mistake.
+- **`scrim`** darkens one edge only. Use it when the photograph is the point and
+  you want the text to sit in a corner of it — pair it with `valign=bottom`.
+- Text switches to light automatically as soon as any of these is set. Override
+  with `text=dark` when the photo is genuinely pale.
+
+The failure to look for is *partial* legibility: a heading that is readable over
+the dark half of a photo and invisible over the bright half. Fix it with `dim`,
+not by moving the text, because the crop changes with the pane's aspect ratio.
+
+`.bleed` takes the background to the slide edge. It drops the grid's padding, so
+put it on a slide whose background covers everything — a title or a section
+divider — not on one pane among several.
+
 ## Charts and shapes
 
 - A chart fills its pane and keeps its aspect ratio. Give it a band at least three

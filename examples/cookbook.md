@@ -241,6 +241,40 @@ axis labels crowd.
 +------------------------------------+
 |                                    |
 |  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|  bad             |  good           |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Rule 6]{.eyebrow}
+## Over a photo, buy contrast before you spend it
+:::
+
+::: pane bad {bg=media/bg/mesh.jpg valign=middle align=center}
+### Bare photo
+
+Every word competes with the picture behind it.
+:::
+
+::: pane good {bg=media/bg/mesh.jpg dim=0.5 blur=3 valign=middle align=center}
+### `dim=0.5 blur=3`
+
+The photo becomes texture, and the words come forward.
+:::
+
+<!-- note: Same image, same text, both panes. Only the treatment differs. -->
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
 +------------------------------------+
 |                                    |
 |                                    |
@@ -251,7 +285,7 @@ axis labels crowd.
 ```
 
 ::: pane head
-[Rule 6]{.eyebrow}
+[Rule 7]{.eyebrow}
 ## Let the checker find what your eye misses
 :::
 

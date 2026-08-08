@@ -42,6 +42,7 @@ code --install-extension editors/vscode/mirzam-preview-0.0.1.vsix
 | ` ```chart ` | CSV からグラフ生成 | コードブロック |
 | ` ```shape ` | 図形レイヤ | コードブロック |
 | ` ```connect ` | 文章から図・グラフへの矢印 | コードブロック |
+| `{bg=… dim=… blur=…}` | ペインの背景画像と可読性処理 | ただの文字 |
 | `{#id .class}` | 属性(アンカー・装飾) | ただの文字 |
 | `{{ price * 12 }}` | 変数と計算 | ただの文字 |
 | `![[file.md]]` | ファイル分割 | 画像風リンク(Obsidian では埋め込み) |

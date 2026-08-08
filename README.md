@@ -66,6 +66,7 @@ whenever the layout changes.
 | **Diagrams that stay linked** | `shape` blocks draw boxes; `connect` blocks point from text to any element, resolved live |
 | **Math** | LaTeX converted to MathML at build time — no client-side JavaScript |
 | **Video and GIF** | Embedded in the HTML, replaced by a poster frame in PDF |
+| **Backgrounds that stay readable** | A photo behind a pane, with `dim`, `blur` and gradient `scrim` so the text still wins |
 | **Files that scale** | Split a deck across files with `![[section.md]]`; only edited slides re-render |
 | **Runs anywhere** | One Rust core, compiled to a native CLI and to WebAssembly for editors and browsers |
 | **Still Markdown** | Every extension degrades to harmless code blocks in a plain CommonMark parser — enforced by a test |
@@ -131,7 +132,8 @@ the markup will keep changing, so pin a commit if you depend on it.
 
 - **Working:** build, live-reload server, PDF export, ASCII pane layout, file
   splitting, variables and arithmetic, math, charts, shapes, live connectors,
-  video, custom themes, speaker notes, VS Code extension, WebAssembly core
+  video, background images, custom themes, speaker notes, VS Code extension,
+  WebAssembly core
 - **Next:** animation (`anim` blocks), presenter mode, PowerPoint export
 - **Performance:** a 500-slide deck builds in 78 ms; a single-slide edit
   re-renders in 2.3 ms
