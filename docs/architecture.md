@@ -3,7 +3,7 @@
 ## 1. 設計原則
 
 1. **Markdown 互換を絶対に壊さない** — すべての拡張記法は、プレーンな CommonMark パーサで解釈したとき「コードブロック」「リンク」「コメント」など無害な要素に落ちること(graceful degradation)。Obsidian の思想に倣う。
-2. **コアは Rust、1 つのエンジンをどこでも動かす** — ネイティブ CLI と WASM の両方にビルドし、ターミナル / VSCode / Obsidian / ブラウザ / スマホ(PWA)で同一のパース・レイアウト結果を保証する。
+2. **コアは Rust、1 つのエンジンをどこでも動かす** — ネイティブ CLI と WASM の両方にビルドし、ターミナル / VSCode / Obsidian / ブラウザ / スマホ(PWA)で同一のパース・レイアウト結果を保証する。実装済み: `scripts/build-wasm.sh` で wasm32 ビルド(約 2.9MB、未最適化)。I/O は抽象化されており(`FileProvider` / `AssetSource`)、ネイティブはファイルシステム、WASM はホスト注入のテーブルを使う。
 3. **ページ単位のインクリメンタル処理** — パース・レイアウト・レンダリングのすべてをスライド単位でキャッシュし、変更されたスライドだけを再処理する。100 ページでも編集反映は一瞬、を設計目標とする。
 4. **コアはジオメトリ、組版はランタイム** — Rust コアが計算するのは「ペインの矩形」「図形・コネクタの座標」まで。ペイン内のテキスト組版はブラウザ(HTML ランタイム)に委譲する。これによりコアが軽量になり、フォントメトリクス問題を初期段階で回避できる(将来の直接 PDF 生成時に組版エンジンを追加する)。
 5. **AST を唯一の真実とする** — レイアウトもアニメーションも「AST 上の注釈」であり、レンダラはそれを解釈するだけ。AI エージェントは AST(または元 Markdown)を読み書きすれば全機能にアクセスできる。
@@ -46,7 +46,7 @@
 | `mirzam-connect` | `connect` ブロック DSL のパース。端点の実座標解決とルーティングは表示時にビューアランタイムが行う(リサイズ・ホットリロードに追従)。WASM でのアルゴリズム共有は将来 | serde_json | **実装済**(ルーティングは JS) |
 | `mirzam-anim` | `anim` ブロック → タイムライン IR(トリガ・対象・エフェクト・イージング)。CSS keyframes / Web Animations API 命令列へコンパイル | — | Phase 3 |
 | `mirzam-cli` | `mirzam build / serve / export`。ファイル監視 + WebSocket ホットリロード | notify, axum | **MVP** |
-| `mirzam-wasm` | コアの WASM バインディング(エディタ拡張・ブラウザ編集用) | wasm-bindgen | Phase 2 |
+| `mirzam-wasm` | コアの WASM バインディング(エディタ拡張・ブラウザ編集用)。`Renderer` クラスで `render_page` / `render_slide` / `render_changed`(差分)/ `outline` を提供。ファイルシステムが無い環境向けに、include 対象とアセットはホストが JSON テーブルで注入する | wasm-bindgen | **実装済** |
 | `mirzam-lsp` | Language Server(補完: ペイン名・アンカー ID、診断: 未定義参照、ホバー) | tower-lsp | Phase 3 |
 | `mirzam-export-pptx` | Scene Graph → OOXML。表現力の差分は画像化フォールバック | — | Phase 5 |
 

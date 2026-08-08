@@ -4,6 +4,7 @@ mod assets;
 mod inline;
 mod theme;
 
+pub use assets::{AssetSource, FsAssets};
 pub use inline::{parse_attrs, preprocess, render_markdown};
 
 use mirzam_core::DeckMeta;
@@ -27,11 +28,21 @@ pub struct RenderedSlide {
 }
 
 /// スライド 1 枚を `<section>` HTML にレンダリングする(serve の差分更新単位)。
+/// アセットはファイルシステムから解決する。
 pub fn render_slide_html(slide: &SlideSource, index: usize, asset_dir: &Path) -> RenderedSlide {
+    render_slide_html_with(slide, index, &assets::FsAssets(asset_dir))
+}
+
+/// アセット解決を差し替えられる版(WASM ではホストのテーブルを注入する)
+pub fn render_slide_html_with(
+    slide: &SlideSource,
+    index: usize,
+    asset_source: &dyn AssetSource,
+) -> RenderedSlide {
     let mut warnings = Vec::new();
     let mut assets_used = Vec::new();
     let html = render_slide(slide, index, &mut warnings);
-    let html = assets::embed_assets(&html, asset_dir, &mut warnings, &mut assets_used);
+    let html = assets::embed_assets(&html, asset_source, &mut warnings, &mut assets_used);
     RenderedSlide {
         html,
         warnings,

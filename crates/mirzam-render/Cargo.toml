@@ -12,7 +12,7 @@ mirzam-syntax.workspace = true
 mirzam-layout.workspace = true
 mirzam-shape.workspace = true
 mirzam-connect.workspace = true
-comrak = "0.54"
+comrak = { version = "0.54", default-features = false }
 regex = "1"
 base64 = "0.22"
 math-core = "0.7"

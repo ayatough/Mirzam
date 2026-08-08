@@ -3,18 +3,37 @@
 
 use base64::Engine as _;
 use regex::Regex;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const MAX_EMBED_BYTES: u64 = 20 * 1024 * 1024;
+
+/// アセット参照の解決先。ネイティブではファイルシステム、WASM では
+/// ホスト(エディタ拡張やブラウザ)が用意したテーブルを差し替えて使う。
+pub trait AssetSource {
+    /// 相対参照を data URI 等に解決する。
+    /// 第 2 要素は監視・キャッシュ検証に使う実ファイルパス(あれば)。
+    fn resolve(&self, rel: &str) -> (Result<String, String>, Option<PathBuf>);
+}
+
+/// std::fs ベースの既定実装
+pub struct FsAssets<'a>(pub &'a Path);
+
+impl AssetSource for FsAssets<'_> {
+    fn resolve(&self, rel: &str) -> (Result<String, String>, Option<PathBuf>) {
+        let path = self.0.join(rel);
+        let result = embed_file(&path);
+        (result, Some(path))
+    }
+}
 
 /// ローカルアセットを data URI に置換する。
 /// 参照したファイルパス(存在しないものも含む)を `referenced` に収集し、
 /// キャッシュの鮮度検証とファイル監視に使えるようにする。
 pub fn embed_assets(
     html: &str,
-    base_dir: &Path,
+    source: &dyn AssetSource,
     warnings: &mut Vec<String>,
-    referenced: &mut Vec<std::path::PathBuf>,
+    referenced: &mut Vec<PathBuf>,
 ) -> String {
     let re = Regex::new(r#"(src|poster)="([^"]+)""#).expect("static regex");
     re.replace_all(html, |c: &regex::Captures| {
@@ -23,9 +42,11 @@ pub fn embed_assets(
         if src.starts_with("data:") || src.contains("://") || src.starts_with('#') {
             return c[0].to_string();
         }
-        let path = base_dir.join(src);
-        referenced.push(path.clone());
-        match embed_file(&path) {
+        let (result, path) = source.resolve(src);
+        if let Some(p) = path {
+            referenced.push(p);
+        }
+        match result {
             Ok(uri) => format!("{attr}=\"{uri}\""),
             Err(e) => {
                 warnings.push(format!("{src}: {e}"));

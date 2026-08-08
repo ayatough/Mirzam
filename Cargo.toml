@@ -8,6 +8,7 @@ members = [
     "crates/mirzam-connect",
     "crates/mirzam-render",
     "crates/mirzam-cli",
+    "crates/mirzam-wasm",
 ]
 
 [workspace.package]
