@@ -46,8 +46,18 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   resolved to a sampled curve at build time) into the timeline JSON embedded
   per slide. Text splitting happens at build time so the wrapping spans are
   already in the HTML. A target that matches nothing is a warning, not a
-  build failure. Driving the timeline in the viewer is not part of this
-  change; see `docs/roadmap.md`.
+  build failure.
+- The animation runtime plays those timelines. `→` steps through a slide's
+  `click` triggers before turning the page and the counter shows the step;
+  arriving from a later slide shows every step already played. The runtime is
+  inlined only into decks that animate something, and it is the only thing that
+  ever puts an element in its starting state — so a deck read without
+  JavaScript, and the PDF export, still show every slide fully revealed. Under
+  `prefers-reduced-motion` the reveals happen without the movement.
+- Slide transitions: `transition: fade | slide-left | slide-right | slide-up |
+  slide-down | iris | none` in frontmatter, with an optional duration and
+  `ease=`. A slide overrides its half of the page turn with an ordinary
+  whole-slide `[enter] slide` / `[exit] slide` track.
 
 ### Changed
 - Documentation is English-first; Japanese translations live under `docs/ja/`.
@@ -57,6 +67,8 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - Upgraded comrak to 0.54 and enabled CJK-friendly emphasis.
 
 ### Fixed
+- `End` in the viewer went to the first slide instead of the last: it read the
+  arity of the slide-list function rather than calling it.
 - Clicking to select text in the viewer turned the page. A click is only a page
   turn when it is not a drag, no text is selected, and it did not land on a
   control.

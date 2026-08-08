@@ -47,18 +47,18 @@ there is. The model column follows from that:
   parsers, palettes, source maps.
 - **Fable** — narrow, additive, fully specified, low blast radius.
 
-| # | Stream | Difficulty | Model | Depends on |
-|---|---|---|---|---|
-| W0 | Theme file split + layout debug overlay | B | Sonnet | — |
-| W1 | `anim` DSL → timeline IR | B | Sonnet | — |
-| W2 | Animation runtime and slide transitions | S | Opus | W0, W1 contract |
-| W3 | Named themes and dark mode | B | Sonnet | W0 |
-| W4 | Presentation effects | C | Fable | W0 |
-| W5 | Typst-flavoured math | A | Sonnet | — |
-| W6 | Annotations on images and charts | S | Opus | W0 |
-| W7 | Source map through transclusion | A | Sonnet | — |
-| W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 |
-| W9 | Release hardening and merge to `main` | A | Opus | all |
+| # | Stream | Difficulty | Model | Depends on | State |
+|---|---|---|---|---|---|
+| W0 | Theme file split + layout debug overlay | B | Sonnet | — | ✅ |
+| W1 | `anim` DSL → timeline IR | B | Sonnet | — | ✅ |
+| W2 | Animation runtime and slide transitions | S | Opus | W0, W1 contract | ✅ |
+| W3 | Named themes and dark mode | B | Sonnet | W0 | |
+| W4 | Presentation effects | C | Fable | W0 | |
+| W5 | Typst-flavoured math | A | Sonnet | — | |
+| W6 | Annotations on images and charts | S | Opus | W0 | |
+| W7 | Source map through transclusion | A | Sonnet | — | |
+| W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | |
+| W9 | Release hardening and merge to `main` | A | Opus | all | |
 
 ---
 
@@ -78,13 +78,12 @@ these is a change to this document first.
 ```json
 {
   "steps": 2,
-  "transition": { "in": "fade", "out": "fade", "dur": 300 },
   "tracks": [
     {
       "trigger": { "kind": "enter" },
       "target":  { "sel": ".title", "split": "chars" },
       "effect":  "fade-in",
-      "dur": 400, "delay": 0, "stagger": 30, "ease": "out-cubic"
+      "dur": 400, "delay": 0, "stagger": 30, "ease": "cubic-bezier(.33,1,.68,1)"
     }
   ]
 }
@@ -97,12 +96,29 @@ these is a change to this document first.
   HTML and the runtime only selects them.
 - `steps` is the number of `click` triggers on the slide; the viewer needs it to
   know when `→` advances a step and when it turns the page.
-- `ease` is a named curve or `spring(mass,stiffness,damping)`.
+- `ease` is a CSS easing function, ready to hand to the Web Animations API.
+  Named curves and `spring(mass,stiffness,damping)` are both resolved at build
+  time — the deck carries the curve it uses, not a table of curves it might.
 
-**The resting state rule.** Elements are laid out in their *final* state. The
-runtime adds `mz-anim` to `<html>` at startup, and only then may CSS put an
-element in its initial state. No JavaScript, `prefers-reduced-motion`, and print
-therefore all show the finished slide.
+The **transition** is a property of the deck, not of a slide, and rides on
+`#deck` rather than in this blob:
+
+```html
+<div id="deck" data-transition='{"in":"slide-in","out":"slide-out","dir":"left","dur":320,"ease":"…"}'>
+```
+
+A slide overrides its half of the page turn by declaring an ordinary
+whole-slide track (`[enter] slide : …` / `[exit] slide : …`). That is what a
+transition is, so there is no second way to write one.
+
+**The resting state rule.** Elements are laid out in their *final* state, and
+the runtime is the only thing that ever puts one in its initial state — by
+writing inline styles it saves and restores, never by a stylesheet rule. So the
+rule holds by construction: no stylesheet can hide content, and a page with no
+JavaScript (print and PDF ship none) shows every slide fully revealed.
+
+Under `prefers-reduced-motion` the reveals still happen and stepping still
+works; only the movement is dropped.
 
 ### C2. Annotation model
 
@@ -149,8 +165,8 @@ A theme is a set of CSS custom properties, defined for both modes:
 :root[data-theme="nord"][data-mode="dark"]  { --mz-slide-bg: …; --mz-fg: …; … }
 ```
 
-The token list is whatever `crates/mirzam-render/src/themes/default.css` defines;
-extending it means extending every built-in theme in the same commit.
+The token list is whatever `crates/mirzam-render/src/theme/themes/default.css`
+defines; extending it means extending every built-in theme in the same commit.
 
 ### C4. Effect registry
 
@@ -229,22 +245,35 @@ the slide unanimated and reports through the existing warning channel.
 
 **Owns:** `crates/mirzam-anim`, the anim extraction pass in `mirzam-render`.
 
-## W2 — Animation runtime and slide transitions
+## W2 — Animation runtime and slide transitions ✅
 
-**Difficulty S · Opus**
+**Difficulty S · Opus · landed**
 
-The viewer becomes a step machine. `→` advances to the next click step if the
-slide has one, otherwise turns the page; `←` reverses, and entering a slide
-backwards shows it with all its steps already played. Timelines run through the
-Web Animations API.
+The viewer is a step machine. `→` advances to the next click step if the slide
+has one, otherwise turns the page; `←` steps back, then goes to the previous
+slide; arriving at a slide from a later one shows it with every step already
+played. Timelines run through the Web Animations API, out of `theme/anim.js`,
+which is inlined only into decks that animate something.
 
-Slide transitions are specified the same way — `transition: swipe-left 300ms` in
-frontmatter, overridable per slide — and must survive the existing incremental
-patching in `serve` (a re-rendered section must not replay its entrance).
+Transitions are deck-wide (`transition:` in frontmatter, [C1](#c1-animation-timeline)),
+because a per-slide transition is already expressible as a whole-slide
+`enter`/`exit` track — and a slide that declares one overrides that half of the
+page turn.
 
-Hard parts, in order: the backwards case; `prefers-reduced-motion` (jump to final
-state, no motion, still stepping); print (every step played, no transitions); and
-keeping `viewer.js` small — this is shipped inside every deck.
+Three things were not obvious going in:
+
+- **A repaint is not a page turn.** Resize, font-load and the live-reload patch
+  all go through the same code path as a navigation. The font-load repaint fires
+  a few frames after load, which is exactly when slide one's entrance is
+  running: staging the slide again cancelled it every time. The runtime now
+  refuses to re-stage a slide that has animations in flight.
+- **A whole-slide track must not reach into the slide.** Finalizing a
+  `[exit] slide` track scanned every stroked descendant to clean up after a
+  possible `draw`, and in doing so un-armed an unrelated `draw` track on a
+  shape. Only a `draw` track touches stroked descendants now.
+- **Sliding a whole slide is a page turn, not a reveal**: opaque, travelling its
+  own width, with the arriving slide covering the departing one. A paragraph
+  doing `slide-in` still fades as it arrives, because that is a reveal.
 
 **Owns:** `theme/viewer.js`, `theme/anim.js`. **Coordinate with:** W4 (both add
 key bindings — the key table lives in `viewer.js` and W2 owns it).

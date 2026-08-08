@@ -25,7 +25,7 @@ The MVP is feature-complete and covered by regression tests in CI.
 | Quality gates and benchmark in CI | Done |
 | Layout debug overlay (`L`, `--debug-layout`) | Done |
 | `anim` DSL compiled to a timeline (`mirzam-anim`) | Done |
-| Animation runtime, slide transitions | Next |
+| Animation runtime, click-through steps, slide transitions | Done |
 | Named themes (Nord, Solarized, VS Code) and dark mode | Next |
 | Annotations on images and charts, adjusted in the preview | Next |
 | Typst-flavoured math syntax | Next |
@@ -66,13 +66,14 @@ in [workstreams.md](workstreams.md#c1-animation-timeline):
 
 Triggers (`enter`, `click N`, `exit`, `after #id`), targets (ids, classes, whole
 slide, or text split into characters/words/lines), a standard effect set, and
-programmable easing including springs, resolved to a sampled curve at build
-time. See [syntax.md](syntax.md#animations) for the full syntax.
+programmable easing including springs, resolved to a curve at build time. The
+viewer plays it through the Web Animations API and steps through `click`
+triggers before turning the page; `transition:` in frontmatter says how pages
+turn. See [syntax.md](syntax.md#animations) for the full syntax.
 
-What is not built yet is driving the timeline: the Web Animations API playback,
-click-through stepping, and slide transitions specified the same way. A deck
-that declares `anim` blocks today compiles them into the page but nothing
-plays them back.
+The runtime is the only thing that ever puts an element in its initial state, so
+a deck without JavaScript — and the PDF export, which ships none — shows every
+slide fully revealed.
 
 **Presenter mode.** A second window with speaker notes, next slide, a timer, a
 pointer, and step-through control for click-triggered animations.

@@ -74,6 +74,15 @@ pub fn build_deck_with(
     };
     let mut warnings = Vec::new();
 
+    // A transition that does not parse leaves the deck with plain cuts, which
+    // is the right outcome for a typo in a decoration - but say so, because
+    // otherwise it looks like the feature is broken.
+    if let Some(src) = &meta.transition {
+        if let Err(e) = mirzam_anim::parse_transition(src) {
+            warnings.push(format!("transition: {e}"));
+        }
+    }
+
     // Load the custom stylesheet; failures are warnings, not errors.
     let custom_css = match &meta.css {
         Some(rel) => {

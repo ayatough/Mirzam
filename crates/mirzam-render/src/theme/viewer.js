@@ -7,6 +7,15 @@
   const slides = () => Array.from(document.querySelectorAll('section.slide'));
   let cur = Math.min(Math.max(parseInt((location.hash || '').slice(1)) || 1, 1), slides().length) - 1;
 
+  // The animation runtime, present only in decks that animate something.
+  // Everything below has to work without it.
+  const anim = window.MZAnim || null;
+  let transition = null;
+  try { transition = JSON.parse(deck.dataset.transition || 'null'); } catch (e) {}
+  // How far through the current slide's click steps we are.
+  let step = 0;
+  const stepsOn = (sec) => (anim && sec ? anim.steps(sec) : 0);
+
   function fit() {
     const s = Math.min(innerWidth / (W + 40), innerHeight / (H + 40));
     deck.style.width = W + 'px';
@@ -14,17 +23,72 @@
     deck.style.transform = `translate(-50%, -50%) scale(${s})`;
   }
 
-  function show(i) {
+  // `play` is what separates a page turn from a repaint: a resize, a font
+  // load and a live-reload patch all land here too, and none of them should
+  // replay the slide's entrance.
+  function show(i, opts) {
+    const play = !opts || opts.play !== false;
     const ss = slides();
-    cur = Math.min(Math.max(i, 0), ss.length - 1);
+    const from = ss[cur];
+    const idx = Math.min(Math.max(i, 0), ss.length - 1);
+    const backwards = idx < cur;
+    const changed = from && idx !== cur;
+    if (changed && play) leave(from, backwards);
+    cur = idx;
+    const sec = ss[cur];
     ss.forEach((s, j) => s.classList.toggle('active', j === cur));
-    hud.textContent = `${cur + 1} / ${ss.length}`;
+    // Arriving from a later slide means arriving at a slide already fully
+    // revealed; arriving forwards means starting from its first step.
+    if (changed) step = backwards ? stepsOn(sec) : 0;
+    if (anim) anim.show(sec, step, transition, { play, backwards: backwards && changed });
+    updateHud(ss.length, sec);
     // replaceState throws inside srcdoc iframes (editor previews). Recording the
     // page position is optional, so a failure must not abort the rest of the update.
     try { history.replaceState(null, '', '#' + (cur + 1)); } catch (e) {}
     renderNotes();
     // Connectors resolve their endpoints once layout has settled.
-    requestAnimationFrame(() => drawConnectors(ss[cur]));
+    requestAnimationFrame(() => drawConnectors(sec));
+  }
+
+  function updateHud(total, sec) {
+    const n = stepsOn(sec);
+    hud.textContent = `${cur + 1} / ${total}` + (n ? ` · ${step}/${n}` : '');
+  }
+
+  // The slide being left has to stay painted for as long as its exit takes,
+  // so it animates out over the slide arriving rather than vanishing first.
+  let leaveTimer = null;
+  function leave(sec, backwards) {
+    if (!anim) return;
+    const ms = anim.leave(sec, transition, backwards);
+    clearTimeout(leaveTimer);
+    document.querySelectorAll('section.mz-leaving').forEach((s) => s.classList.remove('mz-leaving'));
+    if (!ms) return;
+    sec.classList.add('mz-leaving');
+    leaveTimer = setTimeout(() => sec.classList.remove('mz-leaving'), ms + 30);
+  }
+
+  // Forward through the slide's click steps first, then on to the next slide.
+  function advance() {
+    const sec = slides()[cur];
+    if (step < stepsOn(sec)) {
+      step += 1;
+      anim.step(sec, step);
+      updateHud(slides().length, sec);
+    } else {
+      show(cur + 1);
+    }
+  }
+
+  function retreat() {
+    const sec = slides()[cur];
+    if (step > 0) {
+      anim.unstep(sec, step);
+      step -= 1;
+      updateHud(slides().length, sec);
+    } else {
+      show(cur - 1);
+    }
   }
 
   // ---- Connector drawing: this is what makes connectors follow the layout ----
@@ -113,16 +177,18 @@
       (notes && notes.innerHTML.trim() ? notes.innerHTML : '<em>(no notes for this slide)</em>');
   }
 
-  // Restore the current page after a live update.
-  window.__mirzamRefresh = () => show(cur);
-  // Let a host (editor extension) jump to a specific slide.
-  window.__mirzamGoto = (i) => show(i);
+  // Restore the current page after a live update. An edit must not replay the
+  // slide's entrance: the presenter is looking at a step, not at slide one.
+  window.__mirzamRefresh = () => show(cur, { play: false });
+  // Let a host (editor extension) jump to a specific slide. Cursor sync fires
+  // on every keystroke, so this follows the cursor without animating.
+  window.__mirzamGoto = (i) => show(i, { play: false });
 
   addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); show(cur + 1); }
-    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(cur - 1); }
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); advance(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); retreat(); }
     else if (e.key === 'Home') show(0);
-    else if (e.key === 'End') show(slides.length - 1);
+    else if (e.key === 'End') show(slides().length - 1);
     else if (e.key === 'n' || e.key === 'N') notesPanel.hidden = !notesPanel.hidden;
     else if (e.key === 'f' || e.key === 'F') {
       document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
@@ -145,11 +211,13 @@
     if ((getSelection()?.toString() || '').trim()) return;
     if (e.target.closest('a, video, details, summary, button, input')) return;
     const r = deck.getBoundingClientRect();
-    (e.clientX - r.left) / r.width < 0.3 ? show(cur - 1) : show(cur + 1);
+    (e.clientX - r.left) / r.width < 0.3 ? retreat() : advance();
   });
 
-  addEventListener('resize', () => { fit(); show(cur); });
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => show(cur));
+  // A repaint, not a page turn: keep the slide exactly where the presenter
+  // left it, animations and all.
+  addEventListener('resize', () => { fit(); show(cur, { play: false }); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => show(cur, { play: false }));
   fit();
   show(cur);
 })();

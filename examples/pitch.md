@@ -3,6 +3,7 @@ title: Mirzam - Slides that live in your repo
 author: Mirzam
 aspect: "16:9"
 css: themes/pitch.css
+transition: slide-left 320ms
 vars:
   decks_built: 1240
   time_saved_min: 47

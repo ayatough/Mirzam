@@ -24,6 +24,7 @@ title: Quarterly review
 author: Your Name
 aspect: "16:9"        # or "4:3"
 css: themes/dark.css  # custom stylesheet, relative to this file
+transition: fade      # how pages turn; see Animations below
 vars:
   product: Mirzam
   price: 1200
@@ -300,9 +301,47 @@ A line that points at nothing — a target that matches no element, or an
 `after` reference to a missing id — is a warning, not a build failure: the
 slide renders unanimated and the warning names the offending line.
 
-Compiling the DSL to a timeline is implemented; driving it in the viewer
-(entrances, click-through steps, slide transitions) is not yet — see the
-[roadmap](roadmap.md).
+### Presenting an animated slide
+
+`→` advances to the slide's next `click` step; once the steps run out it turns
+the page. `←` steps back, then goes to the previous slide. The page counter
+shows the step alongside the slide (`3 / 12 · 1/2`) when there is one. Arriving
+at a slide from a later one shows it with every step already played, since it is
+a slide the room has already seen.
+
+Stepping back within a slide snaps rather than playing in reverse: going back is
+a correction, and a correction should be immediate.
+
+### Slide transitions
+
+How pages turn is a deck-wide setting, because it is the same pair of
+whole-slide tracks repeated on every slide:
+
+```yaml
+---
+transition: slide-left 400ms ease=out-cubic
+---
+```
+
+`none`, `fade`, `slide-left`, `slide-right`, `slide-up`, `slide-down` and
+`iris`, each optionally with a duration and an `ease=`. Going backwards plays
+the sliding ones in the opposite direction.
+
+A slide that declares its own whole-slide track overrides the matching half —
+`[enter] slide : …` replaces the incoming transition for that slide, `[exit]
+slide : …` the outgoing one. There is no separate per-slide `transition:`,
+because that is what those two tracks already are.
+
+### What animation never changes
+
+Elements are laid out in their **final** state, and the runtime is the only
+thing that ever puts one in its starting state. So a deck read without
+JavaScript, and the PDF export — which ships no scripts at all — both show every
+slide fully revealed. Animation is something a deck gains in a browser, never
+something it depends on.
+
+Under `prefers-reduced-motion` the reveals still happen, and stepping still
+works, but nothing travels to get there: an element appears instead of arriving.
 
 ## Theming
 

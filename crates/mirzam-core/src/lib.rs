@@ -21,6 +21,10 @@ pub struct DeckMeta {
     /// Start a new slide at every heading of this level: "h1", "h2", "h3".
     /// Slides always break on `---` as well.
     pub split: Option<String>,
+    /// How pages turn, e.g. "fade" or "slide-left 400ms". A slide that
+    /// declares its own whole-slide `[enter]`/`[exit]` track overrides the
+    /// matching half. Parsed by `mirzam_anim::parse_transition`.
+    pub transition: Option<String>,
     pub vars: BTreeMap<String, serde_yaml::Value>,
 }
 

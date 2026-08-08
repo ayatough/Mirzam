@@ -121,38 +121,51 @@ const EFFECTS: &[&str] = &[
     "iris-out",
 ];
 
-/// Named easing curves the DSL accepts, beyond `spring(...)`.
-const NAMED_EASES: &[&str] = &[
-    "linear",
-    "ease",
-    "ease-in",
-    "ease-out",
-    "ease-in-out",
-    "in-quad",
-    "out-quad",
-    "in-out-quad",
-    "in-cubic",
-    "out-cubic",
-    "in-out-cubic",
-    "in-quart",
-    "out-quart",
-    "in-out-quart",
-    "in-quint",
-    "out-quint",
-    "in-out-quint",
-    "in-sine",
-    "out-sine",
-    "in-out-sine",
-    "in-expo",
-    "out-expo",
-    "in-out-expo",
-    "in-circ",
-    "out-circ",
-    "in-out-circ",
-    "in-back",
-    "out-back",
-    "in-out-back",
+/// Named easing curves the DSL accepts, beyond `spring(...)`, each paired with
+/// the CSS easing function it lowers to. The lowering happens here rather than
+/// in the viewer so that a deck does not carry a curve table it mostly does not
+/// use, and so the curves are covered by these tests instead of by eye.
+///
+/// The Penner curves are the approximations published at <https://easings.net>.
+const NAMED_EASES: &[(&str, &str)] = &[
+    ("linear", "linear"),
+    ("ease", "ease"),
+    ("ease-in", "ease-in"),
+    ("ease-out", "ease-out"),
+    ("ease-in-out", "ease-in-out"),
+    ("in-quad", "cubic-bezier(.11,0,.5,0)"),
+    ("out-quad", "cubic-bezier(.5,1,.89,1)"),
+    ("in-out-quad", "cubic-bezier(.45,0,.55,1)"),
+    ("in-cubic", "cubic-bezier(.32,0,.67,0)"),
+    ("out-cubic", "cubic-bezier(.33,1,.68,1)"),
+    ("in-out-cubic", "cubic-bezier(.65,0,.35,1)"),
+    ("in-quart", "cubic-bezier(.5,0,.75,0)"),
+    ("out-quart", "cubic-bezier(.25,1,.5,1)"),
+    ("in-out-quart", "cubic-bezier(.76,0,.24,1)"),
+    ("in-quint", "cubic-bezier(.64,0,.78,0)"),
+    ("out-quint", "cubic-bezier(.22,1,.36,1)"),
+    ("in-out-quint", "cubic-bezier(.83,0,.17,1)"),
+    ("in-sine", "cubic-bezier(.12,0,.39,0)"),
+    ("out-sine", "cubic-bezier(.61,1,.88,1)"),
+    ("in-out-sine", "cubic-bezier(.37,0,.63,1)"),
+    ("in-expo", "cubic-bezier(.7,0,.84,0)"),
+    ("out-expo", "cubic-bezier(.16,1,.3,1)"),
+    ("in-out-expo", "cubic-bezier(.87,0,.13,1)"),
+    ("in-circ", "cubic-bezier(.55,0,1,.45)"),
+    ("out-circ", "cubic-bezier(0,.55,.45,1)"),
+    ("in-out-circ", "cubic-bezier(.85,0,.15,1)"),
+    ("in-back", "cubic-bezier(.36,0,.66,-.56)"),
+    ("out-back", "cubic-bezier(.34,1.56,.64,1)"),
+    ("in-out-back", "cubic-bezier(.68,-.6,.32,1.6)"),
 ];
+
+/// The CSS easing function a named curve lowers to.
+fn css_ease(name: &str) -> Option<&'static str> {
+    NAMED_EASES
+        .iter()
+        .find(|(n, _)| *n == name)
+        .map(|(_, css)| *css)
+}
 
 /// Number of points sampled into the CSS `linear()` easing function produced
 /// for a `spring(...)` ease. High enough to read as smooth, low enough that
@@ -201,10 +214,99 @@ pub fn to_json(doc: &AnimDoc) -> String {
     let tracks: Vec<serde_json::Value> = doc.tracks.iter().map(track_json).collect();
     serde_json::json!({
         "steps": steps(doc),
-        "transition": serde_json::Value::Null,
         "tracks": tracks,
     })
     .to_string()
+}
+
+/// A deck-wide slide transition, from frontmatter `transition:`.
+///
+/// A transition is not a fourth kind of thing: it is the pair of whole-slide
+/// tracks a deck would otherwise repeat on every slide. A slide that declares
+/// its own `[enter] slide` or `[exit] slide` track overrides the matching half,
+/// which is why this carries the two halves separately.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Transition {
+    pub name: String,
+    pub in_effect: String,
+    pub out_effect: String,
+    /// The direction the slide travels, for the sliding transitions.
+    pub dir: Option<Direction>,
+    pub dur_ms: u32,
+    pub ease: Ease,
+}
+
+/// Transition names, in the deck's vocabulary rather than the track effect set:
+/// an author picks how pages turn, not which two effects that lowers to.
+const TRANSITIONS: &[&str] = &[
+    "none",
+    "fade",
+    "slide-left",
+    "slide-right",
+    "slide-up",
+    "slide-down",
+    "iris",
+];
+
+/// Parses frontmatter `transition:`, e.g. `slide-left 300ms ease=out-cubic`.
+/// The duration is optional here, unlike in a track: a deck-wide default is
+/// worth being able to write as one word.
+pub fn parse_transition(src: &str) -> Result<Transition, String> {
+    let mut tokens = src.split_whitespace();
+    let name = tokens.next().ok_or("empty transition")?;
+    if !TRANSITIONS.contains(&name) {
+        return Err(format!(
+            "unknown transition `{name}`; expected one of {}",
+            TRANSITIONS.join(", ")
+        ));
+    }
+    let mut dur_ms = 300u32;
+    let mut ease = Ease::Named("out-cubic".to_string());
+    for tok in tokens {
+        if let Some((k, v)) = tok.split_once('=') {
+            match k {
+                "dur" => dur_ms = parse_ms(v)?,
+                "ease" => ease = parse_ease(v)?,
+                other => return Err(format!("unknown attribute `{other}=`")),
+            }
+        } else if tok.ends_with("ms") {
+            dur_ms = parse_ms(tok)?;
+        } else {
+            return Err(format!("unexpected token `{tok}`"));
+        }
+    }
+    let (in_effect, out_effect, dir) = match name {
+        "none" => ("none", "none", None),
+        "fade" => ("fade-in", "fade-out", None),
+        "iris" => ("fade-in", "iris-out", None),
+        "slide-left" => ("slide-in", "slide-out", Some(Direction::Left)),
+        "slide-right" => ("slide-in", "slide-out", Some(Direction::Right)),
+        "slide-up" => ("slide-in", "slide-out", Some(Direction::Up)),
+        "slide-down" => ("slide-in", "slide-out", Some(Direction::Down)),
+        _ => unreachable!("checked against TRANSITIONS above"),
+    };
+    Ok(Transition {
+        name: name.to_string(),
+        in_effect: in_effect.to_string(),
+        out_effect: out_effect.to_string(),
+        dir,
+        dur_ms,
+        ease,
+    })
+}
+
+/// Serializes a transition for the `data-transition` attribute on `#deck`.
+pub fn transition_json(t: &Transition) -> String {
+    let mut v = serde_json::json!({
+        "in": t.in_effect,
+        "out": t.out_effect,
+        "dur": t.dur_ms,
+        "ease": ease_json(&t.ease, t.dur_ms),
+    });
+    if let Some(d) = t.dir {
+        v["dir"] = serde_json::Value::String(d.as_str().into());
+    }
+    v.to_string()
 }
 
 fn track_json(t: &Track) -> serde_json::Value {
@@ -236,7 +338,9 @@ fn track_json(t: &Track) -> serde_json::Value {
 
 fn ease_json(ease: &Ease, dur_ms: u32) -> String {
     match ease {
-        Ease::Named(name) => name.clone(),
+        // Already validated by `parse_ease`; an unknown name here would be a
+        // bug, and `linear` is the honest thing to fall back to.
+        Ease::Named(name) => css_ease(name).unwrap_or("linear").to_string(),
         Ease::Spring {
             mass,
             stiffness,
@@ -525,7 +629,7 @@ fn parse_ease(v: &str) -> Result<Ease, String> {
             damping,
         });
     }
-    if NAMED_EASES.contains(&v) {
+    if css_ease(v).is_some() {
         return Ok(Ease::Named(v.to_string()));
     }
     Err(format!("unknown ease `{v}`"))
@@ -706,7 +810,6 @@ mod tests {
         let doc = parse("[enter] .title : chars fade-in 400ms stagger=30ms ease=out-cubic\n");
         let json: serde_json::Value = serde_json::from_str(&to_json(&doc)).unwrap();
         assert_eq!(json["steps"], 0);
-        assert!(json["transition"].is_null());
         let track = &json["tracks"][0];
         assert_eq!(track["trigger"]["kind"], "enter");
         assert_eq!(track["target"]["sel"], ".title");
@@ -715,7 +818,9 @@ mod tests {
         assert_eq!(track["dur"], 400);
         assert_eq!(track["delay"], 0);
         assert_eq!(track["stagger"], 30);
-        assert_eq!(track["ease"], "out-cubic");
+        // Named curves lower to CSS here, so the viewer can pass the value
+        // straight to the Web Animations API.
+        assert_eq!(track["ease"], "cubic-bezier(.33,1,.68,1)");
     }
 
     #[test]
@@ -783,5 +888,53 @@ mod tests {
     fn target_with_a_space_errors() {
         let doc = parse("[enter] .a .b : fade-in 100ms\n");
         assert_eq!(doc.errors.len(), 1);
+    }
+
+    #[test]
+    fn transition_name_alone_is_enough() {
+        let t = parse_transition("fade").unwrap();
+        assert_eq!(t.in_effect, "fade-in");
+        assert_eq!(t.out_effect, "fade-out");
+        assert_eq!(t.dur_ms, 300);
+        assert_eq!(t.dir, None);
+    }
+
+    #[test]
+    fn sliding_transitions_carry_a_direction() {
+        let t = parse_transition("slide-left 400ms").unwrap();
+        assert_eq!(t.in_effect, "slide-in");
+        assert_eq!(t.out_effect, "slide-out");
+        assert_eq!(t.dir, Some(Direction::Left));
+        assert_eq!(t.dur_ms, 400);
+        let json: serde_json::Value = serde_json::from_str(&transition_json(&t)).unwrap();
+        assert_eq!(json["dir"], "left");
+        assert_eq!(json["dur"], 400);
+    }
+
+    #[test]
+    fn every_named_ease_lowers_to_a_css_easing_function() {
+        for (name, css) in NAMED_EASES {
+            assert_eq!(css_ease(name), Some(*css));
+            assert!(
+                *css == "linear" || css.starts_with("ease") || css.starts_with("cubic-bezier("),
+                "`{name}` lowers to `{css}`, which the Web Animations API will reject"
+            );
+        }
+    }
+
+    #[test]
+    fn transition_takes_an_ease_and_rejects_junk() {
+        let t = parse_transition("iris 500ms ease=out-back").unwrap();
+        assert_eq!(t.ease, Ease::Named("out-back".into()));
+        assert!(parse_transition("swipe-left").is_err());
+        assert!(parse_transition("fade sideways").is_err());
+        assert!(parse_transition("fade stagger=10ms").is_err());
+    }
+
+    #[test]
+    fn a_spring_transition_is_sampled_like_a_track() {
+        let t = parse_transition("fade 300ms ease=spring(1,180,20)").unwrap();
+        let json: serde_json::Value = serde_json::from_str(&transition_json(&t)).unwrap();
+        assert!(json["ease"].as_str().unwrap().starts_with("linear("));
     }
 }

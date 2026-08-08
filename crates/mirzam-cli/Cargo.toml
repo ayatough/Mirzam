@@ -19,6 +19,7 @@ mirzam-syntax.workspace = true
 mirzam-core.workspace = true
 mirzam-layout.workspace = true
 mirzam-render.workspace = true
+mirzam-anim.workspace = true
 tiny_http = "0.12"
 serde_json = "1"
 

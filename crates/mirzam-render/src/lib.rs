@@ -73,6 +73,30 @@ pub fn sections_have_math(sections: &[String]) -> bool {
     sections.iter().any(|s| s.contains("<math"))
 }
 
+/// Whether the deck animates anything, deciding if the animation runtime is
+/// inlined. A deck-wide `transition:` counts: it is animation the author asked
+/// for without writing an `anim` block.
+fn deck_has_anim(meta: &DeckMeta, sections: &[String]) -> bool {
+    meta.transition.is_some() || sections.iter().any(|s| s.contains("class=\"mz-anim\""))
+}
+
+/// The `data-transition` payload for `#deck`, or an empty string when the deck
+/// declares no transition or an unusable one. Reporting the problem is the
+/// build pipeline's job; rendering must not fail over it.
+fn transition_attr(meta: &DeckMeta) -> String {
+    match meta
+        .transition
+        .as_deref()
+        .map(mirzam_anim::parse_transition)
+    {
+        Some(Ok(t)) => format!(
+            " data-transition=\"{}\"",
+            inline::html_escape(&mirzam_anim::transition_json(&t))
+        ),
+        _ => String::new(),
+    }
+}
+
 /// Assembles rendered sections into a complete HTML page with the viewer.
 pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -> String {
     let (w, h) = meta.slide_size();
@@ -94,6 +118,12 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
     } else {
         ""
     };
+    let anim_js = if deck_has_anim(meta, sections) {
+        format!("<script>{}</script>\n", theme::ANIM_JS)
+    } else {
+        String::new()
+    };
+    let transition = transition_attr(meta);
     format!(
         r#"<!doctype html>
 <html lang="en"{html_class}>
@@ -107,12 +137,12 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <style>{custom_css}</style>
 </head>
 <body>
-<div id="deck" data-slide-w="{w}" data-slide-h="{h}">
+<div id="deck" data-slide-w="{w}" data-slide-h="{h}"{transition}>
 {sections}</div>
 <div id="hud"></div>
 <div id="hint">← → navigate / N notes / F fullscreen / L layout</div>
 <div id="notes-panel" hidden></div>
-<script>{js}</script>
+{anim_js}<script>{js}</script>
 {live_js}</body>
 </html>
 "#,
@@ -593,6 +623,61 @@ mod tests {
         let html = assemble_page(&DeckMeta::default(), &[], &PageOptions::default());
         assert!(html.contains("<html lang=\"en\">"));
         assert!(!html.contains("<html lang=\"en\" class=\"mz-debug\">"));
+    }
+
+    #[test]
+    fn a_deck_without_animation_carries_no_runtime() {
+        let html = assemble_page(&DeckMeta::default(), &[], &PageOptions::default());
+        assert!(!html.contains("window.MZAnim = {"));
+        assert!(!html.contains("data-transition"));
+    }
+
+    #[test]
+    fn an_anim_block_pulls_in_the_runtime() {
+        let sections = vec![
+            "<section class=\"slide\"><script type=\"application/json\" \
+                             class=\"mz-anim\">{}</script></section>"
+                .to_string(),
+        ];
+        let html = assemble_page(&DeckMeta::default(), &sections, &PageOptions::default());
+        assert!(html.contains("window.MZAnim = {"));
+    }
+
+    #[test]
+    fn a_transition_pulls_in_the_runtime_on_its_own() {
+        let meta = DeckMeta {
+            transition: Some("slide-left 400ms".into()),
+            ..Default::default()
+        };
+        let html = assemble_page(&meta, &[], &PageOptions::default());
+        assert!(html.contains("window.MZAnim = {"));
+        assert!(html.contains(r#"data-transition="{&quot;dir&quot;:&quot;left&quot;"#));
+    }
+
+    #[test]
+    fn an_unusable_transition_leaves_plain_cuts() {
+        let meta = DeckMeta {
+            transition: Some("swipe-sideways".into()),
+            ..Default::default()
+        };
+        let html = assemble_page(&meta, &[], &PageOptions::default());
+        assert!(!html.contains("data-transition"));
+    }
+
+    #[test]
+    fn print_pages_never_ship_the_runtime() {
+        let meta = DeckMeta {
+            transition: Some("fade".into()),
+            ..Default::default()
+        };
+        let sections = vec![
+            "<section class=\"slide\"><script type=\"application/json\" \
+                             class=\"mz-anim\">{}</script></section>"
+                .to_string(),
+        ];
+        let html = assemble_print_page(&meta, &sections, None);
+        assert!(!html.contains("window.MZAnim = {"));
+        assert!(!html.contains("data-transition"));
     }
 
     #[test]

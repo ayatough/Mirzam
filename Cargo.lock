@@ -206,6 +206,7 @@ name = "mirzam-cli"
 version = "0.0.1"
 dependencies = [
  "comrak",
+ "mirzam-anim",
  "mirzam-core",
  "mirzam-layout",
  "mirzam-render",

@@ -18,6 +18,10 @@ pub const DEFAULT_CSS: &str = concat!(
 
 pub const VIEWER_JS: &str = concat!("\n", include_str!("viewer.js"));
 
+/// The animation runtime. Inlined before `VIEWER_JS`, and only into decks that
+/// actually animate something, so an unanimated deck carries none of it.
+pub const ANIM_JS: &str = concat!("\n", include_str!("anim.js"));
+
 /// Print overrides applied after DEFAULT_CSS.
 /// Slide dimensions and the `@page` size are appended by `assemble_print_page`.
 pub const PRINT_CSS: &str = concat!("\n", include_str!("print.css"));
@@ -90,5 +94,13 @@ mod tests {
     #[test]
     fn print_css_neutralizes_the_debug_overlay() {
         assert!(PRINT_CSS.contains("html.mz-debug"));
+    }
+
+    #[test]
+    fn the_animation_runtime_is_separate_from_the_viewer() {
+        assert!(ANIM_JS.contains("window.MZAnim"));
+        // The viewer must degrade when the runtime is not inlined, so it may
+        // only reach for MZAnim through a guarded reference.
+        assert!(!VIEWER_JS.contains("MZAnim."));
     }
 }
