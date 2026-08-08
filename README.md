@@ -78,10 +78,20 @@ Requires a Rust toolchain (1.75+).
 ```bash
 git clone https://github.com/ayatough/Mirzam
 cd Mirzam
-cargo build --release          # target/release/mirzam
+cargo build --release
+```
+
+That leaves the binary at `./target/release/mirzam`. It is **not** on your `PATH`
+— run it by that path, or install it:
+
+```bash
+cargo install --path crates/mirzam-cli --bin mirzam   # into ~/.cargo/bin
 ```
 
 ## Use
+
+The examples below assume `mirzam` is on your `PATH`. If you only ran
+`cargo build --release`, write `./target/release/mirzam` instead.
 
 ```bash
 mirzam build deck.md -o out          # single self-contained HTML
