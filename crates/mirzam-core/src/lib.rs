@@ -45,7 +45,12 @@ impl DeckMeta {
                             Err(_) => Value::Str(s.clone()),
                         }
                     }
-                    other => Value::Str(serde_yaml::to_string(other).unwrap_or_default().trim().to_string()),
+                    other => Value::Str(
+                        serde_yaml::to_string(other)
+                            .unwrap_or_default()
+                            .trim()
+                            .to_string(),
+                    ),
                 };
                 (k.clone(), val)
             })

@@ -37,10 +37,7 @@ impl GridSpec {
         self.areas
             .iter()
             .map(|row| {
-                let cells: Vec<&str> = row
-                    .iter()
-                    .map(|c| c.as_deref().unwrap_or("."))
-                    .collect();
+                let cells: Vec<&str> = row.iter().map(|c| c.as_deref().unwrap_or(".")).collect();
                 format!("\"{}\"", cells.join(" "))
             })
             .collect::<Vec<_>>()
@@ -103,7 +100,7 @@ pub fn parse_grid(src: &str) -> Result<GridSpec, GridError> {
     let border_idx: Vec<usize> = lines
         .iter()
         .enumerate()
-        .filter(|(_, l)| l.iter().find(|c| !c.is_whitespace()) == Some(&&'+'))
+        .filter(|(_, l)| l.iter().find(|c| !c.is_whitespace()) == Some(&'+'))
         .map(|(i, _)| i)
         .collect();
     if border_idx.len() < 2 {
@@ -194,9 +191,7 @@ fn validate_rectangular(areas: &[Vec<Option<String>>]) -> Result<(), GridError> 
     for (r, row) in areas.iter().enumerate() {
         for (c, cell) in row.iter().enumerate() {
             if let Some(name) = cell {
-                let e = boxes
-                    .entry(name.as_str())
-                    .or_insert((r, c, r, c));
+                let e = boxes.entry(name.as_str()).or_insert((r, c, r, c));
                 e.0 = e.0.min(r);
                 e.1 = e.1.min(c);
                 e.2 = e.2.max(r);
@@ -205,9 +200,9 @@ fn validate_rectangular(areas: &[Vec<Option<String>>]) -> Result<(), GridError> 
         }
     }
     for (name, (r0, c0, r1, c1)) in &boxes {
-        for r in *r0..=*r1 {
-            for c in *c0..=*c1 {
-                if areas[r][c].as_deref() != Some(*name) {
+        for row in areas.iter().take(*r1 + 1).skip(*r0) {
+            for cell in row.iter().take(*c1 + 1).skip(*c0) {
+                if cell.as_deref() != Some(*name) {
                     return Err(GridError::NonRectangularArea(name.to_string()));
                 }
             }
@@ -252,10 +247,7 @@ mod tests {
         .unwrap();
         assert_eq!(g.cols, vec![20, 13]);
         assert_eq!(g.rows, vec![1, 3, 1]);
-        assert_eq!(
-            g.css_areas(),
-            "\"head head\" \"main fig\" \"foot foot\""
-        );
+        assert_eq!(g.css_areas(), "\"head head\" \"main fig\" \"foot foot\"");
         assert_eq!(g.pane_names(), vec!["head", "main", "fig", "foot"]);
     }
 

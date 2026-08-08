@@ -28,7 +28,11 @@ impl Value {
 
 pub fn eval_expr(src: &str, vars: &BTreeMap<String, Value>) -> Result<Value, String> {
     let tokens = tokenize(src)?;
-    let mut p = Parser { tokens, pos: 0, vars };
+    let mut p = Parser {
+        tokens,
+        pos: 0,
+        vars,
+    };
     let v = p.expr()?;
     if p.pos != p.tokens.len() {
         return Err(format!("式の末尾に余分なトークン: {:?}", p.tokens[p.pos]));
@@ -72,7 +76,9 @@ fn tokenize(src: &str) -> Result<Vec<Tok>, String> {
             }
             '0'..='9' | '.' => {
                 let start = i;
-                while i < chars.len() && (chars[i].is_ascii_digit() || chars[i] == '.' || chars[i] == '_') {
+                while i < chars.len()
+                    && (chars[i].is_ascii_digit() || chars[i] == '.' || chars[i] == '_')
+                {
                     i += 1;
                 }
                 let s: String = chars[start..i].iter().filter(|&&c| c != '_').collect();
@@ -250,10 +256,7 @@ mod tests {
     #[test]
     fn string_concat() {
         let v = vars();
-        assert_eq!(
-            eval_expr("name + x", &v).unwrap().to_display(),
-            "Mirzam10"
-        );
+        assert_eq!(eval_expr("name + x", &v).unwrap().to_display(), "Mirzam10");
     }
 
     #[test]

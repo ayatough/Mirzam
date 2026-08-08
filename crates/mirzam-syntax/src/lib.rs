@@ -45,11 +45,7 @@ pub fn split_frontmatter(src: &str) -> (Option<&str>, &str) {
 }
 
 /// `![[path]]` を再帰的に展開する。循環参照はエラーテキストに置換。
-pub fn expand_includes(
-    body: &str,
-    base_dir: &Path,
-    provider: &dyn FileProvider,
-) -> String {
+pub fn expand_includes(body: &str, base_dir: &Path, provider: &dyn FileProvider) -> String {
     let mut files = BTreeSet::new();
     expand_includes_tracked(body, base_dir, provider, &mut files)
 }
@@ -88,10 +84,7 @@ fn expand_includes_inner(
                 let path = base_dir.join(target);
                 let canon = path.canonicalize().unwrap_or_else(|_| path.clone());
                 if visited.contains(&canon) {
-                    out.push_str(&format!(
-                        "> ⚠ 循環参照のため展開できません: `{}`\n",
-                        target
-                    ));
+                    out.push_str(&format!("> ⚠ 循環参照のため展開できません: `{}`\n", target));
                     continue;
                 }
                 match provider.read(&path) {

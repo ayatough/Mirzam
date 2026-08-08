@@ -114,11 +114,8 @@ pub fn build_deck(input: &Path, cache: &mut RenderCache) -> Result<BuildOutput, 
                 let slide = mirzam_syntax::parse_slide(slide_src);
                 let out = mirzam_render::render_slide_html(&slide, i, &base_dir);
                 warnings.extend(out.warnings);
-                let assets: Vec<(PathBuf, Option<SystemTime>)> = out
-                    .assets
-                    .iter()
-                    .map(|p| (p.clone(), mtime(p)))
-                    .collect();
+                let assets: Vec<(PathBuf, Option<SystemTime>)> =
+                    out.assets.iter().map(|p| (p.clone(), mtime(p))).collect();
                 for (p, _) in &assets {
                     files.insert(p.clone());
                 }

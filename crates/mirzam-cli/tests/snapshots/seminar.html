@@ -1,0 +1,203 @@
+<section class="slide" data-index="0">
+<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
+<div class="pane pane-main" style="grid-area:main"><h1 class="title-slide">超伝導量子ビットにおける<br>分散読み出しの忠実度改善</h1>
+<p>進捗報告 — 量子計測研究室 ゼミ</p>
+<p>天狼 星子|2026-08-08</p>
+</div>
+</div>
+<aside class="notes"><p>タイトルは 15 秒。前回からの差分がメインだと最初に言う</p>
+</aside>
+</section>
+<section class="slide" data-index="1">
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:1fr 3fr;grid-template-areas:"head" "main"'>
+<div class="pane pane-head" style="grid-area:head"><h2>本日の内容</h2>
+</div>
+<div class="pane pane-main" style="grid-area:main;display:flex;flex-direction:column;justify-content:center"><ol>
+<li><strong>背景</strong>: 分散読み出しとその限界</li>
+<li><strong>課題</strong>: 前回までの測定で見えたこと</li>
+<li><strong>手法</strong>: JPA 導入と積分時間の最適化</li>
+<li><strong>結果</strong>: 忠実度 97.8% → <strong>99.2%</strong></li>
+<li><strong>考察と今後</strong></li>
+</ol>
+<p><em>所要 15 分 + 質疑</em></p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="2">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:1fr 4fr;grid-template-areas:"head head" "main fig"'>
+<div class="pane pane-head" style="grid-area:head"><h2>背景: 分散読み出し</h2>
+</div>
+<div class="pane pane-main" style="grid-area:main"><ul>
+<li>量子ビットと共振器を<strong>分散結合</strong>させると、量子ビットの状態に応じて共振周波数が <math><mi>χ</mi><mo>=</mo><msup><mi>g</mi><mn>2</mn></msup><mo lspace="0" rspace="0">/</mo><mrow><mspace/><mi mathvariant="normal">Δ</mi></mrow></math> だけシフトする</li>
+<li>このシフトを <em>マイクロ波の位相変化</em> として読み取る</li>
+<li>読み出しの誤りは、そのまま<strong>誤り訂正の閾値</strong>に効いてくる</li>
+</ul>
+</div>
+<div class="pane pane-fig" style="grid-area:fig"></div>
+</div>
+<svg class="mz-shapes" viewBox="0 0 1280 720" preserveAspectRatio="none" aria-hidden="true">
+<ellipse id="qubit" cx="921.6" cy="273.6" rx="102.4" ry="50.4" style="fill:var(--mz-shape-fill);stroke:var(--mz-accent2)" stroke-width="2.5"/>
+<text x="921.6" y="273.6" text-anchor="middle" dominant-baseline="central" class="mz-shape-label">Qubit</text>
+<rect id="res" x="780.8" y="439.2" width="281.6" height="100.8" rx="14" style="fill:var(--mz-shape-fill);stroke:var(--mz-accent1)" stroke-width="2.5"/>
+<text x="921.6" y="489.6" text-anchor="middle" dominant-baseline="central" class="mz-shape-label">共振器 λ/4</text>
+<line x1="921.6" y1="324.0" x2="921.6" y2="439.2" style="stroke:var(--mz-accent1)" stroke-width="2.5" stroke-dasharray="8 6"/>
+<text class="small" x="1100.8" y="381.6" text-anchor="middle" dominant-baseline="central" class="mz-shape-label small" style="fill:var(--mz-fg)">g</text>
+</svg>
+<aside class="notes"><p>chi の式は口頭では「分散シフト」とだけ言う。導出は聞かれたら</p>
+</aside>
+</section>
+<section class="slide" data-index="3">
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:1fr 3fr 1fr;grid-template-areas:"head" "main" "ref"'>
+<div class="pane pane-head" style="grid-area:head"><h2>課題: 前回までの測定</h2>
+</div>
+<div class="pane pane-main" style="grid-area:main"><ul>
+<li>忠実度が <strong>97.8%</strong> で頭打ち(目標は 99% 以上)</li>
+<li>誤りの内訳を調べると、<del>ゲート誤り</del> ではなく<strong>信号対雑音比(SNR)不足</strong>が支配的だった</li>
+<li>増幅チェーンの雑音温度は <code>HEMT</code> 単体で約 4 K — 量子限界から 1 桁以上遠い</li>
+</ul>
+<blockquote>
+<p>「読み出しを速くしたければ、まず初段の雑音を下げよ」 — 教科書の通りの結論に戻ってきた</p>
+</blockquote>
+</div>
+<div class="pane pane-ref" style="grid-area:ref;text-align:right"><p><em>参考: 先行研究では JPA 導入により SNR が 5–10 倍改善</em></p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="4">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:1fr 3fr;grid-template-areas:"head head" "main eq"'>
+<div class="pane pane-head" style="grid-area:head"><h2>手法: JPA 導入と積分時間の最適化</h2>
+</div>
+<div class="pane pane-main" style="grid-area:main"><ul>
+<li>初段に <strong>JPA</strong>(ジョセフソン・パラメトリック増幅器)を挿入し、量子限界近くの雑音温度を狙う</li>
+<li>積分時間 <math><mi>τ</mi></math> は長いほど SNR が稼げるが、<math><msub><mi>T</mi><mn>1</mn></msub></math> 緩和による<strong>状態反転</strong>と競合する</li>
+<li>両者のトレードオフから <em>最適積分時間</em> 480 ns を設計</li>
+</ul>
+</div>
+<div class="pane pane-eq" style="grid-area:eq;display:flex;flex-direction:column;justify-content:center"><p><math display="block"><mrow><mspace/><mi>SNR</mi></mrow><mo stretchy="false">(</mo><mi>τ</mi><mo stretchy="false">)</mo><mo>=</mo><mfrac><mrow><mo stretchy="false" lspace="0" rspace="0">|</mo><msub><mi>α</mi><mi>e</mi></msub><mo>−</mo><msub><mi>α</mi><mi>g</mi></msub><mo stretchy="false" lspace="0" rspace="0">|</mo></mrow><mi>σ</mi></mfrac><msqrt><mrow><mi>κ</mi><mi>τ</mi></mrow></msqrt></math></p>
+<p><math display="block"><mi>F</mi><mo stretchy="false">(</mo><mi>τ</mi><mo stretchy="false">)</mo><mo>≃</mo><mn>1</mn><mo>−</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><mrow><mspace/><mi>erfc</mi></mrow><mspace style="margin-left:-0.16666667em;"/><mrow><mo>(</mo><mfrac><mrow><mrow><mspace/><mi>SNR</mi></mrow><mo stretchy="false">(</mo><mi>τ</mi><mo stretchy="false">)</mo></mrow><mn>2</mn></mfrac><mo>)</mo></mrow><mo>−</mo><mfrac><mi>τ</mi><mrow><mn>2</mn><msub><mi>T</mi><mn>1</mn></msub></mrow></mfrac></math></p>
+</div>
+</div>
+<aside class="notes"><p>erfc の式は結果の図の破線フィットに対応している、と言う</p>
+</aside>
+</section>
+<section class="slide" data-index="5" data-connectors="[{&quot;arrow&quot;:&quot;end&quot;,&quot;color&quot;:&quot;var(--mz-accent2)&quot;,&quot;curve&quot;:null,&quot;dashed&quot;:false,&quot;from&quot;:&quot;t-jpa&quot;,&quot;fromEdge&quot;:null,&quot;to&quot;:&quot;jpa&quot;,&quot;toEdge&quot;:&quot;n&quot;},{&quot;arrow&quot;:&quot;end&quot;,&quot;color&quot;:&quot;var(--mz-accent2)&quot;,&quot;curve&quot;:null,&quot;dashed&quot;:false,&quot;from&quot;:&quot;t-hemt&quot;,&quot;fromEdge&quot;:null,&quot;to&quot;:&quot;hemt&quot;,&quot;toEdge&quot;:&quot;n&quot;},{&quot;arrow&quot;:&quot;end&quot;,&quot;color&quot;:&quot;var(--mz-accent2)&quot;,&quot;curve&quot;:null,&quot;dashed&quot;:true,&quot;from&quot;:&quot;t-adc&quot;,&quot;fromEdge&quot;:null,&quot;to&quot;:&quot;adc&quot;,&quot;toEdge&quot;:&quot;n&quot;}]">
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:1fr 3fr;grid-template-areas:"head" "main"'>
+<div class="pane pane-head" style="grid-area:head"><h2>測定系</h2>
+</div>
+<div class="pane pane-main" style="grid-area:main"><p>信号は共振器を通過後、<span id="t-jpa" class="u">JPA</span> で前置増幅され、4 K ステージの <span id="t-hemt" class="u">HEMT</span> を経て室温の <span id="t-adc" class="u">復調器</span> でデジタル化される。</p>
+</div>
+</div>
+<svg class="mz-shapes" viewBox="0 0 1280 720" preserveAspectRatio="none" aria-hidden="true">
+<rect id="res" x="76.8" y="392.4" width="204.8" height="108.0" rx="12" style="fill:var(--mz-shape-fill);stroke:var(--mz-accent1)" stroke-width="2.5"/>
+<text x="179.2" y="446.4" text-anchor="middle" dominant-baseline="central" class="mz-shape-label">共振器</text>
+<rect id="jpa" x="396.8" y="392.4" width="179.2" height="108.0" rx="10" style="fill:var(--mz-shape-fill);stroke:var(--mz-accent2)" stroke-width="2.5"/>
+<text x="486.4" y="446.4" text-anchor="middle" dominant-baseline="central" class="mz-shape-label">JPA</text>
+<rect id="hemt" x="678.4" y="392.4" width="179.2" height="108.0" rx="10" style="fill:var(--mz-shape-fill);stroke:var(--mz-accent1)" stroke-width="2.5"/>
+<text x="768.0" y="446.4" text-anchor="middle" dominant-baseline="central" class="mz-shape-label">HEMT</text>
+<rect id="adc" x="972.8" y="392.4" width="204.8" height="108.0" rx="10" style="fill:var(--mz-shape-fill);stroke:var(--mz-accent1)" stroke-width="2.5"/>
+<text x="1075.2" y="446.4" text-anchor="middle" dominant-baseline="central" class="mz-shape-label">復調・ADC</text>
+<line x1="281.6" y1="446.4" x2="396.8" y2="446.4" style="stroke:var(--mz-accent1)" stroke-width="2.5"/>
+<polygon points="396.8,446.4 386.0,451.6 386.0,441.2" style="fill:var(--mz-accent1)"/>
+<line x1="576.0" y1="446.4" x2="678.4" y2="446.4" style="stroke:var(--mz-accent1)" stroke-width="2.5"/>
+<polygon points="678.4,446.4 667.6,451.6 667.6,441.2" style="fill:var(--mz-accent1)"/>
+<line x1="857.6" y1="446.4" x2="972.8" y2="446.4" style="stroke:var(--mz-accent1)" stroke-width="2.5"/>
+<polygon points="972.8,446.4 962.0,451.6 962.0,441.2" style="fill:var(--mz-accent1)"/>
+<text class="small" x="486.4" y="561.6" text-anchor="middle" dominant-baseline="central" class="mz-shape-label small" style="fill:var(--mz-fg)">20 mK</text>
+<text class="small" x="768.0" y="561.6" text-anchor="middle" dominant-baseline="central" class="mz-shape-label small" style="fill:var(--mz-fg)">4 K</text>
+<text class="small" x="1075.2" y="561.6" text-anchor="middle" dominant-baseline="central" class="mz-shape-label small" style="fill:var(--mz-fg)">300 K</text>
+</svg>
+</section>
+<section class="slide" data-index="6">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:1fr 3fr;grid-template-areas:"head head" "table note"'>
+<div class="pane pane-head" style="grid-area:head"><h2>結果 1: 条件別の読み出し忠実度</h2>
+</div>
+<div class="pane pane-table" style="grid-area:table"><table>
+<thead>
+<tr>
+<th>条件</th>
+<th align="right">積分時間</th>
+<th align="right">SNR</th>
+<th align="right">忠実度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HEMT のみ(前回)</td>
+<td align="right">960 ns</td>
+<td align="right">2.9</td>
+<td align="right">97.8%</td>
+</tr>
+<tr>
+<td>+ JPA</td>
+<td align="right">960 ns</td>
+<td align="right">8.1</td>
+<td align="right">98.9%</td>
+</tr>
+<tr>
+<td>+ JPA, τ 最適化</td>
+<td align="right">480 ns</td>
+<td align="right">7.4</td>
+<td align="right"><strong>99.2%</strong></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="pane pane-note" style="grid-area:note;display:flex;flex-direction:column;justify-content:center"><ul>
+<li>JPA 導入で SNR は <strong>2.8 倍</strong></li>
+<li>積分時間を<strong>半分</strong>にしても忠実度が向上
+→ <math><msub><mi>T</mi><mn>1</mn></msub></math> 緩和の寄与が減ったため</li>
+</ul>
+</div>
+</div>
+<aside class="notes"><p>SNR が 8.1→7.4 に下がるのに忠実度が上がる理由を強調する</p>
+</aside>
+</section>
+<section class="slide" data-index="7">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:1fr 4fr;grid-template-areas:"head head" "fig cap"'>
+<div class="pane pane-head" style="grid-area:head"><h2>結果 2: 忠実度の積分時間依存性</h2>
+</div>
+<div class="pane pane-fig" style="grid-area:fig"><img src="<data-uri len=4334>" alt="忠実度 vs 積分時間" style="object-fit:contain;width:100%;height:100%;">
+</div>
+<div class="pane pane-cap" style="grid-area:cap;display:flex;flex-direction:column;justify-content:center"><ul>
+<li>実線: 測定値、破線: erfc + <math><msub><mi>T</mi><mn>1</mn></msub></math> モデル</li>
+<li>最適点 480 ns はモデル予測と一致</li>
+<li>長積分側の劣化は <math><mi>τ</mi><mo lspace="0" rspace="0">/</mo><mn>2</mn><msub><mi>T</mi><mn>1</mn></msub></math> の傾きで説明できる</li>
+</ul>
+<p><em>誤差棒は 5 回の繰り返し測定の標準偏差</em></p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="8">
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:1fr 3fr;grid-template-areas:"head" "main"'>
+<div class="pane pane-head" style="grid-area:head"><h2>考察</h2>
+</div>
+<div class="pane pane-main" style="grid-area:main"><ul>
+<li>残る誤り 0.8% の内訳(推定):
+<ul>
+<li>状態準備誤り: ~0.3%</li>
+<li>JPA の飽和による歪み: ~0.3%</li>
+<li>その他(熱励起など): ~0.2%</li>
+</ul>
+</li>
+<li>JPA のポンプ強度を下げると飽和は避けられるが利得も落ちる — <em>利得 15 dB 前後が妥協点</em></li>
+<li>次の一手は <strong>TWPA</strong>(進行波型)への置き換え: 飽和点が高く、帯域も広い</li>
+</ul>
+<blockquote>
+<p>忠実度 99% は「ゴール」ではなく、誤り訂正実験の「入場券」である</p>
+</blockquote>
+</div>
+</div>
+</section>
+<section class="slide" data-index="9">
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:3fr 1fr;grid-template-areas:"main" "foot"'>
+<div class="pane pane-main" style="grid-area:main;text-align:center;display:flex;flex-direction:column;justify-content:center"><h2>まとめ</h2>
+<p>JPA 導入と積分時間最適化により</p>
+<p>読み出し忠実度 <strong>97.8% → 99.2%</strong> を達成</p>
+<p><em>次回: TWPA 換装後の初期データを報告予定</em></p>
+</div>
+<div class="pane pane-foot" style="grid-area:foot;text-align:right"><p>量子計測研究室ゼミ|2026-08-08</p>
+</div>
+</div>
+<aside class="notes"><p>質疑用の予備: JPA の利得設定、ポンプ周波数、キャリブレーション手順</p>
+</aside>
+</section>

@@ -272,7 +272,8 @@ mod tests {
             .unwrap();
         r.set_assets(r#"{"img/x.svg": "data:image/svg+xml;base64,QUJD"}"#)
             .unwrap();
-        let src = "---\ntitle: T\n---\n\n# 一枚目\n\n![図](img/x.svg)\n\n---\n\n![[sections/a.md]]\n";
+        let src =
+            "---\ntitle: T\n---\n\n# 一枚目\n\n![図](img/x.svg)\n\n---\n\n![[sections/a.md]]\n";
         let out = r.render_page(src);
         assert_eq!(out.slide_count, 2);
         assert!(out.html.contains("埋め込み見出し"));

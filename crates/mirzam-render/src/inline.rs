@@ -159,7 +159,10 @@ fn image_attrs(line: &str) -> String {
 fn is_video(src: &str) -> bool {
     let path = src.split(['?', '#']).next().unwrap_or(src);
     matches!(
-        path.rsplit('.').next().map(str::to_ascii_lowercase).as_deref(),
+        path.rsplit('.')
+            .next()
+            .map(str::to_ascii_lowercase)
+            .as_deref(),
         Some("mp4" | "webm" | "ogv" | "mov" | "m4v")
     )
 }

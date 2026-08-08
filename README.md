@@ -107,4 +107,16 @@ serve は保存のたびに**変更されたスライドだけ**を再レンダ�
 
 ## ステータス
 
-Phase 1(MVP)の機能実装がほぼ完了: build / serve(差分ホットリロード)/ export pdf / 数式(MathML)/ カスタム CSS / スピーカーノート。実測値と残タスクは [docs/roadmap.md](docs/roadmap.md) を参照。
+**MVP(v0.1)の機能・品質ゲートは実装完了。** 残るはドッグフーディング(実発表での使用)。
+
+- 実装済み: build / serve(スライド単位の差分ホットリロード)/ export pdf / ASCII ペインレイアウト / ファイル分割 / 変数・計算 / 数式(MathML)/ 図形(`shape`)/ 追従コネクタ(`connect`)/ 動画・GIF / カスタム CSS / スピーカーノート / WASM コア
+- 品質ゲート: CommonMark 互換テスト・ゴールデンテスト・差分ビルド等価性テスト・性能ベンチ・clippy/fmt(すべて CI)
+- 性能(release): 500 枚デッキでフルビルド 78ms、1 枚編集の反映 2.3ms
+
+詳細と次フェーズは [docs/roadmap.md](docs/roadmap.md) を参照。
+
+```bash
+cargo test --workspace                                   # 品質ゲート一式
+cargo run --release -p mirzam-cli --bin mirzam-bench     # 性能ベンチ
+./scripts/build-wasm.sh                                  # WASM ビルド
+```

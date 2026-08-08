@@ -115,13 +115,9 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 /// プレースホルダを出す(PDF は静的なので動画は再生できないため)。
 fn videos_to_stills(html: &str) -> String {
     static RE: OnceLock<Regex> = OnceLock::new();
-    let re = RE.get_or_init(|| {
-        Regex::new(r#"<video\b([^>]*)></video>"#).expect("static regex")
-    });
+    let re = RE.get_or_init(|| Regex::new(r#"<video\b([^>]*)></video>"#).expect("static regex"));
     static ATTR: OnceLock<Regex> = OnceLock::new();
-    let attr_re = ATTR.get_or_init(|| {
-        Regex::new(r#"(\w[\w-]*)="([^"]*)""#).expect("static regex")
-    });
+    let attr_re = ATTR.get_or_init(|| Regex::new(r#"(\w[\w-]*)="([^"]*)""#).expect("static regex"));
     re.replace_all(html, |c: &regex::Captures| {
         let mut attrs: std::collections::BTreeMap<&str, &str> = Default::default();
         for a in attr_re.captures_iter(&c[1]) {
@@ -329,8 +325,12 @@ fn render_grid_slide(
             }
         }
         match attrs.kv.get("valign").map(String::as_str) {
-            Some("middle") => style.push_str(";display:flex;flex-direction:column;justify-content:center"),
-            Some("bottom") => style.push_str(";display:flex;flex-direction:column;justify-content:flex-end"),
+            Some("middle") => {
+                style.push_str(";display:flex;flex-direction:column;justify-content:center")
+            }
+            Some("bottom") => {
+                style.push_str(";display:flex;flex-direction:column;justify-content:flex-end")
+            }
             _ => {}
         }
         let extra_cls = attrs
@@ -389,16 +389,16 @@ mod tests {
         );
         let meta = DeckMeta::default();
         let out = render_deck(&meta, &[slide], Path::new("."));
-        assert!(out.html.contains("grid-template-areas:\"main main\" \"a b\""));
+        assert!(out
+            .html
+            .contains("grid-template-areas:\"main main\" \"a b\""));
         assert!(out.html.contains("pane-a"));
         assert!(out.html.contains("hello"));
     }
 
     #[test]
     fn unknown_pane_warns() {
-        let slide = parse_slide(
-            "```pane\n+---+\n| a |\n+---+\n```\n\n::: pane zzz\nlost\n:::\n",
-        );
+        let slide = parse_slide("```pane\n+---+\n| a |\n+---+\n```\n\n::: pane zzz\nlost\n:::\n");
         let meta = DeckMeta::default();
         let out = render_deck(&meta, &[slide], Path::new("."));
         assert!(out.warnings.iter().any(|w| w.contains("zzz")));

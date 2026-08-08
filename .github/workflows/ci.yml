@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  test:
+    name: テスト・lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+
+      - name: フォーマット確認
+        run: cargo fmt --all -- --check
+
+      - name: clippy
+        run: cargo clippy --workspace --all-targets
+
+      # 品質ゲート:
+      #  - ゴールデンテスト(出力の退行検知)
+      #  - CommonMark 互換テスト(拡張記法が素の Markdown を壊さない)
+      #  - 差分ビルド等価性テスト(インクリメンタル ≡ フルビルド)
+      - name: テスト
+        run: cargo test --workspace
+
+      - name: サンプルデッキのビルド
+        run: |
+          cargo run -q --bin mirzam -- build examples/demo.md -o /tmp/out-demo
+          cargo run -q --bin mirzam -- build examples/seminar.md -o /tmp/out-seminar
+          cargo run -q --bin mirzam -- build examples/media.md -o /tmp/out-media
+
+  bench:
+    name: 性能ベンチ
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      # 1 枚編集の反映がスライド数に依存しないことを継続的に監視する。
+      # 閾値でなく実測値をログに残す方針(CI ランナーの変動でぶれるため)
+      - name: ベンチ実行
+        run: cargo run --release -p mirzam-cli --bin mirzam-bench
+
+  wasm:
+    name: WASM ビルド
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: wasm-bindgen-cli の導入
+        run: |
+          VER=$(grep -oP 'wasm-bindgen = "\K[0-9.]+' crates/mirzam-wasm/Cargo.toml)
+          cargo install wasm-bindgen-cli --version "$VER" --locked
+      - name: ビルド
+        run: ./scripts/build-wasm.sh pkg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mirzam-wasm
+          path: pkg/

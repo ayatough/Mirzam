@@ -4,9 +4,7 @@
 //!   mirzam build <input.md> [-o <out_dir>]
 //!   mirzam serve <input.md> [-p <port>]
 
-mod pipeline;
-mod serve;
-
+use mirzam_cli::{pipeline, serve};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -94,7 +92,11 @@ fn main() -> ExitCode {
                 return usage("入力ファイルを指定してください");
             };
             let out_path = out_path.unwrap_or_else(|| {
-                input.with_extension("pdf").file_name().map(PathBuf::from).unwrap_or_else(|| PathBuf::from("deck.pdf"))
+                input
+                    .with_extension("pdf")
+                    .file_name()
+                    .map(PathBuf::from)
+                    .unwrap_or_else(|| PathBuf::from("deck.pdf"))
             });
             run(export_pdf(&input, &out_path, chromium.as_deref()))
         }
@@ -231,5 +233,8 @@ fn find_chromium(explicit: Option<&str>) -> Result<String, String> {
             return Ok(cand.to_string());
         }
     }
-    Err("Chromium が見つかりません。--chromium か環境変数 MIRZAM_CHROMIUM で指定してください".into())
+    Err(
+        "Chromium が見つかりません。--chromium か環境変数 MIRZAM_CHROMIUM で指定してください"
+            .into(),
+    )
 }

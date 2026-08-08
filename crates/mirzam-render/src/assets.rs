@@ -92,7 +92,7 @@ fn mime_for(path: &Path) -> &'static str {
 
 /// 見つからないアセットのプレースホルダ画像(SVG data URI)
 fn placeholder_uri(name: &str) -> String {
-    let label = name.replace('<', "").replace('>', "").replace('&', "");
+    let label = name.replace(['<', '>', '&'], "");
     let svg = format!(
         r##"<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400"><rect width="640" height="400" rx="12" fill="#eceef4"/><rect x="8" y="8" width="624" height="384" rx="8" fill="none" stroke="#b7bdd1" stroke-width="2" stroke-dasharray="8 6"/><text x="320" y="185" text-anchor="middle" font-family="sans-serif" font-size="40" fill="#8b93ad">🖼</text><text x="320" y="235" text-anchor="middle" font-family="monospace" font-size="18" fill="#6d7590">{label}</text></svg>"##
     );

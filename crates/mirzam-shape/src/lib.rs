@@ -255,7 +255,9 @@ fn color(v: &str) -> String {
 }
 
 fn esc(s: &str) -> String {
-    s.replace('&', "&amp;").replace('<', "&lt;").replace('"', "&quot;")
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('"', "&quot;")
 }
 
 /// 図形の外接矩形(px)。id 参照の解決に使う
@@ -291,7 +293,15 @@ pub fn render_svg(doc: &ShapeDoc, w: u32, h: u32) -> (String, Vec<String>) {
         if let (Some(id), Some(at)) = (&s.id, s.at) {
             let (cx, cy) = px(at);
             let (bw, bh) = s.size.map(px).unwrap_or((0.0, 0.0));
-            boxes.insert(id, Box_ { cx, cy, w: bw, h: bh });
+            boxes.insert(
+                id,
+                Box_ {
+                    cx,
+                    cy,
+                    w: bw,
+                    h: bh,
+                },
+            );
         }
     }
     let resolve = |r: &EndRef, errors: &mut Vec<String>| -> Option<(f64, f64)> {
@@ -310,11 +320,10 @@ pub fn render_svg(doc: &ShapeDoc, w: u32, h: u32) -> (String, Vec<String>) {
     // 2 パス目: 要素を出力
     let mut body = String::new();
     for s in &doc.shapes {
-        let id_attr = s
-            .id
-            .as_ref()
-            .map(|i| format!(" id=\"{}\"", esc(i)))
-            .unwrap_or_default();
+        let id_attr =
+            s.id.as_ref()
+                .map(|i| format!(" id=\"{}\"", esc(i)))
+                .unwrap_or_default();
         let cls_attr = if s.classes.is_empty() {
             String::new()
         } else {
@@ -330,9 +339,12 @@ pub fn render_svg(doc: &ShapeDoc, w: u32, h: u32) -> (String, Vec<String>) {
             ShapeKind::Rect | ShapeKind::Ellipse => {
                 let (cx, cy) = px(s.at.unwrap());
                 let (bw, bh) = px(s.size.unwrap());
-                let fill = color(s.kv.get("fill").map(String::as_str).unwrap_or("@shape-fill"));
-                let stroke =
-                    color(s.kv.get("stroke").map(String::as_str).unwrap_or("@accent1"));
+                let fill = color(
+                    s.kv.get("fill")
+                        .map(String::as_str)
+                        .unwrap_or("@shape-fill"),
+                );
+                let stroke = color(s.kv.get("stroke").map(String::as_str).unwrap_or("@accent1"));
                 if s.kind == Some(ShapeKind::Rect) {
                     let rx = s.kv.get("radius").map(String::as_str).unwrap_or("10");
                     body.push_str(&format!(
@@ -373,8 +385,7 @@ pub fn render_svg(doc: &ShapeDoc, w: u32, h: u32) -> (String, Vec<String>) {
                 ) else {
                     continue;
                 };
-                let stroke =
-                    color(s.kv.get("color").map(String::as_str).unwrap_or("@accent1"));
+                let stroke = color(s.kv.get("color").map(String::as_str).unwrap_or("@accent1"));
                 body.push_str(&format!(
                     "<line{id_attr}{cls_attr} x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" style=\"stroke:{stroke}\" stroke-width=\"{stroke_w}\"{dash}/>\n",
                     a.0, a.1, b.0, b.1
@@ -417,7 +428,9 @@ mod tests {
 
     #[test]
     fn parse_rect_with_label() {
-        let doc = parse_shapes(r#"rect #cache at(70%, 30%) size(30%, 14%) label="キャッシュ" fill=@accent2"#);
+        let doc = parse_shapes(
+            r#"rect #cache at(70%, 30%) size(30%, 14%) label="キャッシュ" fill=@accent2"#,
+        );
         assert!(doc.errors.is_empty());
         let s = &doc.shapes[0];
         assert_eq!(s.kind, Some(ShapeKind::Rect));
@@ -434,7 +447,10 @@ mod tests {
         assert!(doc.errors.is_empty());
         assert_eq!(
             doc.shapes[2].from,
-            Some(EndRef::Anchor { id: "a".into(), edge: Edge::S })
+            Some(EndRef::Anchor {
+                id: "a".into(),
+                edge: Edge::S
+            })
         );
     }
 
@@ -454,9 +470,7 @@ mod tests {
 
     #[test]
     fn svg_renders_and_resolves_refs() {
-        let doc = parse_shapes(
-            "rect #a at(25,50) size(10,20)\narrow from(#a.e) to(75%, 50%)",
-        );
+        let doc = parse_shapes("rect #a at(25,50) size(10,20)\narrow from(#a.e) to(75%, 50%)");
         let (svg, errors) = render_svg(&doc, 1280, 720);
         assert!(errors.is_empty(), "{errors:?}");
         assert!(svg.contains("viewBox=\"0 0 1280 720\""));
