@@ -76,8 +76,8 @@ acceptable here.
 | `mirzam-wasm` | Browser/editor bindings | Anything the editor extension needs |
 
 The viewer runtime (navigation, connector drawing) is the JavaScript string in
-`crates/mirzam-render/src/theme.rs`. It ships inside every deck, so keep it small
-and dependency-free.
+`crates/mirzam-render/src/theme/viewer.js`. It ships inside every deck, so keep
+it small and dependency-free.
 
 ## Running several agents at once
 
@@ -99,7 +99,8 @@ collide:
 
 **Contention hotspots.** Coordinate before two agents edit these at once:
 
-- `crates/mirzam-render/src/theme.rs` — one file holds all CSS and the viewer JS
+- `crates/mirzam-render/src/theme/base.css` — the layout/typography rules every theme shares
+- `crates/mirzam-render/src/theme/viewer.js` — the runtime shipped inside every deck
 - `crates/mirzam-cli/tests/snapshots/*.html` — every rendering change rewrites them,
   so two agents changing output will conflict; land one, regenerate, then the next
 - `Cargo.toml` (workspace members), `CHANGELOG.md` — append-only, but still merge
@@ -117,8 +118,10 @@ pane, in the renderer's extraction pass — see `crates/mirzam-render/src/charts
 theme variables, never hard-coded colors → document in `docs/syntax.md` → add a
 slide to `examples/showcase.md` → update snapshots.
 
-**Change how something looks.** Edit the theme in `theme.rs` → rebuild the sample
-decks → run the layout checker → look at the screenshots → update snapshots.
+**Change how something looks.** Edit `crates/mirzam-render/src/theme/base.css` for
+layout shared by every theme, or `theme/themes/*.css` for one theme's tokens →
+rebuild the sample decks → run the layout checker → look at the screenshots →
+update snapshots.
 
 **Fix a rendering bug.** Reproduce it in a minimal deck first and keep that deck as
 a test fixture if it is small. Check whether `scripts/check-layout.mjs` could have

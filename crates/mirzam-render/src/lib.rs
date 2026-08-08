@@ -10,6 +10,7 @@ mod theme;
 pub use assets::{AssetSource, FsAssets};
 pub use charts::render_charts_in;
 pub use inline::{parse_attrs, preprocess, render_markdown};
+pub use theme::{mode_warning, theme_warning, THEME_NAMES};
 
 use mirzam_core::DeckMeta;
 use mirzam_layout::{parse_grid, GridSpec};
@@ -97,6 +98,24 @@ fn transition_attr(meta: &DeckMeta) -> String {
     }
 }
 
+/// Resolves frontmatter `theme:`/`mode:` to the attributes baked onto
+/// `<html>`. Always valid, silently falling back to `default`/no mode
+/// attribute for a name that is not a built-in: a caller that wants to
+/// report an unknown name calls [`theme_warning`]/[`mode_warning`] where
+/// `meta` was parsed, since this function has no warning channel of its own.
+fn theme_attrs(meta: &DeckMeta) -> (&'static str, String) {
+    let name = theme::THEME_NAMES
+        .iter()
+        .find(|n| Some(**n) == meta.theme.as_deref())
+        .copied()
+        .unwrap_or("default");
+    let mode_attr = match theme::normalize_mode(meta.mode.as_deref()) {
+        Some(m) => format!(" data-mode=\"{m}\""),
+        None => String::new(),
+    };
+    (name, mode_attr)
+}
+
 /// Assembles rendered sections into a complete HTML page with the viewer.
 pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -> String {
     let (w, h) = meta.slide_size();
@@ -124,9 +143,10 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
         String::new()
     };
     let transition = transition_attr(meta);
+    let (theme_name, mode_attr) = theme_attrs(meta);
     format!(
         r#"<!doctype html>
-<html lang="en"{html_class}>
+<html lang="en" data-theme="{theme_name}"{mode_attr}{html_class}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -140,14 +160,14 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <div id="deck" data-slide-w="{w}" data-slide-h="{h}"{transition}>
 {sections}</div>
 <div id="hud"></div>
-<div id="hint">← → navigate / N notes / F fullscreen / L layout</div>
+<div id="hint">← → navigate / N notes / F fullscreen / L layout / D mode</div>
 <div id="notes-panel" hidden></div>
 {anim_js}<script>{js}</script>
 {live_js}</body>
 </html>
 "#,
         title = inline::html_escape(title),
-        css = theme::DEFAULT_CSS,
+        css = theme::theme_css(theme_name),
         custom_css = opts.custom_css.as_deref().unwrap_or(""),
         js = theme::VIEWER_JS,
         sections = sections.concat(),
@@ -195,9 +215,10 @@ pub fn assemble_print_page(
     };
     let sections: Vec<String> = sections.iter().map(|s| videos_to_stills(s)).collect();
     let sections = &sections;
+    let (theme_name, mode_attr) = theme_attrs(meta);
     format!(
         r#"<!doctype html>
-<html lang="en">
+<html lang="en" data-theme="{theme_name}"{mode_attr}>
 <head>
 <meta charset="utf-8">
 <meta name="generator" content="mirzam 0.0.1">
@@ -217,7 +238,7 @@ section.slide {{ width: {w}px; height: {h}px; }}
 </html>
 "#,
         title = inline::html_escape(title),
-        css = theme::DEFAULT_CSS,
+        css = theme::theme_css(theme_name),
         print_css = theme::PRINT_CSS,
         custom_css = custom_css.unwrap_or(""),
         sections = sections.concat(),
@@ -228,6 +249,8 @@ section.slide {{ width: {w}px; height: {h}px; }}
 /// `asset_dir` is the base directory for relative asset paths.
 pub fn render_deck(meta: &DeckMeta, slides: &[SlideSource], asset_dir: &Path) -> RenderResult {
     let mut warnings = Vec::new();
+    warnings.extend(theme_warning(meta.theme.as_deref()));
+    warnings.extend(mode_warning(meta.mode.as_deref()));
     let mut sections = Vec::with_capacity(slides.len());
     for (i, slide) in slides.iter().enumerate() {
         let rendered = render_slide_html(slide, i, asset_dir);
@@ -615,14 +638,72 @@ mod tests {
             ..Default::default()
         };
         let html = assemble_page(&DeckMeta::default(), &[], &opts);
-        assert!(html.contains("<html lang=\"en\" class=\"mz-debug\">"));
+        assert!(html.contains("<html lang=\"en\" data-theme=\"default\" class=\"mz-debug\">"));
     }
 
     #[test]
     fn debug_layout_off_by_default() {
         let html = assemble_page(&DeckMeta::default(), &[], &PageOptions::default());
-        assert!(html.contains("<html lang=\"en\">"));
-        assert!(!html.contains("<html lang=\"en\" class=\"mz-debug\">"));
+        assert!(html.contains("<html lang=\"en\" data-theme=\"default\">"));
+        assert!(!html.contains("class=\"mz-debug\""));
+    }
+
+    #[test]
+    fn named_theme_is_baked_onto_html() {
+        let meta = DeckMeta {
+            theme: Some("nord".into()),
+            ..Default::default()
+        };
+        let html = assemble_page(&meta, &[], &PageOptions::default());
+        assert!(html.contains("data-theme=\"nord\""));
+        assert!(html.contains("--mz-bg: #2e3440"));
+    }
+
+    #[test]
+    fn unknown_theme_falls_back_to_default_silently_in_assemble_page() {
+        let meta = DeckMeta {
+            theme: Some("does-not-exist".into()),
+            ..Default::default()
+        };
+        let html = assemble_page(&meta, &[], &PageOptions::default());
+        assert!(html.contains("data-theme=\"default\""));
+    }
+
+    #[test]
+    fn unknown_theme_is_reported_through_render_deck_warnings() {
+        let meta = DeckMeta {
+            theme: Some("does-not-exist".into()),
+            ..Default::default()
+        };
+        let out = render_deck(&meta, &[], Path::new("."));
+        assert!(out.warnings.iter().any(|w| w.contains("does-not-exist")));
+    }
+
+    #[test]
+    fn explicit_mode_is_baked_onto_html_and_unset_mode_is_not() {
+        let dark = DeckMeta {
+            mode: Some("dark".into()),
+            ..Default::default()
+        };
+        let html = assemble_page(&dark, &[], &PageOptions::default());
+        let html_tag = html.lines().nth(1).unwrap();
+        assert!(html_tag.contains("data-mode=\"dark\""));
+
+        let unset = assemble_page(&DeckMeta::default(), &[], &PageOptions::default());
+        let unset_html_tag = unset.lines().nth(1).unwrap();
+        assert!(!unset_html_tag.contains("data-mode"));
+    }
+
+    #[test]
+    fn print_page_also_carries_theme_and_mode() {
+        let meta = DeckMeta {
+            theme: Some("solarized".into()),
+            mode: Some("dark".into()),
+            ..Default::default()
+        };
+        let html = assemble_print_page(&meta, &[], None);
+        assert!(html.contains("data-theme=\"solarized\""));
+        assert!(html.contains("data-mode=\"dark\""));
     }
 
     #[test]

@@ -130,6 +130,47 @@ fn include_and_assets_are_tracked_for_watching() {
     );
 }
 
+/// Slides render the same regardless of theme/mode (they only affect page
+/// assembly), so a `theme:`/`mode:`-only edit must still bump the page
+/// fingerprint or `serve` would never tell the client to reload.
+#[test]
+fn theme_and_mode_change_bump_the_page_fingerprint() {
+    let deck = TempDeck::new("theme-fp", &deck_source(&["A"]));
+    let mut cache = HashMap::new();
+    let first = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).unwrap();
+
+    deck.write(&deck_source(&["A"]).replacen("title: T", "title: T\ntheme: nord", 1));
+    let themed = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).unwrap();
+    assert_eq!(
+        first.sections, themed.sections,
+        "theme does not change per-slide HTML"
+    );
+    assert_ne!(
+        first.page_fingerprint, themed.page_fingerprint,
+        "a theme-only edit must still invalidate the assembled page"
+    );
+
+    deck.write(&deck_source(&["A"]).replacen("title: T", "title: T\ntheme: nord\nmode: dark", 1));
+    let dark = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).unwrap();
+    assert_ne!(
+        themed.page_fingerprint, dark.page_fingerprint,
+        "a mode-only edit must still invalidate the assembled page"
+    );
+}
+
+/// An unknown theme name is a warning, not a build failure, and falls back
+/// to `default`.
+#[test]
+fn unknown_theme_warns_but_still_builds() {
+    let deck = TempDeck::new(
+        "bad-theme",
+        &deck_source(&["A"]).replacen("title: T", "title: T\ntheme: nope", 1),
+    );
+    let mut cache = HashMap::new();
+    let out = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).unwrap();
+    assert!(out.warnings.iter().any(|w| w.contains("nope")));
+}
+
 /// Reordering slides still produces correct position-dependent output.
 #[test]
 fn reordering_slides_updates_indices() {

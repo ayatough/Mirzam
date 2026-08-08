@@ -206,6 +206,8 @@ impl Renderer {
             },
             None => mirzam_core::DeckMeta::default(),
         };
+        warnings.extend(mirzam_render::theme_warning(meta.theme.as_deref()));
+        warnings.extend(mirzam_render::mode_warning(meta.mode.as_deref()));
         // There is no current directory in WASM, so the base is an empty path.
         let body = mirzam_syntax::expand_includes(body, Path::new(""), &MapFiles(&self.files));
         let vars = meta.var_table();

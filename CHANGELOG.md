@@ -58,6 +58,17 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   slide-down | iris | none` in frontmatter, with an optional duration and
   `ease=`. A slide overrides its half of the page turn with an ordinary
   whole-slide `[enter] slide` / `[exit] slide` track.
+- Named themes: `theme: nord | solarized | vscode` in frontmatter, alongside
+  the existing `default`. Every theme defines both light and dark tokens
+  explicitly (dark is never derived from light by inversion), verified by a
+  unit test that computes the WCAG contrast ratio for every token against
+  `--mz-slide-bg` in every theme and mode. See
+  `crates/mirzam-render/src/theme/themes/CREDITS.md` for each palette's origin
+  and licence.
+- Dark mode: `mode: dark`/`mode: light` in frontmatter, `?mode=` in the
+  viewer's URL, `D` to toggle for the session, and `prefers-color-scheme`
+  when nothing is set - in that priority order, with no reload needed for the
+  OS-preference case.
 
 ### Changed
 - Documentation is English-first; Japanese translations live under `docs/ja/`.
@@ -67,6 +78,12 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - Upgraded comrak to 0.54 and enabled CJK-friendly emphasis.
 
 ### Fixed
+- Inline code, `pre` blocks, table headers and the parse-error box kept a
+  hard-coded light background in dark mode, so their text was light on light
+  and unreadable. Those surfaces are now theme tokens (`--mz-surface`,
+  `--mz-danger-*`), defined per theme and mode, and a test rejects any
+  hard-coded color in the shared stylesheet unless it carries a comment saying
+  why it does not belong to a theme.
 - `End` in the viewer went to the first slide instead of the last: it read the
   arity of the slide-list function rather than calling it.
 - Clicking to select text in the viewer turned the page. A click is only a page

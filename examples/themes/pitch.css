@@ -14,6 +14,14 @@
   --mz-chart4: #c4a7e7;
   --mz-chart5: #eb6f92;
   --mz-chart6: #9ccfd8;
+  /* Raised panels and the error box. A custom theme has to set these too:
+     they are what the shared stylesheet paints code, table headers and
+     warnings with, and inheriting the built-in light values would put a pale
+     panel on this dark slide. */
+  --mz-surface: #161d2c;
+  --mz-danger-bg: #3a2226;
+  --mz-danger-fg: #ff9b9b;
+  --mz-danger-border: #e5484d;
 }
 
 .grid { padding: 52px 68px; gap: 26px; }

@@ -26,7 +26,7 @@ The MVP is feature-complete and covered by regression tests in CI.
 | Layout debug overlay (`L`, `--debug-layout`) | Done |
 | `anim` DSL compiled to a timeline (`mirzam-anim`) | Done |
 | Animation runtime, click-through steps, slide transitions | Done |
-| Named themes (Nord, Solarized, VS Code) and dark mode | Next |
+| Named themes (Nord, Solarized, VS Code) and dark mode | Done |
 | Annotations on images and charts, adjusted in the preview | Next |
 | Typst-flavoured math syntax | Next |
 | Presentation effects | Next |

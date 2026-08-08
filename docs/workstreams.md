@@ -52,7 +52,7 @@ there is. The model column follows from that:
 | W0 | Theme file split + layout debug overlay | B | Sonnet | — | ✅ |
 | W1 | `anim` DSL → timeline IR | B | Sonnet | — | ✅ |
 | W2 | Animation runtime and slide transitions | S | Opus | W0, W1 contract | ✅ |
-| W3 | Named themes and dark mode | B | Sonnet | W0 | |
+| W3 | Named themes and dark mode | B | Sonnet | W0 | ✅ |
 | W4 | Presentation effects | C | Fable | W0 | |
 | W5 | Typst-flavoured math | A | Sonnet | — | |
 | W6 | Annotations on images and charts | S | Opus | W0 | |
@@ -278,9 +278,9 @@ Three things were not obvious going in:
 **Owns:** `theme/viewer.js`, `theme/anim.js`. **Coordinate with:** W4 (both add
 key bindings — the key table lives in `viewer.js` and W2 owns it).
 
-## W3 — Named themes and dark mode
+## W3 — Named themes and dark mode ✅
 
-**Difficulty B · Sonnet**
+**Difficulty B · Sonnet · landed**
 
 `meta.theme` is already parsed from frontmatter and currently ignored. Make
 `theme: nord` work, with built-ins compiled in:
@@ -306,6 +306,16 @@ as the palettes are.
 
 Mode selection: `mode: dark` in frontmatter, `?mode=dark` in the viewer, `D` to
 toggle, `prefers-color-scheme` when unset.
+
+**What the contrast test could not see.** It checked every *token* and passed,
+while dark mode still shipped with inline code, `pre` blocks and table headers
+light-on-light — because those surfaces were hard-coded hex in `base.css`, and a
+literal is invisible to a test that only reads the palette. Two things follow,
+and both are now in place: the surfaces are tokens (`--mz-surface`,
+`--mz-danger-*`) checked as text-on-surface pairs, and `base.css` may not carry
+a color literal at all unless it says in a comment why it does not belong to a
+theme. A palette test is only as good as the guarantee that the palette is the
+only place colors come from.
 
 **Owns:** `theme/themes/*.css`, `themes/CREDITS.md`.
 

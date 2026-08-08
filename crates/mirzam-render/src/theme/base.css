@@ -14,7 +14,7 @@ html, body {
   transform-origin: center center;
   background: var(--mz-slide-bg);
   border-radius: 6px;
-  box-shadow: 0 12px 60px rgba(0,0,0,.5);
+  box-shadow: 0 12px 60px rgba(0,0,0,.5); /* theme-independent: a shadow, not a surface */
   overflow: hidden;
 }
 section.slide {
@@ -60,10 +60,11 @@ section.slide { background: var(--mz-slide-bg); border-radius: inherit; }
 /* The wrapper is a flex item when the pane uses valign=, so give it the width. */
 .mz-bg-content { position: relative; z-index: 2; width: 100%; }
 .bg-text-light, .bg-text-light h1, .bg-text-light h2, .bg-text-light h3 {
+  /* theme-independent: these sit on a photograph, not on the theme's background */
   color: #fff;
 }
 .bg-text-light strong, .bg-text-light a { color: var(--mz-accent2); }
-.bg-text-light .small, .bg-text-light blockquote { color: rgba(255,255,255,.78); }
+.bg-text-light .small, .bg-text-light blockquote { color: rgba(255,255,255,.78); } /* theme-independent: over a photo */
 .bg-text-light h2 { border-bottom-color: var(--mz-accent2); }
 .bg-text-dark, .bg-text-dark h1, .bg-text-dark h2, .bg-text-dark h3 { color: var(--mz-fg); }
 /* `.bleed` takes a background to the slide edge. It drops the grid's padding,
@@ -79,7 +80,7 @@ section.slide { background: var(--mz-slide-bg); border-radius: inherit; }
   display: flex; flex-direction: column; justify-content: center;
 }
 /* The title slide dims its subtitle, which is the wrong contrast over a photo. */
-section.slide:has(.title-slide) .bg-text-light p { color: rgba(255,255,255,.82); }
+section.slide:has(.title-slide) .bg-text-light p { color: rgba(255,255,255,.82); } /* theme-independent: over a photo */
 
 h1 { font-size: 2.6em; margin: .2em 0; letter-spacing: .01em; }
 h2 {
@@ -115,22 +116,23 @@ math[display="block"] { font-size: 1.35em; margin: .5em 0; }
 /* Fallback when conversion fails: show the TeX source */
 .math-error {
   font-family: 'SF Mono', Consolas, monospace; font-style: normal;
-  background: #fff0f0; color: #b3261e; border-radius: 4px; padding: 0 .3em;
+  background: var(--mz-danger-bg); color: var(--mz-danger-fg);
+  border-radius: 4px; padding: 0 .3em;
 }
 .math-block { display: block; text-align: center; margin: .6em 0; padding: .4em; }
 
 /* Tables */
 table { border-collapse: collapse; font-size: 1.15em; margin: .5em 0; }
 th, td { border: 1px solid var(--mz-border); padding: .35em .8em; }
-th { background: #f3f5fb; }
+th { background: var(--mz-surface); }
 
 /* Code */
 pre {
-  background: #f6f8fa; border: 1px solid var(--mz-border); border-radius: 8px;
+  background: var(--mz-surface); border: 1px solid var(--mz-border); border-radius: 8px;
   padding: .8em 1em; font-size: 1.05em; overflow: auto;
 }
 code { font-family: 'SF Mono', Consolas, Menlo, monospace; }
-p code, li code { background: #f3f5fb; border-radius: 4px; padding: .1em .35em; font-size: .9em; }
+p code, li code { background: var(--mz-surface); border-radius: 4px; padding: .1em .35em; font-size: .9em; }
 blockquote { border-left: 4px solid var(--mz-accent2); margin: .5em 0; padding: .1em 1em; color: var(--mz-muted); }
 
 img, video { max-width: 100%; max-height: 100%; }
@@ -141,22 +143,20 @@ p > img:only-child, p > video:only-child,
 .mz-bg-content > img:only-child, .mz-bg-content > video:only-child {
   display: block; margin: 0 auto;
 }
-video { background: #000; border-radius: 6px; }
+video { background: #000; /* theme-independent: letterbox behind the frame */ border-radius: 6px; }
 
 /* Video placeholder in PDF output, when no poster is given */
 .mz-video-still {
   display: flex; align-items: center; justify-content: center; gap: .6em;
   min-height: 200px; height: 100%;
-  background: #f3f5fb; border: 2px dashed var(--mz-border); border-radius: 8px;
+  background: var(--mz-surface); border: 2px dashed var(--mz-border); border-radius: 8px;
   color: var(--mz-muted);
 }
 .mz-video-still span { font-size: 2em; color: var(--mz-accent1); }
 .mz-video-still em { font-style: normal; font-size: 1.1em; }
 
-/* Charts (build-time SVG from data) */
-:root {
-  --mz-chart3: #f2994a; --mz-chart4: #9b51e0; --mz-chart5: #eb5757; --mz-chart6: #2d9cdb;
-}
+/* Charts (build-time SVG from data). Series colors are theme tokens: see
+   theme/themes/*.css. */
 .mz-chart-wrap { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
 svg.mz-chart { width: 100%; height: 100%; max-height: 100%; }
 .mz-chart-title { font-size: 20px; font-weight: 600; fill: var(--mz-fg); }
@@ -167,8 +167,8 @@ svg.mz-chart { width: 100%; height: 100%; max-height: 100%; }
 .mz-chart-value { font-size: 14px; fill: var(--mz-muted); }
 .mz-chart-slice { stroke: var(--mz-slide-bg); stroke-width: 2; }
 
-/* Shape layer (build-time SVG) and connector layer (drawn at runtime) */
-:root { --mz-shape-fill: #eef1fb; }
+/* Shape layer (build-time SVG) and connector layer (drawn at runtime).
+   The default shape fill is a theme token: see theme/themes/*.css. */
 svg.mz-shapes, svg.mz-connect {
   position: absolute; inset: 0; width: 100%; height: 100%;
   pointer-events: none; overflow: visible;
@@ -178,7 +178,8 @@ svg.mz-shapes, svg.mz-connect {
 
 /* Parse error display */
 .mz-error {
-  border: 2px solid #e5484d; background: #fff0f0; color: #b3261e;
+  border: 2px solid var(--mz-danger-border);
+  background: var(--mz-danger-bg); color: var(--mz-danger-fg);
   border-radius: 8px; padding: .6em 1em; font-size: 1em; margin-bottom: 1em;
 }
 
@@ -187,14 +188,17 @@ aside.notes { display: none; }
 /* HUD */
 #hud {
   position: fixed; right: 18px; bottom: 12px;
-  color: #9aa1b8; font-size: 14px; user-select: none;
+  color: #9aa1b8; /* theme-independent: viewer chrome, on --mz-bg and never printed */
+  font-size: 14px; user-select: none;
 }
 #hint {
   position: fixed; left: 18px; bottom: 12px;
-  color: #5c6378; font-size: 12px; user-select: none;
+  color: #5c6378; /* theme-independent: viewer chrome, on --mz-bg and never printed */
+  font-size: 12px; user-select: none;
 }
 #notes-panel {
   position: fixed; left: 0; right: 0; bottom: 0;
+  /* theme-independent: an overlay panel, deliberately the same in every theme */
   background: rgba(20, 22, 29, .95); color: #dde1ee;
   padding: 16px 24px 40px; font-size: 15px; line-height: 1.7;
   border-top: 2px solid var(--mz-accent2);
@@ -206,17 +210,17 @@ aside.notes { display: none; }
 /* Layout debug overlay: `L` toggles `mz-debug` on <html> in the viewer;
    `mirzam build --debug-layout` bakes it on for headless screenshots. Off by
    default, and never applied to print (see print.css). */
-html.mz-debug .grid { background: rgba(255, 45, 120, .35); }
+html.mz-debug .grid { background: rgba(255, 45, 120, .35); } /* theme-independent: must stand out in any theme */
 html.mz-debug .pane {
   position: relative;
   background: var(--mz-slide-bg);
-  outline: 2px dashed rgba(255, 45, 120, .9);
+  outline: 2px dashed rgba(255, 45, 120, .9); /* theme-independent: debug aid */
   outline-offset: -2px;
 }
 html.mz-debug .pane::before {
   content: attr(data-pane);
   position: absolute; top: 0; left: 0; z-index: 1000;
-  background: rgba(255, 45, 120, .9); color: #fff;
+  background: rgba(255, 45, 120, .9); color: #fff; /* theme-independent: debug aid */
   font: 11px/1.4 'SF Mono', Consolas, monospace;
   padding: 1px 5px; border-radius: 0 0 4px 0;
   pointer-events: none;
