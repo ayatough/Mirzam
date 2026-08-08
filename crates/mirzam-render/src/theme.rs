@@ -128,11 +128,12 @@ aside.notes { display: none; }
 pub const VIEWER_JS: &str = r#"
 (() => {
   const deck = document.getElementById('deck');
-  const slides = Array.from(document.querySelectorAll('section.slide'));
   const hud = document.getElementById('hud');
   const notesPanel = document.getElementById('notes-panel');
   const W = +deck.dataset.slideW, H = +deck.dataset.slideH;
-  let cur = Math.min(Math.max(parseInt(location.hash.slice(1)) || 1, 1), slides.length) - 1;
+  // ライブ更新で DOM が差し替わるため、スライド一覧は毎回取得する
+  const slides = () => Array.from(document.querySelectorAll('section.slide'));
+  let cur = Math.min(Math.max(parseInt(location.hash.slice(1)) || 1, 1), slides().length) - 1;
 
   function fit() {
     const s = Math.min(innerWidth / (W + 40), innerHeight / (H + 40));
@@ -142,18 +143,22 @@ pub const VIEWER_JS: &str = r#"
   }
 
   function show(i) {
-    cur = Math.min(Math.max(i, 0), slides.length - 1);
-    slides.forEach((s, j) => s.classList.toggle('active', j === cur));
-    hud.textContent = `${cur + 1} / ${slides.length}`;
+    const ss = slides();
+    cur = Math.min(Math.max(i, 0), ss.length - 1);
+    ss.forEach((s, j) => s.classList.toggle('active', j === cur));
+    hud.textContent = `${cur + 1} / ${ss.length}`;
     history.replaceState(null, '', '#' + (cur + 1));
     renderNotes();
   }
 
   function renderNotes() {
-    const notes = slides[cur].querySelector('aside.notes');
+    const notes = slides()[cur]?.querySelector('aside.notes');
     notesPanel.innerHTML = '<h4>SPEAKER NOTES</h4>' +
       (notes && notes.innerHTML.trim() ? notes.innerHTML : '<em>(このスライドにノートはありません)</em>');
   }
+
+  // ライブ更新後に現在ページの表示状態を復元する
+  window.__mirzamRefresh = () => show(cur);
 
   addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); show(cur + 1); }
@@ -174,5 +179,29 @@ pub const VIEWER_JS: &str = r#"
   addEventListener('resize', fit);
   fit();
   show(cur);
+})();
+"#;
+
+/// serve モードで注入されるホットリロードクライアント。
+/// ロングポーリングで変更スライドの `<section>` HTML を受け取り、DOM を差し替える。
+pub const LIVE_JS: &str = r#"
+(async () => {
+  let v = window.__MIRZAM_V__;
+  while (true) {
+    try {
+      const res = await fetch('/events?v=' + v);
+      const j = await res.json();
+      if (j.v === v) continue;
+      v = j.v;
+      if (j.full) { location.reload(); return; }
+      for (const [i, html] of j.changes) {
+        const sec = document.querySelector(`section.slide[data-index="${i}"]`);
+        if (sec) sec.outerHTML = html;
+      }
+      if (window.__mirzamRefresh) window.__mirzamRefresh();
+    } catch (e) {
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
 })();
 "#;

@@ -105,7 +105,7 @@
 |---|---|---|
 | Markdown パーサ | comrak | AST が取れて拡張しやすい。markdown-rs と比較スパイクで決定 |
 | レイアウト | 自前(グリッド比率計算)+ 将来 taffy | MVP のペイングリッドに外部依存は不要 |
-| CLI サーバ | axum + notify + WebSocket | |
+| CLI サーバ | tiny_http + ロングポーリング(スパイク実装済) | mtime 監視 200ms 間隔。依存を最小化するため axum/WebSocket は見送り。LSP 導入時に再評価 |
 | PDF | headless Chromium(chromiumoxide 等) | 将来 typst/parley 系で直接生成を検討 |
 | 数式 | KaTeX(ランタイム) | |
 | WASM | wasm-bindgen | |

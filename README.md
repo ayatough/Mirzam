@@ -86,6 +86,20 @@ Mirzam/
 └── examples/          # サンプルデッキ
 ```
 
+## 使い方(スパイク版)
+
+```bash
+# ビルド: ビューア内蔵の単一 HTML を出力
+cargo run -p mirzam-cli -- build examples/demo.md -o out
+
+# 開発サーバ: ホットリロード付き(http://localhost:4321)
+cargo run -p mirzam-cli -- serve examples/demo.md
+```
+
+ビューア操作: `← →` ページ移動 / `N` スピーカーノート / `F` 全画面。
+
+serve は保存のたびに**変更されたスライドだけ**を再レンダリングし、開いているブラウザの該当 `<section>` だけを差し替える(ページリロード無し・表示中ページ維持)。120 枚のデッキでも編集反映は 10ms 以下。
+
 ## ステータス
 
-設計フェーズ。現在は要求整理・アーキテクチャ・記法仕様のドラフトを作成中。MVP のスコープは [docs/roadmap.md](docs/roadmap.md) を参照。
+Phase 0 スパイク完了(build / serve が動作)。次は Phase 1(MVP)— KaTeX 統合、PDF エクスポート、テーマカスタム等。スコープは [docs/roadmap.md](docs/roadmap.md) を参照。

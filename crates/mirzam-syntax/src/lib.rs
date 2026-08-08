@@ -50,8 +50,20 @@ pub fn expand_includes(
     base_dir: &Path,
     provider: &dyn FileProvider,
 ) -> String {
+    let mut files = BTreeSet::new();
+    expand_includes_tracked(body, base_dir, provider, &mut files)
+}
+
+/// `expand_includes` と同じだが、読み込んだ include ファイルの一覧を
+/// `files` に収集する(serve のファイル監視用)。
+pub fn expand_includes_tracked(
+    body: &str,
+    base_dir: &Path,
+    provider: &dyn FileProvider,
+    files: &mut BTreeSet<PathBuf>,
+) -> String {
     let mut visited = BTreeSet::new();
-    expand_includes_inner(body, base_dir, provider, &mut visited)
+    expand_includes_inner(body, base_dir, provider, &mut visited, files)
 }
 
 fn expand_includes_inner(
@@ -59,6 +71,7 @@ fn expand_includes_inner(
     base_dir: &Path,
     provider: &dyn FileProvider,
     visited: &mut BTreeSet<PathBuf>,
+    files: &mut BTreeSet<PathBuf>,
 ) -> String {
     let mut out = String::with_capacity(body.len());
     let mut in_code = false;
@@ -84,11 +97,12 @@ fn expand_includes_inner(
                 match provider.read(&path) {
                     Ok(content) => {
                         visited.insert(canon.clone());
+                        files.insert(path.clone());
                         // 子ファイルの frontmatter は無視する
                         let (_, child_body) = split_frontmatter(&content);
                         let child_dir = path.parent().unwrap_or(base_dir).to_path_buf();
                         out.push_str(&expand_includes_inner(
-                            child_body, &child_dir, provider, visited,
+                            child_body, &child_dir, provider, visited, files,
                         ));
                         visited.remove(&canon);
                         if !out.ends_with('\n') {

@@ -16,19 +16,33 @@ pub struct RenderResult {
     pub warnings: Vec<String>,
 }
 
-/// デッキ全体を単一 HTML にレンダリングする。
-/// `asset_dir` は画像等の相対パスの基準ディレクトリ(data URI 埋め込みに使用)。
-pub fn render_deck(meta: &DeckMeta, slides: &[SlideSource], asset_dir: &Path) -> RenderResult {
+/// スライド 1 枚のレンダリング結果(`<section>` 要素、アセット埋め込み済み)
+pub struct RenderedSlide {
+    pub html: String,
+    pub warnings: Vec<String>,
+}
+
+/// スライド 1 枚を `<section>` HTML にレンダリングする(serve の差分更新単位)。
+pub fn render_slide_html(slide: &SlideSource, index: usize, asset_dir: &Path) -> RenderedSlide {
     let mut warnings = Vec::new();
+    let html = render_slide(slide, index, &mut warnings);
+    let html = assets::embed_assets(&html, asset_dir, &mut warnings);
+    RenderedSlide { html, warnings }
+}
+
+/// レンダリング済みセクション列をビューア入りの完全な HTML ページに組み立てる。
+/// `live_version` を渡すとホットリロードクライアント(serve モード)を注入する。
+pub fn assemble_page(meta: &DeckMeta, sections: &[String], live_version: Option<u64>) -> String {
     let (w, h) = meta.slide_size();
     let title = meta.title.as_deref().unwrap_or("Mirzam Deck");
-
-    let mut sections = String::new();
-    for (i, slide) in slides.iter().enumerate() {
-        sections.push_str(&render_slide(slide, i, &mut warnings));
-    }
-
-    let html = format!(
+    let live_js = match live_version {
+        Some(v) => format!(
+            "<script>window.__MIRZAM_V__={v};{}</script>",
+            theme::LIVE_JS
+        ),
+        None => String::new(),
+    };
+    format!(
         r#"<!doctype html>
 <html lang="ja">
 <head>
@@ -45,16 +59,30 @@ pub fn render_deck(meta: &DeckMeta, slides: &[SlideSource], asset_dir: &Path) ->
 <div id="hint">← → : 移動 / N : ノート / F : 全画面</div>
 <div id="notes-panel" hidden></div>
 <script>{js}</script>
-</body>
+{live_js}</body>
 </html>
 "#,
         title = inline::html_escape(title),
         css = theme::DEFAULT_CSS,
         js = theme::VIEWER_JS,
-    );
+        sections = sections.concat(),
+    )
+}
 
-    let html = assets::embed_assets(&html, asset_dir, &mut warnings);
-    RenderResult { html, warnings }
+/// デッキ全体を単一 HTML にレンダリングする。
+/// `asset_dir` は画像等の相対パスの基準ディレクトリ(data URI 埋め込みに使用)。
+pub fn render_deck(meta: &DeckMeta, slides: &[SlideSource], asset_dir: &Path) -> RenderResult {
+    let mut warnings = Vec::new();
+    let mut sections = Vec::with_capacity(slides.len());
+    for (i, slide) in slides.iter().enumerate() {
+        let rendered = render_slide_html(slide, i, asset_dir);
+        warnings.extend(rendered.warnings);
+        sections.push(rendered.html);
+    }
+    RenderResult {
+        html: assemble_page(meta, &sections, None),
+        warnings,
+    }
 }
 
 fn render_slide(slide: &SlideSource, index: usize, warnings: &mut Vec<String>) -> String {
