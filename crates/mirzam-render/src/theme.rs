@@ -65,12 +65,15 @@ section.slide:has(.title-slide) .pane { overflow: visible; }
 .title-slide { font-size: 3.4em; border: none; }
 section.slide:has(.title-slide) p { color: var(--mz-muted); font-size: 1.5em; }
 
-/* 数式(暫定表示。KaTeX 統合は MVP で対応) */
-.math {
-  font-family: Georgia, 'Times New Roman', serif; font-style: italic;
-  background: #f3f5fb; border-radius: 4px; padding: 0 .3em;
+/* 数式(ビルド時に LaTeX → MathML 変換、ブラウザがネイティブ描画) */
+math { font-size: 1.15em; }
+math[display="block"] { font-size: 1.35em; margin: .5em 0; }
+/* 変換失敗時のフォールバック(TeX ソースをそのまま表示) */
+.math-error {
+  font-family: 'SF Mono', Consolas, monospace; font-style: normal;
+  background: #fff0f0; color: #b3261e; border-radius: 4px; padding: 0 .3em;
 }
-.math-block { display: block; text-align: center; font-size: 1.3em; margin: .6em 0; padding: .4em; }
+.math-block { display: block; text-align: center; margin: .6em 0; padding: .4em; }
 
 /* 表 */
 table { border-collapse: collapse; font-size: 1.15em; margin: .5em 0; }
@@ -180,6 +183,22 @@ pub const VIEWER_JS: &str = r#"
   fit();
   show(cur);
 })();
+"#;
+
+/// PDF 印刷用の CSS オーバーライド(DEFAULT_CSS の後に適用)。
+/// スライド寸法と @page サイズは assemble_print_page が動的に付加する。
+pub const PRINT_CSS: &str = r#"
+html, body { background: #fff; overflow: visible; height: auto; }
+#deck {
+  position: static; transform: none; width: auto; height: auto;
+  box-shadow: none; border-radius: 0; background: transparent;
+}
+section.slide {
+  position: relative; display: block; overflow: hidden;
+  background: var(--mz-slide-bg);
+  break-after: page; page-break-after: always;
+}
+.mz-reserved { display: none; }
 "#;
 
 /// serve モードで注入されるホットリロードクライアント。

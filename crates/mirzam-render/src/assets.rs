@@ -7,7 +7,15 @@ use std::path::Path;
 
 const MAX_EMBED_BYTES: u64 = 20 * 1024 * 1024;
 
-pub fn embed_assets(html: &str, base_dir: &Path, warnings: &mut Vec<String>) -> String {
+/// ローカルアセットを data URI に置換する。
+/// 参照したファイルパス(存在しないものも含む)を `referenced` に収集し、
+/// キャッシュの鮮度検証とファイル監視に使えるようにする。
+pub fn embed_assets(
+    html: &str,
+    base_dir: &Path,
+    warnings: &mut Vec<String>,
+    referenced: &mut Vec<std::path::PathBuf>,
+) -> String {
     let re = Regex::new(r#"(src|poster)="([^"]+)""#).expect("static regex");
     re.replace_all(html, |c: &regex::Captures| {
         let attr = &c[1];
@@ -16,6 +24,7 @@ pub fn embed_assets(html: &str, base_dir: &Path, warnings: &mut Vec<String>) -> 
             return c[0].to_string();
         }
         let path = base_dir.join(src);
+        referenced.push(path.clone());
         match embed_file(&path) {
             Ok(uri) => format!("{attr}=\"{uri}\""),
             Err(e) => {

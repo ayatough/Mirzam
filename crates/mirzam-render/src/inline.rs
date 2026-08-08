@@ -138,24 +138,39 @@ fn span_attrs(line: &str) -> String {
     .into_owned()
 }
 
-/// `$$...$$` と `$...$` を数式スパンに変換(中身は TeX ソースのまま保持)
+/// `$$...$$` と `$...$` を MathML に変換する(ビルド時レンダリング)。
+/// 変換に失敗した場合は TeX ソースをスタイル付きスパンで表示する。
 fn math_spans(line: &str) -> String {
     static BLOCK: OnceLock<Regex> = OnceLock::new();
     static INLINE: OnceLock<Regex> = OnceLock::new();
     let b = re(&BLOCK, r"\$\$([^$]+)\$\$");
     let line = b
         .replace_all(line, |c: &regex::Captures| {
-            format!(
-                "<span class=\"math math-block\">{}</span>",
-                html_escape(c[1].trim())
-            )
+            math_html(c[1].trim(), latex2mathml::DisplayStyle::Block)
         })
         .into_owned();
     let i = re(&INLINE, r"\$([^$\n]+)\$");
     i.replace_all(&line, |c: &regex::Captures| {
-        format!("<span class=\"math\">{}</span>", html_escape(c[1].trim()))
+        math_html(c[1].trim(), latex2mathml::DisplayStyle::Inline)
     })
     .into_owned()
+}
+
+fn math_html(tex: &str, style: latex2mathml::DisplayStyle) -> String {
+    match latex2mathml::latex_to_mathml(tex, style) {
+        Ok(mathml) => mathml,
+        Err(e) => {
+            let cls = match style {
+                latex2mathml::DisplayStyle::Block => "math math-block math-error",
+                latex2mathml::DisplayStyle::Inline => "math math-error",
+            };
+            format!(
+                "<span class=\"{cls}\" title=\"{}\">{}</span>",
+                html_escape(&e.to_string()),
+                html_escape(tex)
+            )
+        }
+    }
 }
 
 /// Markdown をインラインとしてレンダリングし、外側の `<p>` を剥がす
@@ -209,10 +224,19 @@ mod tests {
     }
 
     #[test]
-    fn math_tagged() {
+    fn math_rendered_to_mathml() {
         let out = preprocess("式 $E=mc^2$ と $$\\int_0^1 x dx$$\n");
-        assert!(out.contains("<span class=\"math\">E=mc^2</span>"));
-        assert!(out.contains("math math-block"));
+        // inline と block の 2 つの MathML が生成される
+        assert_eq!(out.matches("<math").count(), 2);
+        assert!(out.contains("display=\"block\""));
+        assert!(!out.contains("math-error"));
+    }
+
+    #[test]
+    fn broken_math_falls_back() {
+        let out = preprocess("$\\frac{1$\n");
+        assert!(out.contains("math-error"));
+        assert!(out.contains("\\frac{1"));
     }
 
     #[test]

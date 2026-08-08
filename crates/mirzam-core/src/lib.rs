@@ -16,6 +16,8 @@ pub struct DeckMeta {
     pub theme: Option<String>,
     /// "16:9" | "4:3" など
     pub aspect: Option<String>,
+    /// カスタム CSS ファイルへのパス(入力ファイル基準の相対パス)
+    pub css: Option<String>,
     pub vars: BTreeMap<String, serde_yaml::Value>,
 }
 

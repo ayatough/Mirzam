@@ -91,7 +91,8 @@ $$
 $$
 ```
 
-- 既定は LaTeX(KaTeX)。将来 ` ```math typst ` ブロックで Typst Math を追加。
+- 既定は LaTeX 記法。ビルド時に MathML へ変換され、ブラウザがネイティブ描画する(クライアント JS 不要)。変換に失敗した場合は TeX ソースがエラースタイルで表示される。
+- 将来 ` ```math typst ` ブロックで Typst Math を追加。KaTeX はプラグイン候補。
 
 ## 3. レイアウト(`pane` ブロック)
 

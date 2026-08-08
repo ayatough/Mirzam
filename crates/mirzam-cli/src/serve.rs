@@ -20,6 +20,8 @@ struct Snapshot {
     meta: mirzam_core::DeckMeta,
     sections: Vec<String>,
     hashes: Vec<u64>,
+    page_fingerprint: u64,
+    custom_css: Option<String>,
     /// 過去バージョンのハッシュ列(差分計算用)
     history: VecDeque<(u64, Vec<u64>)>,
 }
@@ -42,6 +44,8 @@ pub fn serve(input: &Path, port: u16) -> Result<(), String> {
             meta: first.meta,
             sections: first.sections,
             hashes: first.hashes.clone(),
+            page_fingerprint: first.page_fingerprint,
+            custom_css: first.custom_css,
             history: VecDeque::from([(1, first.hashes)]),
         }),
         changed: Condvar::new(),
@@ -92,8 +96,14 @@ fn publish(shared: &Shared, out: BuildOutput, t0: Instant) {
         println!("  ⚠ {w}");
     }
     let mut snap = shared.snap.lock().unwrap();
-    if snap.hashes == out.hashes {
-        // 内容に変化なし(保存のみ等)
+    if snap.hashes == out.hashes && snap.page_fingerprint == out.page_fingerprint {
+        // 出力に変化なし(mtime のみの更新、保存のみ等)
+        if out.rendered > 0 {
+            println!(
+                "↻ 出力変化なし({} 枚を再レンダリングしたが同一内容)",
+                out.rendered
+            );
+        }
         return;
     }
     snap.version += 1;
@@ -107,6 +117,8 @@ fn publish(shared: &Shared, out: BuildOutput, t0: Instant) {
     snap.meta = out.meta;
     snap.sections = out.sections;
     snap.hashes = out.hashes.clone();
+    snap.page_fingerprint = out.page_fingerprint;
+    snap.custom_css = out.custom_css;
     let v = snap.version;
     snap.history.push_back((v, out.hashes));
     while snap.history.len() > HISTORY_LIMIT {
@@ -132,8 +144,11 @@ fn handle(request: tiny_http::Request, shared: Arc<Shared>) {
     let response = match path {
         "/" | "/index.html" => {
             let snap = shared.snap.lock().unwrap();
-            let html =
-                mirzam_render::assemble_page(&snap.meta, &snap.sections, Some(snap.version));
+            let opts = mirzam_render::PageOptions {
+                live_version: Some(snap.version),
+                custom_css: snap.custom_css.clone(),
+            };
+            let html = mirzam_render::assemble_page(&snap.meta, &snap.sections, &opts);
             html_response(html)
         }
         "/events" => {
@@ -183,8 +198,14 @@ fn wait_for_change(shared: &Shared, client_v: u64) -> String {
                 .filter(|(i, h)| old.get(*i) != Some(h))
                 .map(|(i, _)| serde_json::json!([i, snap.sections[i]]))
                 .collect();
-            serde_json::json!({ "v": snap.version, "changes": changes, "full": false })
-                .to_string()
+            if changes.is_empty() {
+                // スライドは同一だがバージョンが進んだ = ページレベルの変更
+                //(カスタム CSS 等)なので全体リロード
+                serde_json::json!({ "v": snap.version, "changes": [], "full": true }).to_string()
+            } else {
+                serde_json::json!({ "v": snap.version, "changes": changes, "full": false })
+                    .to_string()
+            }
         }
         // スライド枚数が変わった、または履歴切れ → ページ全体をリロード
         _ => serde_json::json!({ "v": snap.version, "changes": [], "full": true }).to_string(),

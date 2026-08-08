@@ -96,8 +96,8 @@
 
 ### 4.5 数式
 
-- MVP: `$...$` / `$$...$$` を KaTeX でランタイムレンダリング(コアはスパンをタグ付けするだけ)。
-- Phase 4: Typst Math 記法(` ```math typst ` または `$typst" ... "$` 系)を追加。変換層を `mirzam-math` として切り出す。
+- MVP(実装済): `$...$` / `$$...$$` を **latex2mathml でビルド時に MathML へ変換**し、ブラウザのネイティブ MathML 描画に任せる。クライアント JS ゼロ・単一ファイル HTML に追加ペイロードなし・PDF 印刷にそのまま乗る。変換失敗時は TeX ソースをエラースタイルで表示(title にエラー内容)。
+- 将来: KaTeX はレンダリング品質が必要な場合のプラグイン候補。Typst Math(` ```math typst `)は Phase 4 で変換層 `mirzam-math` として追加。
 
 ## 5. 技術選定(現時点の候補)
 
@@ -107,7 +107,7 @@
 | レイアウト | 自前(グリッド比率計算)+ 将来 taffy | MVP のペイングリッドに外部依存は不要 |
 | CLI サーバ | tiny_http + ロングポーリング(スパイク実装済) | mtime 監視 200ms 間隔。依存を最小化するため axum/WebSocket は見送り。LSP 導入時に再評価 |
 | PDF | headless Chromium(chromiumoxide 等) | 将来 typst/parley 系で直接生成を検討 |
-| 数式 | KaTeX(ランタイム) | |
+| 数式 | latex2mathml(ビルド時 MathML 変換、実装済) | KaTeX はプラグイン候補として保留 |
 | WASM | wasm-bindgen | |
 | ランタイム | TypeScript + Vite、フレームワークレス | 依存を最小に保つ |
 

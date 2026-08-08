@@ -20,22 +20,37 @@ pub struct RenderResult {
 pub struct RenderedSlide {
     pub html: String,
     pub warnings: Vec<String>,
+    /// このスライドが参照したローカルアセット(キャッシュ鮮度検証・監視用)
+    pub assets: Vec<std::path::PathBuf>,
 }
 
 /// スライド 1 枚を `<section>` HTML にレンダリングする(serve の差分更新単位)。
 pub fn render_slide_html(slide: &SlideSource, index: usize, asset_dir: &Path) -> RenderedSlide {
     let mut warnings = Vec::new();
+    let mut assets_used = Vec::new();
     let html = render_slide(slide, index, &mut warnings);
-    let html = assets::embed_assets(&html, asset_dir, &mut warnings);
-    RenderedSlide { html, warnings }
+    let html = assets::embed_assets(&html, asset_dir, &mut warnings, &mut assets_used);
+    RenderedSlide {
+        html,
+        warnings,
+        assets: assets_used,
+    }
+}
+
+/// ページ組み立てオプション
+#[derive(Default)]
+pub struct PageOptions {
+    /// Some(version) でホットリロードクライアント(serve モード)を注入
+    pub live_version: Option<u64>,
+    /// frontmatter `css:` で指定されたカスタム CSS(内容)
+    pub custom_css: Option<String>,
 }
 
 /// レンダリング済みセクション列をビューア入りの完全な HTML ページに組み立てる。
-/// `live_version` を渡すとホットリロードクライアント(serve モード)を注入する。
-pub fn assemble_page(meta: &DeckMeta, sections: &[String], live_version: Option<u64>) -> String {
+pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -> String {
     let (w, h) = meta.slide_size();
     let title = meta.title.as_deref().unwrap_or("Mirzam Deck");
-    let live_js = match live_version {
+    let live_js = match opts.live_version {
         Some(v) => format!(
             "<script>window.__MIRZAM_V__={v};{}</script>",
             theme::LIVE_JS
@@ -51,6 +66,7 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], live_version: Option<
 <meta name="generator" content="mirzam 0.0.1">
 <title>{title}</title>
 <style>{css}</style>
+<style>{custom_css}</style>
 </head>
 <body>
 <div id="deck" data-slide-w="{w}" data-slide-h="{h}">
@@ -64,7 +80,44 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], live_version: Option<
 "#,
         title = inline::html_escape(title),
         css = theme::DEFAULT_CSS,
+        custom_css = opts.custom_css.as_deref().unwrap_or(""),
         js = theme::VIEWER_JS,
+        sections = sections.concat(),
+    )
+}
+
+/// PDF 印刷用ページ(全スライドを固定サイズで縦に並べ、1 枚 = 1 ページ)
+pub fn assemble_print_page(
+    meta: &DeckMeta,
+    sections: &[String],
+    custom_css: Option<&str>,
+) -> String {
+    let (w, h) = meta.slide_size();
+    let title = meta.title.as_deref().unwrap_or("Mirzam Deck");
+    format!(
+        r#"<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="generator" content="mirzam 0.0.1">
+<title>{title}</title>
+<style>{css}</style>
+<style>{print_css}
+@page {{ size: {w}px {h}px; margin: 0; }}
+section.slide {{ width: {w}px; height: {h}px; }}
+</style>
+<style>{custom_css}</style>
+</head>
+<body>
+<div id="deck">
+{sections}</div>
+</body>
+</html>
+"#,
+        title = inline::html_escape(title),
+        css = theme::DEFAULT_CSS,
+        print_css = theme::PRINT_CSS,
+        custom_css = custom_css.unwrap_or(""),
         sections = sections.concat(),
     )
 }
@@ -80,7 +133,7 @@ pub fn render_deck(meta: &DeckMeta, slides: &[SlideSource], asset_dir: &Path) ->
         sections.push(rendered.html);
     }
     RenderResult {
-        html: assemble_page(meta, &sections, None),
+        html: assemble_page(meta, &sections, &PageOptions::default()),
         warnings,
     }
 }

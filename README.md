@@ -94,7 +94,12 @@ cargo run -p mirzam-cli -- build examples/demo.md -o out
 
 # 開発サーバ: ホットリロード付き(http://localhost:4321)
 cargo run -p mirzam-cli -- serve examples/demo.md
+
+# PDF エクスポート(ヘッドレス Chromium 使用)
+cargo run -p mirzam-cli -- export pdf examples/demo.md -o demo.pdf
 ```
+
+frontmatter の `css: custom.css` でテーマの CSS 変数(色・フォント等)を上書きできる。数式(`$...$`)はビルド時に MathML へ変換されるため、数式が多くてもクライアントは重くならない。
 
 ビューア操作: `← →` ページ移動 / `N` スピーカーノート / `F` 全画面。
 
@@ -102,4 +107,4 @@ serve は保存のたびに**変更されたスライドだけ**を再レンダ�
 
 ## ステータス
 
-Phase 0 スパイク完了(build / serve が動作)。次は Phase 1(MVP)— KaTeX 統合、PDF エクスポート、テーマカスタム等。スコープは [docs/roadmap.md](docs/roadmap.md) を参照。
+Phase 1(MVP)の機能実装がほぼ完了: build / serve(差分ホットリロード)/ export pdf / 数式(MathML)/ カスタム CSS / スピーカーノート。実測値と残タスクは [docs/roadmap.md](docs/roadmap.md) を参照。

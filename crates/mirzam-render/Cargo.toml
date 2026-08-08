@@ -13,3 +13,4 @@ mirzam-layout.workspace = true
 comrak = "0.39"
 regex = "1"
 base64 = "0.22"
+latex2mathml = "0.2"
