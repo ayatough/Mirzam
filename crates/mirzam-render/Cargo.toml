@@ -1,0 +1,15 @@
+[package]
+name = "mirzam-render"
+description = "Scene -> HTML rendering with the built-in viewer runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+mirzam-core.workspace = true
+mirzam-syntax.workspace = true
+mirzam-layout.workspace = true
+comrak = "0.39"
+regex = "1"
+base64 = "0.22"

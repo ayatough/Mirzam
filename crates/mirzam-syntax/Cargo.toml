@@ -1,0 +1,9 @@
+[package]
+name = "mirzam-syntax"
+description = "Source-level parsing: frontmatter, transclusion, slide splitting, pane/div extraction"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]

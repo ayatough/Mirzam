@@ -1,0 +1,17 @@
+[package]
+name = "mirzam-cli"
+description = "Mirzam command line interface"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "mirzam"
+path = "src/main.rs"
+
+[dependencies]
+mirzam-syntax.workspace = true
+mirzam-core.workspace = true
+mirzam-layout.workspace = true
+mirzam-render.workspace = true

@@ -1,0 +1,9 @@
+[package]
+name = "mirzam-layout"
+description = "ASCII pane grid -> proportional grid layout resolver"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
