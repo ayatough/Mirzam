@@ -223,13 +223,15 @@ pub fn render_inline(md: &str) -> String {
     t.to_string()
 }
 
-/// comrak による Markdown → HTML 変換(raw HTML 許可、GFM 拡張)
+/// comrak による Markdown → HTML 変換(raw HTML 許可、GFM 拡張、CJK 強調対応)
 pub fn render_markdown(md: &str) -> String {
     let mut options = comrak::Options::default();
     options.extension.table = true;
     options.extension.strikethrough = true;
     options.extension.tasklist = true;
-    options.render.unsafe_ = true;
+    // 「**ページ座標(%)**で」のような CJK と記号が隣接する強調を正しく解釈する
+    options.extension.cjk_friendly_emphasis = true;
+    options.render.r#unsafe = true;
     comrak::markdown_to_html(md, &options)
 }
 
@@ -301,6 +303,12 @@ mod tests {
         let out = preprocess("$\\sqrt[3]{x}$\n");
         assert!(out.contains("<math"));
         assert!(!out.contains("<span>3</span>"));
+    }
+
+    #[test]
+    fn cjk_emphasis_with_punctuation() {
+        let out = render_markdown("図形は**ページ座標(%)**で宣言する\n");
+        assert!(out.contains("<strong>ページ座標(%)</strong>"), "{out}");
     }
 
     #[test]

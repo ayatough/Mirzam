@@ -175,11 +175,39 @@ fn render_slide(slide: &SlideSource, index: usize, warnings: &mut Vec<String>) -
         None => render_single_pane_slide(slide),
     };
 
+    // shape ブロック → 静的 SVG レイヤ(ページ座標系、スケール自動追従)
+    let mut shapes_html = String::new();
+    if !slide.shapes.is_empty() {
+        let src = slide.shapes.join("\n");
+        let doc = mirzam_shape::parse_shapes(&src);
+        let (svg, shape_errors) = mirzam_shape::render_svg(&doc, 1280, 720);
+        for e in shape_errors {
+            errors.push(format!("スライド {}: {e}", index + 1));
+        }
+        shapes_html = svg;
+    }
+
+    // connect ブロック → JSON をスライドに埋め込み、ランタイムが
+    // レイアウト確定後に端点を解決して描画する(リサイズ・更新に追従)
+    let mut connect_attr = String::new();
+    if !slide.connects.is_empty() {
+        let src = slide.connects.join("\n");
+        let doc = mirzam_connect::parse_connectors(&src);
+        for e in &doc.errors {
+            errors.push(format!("スライド {}: {e}", index + 1));
+        }
+        if !doc.connectors.is_empty() {
+            connect_attr = format!(
+                " data-connectors=\"{}\"",
+                inline::html_escape(&mirzam_connect::to_json(&doc))
+            );
+        }
+    }
+
     // 未実装フェーズの予約ブロック(前方互換のためパースだけして表示)
     let mut reserved_html = String::new();
     for (kind, src) in &slide.reserved {
         let phase = match kind {
-            mirzam_syntax::BlockKind::Shape | mirzam_syntax::BlockKind::Connect => "Phase 2",
             mirzam_syntax::BlockKind::Anim => "Phase 3",
         };
         reserved_html.push_str(&format!(
@@ -211,7 +239,7 @@ fn render_slide(slide: &SlideSource, index: usize, warnings: &mut Vec<String>) -
     };
 
     format!(
-        "<section class=\"slide\" data-index=\"{index}\">\n{error_html}{body}{reserved_html}{notes_html}</section>\n"
+        "<section class=\"slide\" data-index=\"{index}\"{connect_attr}>\n{error_html}{body}{shapes_html}{reserved_html}{notes_html}</section>\n"
     )
 }
 

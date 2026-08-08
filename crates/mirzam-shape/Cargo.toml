@@ -1,0 +1,9 @@
+[package]
+name = "mirzam-shape"
+description = "Shape DSL parser and build-time SVG layer renderer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]

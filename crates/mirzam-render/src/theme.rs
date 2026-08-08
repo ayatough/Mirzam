@@ -91,6 +91,15 @@ blockquote { border-left: 4px solid var(--mz-accent2); margin: .5em 0; padding: 
 
 img, video { max-width: 100%; max-height: 100%; }
 
+/* 図形レイヤ(ビルド時 SVG)とコネクタレイヤ(ランタイム描画) */
+:root { --mz-shape-fill: #eef1fb; }
+svg.mz-shapes, svg.mz-connect {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; overflow: visible;
+}
+.mz-shape-label { font-size: 22px; fill: var(--mz-fg); font-family: inherit; }
+.mz-shape-label.small, text.small { font-size: 16px; fill: var(--mz-muted); }
+
 /* 未実装フェーズの予約ブロック */
 .mz-reserved {
   position: absolute; right: 14px; bottom: 12px;
@@ -152,6 +161,73 @@ pub const VIEWER_JS: &str = r#"
     hud.textContent = `${cur + 1} / ${ss.length}`;
     history.replaceState(null, '', '#' + (cur + 1));
     renderNotes();
+    // コネクタはレイアウト確定後に端点を解決する
+    requestAnimationFrame(() => drawConnectors(ss[cur]));
+  }
+
+  // ---- コネクタ描画(レイアウト変更に自動追従する仕組みの本体) ----
+  // data-connectors の宣言を、表示時点の実レイアウトから毎回ルーティングする。
+  const NS = 'http://www.w3.org/2000/svg';
+  function drawConnectors(sec) {
+    if (!sec) return;
+    let svg = sec.querySelector('svg.mz-connect');
+    if (!sec.dataset.connectors) { if (svg) svg.remove(); return; }
+    let conns;
+    try { conns = JSON.parse(sec.dataset.connectors); } catch { return; }
+    if (!svg) {
+      svg = document.createElementNS(NS, 'svg');
+      svg.setAttribute('class', 'mz-connect');
+      svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+      svg.setAttribute('preserveAspectRatio', 'none');
+      sec.appendChild(svg);
+    }
+    const secRect = sec.getBoundingClientRect();
+    if (secRect.width === 0) return;
+    const sx = W / secRect.width, sy = H / secRect.height;
+    // 要素の矩形をスライド論理座標系へ
+    const box = (id) => {
+      const el = sec.querySelector('#' + CSS.escape(id));
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return {
+        x: (r.left - secRect.left) * sx, y: (r.top - secRect.top) * sy,
+        w: r.width * sx, h: r.height * sy,
+      };
+    };
+    const edgePt = (b, e) => ({
+      n: { x: b.x + b.w / 2, y: b.y },
+      s: { x: b.x + b.w / 2, y: b.y + b.h },
+      e: { x: b.x + b.w, y: b.y + b.h / 2 },
+      w: { x: b.x, y: b.y + b.h / 2 },
+      c: { x: b.x + b.w / 2, y: b.y + b.h / 2 },
+    })[e];
+    let out = '';
+    for (const c of conns) {
+      const a = box(c.from), b = box(c.to);
+      if (!a || !b) continue;
+      // 辺の指定が無ければ、相対位置から自然な辺を選ぶ
+      const dx = (b.x + b.w / 2) - (a.x + a.w / 2);
+      const dy = (b.y + b.h / 2) - (a.y + a.h / 2);
+      const horiz = Math.abs(dx) > Math.abs(dy);
+      const ae = c.fromEdge || (horiz ? (dx > 0 ? 'e' : 'w') : (dy > 0 ? 's' : 'n'));
+      const be = c.toEdge || (horiz ? (dx > 0 ? 'w' : 'e') : (dy > 0 ? 'n' : 's'));
+      const p = edgePt(a, ae), q = edgePt(b, be);
+      const color = c.color || 'var(--mz-accent1)';
+      const dash = c.dashed ? ' stroke-dasharray="8 6"' : '';
+      // 軽いベジェで結ぶ(curve=0 で直線)
+      const k = c.curve == null ? 0.25 : c.curve;
+      const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
+      const nx = -(q.y - p.y) * k, ny = (q.x - p.x) * k;
+      out += `<path d="M ${p.x} ${p.y} Q ${mx + nx} ${my + ny} ${q.x} ${q.y}" fill="none" stroke="${color}" stroke-width="2.5"${dash}/>`;
+      const head = (tip, from) => {
+        const ang = Math.atan2(tip.y - from.y, tip.x - from.x);
+        const L = 12, S = 0.45;
+        return `<polygon points="${tip.x},${tip.y} ${tip.x - L * Math.cos(ang - S)},${tip.y - L * Math.sin(ang - S)} ${tip.x - L * Math.cos(ang + S)},${tip.y - L * Math.sin(ang + S)}" fill="${color}"/>`;
+      };
+      if (c.arrow === 'end' || c.arrow === 'both') out += head(q, { x: mx + nx, y: my + ny });
+      if (c.arrow === 'both') out += head(p, { x: mx + nx, y: my + ny });
+    }
+    svg.innerHTML = out;
   }
 
   function renderNotes() {
@@ -179,7 +255,8 @@ pub const VIEWER_JS: &str = r#"
     (e.clientX - r.left) / r.width < 0.3 ? show(cur - 1) : show(cur + 1);
   });
 
-  addEventListener('resize', fit);
+  addEventListener('resize', () => { fit(); show(cur); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => show(cur));
   fit();
   show(cur);
 })();

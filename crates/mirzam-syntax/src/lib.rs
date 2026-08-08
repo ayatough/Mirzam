@@ -160,27 +160,21 @@ fn is_slide_break(trimmed: &str) -> bool {
     trimmed.len() >= 3 && trimmed.chars().all(|c| c == '-')
 }
 
-/// 予約 fenced block の種別
+/// 予約 fenced block の種別(未実装フェーズのもの)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlockKind {
-    Shape,
-    Connect,
     Anim,
 }
 
 impl BlockKind {
     pub fn as_str(&self) -> &'static str {
         match self {
-            BlockKind::Shape => "shape",
-            BlockKind::Connect => "connect",
             BlockKind::Anim => "anim",
         }
     }
 
     fn from_info(info: &str) -> Option<Self> {
         match info {
-            "shape" => Some(BlockKind::Shape),
-            "connect" => Some(BlockKind::Connect),
             "anim" => Some(BlockKind::Anim),
             _ => None,
         }
@@ -198,6 +192,10 @@ pub struct SlideSource {
     pub loose: String,
     /// スピーカーノート
     pub notes: Vec<String>,
+    /// ```shape ブロック(複数可、連結して扱う)
+    pub shapes: Vec<String>,
+    /// ```connect ブロック
+    pub connects: Vec<String>,
     /// 予約ブロック(未実装フェーズのもの)
     pub reserved: Vec<(BlockKind, String)>,
 }
@@ -223,6 +221,10 @@ pub fn parse_slide(src: &str) -> SlideSource {
             }
             if info == "pane" || info.starts_with("pane ") {
                 slide.layout = Some(body);
+            } else if info == "shape" {
+                slide.shapes.push(body);
+            } else if info == "connect" {
+                slide.connects.push(body);
             } else if let Some(kind) = BlockKind::from_info(info) {
                 slide.reserved.push((kind, body));
             } else {
@@ -368,8 +370,8 @@ loose text
         assert!(s.panes[0].1.contains("**world**"));
         assert!(s.loose.contains("## Title"));
         assert!(s.loose.contains("loose text"));
-        assert_eq!(s.reserved.len(), 1);
-        assert_eq!(s.reserved[0].0, BlockKind::Connect);
+        assert_eq!(s.connects.len(), 1);
+        assert!(s.connects[0].contains("#x -> #y"));
         assert_eq!(s.notes, vec!["remember this"]);
     }
 

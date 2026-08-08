@@ -42,7 +42,8 @@
 | `mirzam-core` | Deck IR 定義。変数・式評価(`{{ }}`)、include 解決、アンカー表、テーマ解決、スライド単位のハッシュ/キャッシュ管理 | — | **MVP** |
 | `mirzam-layout` | `pane` ブロックの ASCII グリッド解釈 → 比率グリッド(CSS grid-template-areas 相当)→ ペイン矩形。shape ブロックの座標解決 | taffy(必要になれば) | **MVP**(pane のみ) |
 | `mirzam-render` | Scene Graph → HTML/CSS/SVG 文字列生成。テーマ(CSS variables)適用 | — | **MVP** |
-| `mirzam-connect` | アンカー(テキスト箇所・図形要素)間のコネクタルーティング。端点解決アルゴリズムを HTML ランタイムと共有できる形(WASM)で提供 | — | Phase 2 |
+| `mirzam-shape` | `shape` ブロック DSL のパースとビルド時 SVG レイヤ生成(ページ座標系 %、静的な図形間矢印の端点解決を含む) | — | **実装済** |
+| `mirzam-connect` | `connect` ブロック DSL のパース。端点の実座標解決とルーティングは表示時にビューアランタイムが行う(リサイズ・ホットリロードに追従)。WASM でのアルゴリズム共有は将来 | serde_json | **実装済**(ルーティングは JS) |
 | `mirzam-anim` | `anim` ブロック → タイムライン IR(トリガ・対象・エフェクト・イージング)。CSS keyframes / Web Animations API 命令列へコンパイル | — | Phase 3 |
 | `mirzam-cli` | `mirzam build / serve / export`。ファイル監視 + WebSocket ホットリロード | notify, axum | **MVP** |
 | `mirzam-wasm` | コアの WASM バインディング(エディタ拡張・ブラウザ編集用) | wasm-bindgen | Phase 2 |

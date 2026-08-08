@@ -213,9 +213,9 @@ text   #cap    at(70%, 82%) "ヒット率 95%" .small
 
 | info string | 役割 | フェーズ |
 |---|---|---|
-| `pane` | レイアウト定義 | MVP |
-| `shape` | 図形描画 | Phase 2 |
-| `connect` | コネクタ | Phase 2 |
+| `pane` | レイアウト定義 | **実装済** |
+| `shape` | 図形描画 | **実装済**(基本サブセット) |
+| `connect` | コネクタ | **実装済**(基本サブセット) |
 | `anim` | アニメーション | Phase 3 |
 | `math typst` | Typst 数式 | Phase 4 |
 | `chart` | データ駆動グラフ(下記) | Phase 4(構想) |

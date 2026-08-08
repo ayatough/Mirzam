@@ -76,11 +76,44 @@ Markdown で書く、第三のスライドツール
 ![ベンチマーク結果](img/bench.svg){fit=contain}
 :::
 
-```connect
-#inc -> #fig/bar-mirzam : arrow color=@accent1
+<!-- note: 差分レンダリングの数値は roadmap の実測表を参照 -->
+
+---
+
+```pane
++------------------+------------------+
+|  head                               |
++------------------+------------------+
+|                  |                  |
+|  main            |  canvas          |
+|                  |                  |
+|                  |                  |
++------------------+------------------+
 ```
 
-<!-- note: connect ブロックは Phase 2 機能。MVP では「未対応」表示になる -->
+::: pane head
+## 図形とコネクタ
+:::
+
+::: pane main
+- 図形は**ページ座標(%)**で宣言する
+- 本文中の [パーサ]{#t-parser .u} や [レンダラ]{#t-render .u} から、図の要素へ矢印を張れる
+- コネクタの端点は表示時に解決されるため、ウィンドウサイズやレイアウトが変わっても**自動で追従**する
+:::
+
+```shape
+rect  #parser   at(72%, 34%) size(30%, 16%) label="mirzam-syntax"
+rect  #renderer at(72%, 70%) size(30%, 16%) label="mirzam-render" fill=@shape-fill stroke=@accent2
+arrow from(#parser.s) to(#renderer.n)
+text  at(72%, 88%) "shape はビルド時に SVG 合成" .small
+```
+
+```connect
+#t-parser -> #parser.w : color=@accent2
+#t-render -> #renderer.w : color=@accent2 style=dashed
+```
+
+<!-- note: connect はランタイムで毎回ルーティングされる(リサイズしても矢印がついてくる) -->
 
 ---
 
