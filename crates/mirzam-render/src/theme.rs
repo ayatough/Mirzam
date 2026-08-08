@@ -185,6 +185,24 @@ pub const VIEWER_JS: &str = r#"
 })();
 "#;
 
+/// STIX Two Math(OFL ライセンス、assets/STIX-LICENSE.txt)を data URI で
+/// 埋め込む @font-face CSS。数式を含むページにのみ付加する(約 540KB)。
+/// 閲覧側マシンに数式フォントが無くても描画品質を保証するため同梱する。
+pub fn math_font_css() -> &'static str {
+    use base64::Engine as _;
+    use std::sync::OnceLock;
+    static CSS: OnceLock<String> = OnceLock::new();
+    CSS.get_or_init(|| {
+        let woff2 = include_bytes!("../assets/stix-two-math.woff2");
+        let b64 = base64::engine::general_purpose::STANDARD.encode(woff2);
+        format!(
+            "@font-face {{ font-family: 'STIX Two Math'; \
+             src: url(data:font/woff2;base64,{b64}) format('woff2'); font-display: swap; }}\n\
+             math {{ font-family: 'STIX Two Math', math; }}"
+        )
+    })
+}
+
 /// PDF 印刷用の CSS オーバーライド(DEFAULT_CSS の後に適用)。
 /// スライド寸法と @page サイズは assemble_print_page が動的に付加する。
 pub const PRINT_CSS: &str = r#"

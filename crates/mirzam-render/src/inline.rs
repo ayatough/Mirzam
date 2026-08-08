@@ -63,12 +63,42 @@ fn map_outside_fences(src: &str, f: impl Fn(&str) -> String) -> String {
     out
 }
 
-/// Markdown ソースを raw HTML 混在ソースに前処理する
+/// コードフェンス外の連続領域(複数行)に変換 `f` を適用する
+fn map_fence_segments(src: &str, f: impl Fn(&str) -> String) -> String {
+    let mut out = String::with_capacity(src.len());
+    let mut segment = String::new();
+    let mut in_code = false;
+    for line in src.lines() {
+        if line.trim_start().starts_with("```") {
+            if !in_code {
+                out.push_str(&f(&segment));
+                segment.clear();
+            }
+            in_code = !in_code;
+            out.push_str(line);
+            out.push('\n');
+        } else if in_code {
+            out.push_str(line);
+            out.push('\n');
+        } else {
+            segment.push_str(line);
+            segment.push('\n');
+        }
+    }
+    out.push_str(&f(&segment));
+    out
+}
+
+/// Markdown ソースを raw HTML 混在ソースに前処理する。
+/// 数式を最初に処理する: TeX 中の `\sqrt[3]{x}` 等がスパン属性記法
+/// `[...]{...}` に誤マッチするのを防ぐため。
 pub fn preprocess(src: &str) -> String {
-    let src = map_outside_fences(src, |line| heading_attrs(line));
-    let src = map_outside_fences(&src, |line| image_attrs(line));
-    let src = map_outside_fences(&src, |line| span_attrs(line));
-    map_outside_fences(&src, |line| math_spans(line))
+    // $$...$$ は複数行にまたがれるため、フェンス外セグメント単位で処理
+    let src = map_fence_segments(src, block_math);
+    let src = map_outside_fences(&src, inline_math);
+    let src = map_outside_fences(&src, heading_attrs);
+    let src = map_outside_fences(&src, image_attrs);
+    map_outside_fences(&src, span_attrs)
 }
 
 /// `## Text {attrs}` → `<h2 ...>Text(inline render)</h2>`
@@ -138,31 +168,42 @@ fn span_attrs(line: &str) -> String {
     .into_owned()
 }
 
-/// `$$...$$` と `$...$` を MathML に変換する(ビルド時レンダリング)。
-/// 変換に失敗した場合は TeX ソースをスタイル付きスパンで表示する。
-fn math_spans(line: &str) -> String {
+/// `$$...$$`(複数行可)を MathML(display=block)に変換する
+fn block_math(segment: &str) -> String {
     static BLOCK: OnceLock<Regex> = OnceLock::new();
-    static INLINE: OnceLock<Regex> = OnceLock::new();
     let b = re(&BLOCK, r"\$\$([^$]+)\$\$");
-    let line = b
-        .replace_all(line, |c: &regex::Captures| {
-            math_html(c[1].trim(), latex2mathml::DisplayStyle::Block)
-        })
-        .into_owned();
-    let i = re(&INLINE, r"\$([^$\n]+)\$");
-    i.replace_all(&line, |c: &regex::Captures| {
-        math_html(c[1].trim(), latex2mathml::DisplayStyle::Inline)
+    b.replace_all(segment, |c: &regex::Captures| {
+        math_html(c[1].trim(), math_core::MathDisplay::Block)
     })
     .into_owned()
 }
 
-fn math_html(tex: &str, style: latex2mathml::DisplayStyle) -> String {
-    match latex2mathml::latex_to_mathml(tex, style) {
-        Ok(mathml) => mathml,
+/// `$...$` を MathML(inline)に変換する
+fn inline_math(line: &str) -> String {
+    static INLINE: OnceLock<Regex> = OnceLock::new();
+    let i = re(&INLINE, r"\$([^$\n]+)\$");
+    i.replace_all(line, |c: &regex::Captures| {
+        math_html(c[1].trim(), math_core::MathDisplay::Inline)
+    })
+    .into_owned()
+}
+
+fn math_converter() -> &'static math_core::LatexToMathML {
+    static CONV: OnceLock<math_core::LatexToMathML> = OnceLock::new();
+    CONV.get_or_init(|| {
+        math_core::LatexToMathML::new(math_core::MathCoreConfig::default())
+            .expect("default math config")
+    })
+}
+
+/// LaTeX → MathML 変換。失敗時は TeX ソースをスタイル付きスパンで表示する。
+fn math_html(tex: &str, display: math_core::MathDisplay) -> String {
+    match math_converter().convert_with_local_state(tex, display) {
+        Ok(r) => r.mathml,
         Err(e) => {
-            let cls = match style {
-                latex2mathml::DisplayStyle::Block => "math math-block math-error",
-                latex2mathml::DisplayStyle::Inline => "math math-error",
+            let cls = match display {
+                math_core::MathDisplay::Block => "math-error math-block",
+                math_core::MathDisplay::Inline => "math-error",
             };
             format!(
                 "<span class=\"{cls}\" title=\"{}\">{}</span>",
@@ -237,6 +278,29 @@ mod tests {
         let out = preprocess("$\\frac{1$\n");
         assert!(out.contains("math-error"));
         assert!(out.contains("\\frac{1"));
+    }
+
+    #[test]
+    fn multiline_block_math() {
+        let out = preprocess("$$\n\\int_0^1 x\\, dx\n= \\frac{1}{2}\n$$\n");
+        assert!(out.contains("<math"));
+        assert!(out.contains("display=\"block\""));
+        assert!(!out.contains("$$"));
+    }
+
+    #[test]
+    fn subsup_is_not_staircase() {
+        // latex2mathml 0.2 は x_{84}^{7} を msub(msup(...)) に誤変換していた
+        let out = preprocess("$x_{84}^{7}$\n");
+        assert!(out.contains("<msubsup>"));
+    }
+
+    #[test]
+    fn tex_brackets_not_eaten_by_span_attrs() {
+        // \sqrt[3]{x} の [3]{x} がスパン属性記法に誤マッチしないこと
+        let out = preprocess("$\\sqrt[3]{x}$\n");
+        assert!(out.contains("<math"));
+        assert!(!out.contains("<span>3</span>"));
     }
 
     #[test]

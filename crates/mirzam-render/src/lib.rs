@@ -46,10 +46,20 @@ pub struct PageOptions {
     pub custom_css: Option<String>,
 }
 
+/// セクション列に数式が含まれるか(数式フォント同梱の要否)
+pub fn sections_have_math(sections: &[String]) -> bool {
+    sections.iter().any(|s| s.contains("<math"))
+}
+
 /// レンダリング済みセクション列をビューア入りの完全な HTML ページに組み立てる。
 pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -> String {
     let (w, h) = meta.slide_size();
     let title = meta.title.as_deref().unwrap_or("Mirzam Deck");
+    let math_css = if sections_have_math(sections) {
+        theme::math_font_css()
+    } else {
+        ""
+    };
     let live_js = match opts.live_version {
         Some(v) => format!(
             "<script>window.__MIRZAM_V__={v};{}</script>",
@@ -66,6 +76,7 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <meta name="generator" content="mirzam 0.0.1">
 <title>{title}</title>
 <style>{css}</style>
+<style>{math_css}</style>
 <style>{custom_css}</style>
 </head>
 <body>
@@ -94,6 +105,11 @@ pub fn assemble_print_page(
 ) -> String {
     let (w, h) = meta.slide_size();
     let title = meta.title.as_deref().unwrap_or("Mirzam Deck");
+    let math_css = if sections_have_math(sections) {
+        theme::math_font_css()
+    } else {
+        ""
+    };
     format!(
         r#"<!doctype html>
 <html lang="ja">
@@ -102,6 +118,7 @@ pub fn assemble_print_page(
 <meta name="generator" content="mirzam 0.0.1">
 <title>{title}</title>
 <style>{css}</style>
+<style>{math_css}</style>
 <style>{print_css}
 @page {{ size: {w}px {h}px; margin: 0; }}
 section.slide {{ width: {w}px; height: {h}px; }}

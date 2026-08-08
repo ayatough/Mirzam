@@ -152,6 +152,8 @@ pub fn build_deck(input: &Path, cache: &mut RenderCache) -> Result<BuildOutput, 
         meta.author.hash(&mut h);
         meta.aspect.hash(&mut h);
         custom_css.hash(&mut h);
+        // 数式の有無で数式フォントの同梱が変わる(serve は全体リロードで反映)
+        mirzam_render::sections_have_math(&sections).hash(&mut h);
         h.finish()
     };
 
