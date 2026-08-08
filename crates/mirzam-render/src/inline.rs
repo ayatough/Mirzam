@@ -144,12 +144,62 @@ fn image_attrs(line: &str) -> String {
         } else {
             format!(" style=\"{style}\"")
         };
+        if is_video(src) {
+            return video_html(src, &alt, &attrs, &style_attr);
+        }
         format!(
             "<img src=\"{src}\" alt=\"{alt}\"{}{style_attr}>",
             attrs.html_id_class()
         )
     })
     .into_owned()
+}
+
+/// 画像記法で参照されたファイルが動画かどうか(GIF は img のまま扱う)
+fn is_video(src: &str) -> bool {
+    let path = src.split(['?', '#']).next().unwrap_or(src);
+    matches!(
+        path.rsplit('.').next().map(str::to_ascii_lowercase).as_deref(),
+        Some("mp4" | "webm" | "ogv" | "mov" | "m4v")
+    )
+}
+
+/// `![alt](demo.mp4){autoplay muted loop controls poster=...}` → `<video>`
+fn video_html(src: &str, alt: &str, attrs: &Attrs, style_attr: &str) -> String {
+    // 真偽属性はクラス記法(`.autoplay`)でも `key=true` でも書ける
+    let flag = |name: &str| -> bool {
+        attrs.classes.iter().any(|c| c == name)
+            || matches!(attrs.kv.get(name).map(String::as_str), Some("" | "true"))
+    };
+    let mut flags = String::new();
+    // ブラウザは音ありの自動再生を拒否するため、autoplay 指定時は muted を強制する
+    let autoplay = flag("autoplay");
+    for (name, on) in [
+        ("autoplay", autoplay),
+        ("muted", flag("muted") || autoplay),
+        ("loop", flag("loop")),
+        ("controls", flag("controls")),
+        ("playsinline", true),
+    ] {
+        if on {
+            flags.push(' ');
+            flags.push_str(name);
+        }
+    }
+    let poster = attrs
+        .kv
+        .get("poster")
+        .map(|p| format!(" poster=\"{p}\""))
+        .unwrap_or_default();
+    // id/class から動画用の真偽フラグ由来のクラスは除く
+    let mut carried = attrs.clone();
+    carried
+        .classes
+        .retain(|c| !matches!(c.as_str(), "autoplay" | "muted" | "loop" | "controls"));
+    format!(
+        "<video src=\"{src}\" title=\"{alt}\"{}{poster}{flags}{style_attr}></video>",
+        carried.html_id_class()
+    )
 }
 
 /// `[text]{attrs}` → `<span ...>text</span>`(リンク `[t](u)` にはマッチしない)
@@ -257,6 +307,26 @@ mod tests {
         let out = preprocess("see [word]{#w .u} and [link](http://x)\n");
         assert!(out.contains("<span id=\"w\" class=\"u\">word</span>"));
         assert!(out.contains("[link](http://x)"));
+    }
+
+    #[test]
+    fn video_from_image_syntax() {
+        let out = preprocess("![デモ](media/demo.mp4){.autoplay .loop .controls fit=contain}\n");
+        assert!(out.contains("<video src=\"media/demo.mp4\""));
+        assert!(out.contains(" autoplay"));
+        // autoplay 指定時は muted が強制される(ブラウザの自動再生ポリシー)
+        assert!(out.contains(" muted"));
+        assert!(out.contains(" loop"));
+        assert!(out.contains(" controls"));
+        assert!(out.contains("object-fit:contain"));
+        // フラグはクラス属性に残さない
+        assert!(!out.contains("class=\"autoplay"));
+    }
+
+    #[test]
+    fn gif_stays_an_image() {
+        let out = preprocess("![動き](a.gif){w=60%}\n");
+        assert!(out.contains("<img src=\"a.gif\""));
     }
 
     #[test]

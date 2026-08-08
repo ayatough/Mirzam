@@ -9,7 +9,9 @@ pub use inline::{parse_attrs, preprocess, render_markdown};
 use mirzam_core::DeckMeta;
 use mirzam_layout::{parse_grid, GridSpec};
 use mirzam_syntax::SlideSource;
+use regex::Regex;
 use std::path::Path;
+use std::sync::OnceLock;
 
 pub struct RenderResult {
     pub html: String,
@@ -97,6 +99,36 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
     )
 }
 
+/// 印刷用に `<video>` を静止画へ置換する。
+/// poster が指定されていればその画像を、無ければ再生アイコン付きの
+/// プレースホルダを出す(PDF は静的なので動画は再生できないため)。
+fn videos_to_stills(html: &str) -> String {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| {
+        Regex::new(r#"<video\b([^>]*)></video>"#).expect("static regex")
+    });
+    static ATTR: OnceLock<Regex> = OnceLock::new();
+    let attr_re = ATTR.get_or_init(|| {
+        Regex::new(r#"(\w[\w-]*)="([^"]*)""#).expect("static regex")
+    });
+    re.replace_all(html, |c: &regex::Captures| {
+        let mut attrs: std::collections::BTreeMap<&str, &str> = Default::default();
+        for a in attr_re.captures_iter(&c[1]) {
+            let (k, v) = (a.get(1).unwrap().as_str(), a.get(2).unwrap().as_str());
+            attrs.insert(k, v);
+        }
+        let style = attrs.get("style").copied().unwrap_or("");
+        let title = attrs.get("title").copied().unwrap_or("");
+        match attrs.get("poster") {
+            Some(poster) => format!("<img src=\"{poster}\" alt=\"{title}\" style=\"{style}\">"),
+            None => format!(
+                "<div class=\"mz-video-still\" style=\"{style}\"><span>▶</span><em>{title}</em></div>"
+            ),
+        }
+    })
+    .into_owned()
+}
+
 /// PDF 印刷用ページ(全スライドを固定サイズで縦に並べ、1 枚 = 1 ページ)
 pub fn assemble_print_page(
     meta: &DeckMeta,
@@ -110,6 +142,8 @@ pub fn assemble_print_page(
     } else {
         ""
     };
+    let sections: Vec<String> = sections.iter().map(|s| videos_to_stills(s)).collect();
+    let sections = &sections;
     format!(
         r#"<!doctype html>
 <html lang="ja">
@@ -357,6 +391,22 @@ mod tests {
         let meta = DeckMeta::default();
         let out = render_deck(&meta, &[slide], Path::new("."));
         assert!(out.warnings.iter().any(|w| w.contains("zzz")));
+    }
+
+    #[test]
+    fn print_replaces_video_with_poster() {
+        let html = "<video src=\"a.mp4\" title=\"demo\" poster=\"p.png\" autoplay style=\"width:100%\"></video>";
+        let out = videos_to_stills(html);
+        assert!(out.contains("<img src=\"p.png\""));
+        assert!(out.contains("width:100%"));
+        assert!(!out.contains("<video"));
+    }
+
+    #[test]
+    fn print_video_without_poster_gets_placeholder() {
+        let out = videos_to_stills("<video src=\"a.mp4\" title=\"デモ動画\"></video>");
+        assert!(out.contains("mz-video-still"));
+        assert!(out.contains("デモ動画"));
     }
 
     #[test]

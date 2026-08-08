@@ -202,12 +202,15 @@ text   #cap    at(70%, 82%) "ヒット率 95%" .small
 ## 7. メディア
 
 ```markdown
-![デモ動画](media/demo.mp4){pane=fig autoplay muted loop controls}
+![デモ動画](media/demo.webm){.autoplay .loop .controls poster=media/first.png fit=contain}
 ![動作 GIF](media/anim.gif){w=60%}
 ```
 
-- `mp4 / webm / gif` を画像記法で統一。動画属性は HTML video に対応するものをそのまま。
-- PDF エクスポート時はポスターフレーム(先頭フレーム or `poster=` 指定)に置換。
+- 画像記法のまま、拡張子で出力要素が切り替わる: `mp4 / webm / ogv / mov` → `<video>`、`gif` などの画像 → `<img>`。
+- 真偽属性は `.autoplay .loop .controls .muted`(クラス記法)。`autoplay` を指定すると `muted` が自動付与される(ブラウザの自動再生ポリシーで無音でないと自動再生できないため)。
+- `poster=` はサムネイル。`fit` / `w` / `h` / `align` は画像と共通。
+- PDF エクスポート時は `poster` の画像に置換。`poster` 未指定なら再生アイコン付きのプレースホルダになる。
+- 配布時の注意: `mp4`(H.264)はプロプライエタリコーデック非搭載の Chromium ビルドで再生できないことがある。確実性を優先するなら `webm` を使う。
 
 ## 8. 予約 fenced block 一覧
 

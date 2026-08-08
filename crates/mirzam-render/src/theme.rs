@@ -94,6 +94,17 @@ p code, li code { background: #f3f5fb; border-radius: 4px; padding: .1em .35em; 
 blockquote { border-left: 4px solid var(--mz-accent2); margin: .5em 0; padding: .1em 1em; color: var(--mz-muted); }
 
 img, video { max-width: 100%; max-height: 100%; }
+video { background: #000; border-radius: 6px; }
+
+/* PDF 出力時の動画プレースホルダ(poster 未指定の場合) */
+.mz-video-still {
+  display: flex; align-items: center; justify-content: center; gap: .6em;
+  min-height: 200px; height: 100%;
+  background: #f3f5fb; border: 2px dashed var(--mz-border); border-radius: 8px;
+  color: var(--mz-muted);
+}
+.mz-video-still span { font-size: 2em; color: var(--mz-accent1); }
+.mz-video-still em { font-style: normal; font-size: 1.1em; }
 
 /* 図形レイヤ(ビルド時 SVG)とコネクタレイヤ(ランタイム描画) */
 :root { --mz-shape-fill: #eef1fb; }
