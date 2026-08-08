@@ -61,6 +61,10 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - Asset-only changes (replacing an image file) now reach connected clients.
 - `scripts/build-wasm.sh` read the wasm-bindgen version from `Cargo.toml` instead
   of the resolved version in `Cargo.lock`, producing a confusing schema mismatch.
+- A mistyped subcommand (`mirzam server`) printed the usage text with no
+  explanation, which read as if the input file were at fault. It now names the
+  mistake and suggests the nearest command. `--help` prints to stdout and exits
+  0, and the usage text no longer loses its indentation.
 - An image alone in a pane sat on a text baseline, so its descender space pushed
   it a few pixels past the band. Such an image is now laid out as a block.
 - Fenced blocks were matched without regard to fence length, so a `pane` or

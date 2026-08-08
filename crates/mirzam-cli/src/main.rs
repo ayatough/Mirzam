@@ -114,8 +114,46 @@ fn main() -> ExitCode {
             println!("mirzam {}", env!("CARGO_PKG_VERSION"));
             ExitCode::SUCCESS
         }
-        _ => usage(""),
+        // Asking for help is not an error: it goes to stdout and succeeds.
+        Some("--help" | "-h" | "help") => {
+            println!("{}", help_text());
+            ExitCode::SUCCESS
+        }
+        None => usage(""),
+        Some(other) => usage(&unknown_command(other)),
     }
+}
+
+/// Message for an unrecognised subcommand, with a suggestion when one is close.
+/// `mirzam server` instead of `mirzam serve` should not read as "your file is
+/// wrong"; it should name the mistake.
+fn unknown_command(given: &str) -> String {
+    const COMMANDS: [&str; 3] = ["build", "serve", "export"];
+    let close = COMMANDS
+        .iter()
+        .map(|c| (edit_distance(given, c), *c))
+        .filter(|(d, _)| *d <= 2)
+        .min_by_key(|(d, _)| *d);
+    match close {
+        Some((_, c)) => format!("unknown command `{given}` - did you mean `{c}`?"),
+        None => format!("unknown command `{given}`"),
+    }
+}
+
+/// Levenshtein distance, over chars so non-ASCII input cannot panic.
+fn edit_distance(a: &str, b: &str) -> usize {
+    let b: Vec<char> = b.chars().collect();
+    let mut prev: Vec<usize> = (0..=b.len()).collect();
+    let mut curr = vec![0; b.len() + 1];
+    for (i, ca) in a.chars().enumerate() {
+        curr[0] = i + 1;
+        for (j, cb) in b.iter().enumerate() {
+            let cost = usize::from(ca != *cb);
+            curr[j + 1] = (prev[j] + cost).min(prev[j + 1] + 1).min(curr[j] + 1);
+        }
+        std::mem::swap(&mut prev, &mut curr);
+    }
+    prev[b.len()]
 }
 
 fn run(result: Result<(), String>) -> ExitCode {
@@ -132,17 +170,33 @@ fn usage(msg: &str) -> ExitCode {
     if !msg.is_empty() {
         eprintln!("error: {msg}\n");
     }
-    eprintln!(
-        "mirzam {} - a Markdown-based slide renderer\n\n\
-         Usage:\n  mirzam build <input.md> [-o <out_dir>] [--split h1|h2|h3]\n  mirzam serve <input.md> [-p <port>]\n  mirzam export pdf <input.md> [-o <out.pdf>] [--chromium <bin>]\n\n\
-         build : write <out_dir>/index.html, a single file with the viewer embedded\n\
-                 --split starts a new slide at every heading of that level, which\n\
-                 turns an ordinary document into a deck without editing it\n\
-         serve : development server with hot reload (default port 4321)\n\
-         export: render a PDF with headless Chromium (also honors MIRZAM_CHROMIUM)",
-        env!("CARGO_PKG_VERSION")
-    );
+    eprintln!("{}", help_text());
     ExitCode::FAILURE
+}
+
+fn help_text() -> String {
+    // A raw string, not `\`-continued lines: the continuation strips the leading
+    // whitespace, which flattened the indentation this text relies on.
+    format!(
+        "mirzam {} - a Markdown-based slide renderer\n{}",
+        env!("CARGO_PKG_VERSION"),
+        r#"
+Usage:
+  mirzam build <input.md> [-o <out_dir>] [--split h1|h2|h3]
+  mirzam serve <input.md> [-p <port>]
+  mirzam export pdf <input.md> [-o <out.pdf>] [--chromium <bin>]
+
+  build   write <out_dir>/index.html, a single file with the viewer embedded
+          --split starts a new slide at every heading of that level, which
+          turns an ordinary document into a deck without editing it
+  serve   development server with hot reload (default port 4321)
+  export  render a PDF with headless Chromium (also honors MIRZAM_CHROMIUM)
+
+Examples:
+  mirzam build examples/showcase.md -o out
+  mirzam serve examples/showcase.md
+  mirzam build README.md --split h2 -o out"#
+    )
 }
 
 fn build(input: &Path, out_dir: &Path, split: Option<u8>) -> Result<(), String> {
@@ -246,4 +300,29 @@ fn find_chromium(explicit: Option<&str>) -> Result<String, String> {
         }
     }
     Err("Chromium not found; pass --chromium or set MIRZAM_CHROMIUM".into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn suggests_the_nearest_command() {
+        assert!(unknown_command("server").contains("did you mean `serve`?"));
+        assert!(unknown_command("buidl").contains("did you mean `build`?"));
+        assert!(unknown_command("exprot").contains("did you mean `export`?"));
+    }
+
+    #[test]
+    fn does_not_guess_when_nothing_is_close() {
+        let msg = unknown_command("render");
+        assert!(msg.contains("unknown command `render`"));
+        assert!(!msg.contains("did you mean"));
+    }
+
+    #[test]
+    fn edit_distance_handles_non_ascii() {
+        assert_eq!(edit_distance("ビルド", "build"), 5);
+        assert_eq!(edit_distance("serve", "serve"), 0);
+    }
 }
