@@ -1,3 +1,4 @@
-media/
+# WASM のビルド成果物のみ無視する(media/preview.js はソース)
+media/mirzam_wasm*
 node_modules/
 *.vsix
