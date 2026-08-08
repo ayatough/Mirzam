@@ -118,5 +118,16 @@ serve は保存のたびに**変更されたスライドだけ**を再レンダ�
 ```bash
 cargo test --workspace                                   # 品質ゲート一式
 cargo run --release -p mirzam-cli --bin mirzam-bench     # 性能ベンチ
-./scripts/build-wasm.sh                                  # WASM ビルド
+./scripts/build-wasm.sh                                  # WASM ビルド(ツールは自動導入)
+./scripts/serve-wasm-demo.sh                             # ブラウザで WASM コアを試す
+./scripts/build-vsix.sh                                  # VSCode 拡張(.vsix)をビルド
 ```
+
+### エディタで使う(VSCode 拡張)
+
+```bash
+./scripts/build-vsix.sh
+code --install-extension editors/vscode/mirzam-preview-0.0.1.vsix
+```
+
+`.md` を開いて `Ctrl+K V`(Mac: `Cmd+K V`)でライブプレビュー。編集すると変更したスライドだけが再描画され、カーソル位置に応じてプレビューが追従します。詳細は [editors/vscode/README.md](editors/vscode/README.md)。

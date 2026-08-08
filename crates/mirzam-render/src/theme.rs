@@ -160,7 +160,7 @@ pub const VIEWER_JS: &str = r#"
   const W = +deck.dataset.slideW, H = +deck.dataset.slideH;
   // ライブ更新で DOM が差し替わるため、スライド一覧は毎回取得する
   const slides = () => Array.from(document.querySelectorAll('section.slide'));
-  let cur = Math.min(Math.max(parseInt(location.hash.slice(1)) || 1, 1), slides().length) - 1;
+  let cur = Math.min(Math.max(parseInt((location.hash || '').slice(1)) || 1, 1), slides().length) - 1;
 
   function fit() {
     const s = Math.min(innerWidth / (W + 40), innerHeight / (H + 40));
@@ -174,7 +174,9 @@ pub const VIEWER_JS: &str = r#"
     cur = Math.min(Math.max(i, 0), ss.length - 1);
     ss.forEach((s, j) => s.classList.toggle('active', j === cur));
     hud.textContent = `${cur + 1} / ${ss.length}`;
-    history.replaceState(null, '', '#' + (cur + 1));
+    // srcdoc iframe(エディタ拡張のプレビュー等)では replaceState が例外を投げる。
+    // ページ位置の記録は付加機能なので、失敗しても以降の処理を止めない
+    try { history.replaceState(null, '', '#' + (cur + 1)); } catch (e) {}
     renderNotes();
     // コネクタはレイアウト確定後に端点を解決する
     requestAnimationFrame(() => drawConnectors(ss[cur]));
@@ -253,6 +255,8 @@ pub const VIEWER_JS: &str = r#"
 
   // ライブ更新後に現在ページの表示状態を復元する
   window.__mirzamRefresh = () => show(cur);
+  // 外部(エディタ拡張など)から特定スライドへ移動させる
+  window.__mirzamGoto = (i) => show(i);
 
   addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); show(cur + 1); }

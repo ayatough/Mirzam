@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mirzam WASM デモ</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; font-family: system-ui, 'Hiragino Sans', 'Noto Sans CJK JP', sans-serif; }
+  body { display: flex; flex-direction: column; background: #14161d; color: #dde1ee; }
+  header { padding: 8px 14px; display: flex; gap: 14px; align-items: center; border-bottom: 1px solid #2a2e3d; }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  header .stat { font-size: 12px; color: #9aa1b8; font-variant-numeric: tabular-nums; }
+  header .stat b { color: #12b8a6; font-weight: 600; }
+  main { flex: 1; display: flex; min-height: 0; }
+  textarea {
+    width: 42%; resize: horizontal; border: 0; border-right: 1px solid #2a2e3d;
+    background: #1b1e28; color: #dde1ee; padding: 14px;
+    font-family: 'SF Mono', Consolas, monospace; font-size: 13px; line-height: 1.6;
+    outline: none;
+  }
+  #preview { flex: 1; border: 0; background: #14161d; }
+  #warnings {
+    max-height: 22%; overflow: auto; padding: 6px 14px; font-size: 12px;
+    color: #ffb4b4; background: #2a1e22; border-top: 1px solid #4a2a2a;
+  }
+  #warnings:empty { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Mirzam WASM デモ</h1>
+  <span class="stat" id="stat">読み込み中…</span>
+  <span class="stat">左を編集すると差分レンダリングされます</span>
+</header>
+<main>
+  <textarea id="src" spellcheck="false"></textarea>
+  <iframe id="preview"></iframe>
+</main>
+<div id="warnings"></div>
+
+<script type="module">
+import init, { Renderer } from './pkg/mirzam_wasm.js';
+
+const SAMPLE = `---
+title: WASM デモ
+aspect: "16:9"
+vars:
+  product: Mirzam
+  price: 1200
+---
+
+# {{product}} {.title-slide}
+
+ブラウザ上で Rust コアが動いています
+
+---
+
+\`\`\`pane
++------------------+------------------+
+|  head                               |
++------------------+------------------+
+|                  |                  |
+|  main            |  fig             |
+|                  |                  |
++------------------+------------------+
+\`\`\`
+
+::: pane head
+## レイアウトと図形
+:::
+
+::: pane main
+- ASCII で書いた枠が **そのままレイアウト** になる
+- 変数と計算: 年額 {{ price * 12 }} 円
+- 数式: $\\int_0^\\infty e^{-x^2}dx = \\frac{\\sqrt{\\pi}}{2}$
+- 本文の [この語]{#anchor .u} から図へ矢印が伸びる
+:::
+
+::: pane fig
+:::
+
+\`\`\`shape
+rect #box at(72%, 55%) size(30%, 18%) label="図形レイヤ"
+\`\`\`
+
+\`\`\`connect
+#anchor -> #box.w : color=@accent2
+\`\`\`
+
+---
+
+## まとめ {.center}
+
+**編集 → 差分レンダリング** がブラウザ内で完結する
+`;
+
+const srcEl = document.getElementById('src');
+const preview = document.getElementById('preview');
+const statEl = document.getElementById('stat');
+const warnEl = document.getElementById('warnings');
+
+await init();
+const renderer = new Renderer();
+srcEl.value = localStorage.getItem('mirzam-src') || SAMPLE;
+
+function fullRender(text) {
+  const t0 = performance.now();
+  const out = renderer.render_page(text);
+  preview.srcdoc = out.html;
+  // 差分計算の基準を表示中の内容に合わせる
+  renderer.reset();
+  renderer.render_changed(text);
+  report(t0, out.slide_count, 'フル', JSON.parse(out.warnings));
+}
+
+function update(text) {
+  const t0 = performance.now();
+  const res = JSON.parse(renderer.render_changed(text));
+  const doc = preview.contentDocument;
+  if (res.structural || !doc || !doc.querySelector('section.slide')) {
+    fullRender(text);
+    return;
+  }
+  for (const [i, html] of res.changes) {
+    const sec = doc.querySelector(`section.slide[data-index="${i}"]`);
+    if (sec) sec.outerHTML = html;
+  }
+  if (res.changes.length && doc.defaultView.__mirzamRefresh) {
+    doc.defaultView.__mirzamRefresh();
+  }
+  report(t0, res.count, `差分 ${res.changes.length} 枚`, res.warnings);
+}
+
+function report(t0, count, kind, warnings) {
+  const ms = (performance.now() - t0).toFixed(1);
+  statEl.innerHTML = `${count} スライド / ${kind}: <b>${ms} ms</b>`;
+  warnEl.textContent = (warnings || []).join(' / ');
+}
+
+let timer;
+srcEl.addEventListener('input', () => {
+  localStorage.setItem('mirzam-src', srcEl.value);
+  clearTimeout(timer);
+  timer = setTimeout(() => update(srcEl.value), 120);
+});
+
+fullRender(srcEl.value);
+</script>
+</body>
+</html>

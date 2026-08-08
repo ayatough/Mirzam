@@ -83,7 +83,8 @@
 - ~~`connect` ブロック: アンカー解決・自動ルーティング・リサイズ追従~~ 済: 端点は表示時にランタイムが解決するため、レイアウト変更・リサイズ・ホットリロードに自動追従。辺の自動選択・ベジェ・破線・双方向対応
 - ~~動画 / GIF の正式サポート(属性・PDF 時ポスター置換)~~ 済: 拡張子で `<video>` に切り替え、`.autoplay`(muted 自動付与)/ `.loop` / `.controls` / `poster=`、PDF はポスター or プレースホルダに置換。動画も data URI で単一ファイルに同梱される
 - ~~`mirzam-wasm`~~ 済: `Renderer` API(`render_page` / `render_slide` / `render_changed` / `outline`)。ブラウザ実測でページ生成 70ms、差分レンダリング 17ms(3 スライド)。ネイティブ CLI と同一実装を共有
-- VSCode 拡張(Webview ライブプレビュー、WASM コア利用)← 次
+- ~~VSCode 拡張(Webview ライブプレビュー、WASM コア利用)~~ 済: `editors/vscode`。Webview 内で WASM コアを実行し、編集で差分更新(実測: フル 74ms / 差分 3ms)。カーソル位置に応じたスライド追従、HTML 書き出し。`./scripts/build-vsix.sh` で .vsix を生成
+- ブラウザ用 WASM デモ(`web/wasm-demo`、`./scripts/serve-wasm-demo.sh`)— Phase 5 のブラウザ編集環境の種
 
 **副産物**: comrak 0.54 へ更新し `cjk_friendly_emphasis` を有効化(「**ページ座標(%)**で」のような CJK と記号が隣接する強調が正しく描画されるようになった)。
 
@@ -140,6 +141,6 @@
 
 ## 5. 直近のアクション
 
-1. VSCode 拡張(WASM コア + Webview ライブプレビュー)
-2. Phase 3: `anim` ブロックと発表者モード
-3. 保留中のレンダリング崩れをまとめて修正
+1. Phase 3: `anim` ブロックと発表者モード
+2. 保留中のレンダリング崩れをまとめて修正
+3. VSCode 拡張の実利用フィードバック反映(LSP による補完・診断は Phase 3)

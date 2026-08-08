@@ -1,0 +1,64 @@
+{
+  "name": "mirzam-preview",
+  "displayName": "Mirzam Preview",
+  "description": "Markdown ベースのスライドツール Mirzam のライブプレビュー(Rust コアを WebAssembly で実行)",
+  "version": "0.0.1",
+  "publisher": "mirzam",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ayatough/Mirzam"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": ["Visualization", "Other"],
+  "keywords": ["markdown", "slides", "presentation", "mirzam"],
+  "activationEvents": [],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "mirzam.showPreview",
+        "title": "Mirzam: プレビューを開く",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "mirzam.exportHtml",
+        "title": "Mirzam: HTML として書き出す"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "mirzam.showPreview",
+          "when": "editorLangId == markdown",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "mirzam.showPreview",
+        "key": "ctrl+k v",
+        "mac": "cmd+k v",
+        "when": "editorLangId == markdown"
+      }
+    ],
+    "configuration": {
+      "title": "Mirzam",
+      "properties": {
+        "mirzam.previewDelay": {
+          "type": "number",
+          "default": 120,
+          "description": "編集からプレビュー更新までの待ち時間(ミリ秒)"
+        },
+        "mirzam.maxAssetSize": {
+          "type": "number",
+          "default": 20971520,
+          "description": "プレビューに埋め込む画像・動画の最大サイズ(バイト)"
+        }
+      }
+    }
+  }
+}
