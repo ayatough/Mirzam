@@ -16,7 +16,10 @@ html, body {
   margin: 0; height: 100%;
   background: var(--mz-bg);
   overflow: hidden;
-  font-family: 'Helvetica Neue', Arial, 'Hiragino Sans', 'Noto Sans JP', Meiryo, sans-serif;
+  /* 日本語フォントを明示する(無指定だと環境によって中華圏フォールバックで
+     漢字の字形が崩れるため)。PDF エクスポートは実行マシンのフォントを使う */
+  font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans',
+    'Noto Sans CJK JP', 'Noto Sans JP', 'Yu Gothic Medium', 'Yu Gothic', Meiryo, sans-serif;
 }
 #deck {
   position: absolute; top: 50%; left: 50%;
@@ -54,6 +57,7 @@ a { color: var(--mz-accent1); }
 
 .u { text-decoration: underline; text-decoration-color: var(--mz-accent2); text-decoration-thickness: 3px; text-underline-offset: 4px; }
 .center { text-align: center; }
+.right { text-align: right; }
 .small { font-size: .8em; color: var(--mz-muted); }
 
 /* タイトルスライド */

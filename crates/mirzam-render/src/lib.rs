@@ -261,28 +261,51 @@ fn render_grid_slide(
 
     for name in &names {
         let mut content = String::new();
+        let mut attrs_src = "";
         if *name == default_pane && !slide.loose.trim().is_empty() {
             content.push_str(&slide.loose);
             content.push('\n');
         }
-        for (pane_name, md) in &slide.panes {
-            if pane_name == name {
-                content.push_str(md);
+        for pb in &slide.panes {
+            if pb.name == *name {
+                if attrs_src.is_empty() {
+                    attrs_src = &pb.attrs;
+                }
+                content.push_str(&pb.body);
                 content.push('\n');
             }
         }
+        // ペイン属性: align(text-align)/ valign(縦位置)/ 追加クラス
+        let attrs = parse_attrs(attrs_src);
+        let mut style = format!("grid-area:{name}");
+        if let Some(a) = attrs.kv.get("align") {
+            if matches!(a.as_str(), "center" | "right" | "left") {
+                style.push_str(&format!(";text-align:{a}"));
+            }
+        }
+        match attrs.kv.get("valign").map(String::as_str) {
+            Some("middle") => style.push_str(";display:flex;flex-direction:column;justify-content:center"),
+            Some("bottom") => style.push_str(";display:flex;flex-direction:column;justify-content:flex-end"),
+            _ => {}
+        }
+        let extra_cls = attrs
+            .classes
+            .iter()
+            .map(|c| format!(" {c}"))
+            .collect::<String>();
         panes_html.push_str(&format!(
-            "<div class=\"pane pane-{name}\" style=\"grid-area:{name}\">{}</div>\n",
+            "<div class=\"pane pane-{name}{extra_cls}\" style=\"{style}\">{}</div>\n",
             render_markdown(&preprocess(&content))
         ));
     }
 
     // グリッドに存在しないペインへの割り当ては警告してスキップ
-    for (pane_name, _) in &slide.panes {
-        if !names.contains(pane_name) {
+    for pb in &slide.panes {
+        if !names.contains(&pb.name) {
             errors.push(format!(
-                "スライド {}: ペイン `{pane_name}` はレイアウトに存在しません",
-                index + 1
+                "スライド {}: ペイン `{}` はレイアウトに存在しません",
+                index + 1,
+                pb.name
             ));
         }
     }
@@ -299,9 +322,9 @@ fn render_grid_slide(
 fn render_single_pane_slide(slide: &SlideSource) -> String {
     let mut content = slide.loose.clone();
     // レイアウトが無いのに ::: pane があれば順に連結
-    for (_, md) in &slide.panes {
+    for pb in &slide.panes {
         content.push('\n');
-        content.push_str(md);
+        content.push_str(&pb.body);
     }
     format!(
         "<div class=\"grid\" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:\"main\"'>\n<div class=\"pane pane-main\" style=\"grid-area:main\">{}</div>\n</div>\n",

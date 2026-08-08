@@ -181,13 +181,22 @@ impl BlockKind {
     }
 }
 
+/// `::: pane` で割り当てられたコンテンツブロック
+#[derive(Debug, Clone, Default)]
+pub struct PaneBlock {
+    pub name: String,
+    /// `{align=center valign=middle .cls}` の中身(未指定なら空)
+    pub attrs: String,
+    pub body: String,
+}
+
 /// スライド 1 枚の構造分解結果
 #[derive(Debug, Clone, Default)]
 pub struct SlideSource {
     /// ```pane ブロックの中身(ASCII グリッド)
     pub layout: Option<String>,
-    /// (ペイン名, Markdown 内容)。`::: pane X` で割り当てられたもの
-    pub panes: Vec<(String, String)>,
+    /// `::: pane X` で割り当てられたコンテンツ
+    pub panes: Vec<PaneBlock>,
     /// どのペインにも割り当てられていない Markdown
     pub loose: String,
     /// スピーカーノート
@@ -237,7 +246,7 @@ pub fn parse_slide(src: &str) -> SlideSource {
         // fenced div: ::: pane NAME [{attrs}]
         if let Some(rest) = trimmed.strip_prefix(":::") {
             let rest = rest.trim();
-            if let Some(pane_name) = parse_pane_open(rest) {
+            if let Some((pane_name, attrs)) = parse_pane_open(rest) {
                 let mut body = String::new();
                 let mut in_code = false;
                 for inner in lines.by_ref() {
@@ -251,7 +260,11 @@ pub fn parse_slide(src: &str) -> SlideSource {
                     body.push_str(inner);
                     body.push('\n');
                 }
-                slide.panes.push((pane_name, body));
+                slide.panes.push(PaneBlock {
+                    name: pane_name,
+                    attrs,
+                    body,
+                });
                 continue;
             }
             // pane 以外の div(::: note など)はそのまま本文へ(将来対応)
@@ -289,8 +302,8 @@ pub fn parse_slide(src: &str) -> SlideSource {
     slide
 }
 
-/// `pane NAME {attrs}` 形式の開始行からペイン名を取り出す
-fn parse_pane_open(rest: &str) -> Option<String> {
+/// `pane NAME {attrs}` 形式の開始行からペイン名と属性を取り出す
+fn parse_pane_open(rest: &str) -> Option<(String, String)> {
     let rest = rest.strip_prefix("pane")?.trim();
     if rest.is_empty() {
         return None;
@@ -300,10 +313,15 @@ fn parse_pane_open(rest: &str) -> Option<String> {
         .take_while(|c| c.is_alphanumeric() || *c == '_' || *c == '-')
         .collect();
     if name.is_empty() {
-        None
-    } else {
-        Some(name)
+        return None;
     }
+    let after = rest[name.len()..].trim();
+    let attrs = after
+        .strip_prefix('{')
+        .and_then(|a| a.strip_suffix('}'))
+        .unwrap_or("")
+        .to_string();
+    Some((name, attrs))
 }
 
 fn parse_note_comment(comment: &str) -> Option<String> {
@@ -366,8 +384,8 @@ loose text
         let s = parse_slide(src);
         assert!(s.layout.is_some());
         assert_eq!(s.panes.len(), 1);
-        assert_eq!(s.panes[0].0, "a");
-        assert!(s.panes[0].1.contains("**world**"));
+        assert_eq!(s.panes[0].name, "a");
+        assert!(s.panes[0].body.contains("**world**"));
         assert!(s.loose.contains("## Title"));
         assert!(s.loose.contains("loose text"));
         assert_eq!(s.connects.len(), 1);
@@ -380,7 +398,7 @@ loose text
         let src = "::: pane main\n```rust\nlet x = 1;\n```\n:::\n";
         let s = parse_slide(src);
         assert_eq!(s.panes.len(), 1);
-        assert!(s.panes[0].1.contains("let x = 1;"));
+        assert!(s.panes[0].body.contains("let x = 1;"));
     }
 
     #[test]
