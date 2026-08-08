@@ -1,5 +1,5 @@
 ---
-title: メディア埋め込みのデモ
+title: Media embedding
 aspect: "16:9"
 ---
 
@@ -14,24 +14,24 @@ aspect: "16:9"
 ```
 
 ::: pane head
-## 動画の埋め込み
+## Video
 :::
 
 ::: pane desc {valign=middle}
-画像記法のまま、拡張子で `<video>` に切り替わる:
+The image syntax switches to `<video>` based on the file extension:
 
 ```markdown
-![デモ](demo.webm){.autoplay .loop}
+![Demo](demo.webm){.autoplay .loop}
 ```
 
-- `.autoplay .loop .controls .muted` を指定できる
-- `autoplay` 指定時は **`muted` が自動付与**される(ブラウザの自動再生ポリシー)
-- PDF では `poster=` の画像、無ければプレースホルダに置換される
-- `mp4` / `webm` / `ogv` / `mov` に対応。*`mp4`(H.264)は一部の OSS ビルドの Chromium で再生できないため、配布用には `webm` が無難*
+- Flags: `.autoplay`, `.loop`, `.controls`, `.muted`
+- `autoplay` implies **`muted`**, since browsers block audible autoplay
+- In PDF the video becomes its `poster=` image, or a placeholder
+- Supports `mp4`, `webm`, `ogv`, `mov`. *Prefer `webm`: Chromium builds without proprietary codecs cannot play H.264.*
 :::
 
 ::: pane movie
-![デモ動画](media/demo.webm){.autoplay .loop .controls poster=media/demo-poster.png fit=contain}
+![Demo clip](media/demo.webm){.autoplay .loop .controls poster=media/demo-poster.png fit=contain}
 :::
 
 ---
@@ -47,19 +47,19 @@ aspect: "16:9"
 ```
 
 ::: pane head
-## GIF の埋め込み
+## GIF
 :::
 
 ::: pane desc {valign=middle}
-GIF は従来どおり `<img>` として扱われ、そのままループ再生される。
+GIFs stay `<img>` elements and loop on their own.
 
 ```markdown
-![動作](media/demo.gif){w=90%}
+![Motion](media/demo.gif){w=90%}
 ```
 
-PDF に出力した場合は先頭フレームが使われる。
+PDF output uses the first frame.
 :::
 
 ::: pane anim {align=center valign=middle}
-![動作 GIF](media/demo.gif){w=90%}
+![Animated GIF](media/demo.gif){w=90%}
 :::

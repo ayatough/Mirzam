@@ -1,5 +1,5 @@
-//! Mirzam CLI の内部ロジック。
-//! ビルドパイプラインと開発サーバを、統合テストからも呼べるよう公開する。
+//! Internal logic of the Mirzam CLI.
+//! The build pipeline and dev server are public so integration tests can drive them.
 
 pub mod pipeline;
 pub mod serve;

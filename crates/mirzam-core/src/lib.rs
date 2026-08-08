@@ -1,4 +1,4 @@
-//! Deck のメタデータ(frontmatter)と、`{{ 変数・式 }}` の評価器。
+//! Deck metadata (frontmatter) and the evaluator for `{{ variable/expression }}`.
 
 mod expr;
 
@@ -7,22 +7,22 @@ pub use expr::{eval_expr, Value};
 use serde::Deserialize;
 use std::collections::BTreeMap;
 
-/// frontmatter で指定するデッキ設定
+/// Deck settings declared in frontmatter.
 #[derive(Debug, Clone, Deserialize, Default)]
 #[serde(default)]
 pub struct DeckMeta {
     pub title: Option<String>,
     pub author: Option<String>,
     pub theme: Option<String>,
-    /// "16:9" | "4:3" など
+    /// Aspect ratio, e.g. "16:9" or "4:3".
     pub aspect: Option<String>,
-    /// カスタム CSS ファイルへのパス(入力ファイル基準の相対パス)
+    /// Path to a custom stylesheet, relative to the input file.
     pub css: Option<String>,
     pub vars: BTreeMap<String, serde_yaml::Value>,
 }
 
 impl DeckMeta {
-    /// アスペクト比からスライドの論理サイズ (幅, 高さ) を返す。既定は 16:9。
+    /// Logical slide size (width, height) for the aspect ratio. Defaults to 16:9.
     pub fn slide_size(&self) -> (u32, u32) {
         match self.aspect.as_deref() {
             Some("4:3") => (1024, 768),
@@ -30,7 +30,7 @@ impl DeckMeta {
         }
     }
 
-    /// 式評価用の変数テーブル
+    /// Variable table used by the expression evaluator.
     pub fn var_table(&self) -> BTreeMap<String, Value> {
         self.vars
             .iter()
@@ -39,7 +39,7 @@ impl DeckMeta {
                     serde_yaml::Value::Number(n) => Value::Num(n.as_f64().unwrap_or(f64::NAN)),
                     serde_yaml::Value::Bool(b) => Value::Str(b.to_string()),
                     serde_yaml::Value::String(s) => {
-                        // 数値として読めるなら数値扱い(計算に使えるように)
+                        // Treat numeric-looking strings as numbers so they can be used in arithmetic.
                         match s.parse::<f64>() {
                             Ok(n) => Value::Num(n),
                             Err(_) => Value::Str(s.clone()),
@@ -58,13 +58,13 @@ impl DeckMeta {
     }
 }
 
-/// frontmatter を YAML としてパースする。失敗時は既定値 + エラーメッセージ。
+/// Parses frontmatter as YAML.
 pub fn parse_meta(yaml: &str) -> Result<DeckMeta, String> {
-    serde_yaml::from_str(yaml).map_err(|e| format!("frontmatter の解析に失敗: {e}"))
+    serde_yaml::from_str(yaml).map_err(|e| format!("failed to parse frontmatter: {e}"))
 }
 
-/// テキスト中の `{{ ... }}` を評価して置換する。
-/// 評価できないものは原文のまま残す(壊さない)。
+/// Evaluates and substitutes `{{ ... }}` occurrences in `text`.
+/// Anything that fails to evaluate is left verbatim rather than dropped.
 pub fn substitute_vars(text: &str, vars: &BTreeMap<String, Value>) -> String {
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
@@ -109,8 +109,8 @@ mod tests {
     fn substitute_simple_and_expr() {
         let v = vars();
         assert_eq!(
-            substitute_vars("{{product}} は年額 {{price * 12}} 円", &v),
-            "Mirzam は年額 14400 円"
+            substitute_vars("{{product}} costs {{price * 12}} per year", &v),
+            "Mirzam costs 14400 per year"
         );
     }
 

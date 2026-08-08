@@ -1,6 +1,6 @@
-//! mirzam CLI(スパイク版)
+//! The `mirzam` command line interface.
 //!
-//! 使い方:
+//! Usage:
 //!   mirzam build <input.md> [-o <out_dir>]
 //!   mirzam serve <input.md> [-p <port>]
 
@@ -23,16 +23,16 @@ fn main() -> ExitCode {
                         i += 1;
                         match args.get(i) {
                             Some(dir) => out_dir = PathBuf::from(dir),
-                            None => return usage("-o には出力先を指定してください"),
+                            None => return usage("-o requires an output path"),
                         }
                     }
                     other if input.is_none() => input = Some(PathBuf::from(other)),
-                    other => return usage(&format!("不明な引数: {other}")),
+                    other => return usage(&format!("unknown argument: {other}")),
                 }
                 i += 1;
             }
             let Some(input) = input else {
-                return usage("入力ファイルを指定してください");
+                return usage("an input file is required");
             };
             run(build(&input, &out_dir))
         }
@@ -46,22 +46,22 @@ fn main() -> ExitCode {
                         i += 1;
                         match args.get(i).and_then(|p| p.parse().ok()) {
                             Some(p) => port = p,
-                            None => return usage("-p にはポート番号を指定してください"),
+                            None => return usage("-p requires a port number"),
                         }
                     }
                     other if input.is_none() => input = Some(PathBuf::from(other)),
-                    other => return usage(&format!("不明な引数: {other}")),
+                    other => return usage(&format!("unknown argument: {other}")),
                 }
                 i += 1;
             }
             let Some(input) = input else {
-                return usage("入力ファイルを指定してください");
+                return usage("an input file is required");
             };
             run(serve::serve(&input, port))
         }
         Some("export") => {
             if args.get(1).map(String::as_str) != Some("pdf") {
-                return usage("現在サポートするエクスポート形式は pdf のみです");
+                return usage("pdf is currently the only supported export format");
             }
             let mut input: Option<PathBuf> = None;
             let mut out_path: Option<PathBuf> = None;
@@ -73,23 +73,23 @@ fn main() -> ExitCode {
                         i += 1;
                         match args.get(i) {
                             Some(p) => out_path = Some(PathBuf::from(p)),
-                            None => return usage("-o には出力先を指定してください"),
+                            None => return usage("-o requires an output path"),
                         }
                     }
                     "--chromium" => {
                         i += 1;
                         match args.get(i) {
                             Some(p) => chromium = Some(p.clone()),
-                            None => return usage("--chromium には実行ファイルを指定してください"),
+                            None => return usage("--chromium requires an executable path"),
                         }
                     }
                     other if input.is_none() => input = Some(PathBuf::from(other)),
-                    other => return usage(&format!("不明な引数: {other}")),
+                    other => return usage(&format!("unknown argument: {other}")),
                 }
                 i += 1;
             }
             let Some(input) = input else {
-                return usage("入力ファイルを指定してください");
+                return usage("an input file is required");
             };
             let out_path = out_path.unwrap_or_else(|| {
                 input
@@ -112,7 +112,7 @@ fn run(result: Result<(), String>) -> ExitCode {
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("エラー: {e}");
+            eprintln!("error: {e}");
             ExitCode::FAILURE
         }
     }
@@ -120,14 +120,14 @@ fn run(result: Result<(), String>) -> ExitCode {
 
 fn usage(msg: &str) -> ExitCode {
     if !msg.is_empty() {
-        eprintln!("エラー: {msg}\n");
+        eprintln!("error: {msg}\n");
     }
     eprintln!(
-        "mirzam {} — Markdown ベースのスライドレンダラ(スパイク版)\n\n\
-         使い方:\n  mirzam build <input.md> [-o <out_dir>]\n  mirzam serve <input.md> [-p <port>]\n  mirzam export pdf <input.md> [-o <out.pdf>] [--chromium <bin>]\n\n\
-         build : <out_dir>/index.html(ビューア内蔵・単一ファイル)を出力\n\
-         serve : ホットリロード付き開発サーバ(既定ポート 4321)\n\
-         export: ヘッドレス Chromium で PDF を生成(MIRZAM_CHROMIUM でも指定可)",
+        "mirzam {} - a Markdown-based slide renderer\n\n\
+         Usage:\n  mirzam build <input.md> [-o <out_dir>]\n  mirzam serve <input.md> [-p <port>]\n  mirzam export pdf <input.md> [-o <out.pdf>] [--chromium <bin>]\n\n\
+         build : write <out_dir>/index.html, a single file with the viewer embedded\n\
+         serve : development server with hot reload (default port 4321)\n\
+         export: render a PDF with headless Chromium (also honors MIRZAM_CHROMIUM)",
         env!("CARGO_PKG_VERSION")
     );
     ExitCode::FAILURE
@@ -144,13 +144,13 @@ fn build(input: &Path, out_dir: &Path) -> Result<(), String> {
     let html = mirzam_render::assemble_page(&out.meta, &out.sections, &opts);
 
     std::fs::create_dir_all(out_dir)
-        .map_err(|e| format!("{} を作成できません: {e}", out_dir.display()))?;
+        .map_err(|e| format!("cannot create {}: {e}", out_dir.display()))?;
     let out_path = out_dir.join("index.html");
     std::fs::write(&out_path, &html)
-        .map_err(|e| format!("{} に書き込めません: {e}", out_path.display()))?;
+        .map_err(|e| format!("cannot write {}: {e}", out_path.display()))?;
 
     println!(
-        "✓ {} スライドを {} に出力({} ms, {} KB)",
+        "✓ wrote {} slides to {} ({} ms, {} KB)",
         out.sections.len(),
         out_path.display(),
         t0.elapsed().as_millis(),
@@ -173,7 +173,7 @@ fn export_pdf(input: &Path, out_path: &Path, chromium: Option<&str>) -> Result<(
     }
 
     let tmp = std::env::temp_dir().join(format!("mirzam-print-{}.html", std::process::id()));
-    std::fs::write(&tmp, &html).map_err(|e| format!("一時ファイルを書けません: {e}"))?;
+    std::fs::write(&tmp, &html).map_err(|e| format!("cannot write temporary file: {e}"))?;
 
     let bin = find_chromium(chromium)?;
     let out_abs = std::env::current_dir()
@@ -191,14 +191,14 @@ fn export_pdf(input: &Path, out_path: &Path, chromium: Option<&str>) -> Result<(
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .status()
-        .map_err(|e| format!("{bin} を起動できません: {e}"))?;
+        .map_err(|e| format!("cannot run {bin}: {e}"))?;
     let _ = std::fs::remove_file(&tmp);
     if !status.success() {
-        return Err(format!("Chromium の PDF 生成が失敗しました({status})"));
+        return Err(format!("Chromium failed to produce the PDF ({status})"));
     }
     let size = std::fs::metadata(&out_abs).map(|m| m.len()).unwrap_or(0);
     println!(
-        "✓ {} スライドを {} に出力({} ms, {} KB)",
+        "✓ wrote {} slides to {} ({} ms, {} KB)",
         out.sections.len(),
         out_path.display(),
         t0.elapsed().as_millis(),
@@ -207,7 +207,7 @@ fn export_pdf(input: &Path, out_path: &Path, chromium: Option<&str>) -> Result<(
     Ok(())
 }
 
-/// Chromium 実行ファイルを探す: 明示指定 → $MIRZAM_CHROMIUM → 既知の名前
+/// Locates Chromium: explicit flag, then $MIRZAM_CHROMIUM, then well-known names.
 fn find_chromium(explicit: Option<&str>) -> Result<String, String> {
     if let Some(c) = explicit {
         return Ok(c.to_string());
@@ -233,8 +233,5 @@ fn find_chromium(explicit: Option<&str>) -> Result<String, String> {
             return Ok(cand.to_string());
         }
     }
-    Err(
-        "Chromium が見つかりません。--chromium か環境変数 MIRZAM_CHROMIUM で指定してください"
-            .into(),
-    )
+    Err("Chromium not found; pass --chromium or set MIRZAM_CHROMIUM".into())
 }

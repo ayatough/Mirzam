@@ -1,0 +1,74 @@
+/* "Aurora" - a bold pitch-deck theme.
+   Overrides only the theme tokens plus a few utility classes; everything else
+   comes from the built-in stylesheet. */
+
+:root {
+  --mz-slide-bg: #0d1117;
+  --mz-fg: #e9edf5;
+  --mz-muted: #8b93ad;
+  --mz-accent1: #5b8cff;
+  --mz-accent2: #2dd4bf;
+  --mz-border: #232a3a;
+  --mz-shape-fill: #161d2c;
+  --mz-chart3: #f6c177;
+  --mz-chart4: #c4a7e7;
+  --mz-chart5: #eb6f92;
+  --mz-chart6: #9ccfd8;
+}
+
+.grid { padding: 52px 68px; gap: 26px; }
+
+h1 { font-size: 3em; letter-spacing: -0.02em; line-height: 1.15; }
+h2 {
+  font-size: 1.7em;
+  border-bottom: none;
+  letter-spacing: -0.01em;
+  padding-bottom: 0;
+}
+/* A short accent rule under section headings instead of a full-width border */
+.pane-head h2::after {
+  content: "";
+  display: block;
+  width: 64px;
+  height: 4px;
+  margin-top: 14px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--mz-accent1), var(--mz-accent2));
+}
+h3 { color: var(--mz-accent2); letter-spacing: .02em; }
+p, li { color: #c7cede; }
+strong { color: #ffffff; }
+blockquote { border-left-color: var(--mz-accent2); color: var(--mz-fg); font-size: 1.05em; }
+
+/* Oversized figure used for headline metrics */
+.metric { font-size: 4.4em; font-weight: 700; line-height: 1; color: #fff; letter-spacing: -0.03em; }
+.metric-up { color: var(--mz-accent2); }
+.metric-label { font-size: 1.05em; color: var(--mz-muted); margin-top: .35em; }
+
+/* Card-like panes */
+.card {
+  background: #131a27;
+  border: 1px solid var(--mz-border);
+  border-radius: 14px;
+  padding: 28px 30px;
+}
+.card h3 { margin-top: 0; }
+
+/* Eyebrow label above a heading */
+.eyebrow {
+  font-size: .85em; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--mz-accent2); margin-bottom: .4em;
+}
+
+/* Quiet footer line */
+.foot { color: #5c6378; font-size: .85em; }
+
+table { font-size: 1.05em; }
+th { background: #161d2c; color: var(--mz-fg); }
+th, td { border-color: var(--mz-border); }
+
+pre { background: #0b0f16; border-color: var(--mz-border); }
+p code, li code { background: #1a2231; color: var(--mz-accent2); }
+
+.title-slide { font-size: 3.6em; }
+section.slide:has(.title-slide) p { color: var(--mz-muted); }

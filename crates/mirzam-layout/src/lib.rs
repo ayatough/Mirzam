@@ -1,25 +1,25 @@
-//! ASCII アートで書かれた `pane` ブロックを比率グリッドに変換する。
+//! Converts the ASCII art in a `pane` block into a proportional grid.
 //!
-//! 意味論は CSS Grid の `grid-template-areas` と一対一:
-//! - `+ - |` がセル境界、セル内の識別子がペイン名
-//! - 同名セルは結合(結合領域は矩形でなければならない)
-//! - 列幅・行高はグリッド線間の文字数比で決まる
+//! The semantics map one-to-one onto CSS Grid's `grid-template-areas`:
+//! - `+ - |` draw cell borders; the identifier inside a cell names the pane
+//! - Cells sharing a name merge (the merged region must be rectangular)
+//! - Column widths and row heights follow the character ratios between grid lines
 
 use std::collections::BTreeMap;
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct GridSpec {
-    /// 各列の幅(fr 値として使う文字数比)
+    /// Column widths, as character ratios used for `fr` values.
     pub cols: Vec<usize>,
-    /// 各行の高さ(fr 値として使う行数比)
+    /// Row heights, as line-count ratios used for `fr` values.
     pub rows: Vec<usize>,
-    /// areas[row][col] = ペイン名(空セルは None)
+    /// `areas[row][col]` is the pane name, or `None` for an empty cell.
     pub areas: Vec<Vec<Option<String>>>,
 }
 
 impl GridSpec {
-    /// 出現順のユニークなペイン名一覧
+    /// Unique pane names, in order of first appearance.
     pub fn pane_names(&self) -> Vec<String> {
         let mut names = Vec::new();
         for row in &self.areas {
@@ -32,7 +32,7 @@ impl GridSpec {
         names
     }
 
-    /// CSS の grid-template-areas 文字列(空セルは `.`)
+    /// The CSS `grid-template-areas` value (empty cells become `.`).
     pub fn css_areas(&self) -> String {
         self.areas
             .iter()
@@ -63,11 +63,11 @@ impl GridSpec {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum GridError {
-    /// 罫線行が 2 本未満
+    /// Fewer than two border rows.
     TooFewBorders,
-    /// 列境界(`+`)が 2 本未満
+    /// Fewer than two column borders (`+`).
     TooFewColumns,
-    /// 同名ペインの結合領域が矩形でない
+    /// The merged region for a pane is not rectangular.
     NonRectangularArea(String),
 }
 
@@ -75,11 +75,11 @@ impl fmt::Display for GridError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             GridError::TooFewBorders => {
-                write!(f, "pane ブロックに罫線行(`+---+`)が 2 本以上必要です")
+                write!(f, "a pane block needs at least two border rows (`+---+`)")
             }
-            GridError::TooFewColumns => write!(f, "pane ブロックに列境界(`+`)が不足しています"),
+            GridError::TooFewColumns => write!(f, "a pane block needs more column borders (`+`)"),
             GridError::NonRectangularArea(name) => {
-                write!(f, "ペイン `{name}` の結合領域が矩形になっていません")
+                write!(f, "the merged region for pane `{name}` is not rectangular")
             }
         }
     }
@@ -87,16 +87,16 @@ impl fmt::Display for GridError {
 
 impl std::error::Error for GridError {}
 
-/// ASCII グリッドをパースする。
+/// Parses an ASCII grid.
 pub fn parse_grid(src: &str) -> Result<GridSpec, GridError> {
-    // 行を char 行列として保持(行末空白は無視)
+    // Keep lines as char matrices; trailing whitespace is irrelevant.
     let lines: Vec<Vec<char>> = src
         .lines()
         .map(|l| l.trim_end().chars().collect::<Vec<char>>())
         .filter(|l| !l.is_empty())
         .collect();
 
-    // 罫線行: 最初の非空白文字が '+'
+    // Border rows are those whose first non-space character is '+'.
     let border_idx: Vec<usize> = lines
         .iter()
         .enumerate()
@@ -107,7 +107,7 @@ pub fn parse_grid(src: &str) -> Result<GridSpec, GridError> {
         return Err(GridError::TooFewBorders);
     }
 
-    // 列境界位置: 全罫線行の '+' の x 座標の和集合
+    // Column borders: the union of '+' x-positions across all border rows.
     let mut col_pos: Vec<usize> = Vec::new();
     for &bi in &border_idx {
         for (x, &c) in lines[bi].iter().enumerate() {
@@ -121,13 +121,13 @@ pub fn parse_grid(src: &str) -> Result<GridSpec, GridError> {
         return Err(GridError::TooFewColumns);
     }
 
-    // 列トラック幅(境界文字を除いた内側の文字数)
+    // Track widths, counting the interior characters only.
     let cols: Vec<usize> = col_pos
         .windows(2)
         .map(|w| (w[1] - w[0]).saturating_sub(1).max(1))
         .collect();
 
-    // 行バンド: 隣接する罫線行の間。高さは内容行数(最低 1)
+    // Row bands sit between adjacent border rows; height is the line count (min 1).
     let mut rows: Vec<usize> = Vec::new();
     let mut areas: Vec<Vec<Option<String>>> = Vec::new();
 
@@ -136,13 +136,13 @@ pub fn parse_grid(src: &str) -> Result<GridSpec, GridError> {
         let content: Vec<&Vec<char>> = lines[top + 1..bottom].iter().collect();
         rows.push(content.len().max(1));
 
-        // トラックごとにペイン名を解決する。
-        // 内容行は '|' で区切られたセグメントに分かれる。セグメントは 1 つ以上の
-        // トラックを覆う(セル結合時は内部境界に '|' が無い)。
+        // Resolve the pane name for each track.
+        // Content lines split into '|'-delimited segments; a segment can span
+        // several tracks, since merged cells omit the interior '|'.
         let mut band: Vec<Option<String>> = vec![None; cols.len()];
         for (ti, tw) in col_pos.windows(2).enumerate() {
             let mid = (tw[0] + tw[1]) / 2;
-            // バンド内の行から、このトラックの中点を含むセグメントのテキストを収集
+            // Take the segment containing this track's midpoint.
             let mut name: Option<String> = None;
             for line in &content {
                 let seg = segment_at(line, mid);
@@ -157,13 +157,13 @@ pub fn parse_grid(src: &str) -> Result<GridSpec, GridError> {
         areas.push(band);
     }
 
-    // 同名セルの結合が矩形かどうか検証(grid-template-areas の制約)
+    // Verify merged regions are rectangular (a grid-template-areas constraint).
     validate_rectangular(&areas)?;
 
     Ok(GridSpec { cols, rows, areas })
 }
 
-/// 行の中で x 位置を含む `|` 区切りセグメントの文字列を返す
+/// Returns the text of the `|`-delimited segment containing position `x`.
 fn segment_at(line: &[char], x: usize) -> String {
     let mut start = 0usize;
     let mut segments: Vec<(usize, usize, String)> = Vec::new();
@@ -232,7 +232,7 @@ mod tests {
 
     #[test]
     fn horizontal_span_over_internal_border() {
-        // head は上段全体に広がる(上罫線に '+' があっても内容行に '|' が無い)
+        // `head` spans the top row: the border has a '+' but the content line has no '|'.
         let g = parse_grid(
             "+--------------------+-------------+\n\
              |  head                            |\n\
@@ -286,14 +286,14 @@ mod tests {
              | b   |\n\
              +-----+\n",
         );
-        // 2 行の内容を持つバンドは高さ 2
+        // A band with two content lines has height 2.
         let g = g.unwrap();
         assert_eq!(g.rows, vec![2, 1]);
     }
 
     #[test]
     fn non_rectangular_area_is_error() {
-        // L 字型の 'a' はエラー
+        // An L-shaped `a` is rejected.
         let err = parse_grid(
             "+-----+-----+\n\
              | a   | a   |\n\

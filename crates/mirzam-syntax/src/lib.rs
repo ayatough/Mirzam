@@ -1,36 +1,36 @@
-//! ソーステキストの構造分解。
+//! Structural decomposition of the source text.
 //!
-//! - frontmatter の切り出し
-//! - `![[file.md]]` のトランスクルージョン(循環検出付き)
-//! - `---` によるスライド分割(コードフェンス内は無視)
-//! - スライド内の構造抽出: `pane` レイアウトブロック、`::: pane` div、
-//!   `<!-- note: -->`、予約 fenced block(shape/connect/anim)
+//! - Splitting off frontmatter
+//! - `![[file.md]]` transclusion, with cycle detection
+//! - Slide splitting on `---` (ignored inside code fences)
+//! - Per-slide extraction: the `pane` layout block, `::: pane` divs,
+//!   `<!-- note: -->` comments, and the shape/connect/anim fenced blocks
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-/// ファイル読み込みの抽象(WASM 環境では別実装を注入する)
+/// Abstraction over file reads; WASM hosts inject their own implementation.
 pub trait FileProvider {
     fn read(&self, path: &Path) -> Result<String, String>;
 }
 
-/// std::fs ベースの既定実装
+/// Default implementation backed by `std::fs`.
 pub struct FsProvider;
 
 impl FileProvider for FsProvider {
     fn read(&self, path: &Path) -> Result<String, String> {
-        std::fs::read_to_string(path).map_err(|e| format!("{} を読めません: {e}", path.display()))
+        std::fs::read_to_string(path).map_err(|e| format!("cannot read {}: {e}", path.display()))
     }
 }
 
-/// frontmatter(YAML)と本文に分離する
+/// Splits YAML frontmatter from the body.
 pub fn split_frontmatter(src: &str) -> (Option<&str>, &str) {
     let src_norm = src.strip_prefix('\u{feff}').unwrap_or(src);
     let mut lines = src_norm.lines();
     if lines.next().map(str::trim_end) != Some("---") {
         return (None, src_norm);
     }
-    // 2 本目の --- を探す
+    // Find the closing `---`.
     let after_first = &src_norm[src_norm.find('\n').map(|i| i + 1).unwrap_or(src_norm.len())..];
     let mut offset = 0usize;
     for line in after_first.split_inclusive('\n') {
@@ -44,14 +44,14 @@ pub fn split_frontmatter(src: &str) -> (Option<&str>, &str) {
     (None, src_norm)
 }
 
-/// `![[path]]` を再帰的に展開する。循環参照はエラーテキストに置換。
+/// Recursively expands `![[path]]`. Cycles are replaced with an error note.
 pub fn expand_includes(body: &str, base_dir: &Path, provider: &dyn FileProvider) -> String {
     let mut files = BTreeSet::new();
     expand_includes_tracked(body, base_dir, provider, &mut files)
 }
 
-/// `expand_includes` と同じだが、読み込んだ include ファイルの一覧を
-/// `files` に収集する(serve のファイル監視用)。
+/// Same as `expand_includes`, but records every file that was read into
+/// `files` so `serve` knows what to watch.
 pub fn expand_includes_tracked(
     body: &str,
     base_dir: &Path,
@@ -84,14 +84,17 @@ fn expand_includes_inner(
                 let path = base_dir.join(target);
                 let canon = path.canonicalize().unwrap_or_else(|_| path.clone());
                 if visited.contains(&canon) {
-                    out.push_str(&format!("> ⚠ 循環参照のため展開できません: `{}`\n", target));
+                    out.push_str(&format!(
+                        "> ⚠ circular include, not expanded: `{}`\n",
+                        target
+                    ));
                     continue;
                 }
                 match provider.read(&path) {
                     Ok(content) => {
                         visited.insert(canon.clone());
                         files.insert(path.clone());
-                        // 子ファイルの frontmatter は無視する
+                        // Frontmatter in included files is ignored.
                         let (_, child_body) = split_frontmatter(&content);
                         let child_dir = path.parent().unwrap_or(base_dir).to_path_buf();
                         out.push_str(&expand_includes_inner(
@@ -103,7 +106,7 @@ fn expand_includes_inner(
                         }
                     }
                     Err(e) => {
-                        out.push_str(&format!("> ⚠ include 失敗: {e}\n"));
+                        out.push_str(&format!("> ⚠ include failed: {e}\n"));
                     }
                 }
                 continue;
@@ -115,7 +118,7 @@ fn expand_includes_inner(
     out
 }
 
-/// 行全体が `![[...]]` のとき、その中身を返す
+/// Returns the target when the whole line is `![[...]]`.
 fn parse_include_line(line: &str) -> Option<&str> {
     let inner = line.strip_prefix("![[")?.strip_suffix("]]")?;
     if inner.is_empty() || inner.contains("[[") {
@@ -124,7 +127,7 @@ fn parse_include_line(line: &str) -> Option<&str> {
     Some(inner.trim())
 }
 
-/// 本文をスライド単位に分割する(コードフェンス外の `---` 行)
+/// Splits the body into slides on `---` lines outside code fences.
 pub fn split_slides(body: &str) -> Vec<String> {
     let mut slides = Vec::new();
     let mut current = String::new();
@@ -142,7 +145,7 @@ pub fn split_slides(body: &str) -> Vec<String> {
         current.push('\n');
     }
     slides.push(current);
-    // 空白のみのスライドは除外
+    // Drop slides that are only whitespace.
     slides
         .into_iter()
         .filter(|s| !s.trim().is_empty())
@@ -153,7 +156,7 @@ fn is_slide_break(trimmed: &str) -> bool {
     trimmed.len() >= 3 && trimmed.chars().all(|c| c == '-')
 }
 
-/// 予約 fenced block の種別(未実装フェーズのもの)
+/// Fenced blocks reserved for a later phase.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlockKind {
     Anim,
@@ -174,35 +177,35 @@ impl BlockKind {
     }
 }
 
-/// `::: pane` で割り当てられたコンテンツブロック
+/// A content block assigned to a pane via `::: pane`.
 #[derive(Debug, Clone, Default)]
 pub struct PaneBlock {
     pub name: String,
-    /// `{align=center valign=middle .cls}` の中身(未指定なら空)
+    /// Contents of `{align=center valign=middle .cls}`; empty when omitted.
     pub attrs: String,
     pub body: String,
 }
 
-/// スライド 1 枚の構造分解結果
+/// The decomposed structure of a single slide.
 #[derive(Debug, Clone, Default)]
 pub struct SlideSource {
-    /// ```pane ブロックの中身(ASCII グリッド)
+    /// Body of the ```pane block (the ASCII grid).
     pub layout: Option<String>,
-    /// `::: pane X` で割り当てられたコンテンツ
+    /// Content assigned through `::: pane X`.
     pub panes: Vec<PaneBlock>,
-    /// どのペインにも割り当てられていない Markdown
+    /// Markdown not assigned to any pane.
     pub loose: String,
-    /// スピーカーノート
+    /// Speaker notes.
     pub notes: Vec<String>,
-    /// ```shape ブロック(複数可、連結して扱う)
+    /// ```shape blocks; multiple blocks are concatenated.
     pub shapes: Vec<String>,
-    /// ```connect ブロック
+    /// ```connect blocks.
     pub connects: Vec<String>,
-    /// 予約ブロック(未実装フェーズのもの)
+    /// Blocks reserved for a later phase.
     pub reserved: Vec<(BlockKind, String)>,
 }
 
-/// スライドのソースを構造分解する
+/// Decomposes a slide's source into its parts.
 pub fn parse_slide(src: &str) -> SlideSource {
     let mut slide = SlideSource::default();
     let mut lines = src.lines().peekable();
@@ -230,7 +233,7 @@ pub fn parse_slide(src: &str) -> SlideSource {
             } else if let Some(kind) = BlockKind::from_info(info) {
                 slide.reserved.push((kind, body));
             } else {
-                // 通常のコードブロックとして本文に戻す
+                // Any other fence is an ordinary code block.
                 slide.loose.push_str(&format!("```{info}\n{body}```\n"));
             }
             continue;
@@ -260,13 +263,13 @@ pub fn parse_slide(src: &str) -> SlideSource {
                 });
                 continue;
             }
-            // pane 以外の div(::: note など)はそのまま本文へ(将来対応)
+            // Other fenced divs (`::: note` etc.) stay in the body for now.
             slide.loose.push_str(line);
             slide.loose.push('\n');
             continue;
         }
 
-        // HTML コメント(note 収集、slide 設定は将来)
+        // HTML comments: speaker notes today, slide settings later.
         if trimmed.starts_with("<!--") {
             let mut comment = String::from(trimmed);
             while !comment.contains("-->") {
@@ -282,7 +285,7 @@ pub fn parse_slide(src: &str) -> SlideSource {
                 slide.notes.push(note);
                 continue;
             }
-            // note 以外のコメントは本文に残す(HTML として非表示)
+            // Non-note comments stay in the body, hidden as HTML comments.
             slide.loose.push_str(&comment);
             slide.loose.push('\n');
             continue;
@@ -295,7 +298,7 @@ pub fn parse_slide(src: &str) -> SlideSource {
     slide
 }
 
-/// `pane NAME {attrs}` 形式の開始行からペイン名と属性を取り出す
+/// Extracts the pane name and attributes from a `pane NAME {attrs}` opener.
 fn parse_pane_open(rest: &str) -> Option<(String, String)> {
     let rest = rest.strip_prefix("pane")?.trim();
     if rest.is_empty() {

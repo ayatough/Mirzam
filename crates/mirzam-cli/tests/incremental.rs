@@ -1,14 +1,14 @@
-//! 差分ビルドの正しさ:
-//! **インクリメンタルビルドの結果は、フルビルドの結果と完全に一致する。**
+//! Correctness of incremental builds:
+//! **An incremental build must equal a full rebuild, exactly.**
 //!
-//! ホットリロードで古い表示が残る類のバグを機械的に防ぐための不変条件。
+//! This invariant mechanically rules out stale-preview bugs in hot reload.
 
 mod common;
 
 use common::repo_root;
 use std::collections::HashMap;
 
-/// 一時ディレクトリに書き出したデッキ
+/// A deck written to a temporary directory.
 struct TempDeck {
     dir: std::path::PathBuf,
     path: std::path::PathBuf,
@@ -17,14 +17,14 @@ struct TempDeck {
 impl TempDeck {
     fn new(name: &str, body: &str) -> TempDeck {
         let dir = std::env::temp_dir().join(format!("mirzam-test-{}-{}", name, std::process::id()));
-        std::fs::create_dir_all(&dir).expect("一時ディレクトリ");
+        std::fs::create_dir_all(&dir).expect("temp dir");
         let path = dir.join("deck.md");
-        std::fs::write(&path, body).expect("デッキ書き込み");
+        std::fs::write(&path, body).expect("write deck");
         TempDeck { dir, path }
     }
 
     fn write(&self, body: &str) {
-        std::fs::write(&self.path, body).expect("デッキ更新");
+        std::fs::write(&self.path, body).expect("update deck");
     }
 }
 
@@ -41,7 +41,7 @@ fn deck_source(titles: &[&str]) -> String {
             s.push_str("\n---\n\n");
         }
         s.push_str(&format!(
-            "## {t}\n\n本文 {{{{ n * {} }}}} と数式 $x^{}$\n",
+            "## {t}\n\nBody {{{{ n * {} }}}} with math $x^{}$\n",
             i + 1,
             i + 1
         ));
@@ -55,7 +55,7 @@ fn incremental_equals_full_rebuild() {
     let mut warm = HashMap::new();
     mirzam_cli::pipeline::build_deck(&deck.path, &mut warm).unwrap();
 
-    // 3 枚目だけを編集
+    // Edit only the third slide.
     deck.write(&deck_source(&["A", "B", "C-edited", "D"]));
 
     let incremental = mirzam_cli::pipeline::build_deck(&deck.path, &mut warm).unwrap();
@@ -64,12 +64,12 @@ fn incremental_equals_full_rebuild() {
 
     assert_eq!(
         incremental.sections, full.sections,
-        "差分ビルドの出力がフルビルドと一致しない"
+        "incremental output does not match a full rebuild"
     );
     assert_eq!(incremental.hashes, full.hashes);
     assert_eq!(
         incremental.rendered, 1,
-        "変更した 1 枚だけを再レンダリングするはず(実際: {})",
+        "only the edited slide should re-render (actual: {})",
         incremental.rendered
     );
 }
@@ -80,18 +80,18 @@ fn variable_change_invalidates_all_slides_that_use_it() {
     let mut cache = HashMap::new();
     let first = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).unwrap();
 
-    // frontmatter の変数だけを変える → 参照している全スライドが変わる
+    // Changing only a frontmatter variable changes every slide that uses it.
     let updated = deck_source(&["A", "B"]).replace("n: 3", "n: 5");
     deck.write(&updated);
     let second = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).unwrap();
 
     assert_ne!(
         first.sections, second.sections,
-        "変数変更が反映されていない"
+        "variable change was not applied"
     );
     assert_eq!(
         second.rendered, 2,
-        "変数を参照する 2 枚とも再レンダリングされるはず"
+        "both slides referencing the variable should re-render"
     );
 
     let mut cold = HashMap::new();
@@ -105,13 +105,13 @@ fn unchanged_rebuild_renders_nothing() {
     let mut cache = HashMap::new();
     mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).unwrap();
     let again = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).unwrap();
-    assert_eq!(again.rendered, 0, "変更が無ければ再レンダリングは 0 枚");
+    assert_eq!(again.rendered, 0, "no change means nothing re-renders");
 }
 
 #[test]
 fn include_and_assets_are_tracked_for_watching() {
     let mut cache = HashMap::new();
-    let path = repo_root().join("examples/demo.md");
+    let path = repo_root().join("examples/pitch.md");
     let out = mirzam_cli::pipeline::build_deck(&path, &mut cache).unwrap();
 
     let names: Vec<String> = out
@@ -119,18 +119,18 @@ fn include_and_assets_are_tracked_for_watching() {
         .iter()
         .map(|p| p.file_name().unwrap().to_string_lossy().into_owned())
         .collect();
-    assert!(names.contains(&"demo.md".to_string()));
+    assert!(names.contains(&"pitch.md".to_string()));
     assert!(
-        names.contains(&"architecture.md".to_string()),
-        "include したファイルが監視対象に入っていない: {names:?}"
+        names.contains(&"pitch.css".to_string()),
+        "custom stylesheet is missing from the watch set: {names:?}"
     );
     assert!(
-        names.contains(&"bench.svg".to_string()),
-        "参照した画像が監視対象に入っていない: {names:?}"
+        names.contains(&"adoption.csv".to_string()),
+        "chart data file is missing from the watch set: {names:?}"
     );
 }
 
-/// スライドを跨いだ入れ替えでも、位置に応じた出力が正しく作られる
+/// Reordering slides still produces correct position-dependent output.
 #[test]
 fn reordering_slides_updates_indices() {
     let deck = TempDeck::new("reorder", &deck_source(&["A", "B"]));
@@ -144,7 +144,7 @@ fn reordering_slides_updates_indices() {
     let full = mirzam_cli::pipeline::build_deck(&deck.path, &mut cold).unwrap();
     assert_eq!(
         swapped.sections, full.sections,
-        "並べ替え後の出力が一致しない"
+        "output after reordering does not match"
     );
     assert!(swapped.sections[0].contains("data-index=\"0\""));
 }

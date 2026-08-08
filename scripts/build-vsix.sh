@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
-# VSCode 拡張(.vsix)をビルドする。
+# Build the VS Code extension (.vsix).
 #   ./scripts/build-vsix.sh
-# WASM をビルドして拡張の media/ に配置し、vsce でパッケージする。
+# Builds the WASM package into the extension's media/ directory, then runs vsce.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 EXT_DIR="editors/vscode"
 
-echo "==> WASM をビルドして拡張へ配置"
+echo "==> building WASM into the extension"
 ./scripts/build-wasm.sh "$EXT_DIR/media"
-# 型定義は配布不要
+# Type definitions are not needed in the package.
 rm -f "$EXT_DIR/media"/*.d.ts
 
-echo "==> vsce でパッケージ"
+echo "==> packaging with vsce"
 cd "$EXT_DIR"
 npx --yes @vscode/vsce package --allow-missing-repository --skip-license
 
 VSIX=$(ls -t ./*.vsix | head -1)
 echo "✓ $EXT_DIR/$(basename "$VSIX")"
 echo
-echo "インストール:"
+echo "Install with:"
 echo "  code --install-extension $(pwd)/$(basename "$VSIX")"
-echo "  または VSCode 拡張ビューの … → 「VSIX からのインストール」"
+echo "  or: Extensions view -> ... -> Install from VSIX"

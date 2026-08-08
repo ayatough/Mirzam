@@ -1,5 +1,5 @@
-//! 組み込みテーマ(default)の CSS と、ビューアランタイム JS。
-//! MVP ではテーマを外部 CSS として差し替え可能にする予定。
+//! The built-in theme's CSS and the viewer runtime JS.
+//! Decks override this with frontmatter `css:`.
 
 pub const DEFAULT_CSS: &str = r#"
 :root {
@@ -16,8 +16,9 @@ html, body {
   margin: 0; height: 100%;
   background: var(--mz-bg);
   overflow: hidden;
-  /* 日本語フォントを明示する(無指定だと環境によって中華圏フォールバックで
-     漢字の字形が崩れるため)。PDF エクスポートは実行マシンのフォントを使う */
+  /* Name Japanese fonts explicitly: without them, some systems fall back to a
+     non-Japanese CJK font and render kanji with the wrong glyph shapes.
+     PDF export uses the fonts installed on the exporting machine. */
   font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans',
     'Noto Sans CJK JP', 'Noto Sans JP', 'Yu Gothic Medium', 'Yu Gothic', Meiryo, sans-serif;
 }
@@ -60,7 +61,7 @@ a { color: var(--mz-accent1); }
 .right { text-align: right; }
 .small { font-size: .8em; color: var(--mz-muted); }
 
-/* タイトルスライド */
+/* Title slide */
 section.slide:has(.title-slide) .grid {
   place-items: center; text-align: center;
   grid-template: 1fr / 1fr;
@@ -69,22 +70,22 @@ section.slide:has(.title-slide) .pane { overflow: visible; }
 .title-slide { font-size: 3.4em; border: none; }
 section.slide:has(.title-slide) p { color: var(--mz-muted); font-size: 1.5em; }
 
-/* 数式(ビルド時に LaTeX → MathML 変換、ブラウザがネイティブ描画) */
+/* Math: converted to MathML at build time and drawn natively by the browser */
 math { font-size: 1.15em; }
 math[display="block"] { font-size: 1.35em; margin: .5em 0; }
-/* 変換失敗時のフォールバック(TeX ソースをそのまま表示) */
+/* Fallback when conversion fails: show the TeX source */
 .math-error {
   font-family: 'SF Mono', Consolas, monospace; font-style: normal;
   background: #fff0f0; color: #b3261e; border-radius: 4px; padding: 0 .3em;
 }
 .math-block { display: block; text-align: center; margin: .6em 0; padding: .4em; }
 
-/* 表 */
+/* Tables */
 table { border-collapse: collapse; font-size: 1.15em; margin: .5em 0; }
 th, td { border: 1px solid var(--mz-border); padding: .35em .8em; }
 th { background: #f3f5fb; }
 
-/* コード */
+/* Code */
 pre {
   background: #f6f8fa; border: 1px solid var(--mz-border); border-radius: 8px;
   padding: .8em 1em; font-size: 1.05em; overflow: auto;
@@ -96,7 +97,7 @@ blockquote { border-left: 4px solid var(--mz-accent2); margin: .5em 0; padding: 
 img, video { max-width: 100%; max-height: 100%; }
 video { background: #000; border-radius: 6px; }
 
-/* PDF 出力時の動画プレースホルダ(poster 未指定の場合) */
+/* Video placeholder in PDF output, when no poster is given */
 .mz-video-still {
   display: flex; align-items: center; justify-content: center; gap: .6em;
   min-height: 200px; height: 100%;
@@ -106,7 +107,21 @@ video { background: #000; border-radius: 6px; }
 .mz-video-still span { font-size: 2em; color: var(--mz-accent1); }
 .mz-video-still em { font-style: normal; font-size: 1.1em; }
 
-/* 図形レイヤ(ビルド時 SVG)とコネクタレイヤ(ランタイム描画) */
+/* Charts (build-time SVG from data) */
+:root {
+  --mz-chart3: #f2994a; --mz-chart4: #9b51e0; --mz-chart5: #eb5757; --mz-chart6: #2d9cdb;
+}
+.mz-chart-wrap { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+svg.mz-chart { width: 100%; height: 100%; max-height: 100%; }
+.mz-chart-title { font-size: 20px; font-weight: 600; fill: var(--mz-fg); }
+.mz-chart-grid { stroke: var(--mz-border); stroke-width: 1; }
+.mz-chart-tick { font-size: 15px; fill: var(--mz-muted); }
+.mz-chart-axis { font-size: 14px; fill: var(--mz-muted); }
+.mz-chart-legend { font-size: 15px; fill: var(--mz-fg); }
+.mz-chart-value { font-size: 14px; fill: var(--mz-muted); }
+.mz-chart-slice { stroke: var(--mz-slide-bg); stroke-width: 2; }
+
+/* Shape layer (build-time SVG) and connector layer (drawn at runtime) */
 :root { --mz-shape-fill: #eef1fb; }
 svg.mz-shapes, svg.mz-connect {
   position: absolute; inset: 0; width: 100%; height: 100%;
@@ -115,7 +130,7 @@ svg.mz-shapes, svg.mz-connect {
 .mz-shape-label { font-size: 22px; fill: var(--mz-fg); font-family: inherit; }
 .mz-shape-label.small, text.small { font-size: 16px; fill: var(--mz-muted); }
 
-/* 未実装フェーズの予約ブロック */
+/* Blocks reserved for a later phase */
 .mz-reserved {
   position: absolute; right: 14px; bottom: 12px;
   font-size: 12px; color: var(--mz-muted); opacity: .75;
@@ -124,7 +139,7 @@ svg.mz-shapes, svg.mz-connect {
 .mz-reserved summary { cursor: pointer; }
 .mz-reserved pre { font-size: 11px; margin: 4px 0 0; padding: .4em .6em; }
 
-/* パースエラー表示 */
+/* Parse error display */
 .mz-error {
   border: 2px solid #e5484d; background: #fff0f0; color: #b3261e;
   border-radius: 8px; padding: .6em 1em; font-size: 1em; margin-bottom: 1em;
@@ -158,7 +173,7 @@ pub const VIEWER_JS: &str = r#"
   const hud = document.getElementById('hud');
   const notesPanel = document.getElementById('notes-panel');
   const W = +deck.dataset.slideW, H = +deck.dataset.slideH;
-  // ライブ更新で DOM が差し替わるため、スライド一覧は毎回取得する
+  // Live updates replace DOM nodes, so re-query the slide list each time.
   const slides = () => Array.from(document.querySelectorAll('section.slide'));
   let cur = Math.min(Math.max(parseInt((location.hash || '').slice(1)) || 1, 1), slides().length) - 1;
 
@@ -174,16 +189,16 @@ pub const VIEWER_JS: &str = r#"
     cur = Math.min(Math.max(i, 0), ss.length - 1);
     ss.forEach((s, j) => s.classList.toggle('active', j === cur));
     hud.textContent = `${cur + 1} / ${ss.length}`;
-    // srcdoc iframe(エディタ拡張のプレビュー等)では replaceState が例外を投げる。
-    // ページ位置の記録は付加機能なので、失敗しても以降の処理を止めない
+    // replaceState throws inside srcdoc iframes (editor previews). Recording the
+    // page position is optional, so a failure must not abort the rest of the update.
     try { history.replaceState(null, '', '#' + (cur + 1)); } catch (e) {}
     renderNotes();
-    // コネクタはレイアウト確定後に端点を解決する
+    // Connectors resolve their endpoints once layout has settled.
     requestAnimationFrame(() => drawConnectors(ss[cur]));
   }
 
-  // ---- コネクタ描画(レイアウト変更に自動追従する仕組みの本体) ----
-  // data-connectors の宣言を、表示時点の実レイアウトから毎回ルーティングする。
+  // ---- Connector drawing: this is what makes connectors follow the layout ----
+  // The data-connectors declarations are re-routed from the live layout every time.
   const NS = 'http://www.w3.org/2000/svg';
   function drawConnectors(sec) {
     if (!sec) return;
@@ -201,7 +216,7 @@ pub const VIEWER_JS: &str = r#"
     const secRect = sec.getBoundingClientRect();
     if (secRect.width === 0) return;
     const sx = W / secRect.width, sy = H / secRect.height;
-    // 要素の矩形をスライド論理座標系へ
+    // Convert an element's rect into the slide's logical coordinate system.
     const box = (id) => {
       const el = sec.querySelector('#' + CSS.escape(id));
       if (!el) return null;
@@ -222,7 +237,7 @@ pub const VIEWER_JS: &str = r#"
     for (const c of conns) {
       const a = box(c.from), b = box(c.to);
       if (!a || !b) continue;
-      // 辺の指定が無ければ、相対位置から自然な辺を選ぶ
+      // Without an explicit edge, pick the natural one from relative position.
       const dx = (b.x + b.w / 2) - (a.x + a.w / 2);
       const dy = (b.y + b.h / 2) - (a.y + a.h / 2);
       const horiz = Math.abs(dx) > Math.abs(dy);
@@ -231,7 +246,7 @@ pub const VIEWER_JS: &str = r#"
       const p = edgePt(a, ae), q = edgePt(b, be);
       const color = c.color || 'var(--mz-accent1)';
       const dash = c.dashed ? ' stroke-dasharray="8 6"' : '';
-      // 軽いベジェで結ぶ(curve=0 で直線)
+      // Join with a gentle bezier; curve=0 gives a straight line.
       const k = c.curve == null ? 0.25 : c.curve;
       const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
       const nx = -(q.y - p.y) * k, ny = (q.x - p.x) * k;
@@ -250,12 +265,12 @@ pub const VIEWER_JS: &str = r#"
   function renderNotes() {
     const notes = slides()[cur]?.querySelector('aside.notes');
     notesPanel.innerHTML = '<h4>SPEAKER NOTES</h4>' +
-      (notes && notes.innerHTML.trim() ? notes.innerHTML : '<em>(このスライドにノートはありません)</em>');
+      (notes && notes.innerHTML.trim() ? notes.innerHTML : '<em>(no notes for this slide)</em>');
   }
 
-  // ライブ更新後に現在ページの表示状態を復元する
+  // Restore the current page after a live update.
   window.__mirzamRefresh = () => show(cur);
-  // 外部(エディタ拡張など)から特定スライドへ移動させる
+  // Let a host (editor extension) jump to a specific slide.
   window.__mirzamGoto = (i) => show(i);
 
   addEventListener('keydown', (e) => {
@@ -281,9 +296,9 @@ pub const VIEWER_JS: &str = r#"
 })();
 "#;
 
-/// STIX Two Math(OFL ライセンス、assets/STIX-LICENSE.txt)を data URI で
-/// 埋め込む @font-face CSS。数式を含むページにのみ付加する(約 540KB)。
-/// 閲覧側マシンに数式フォントが無くても描画品質を保証するため同梱する。
+/// `@font-face` CSS embedding STIX Two Math (OFL, see assets/STIX-LICENSE.txt)
+/// as a data URI. Added only to pages containing math (~540KB), so decks
+/// render at TeX quality even on machines without a math font installed.
 pub fn math_font_css() -> &'static str {
     use base64::Engine as _;
     use std::sync::OnceLock;
@@ -299,8 +314,8 @@ pub fn math_font_css() -> &'static str {
     })
 }
 
-/// PDF 印刷用の CSS オーバーライド(DEFAULT_CSS の後に適用)。
-/// スライド寸法と @page サイズは assemble_print_page が動的に付加する。
+/// Print overrides applied after DEFAULT_CSS.
+/// Slide dimensions and the `@page` size are appended by `assemble_print_page`.
 pub const PRINT_CSS: &str = r#"
 html, body { background: #fff; overflow: visible; height: auto; }
 #deck {
@@ -315,8 +330,8 @@ section.slide {
 .mz-reserved { display: none; }
 "#;
 
-/// serve モードで注入されるホットリロードクライアント。
-/// ロングポーリングで変更スライドの `<section>` HTML を受け取り、DOM を差し替える。
+/// Hot-reload client injected in `serve` mode.
+/// Long-polls for changed `<section>` HTML and patches the DOM.
 pub const LIVE_JS: &str = r#"
 (async () => {
   let v = window.__MIRZAM_V__;

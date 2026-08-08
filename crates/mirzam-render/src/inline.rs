@@ -1,12 +1,12 @@
-//! ペイン内 Markdown の前処理:
-//! - 見出し・画像・スパンの属性記法 `{#id .class k=v}` を raw HTML に変換
-//! - 数式 `$...$` / `$$...$$` をタグ付け(KaTeX 統合は MVP で対応、今はスタイル表示)
+//! Preprocessing applied to the Markdown inside a pane:
+//! - Attribute syntax `{#id .class k=v}` on headings, images and spans becomes raw HTML
+//! - Math `$...$` / `$$...$$` is converted to MathML at build time
 
 use regex::Regex;
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
-/// `#id .class k=v` 属性列のパース結果
+/// Parsed `#id .class k=v` attribute list.
 #[derive(Debug, Default, Clone)]
 pub struct Attrs {
     pub id: Option<String>,
@@ -45,7 +45,7 @@ fn re(cell: &'static OnceLock<Regex>, pattern: &str) -> &'static Regex {
     cell.get_or_init(|| Regex::new(pattern).expect("static regex"))
 }
 
-/// コードフェンスの外側の行にのみ変換 `f` を適用する
+/// Applies `f` only to lines outside code fences.
 fn map_outside_fences(src: &str, f: impl Fn(&str) -> String) -> String {
     let mut out = String::with_capacity(src.len());
     let mut in_code = false;
@@ -63,7 +63,7 @@ fn map_outside_fences(src: &str, f: impl Fn(&str) -> String) -> String {
     out
 }
 
-/// コードフェンス外の連続領域(複数行)に変換 `f` を適用する
+/// Applies `f` to each contiguous run of lines outside code fences.
 fn map_fence_segments(src: &str, f: impl Fn(&str) -> String) -> String {
     let mut out = String::with_capacity(src.len());
     let mut segment = String::new();
@@ -89,11 +89,11 @@ fn map_fence_segments(src: &str, f: impl Fn(&str) -> String) -> String {
     out
 }
 
-/// Markdown ソースを raw HTML 混在ソースに前処理する。
-/// 数式を最初に処理する: TeX 中の `\sqrt[3]{x}` 等がスパン属性記法
-/// `[...]{...}` に誤マッチするのを防ぐため。
+/// Preprocesses Markdown into Markdown-with-raw-HTML.
+/// Math runs first so TeX such as `\sqrt[3]{x}` is not mistaken for the
+/// `[...]{...}` span attribute syntax.
 pub fn preprocess(src: &str) -> String {
-    // $$...$$ は複数行にまたがれるため、フェンス外セグメント単位で処理
+    // `$$...$$` can span lines, so block math is handled per fence-free segment.
     let src = map_fence_segments(src, block_math);
     let src = map_outside_fences(&src, inline_math);
     let src = map_outside_fences(&src, heading_attrs);
@@ -101,7 +101,7 @@ pub fn preprocess(src: &str) -> String {
     map_outside_fences(&src, span_attrs)
 }
 
-/// `## Text {attrs}` → `<h2 ...>Text(inline render)</h2>`
+/// `## Text {attrs}` becomes `<h2 ...>Text</h2>` with inline Markdown rendered.
 fn heading_attrs(line: &str) -> String {
     static RE: OnceLock<Regex> = OnceLock::new();
     let r = re(&RE, r"^(#{1,6})\s+(.*?)\s*\{([^{}]*)\}\s*$");
@@ -116,7 +116,7 @@ fn heading_attrs(line: &str) -> String {
     }
 }
 
-/// `![alt](src){attrs}` → `<img ...>`
+/// `![alt](src){attrs}` becomes an `<img>` (or `<video>`, see below).
 fn image_attrs(line: &str) -> String {
     static RE: OnceLock<Regex> = OnceLock::new();
     let r = re(&RE, r#"!\[([^\]]*)\]\(([^()\s"]+)\)\{([^{}]*)\}"#);
@@ -155,7 +155,7 @@ fn image_attrs(line: &str) -> String {
     .into_owned()
 }
 
-/// 画像記法で参照されたファイルが動画かどうか(GIF は img のまま扱う)
+/// Whether an image reference points at a video; GIFs stay images.
 fn is_video(src: &str) -> bool {
     let path = src.split(['?', '#']).next().unwrap_or(src);
     matches!(
@@ -167,15 +167,15 @@ fn is_video(src: &str) -> bool {
     )
 }
 
-/// `![alt](demo.mp4){autoplay muted loop controls poster=...}` → `<video>`
+/// `![alt](demo.mp4){.autoplay .loop .controls poster=...}` becomes a `<video>`.
 fn video_html(src: &str, alt: &str, attrs: &Attrs, style_attr: &str) -> String {
-    // 真偽属性はクラス記法(`.autoplay`)でも `key=true` でも書ける
+    // Boolean attributes accept either class syntax (`.autoplay`) or `key=true`.
     let flag = |name: &str| -> bool {
         attrs.classes.iter().any(|c| c == name)
             || matches!(attrs.kv.get(name).map(String::as_str), Some("" | "true"))
     };
     let mut flags = String::new();
-    // ブラウザは音ありの自動再生を拒否するため、autoplay 指定時は muted を強制する
+    // Browsers block audible autoplay, so `autoplay` implies `muted`.
     let autoplay = flag("autoplay");
     for (name, on) in [
         ("autoplay", autoplay),
@@ -194,7 +194,7 @@ fn video_html(src: &str, alt: &str, attrs: &Attrs, style_attr: &str) -> String {
         .get("poster")
         .map(|p| format!(" poster=\"{p}\""))
         .unwrap_or_default();
-    // id/class から動画用の真偽フラグ由来のクラスは除く
+    // Drop the boolean-flag classes from the emitted class list.
     let mut carried = attrs.clone();
     carried
         .classes
@@ -205,13 +205,13 @@ fn video_html(src: &str, alt: &str, attrs: &Attrs, style_attr: &str) -> String {
     )
 }
 
-/// `[text]{attrs}` → `<span ...>text</span>`(リンク `[t](u)` にはマッチしない)
+/// `[text]{attrs}` becomes `<span ...>text</span>`; links `[t](u)` are left alone.
 fn span_attrs(line: &str) -> String {
     static RE: OnceLock<Regex> = OnceLock::new();
     let r = re(&RE, r"(!?)\[([^\[\]]+)\]\{([^{}]*)\}");
     r.replace_all(line, |c: &regex::Captures| {
         if &c[1] == "!" {
-            // 属性なし画像記法とバッティングした場合はそのまま
+            // Leave image syntax to the image pass.
             return c[0].to_string();
         }
         let attrs = parse_attrs(&c[3]);
@@ -221,7 +221,7 @@ fn span_attrs(line: &str) -> String {
     .into_owned()
 }
 
-/// `$$...$$`(複数行可)を MathML(display=block)に変換する
+/// Converts `$$...$$` (which may span lines) to block MathML.
 fn block_math(segment: &str) -> String {
     static BLOCK: OnceLock<Regex> = OnceLock::new();
     let b = re(&BLOCK, r"\$\$([^$]+)\$\$");
@@ -231,7 +231,7 @@ fn block_math(segment: &str) -> String {
     .into_owned()
 }
 
-/// `$...$` を MathML(inline)に変換する
+/// Converts `$...$` to inline MathML.
 fn inline_math(line: &str) -> String {
     static INLINE: OnceLock<Regex> = OnceLock::new();
     let i = re(&INLINE, r"\$([^$\n]+)\$");
@@ -249,7 +249,7 @@ fn math_converter() -> &'static math_core::LatexToMathML {
     })
 }
 
-/// LaTeX → MathML 変換。失敗時は TeX ソースをスタイル付きスパンで表示する。
+/// LaTeX to MathML. On failure the TeX source is shown in an error span.
 fn math_html(tex: &str, display: math_core::MathDisplay) -> String {
     match math_converter().convert_with_local_state(tex, display) {
         Ok(r) => r.mathml,
@@ -267,7 +267,7 @@ fn math_html(tex: &str, display: math_core::MathDisplay) -> String {
     }
 }
 
-/// Markdown をインラインとしてレンダリングし、外側の `<p>` を剥がす
+/// Renders Markdown inline, stripping the wrapping `<p>`.
 pub fn render_inline(md: &str) -> String {
     let html = render_markdown(md);
     let t = html.trim();
@@ -276,13 +276,13 @@ pub fn render_inline(md: &str) -> String {
     t.to_string()
 }
 
-/// comrak による Markdown → HTML 変換(raw HTML 許可、GFM 拡張、CJK 強調対応)
+/// Markdown to HTML via comrak: raw HTML allowed, GFM extensions, CJK-friendly emphasis.
 pub fn render_markdown(md: &str) -> String {
     let mut options = comrak::Options::default();
     options.extension.table = true;
     options.extension.strikethrough = true;
     options.extension.tasklist = true;
-    // 「**ページ座標(%)**で」のような CJK と記号が隣接する強調を正しく解釈する
+    // Handles emphasis adjacent to CJK text and punctuation correctly.
     options.extension.cjk_friendly_emphasis = true;
     options.render.r#unsafe = true;
     comrak::markdown_to_html(md, &options)
@@ -301,8 +301,8 @@ mod tests {
 
     #[test]
     fn heading_with_attrs() {
-        let out = preprocess("## タイトル {.center #sec1}\n");
-        assert!(out.contains("<h2 id=\"sec1\" class=\"center\">タイトル</h2>"));
+        let out = preprocess("## Title {.center #sec1}\n");
+        assert!(out.contains("<h2 id=\"sec1\" class=\"center\">Title</h2>"));
     }
 
     #[test]
@@ -314,21 +314,21 @@ mod tests {
 
     #[test]
     fn video_from_image_syntax() {
-        let out = preprocess("![デモ](media/demo.mp4){.autoplay .loop .controls fit=contain}\n");
+        let out = preprocess("![demo](media/demo.mp4){.autoplay .loop .controls fit=contain}\n");
         assert!(out.contains("<video src=\"media/demo.mp4\""));
         assert!(out.contains(" autoplay"));
-        // autoplay 指定時は muted が強制される(ブラウザの自動再生ポリシー)
+        // autoplay implies muted, per browser autoplay policy.
         assert!(out.contains(" muted"));
         assert!(out.contains(" loop"));
         assert!(out.contains(" controls"));
         assert!(out.contains("object-fit:contain"));
-        // フラグはクラス属性に残さない
+        // Flags must not leak into the class attribute.
         assert!(!out.contains("class=\"autoplay"));
     }
 
     #[test]
     fn gif_stays_an_image() {
-        let out = preprocess("![動き](a.gif){w=60%}\n");
+        let out = preprocess("![motion](a.gif){w=60%}\n");
         assert!(out.contains("<img src=\"a.gif\""));
     }
 
@@ -341,8 +341,8 @@ mod tests {
 
     #[test]
     fn math_rendered_to_mathml() {
-        let out = preprocess("式 $E=mc^2$ と $$\\int_0^1 x dx$$\n");
-        // inline と block の 2 つの MathML が生成される
+        let out = preprocess("inline $E=mc^2$ and $$\\int_0^1 x dx$$\n");
+        // One inline and one block MathML element.
         assert_eq!(out.matches("<math").count(), 2);
         assert!(out.contains("display=\"block\""));
         assert!(!out.contains("math-error"));
@@ -365,14 +365,14 @@ mod tests {
 
     #[test]
     fn subsup_is_not_staircase() {
-        // latex2mathml 0.2 は x_{84}^{7} を msub(msup(...)) に誤変換していた
+        // latex2mathml 0.2 mis-converted x_{84}^{7} into nested msub(msup(...)).
         let out = preprocess("$x_{84}^{7}$\n");
         assert!(out.contains("<msubsup>"));
     }
 
     #[test]
     fn tex_brackets_not_eaten_by_span_attrs() {
-        // \sqrt[3]{x} の [3]{x} がスパン属性記法に誤マッチしないこと
+        // `[3]{x}` inside \sqrt[3]{x} must not match the span attribute syntax.
         let out = preprocess("$\\sqrt[3]{x}$\n");
         assert!(out.contains("<math"));
         assert!(!out.contains("<span>3</span>"));
@@ -380,7 +380,7 @@ mod tests {
 
     #[test]
     fn cjk_emphasis_with_punctuation() {
-        let out = render_markdown("図形は**ページ座標(%)**で宣言する\n");
+        let out = render_markdown("図形は**ページ座標(%)**で宣言する\n"); // CJK sample
         assert!(out.contains("<strong>ページ座標(%)</strong>"), "{out}");
     }
 

@@ -11,6 +11,7 @@ mirzam-core.workspace = true
 mirzam-syntax.workspace = true
 mirzam-layout.workspace = true
 mirzam-shape.workspace = true
+mirzam-chart.workspace = true
 mirzam-connect.workspace = true
 comrak = { version = "0.54", default-features = false }
 regex = "1"

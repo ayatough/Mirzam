@@ -1,20 +1,20 @@
-//! 性能ベンチ(常設)。
+//! Standing performance benchmark.
 //!
-//! 設計目標「ページが増えても編集反映は一定」を数値で監視する。
+//! Tracks the design goal that edit latency stays flat as decks grow.
 //!   cargo run --release -p mirzam-cli --bin mirzam-bench
 //!
-//! 合成デッキを生成し、フルビルド時間と 1 枚編集時の再ビルド時間を測る。
+//! Generates synthetic decks and measures full builds and single-slide edits.
 
 use std::collections::HashMap;
 use std::time::Instant;
 
 fn main() {
-    println!("Mirzam 性能ベンチ({} ビルド)\n", profile());
+    println!("Mirzam performance benchmark ({} build)\n", profile());
     for &slides in &[20usize, 120, 500] {
         bench(slides, Deck::Plain);
     }
     bench(100, Deck::Math);
-    println!("\n設計目標: 1 枚編集の反映がスライド数に依存しないこと(O(1))");
+    println!("\nGoal: single-slide edit latency should not grow with deck size");
 }
 
 fn profile() -> &'static str {
@@ -32,59 +32,59 @@ enum Deck {
 
 fn bench(slides: usize, kind: Deck) {
     let label = match kind {
-        Deck::Plain => format!("{slides:>3} 枚(通常)"),
-        Deck::Math => format!("{slides:>3} 枚(数式 8 個/枚)"),
+        Deck::Plain => format!("{slides:>3} slides (plain)"),
+        Deck::Math => format!("{slides:>3} slides (8 formulas each)"),
     };
     let dir = std::env::temp_dir().join(format!("mirzam-bench-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).expect("一時ディレクトリ");
+    std::fs::create_dir_all(&dir).expect("temp dir");
     let path = dir.join("bench.md");
-    std::fs::write(&path, generate(slides, &kind)).expect("デッキ書き込み");
+    std::fs::write(&path, generate(slides, &kind)).expect("write deck");
 
-    // フルビルド
+    // Full build.
     let mut cache = HashMap::new();
     let t0 = Instant::now();
-    let full = mirzam_cli::pipeline::build_deck(&path, &mut cache).expect("ビルド");
+    let full = mirzam_cli::pipeline::build_deck(&path, &mut cache).expect("build");
     let full_ms = t0.elapsed().as_secs_f64() * 1000.0;
     assert_eq!(full.sections.len(), slides);
 
-    // 中央のスライドを 1 箇所だけ編集して再ビルド
+    // Edit one slide in the middle and rebuild.
     let edited = generate(slides, &kind).replacen(
-        &format!("## セクション {}", slides / 2),
-        &format!("## セクション {} (編集)", slides / 2),
+        &format!("## Section {}", slides / 2),
+        &format!("## Section {} (edited)", slides / 2),
         1,
     );
-    std::fs::write(&path, edited).expect("デッキ更新");
+    std::fs::write(&path, edited).expect("update deck");
     let t1 = Instant::now();
-    let inc = mirzam_cli::pipeline::build_deck(&path, &mut cache).expect("再ビルド");
+    let inc = mirzam_cli::pipeline::build_deck(&path, &mut cache).expect("rebuild");
     let inc_ms = t1.elapsed().as_secs_f64() * 1000.0;
 
     println!(
-        "{label}: フルビルド {full_ms:7.1} ms | 1 枚編集 {inc_ms:6.1} ms(再レンダリング {} 枚)",
+        "{label}: full {full_ms:7.1} ms | single edit {inc_ms:6.1} ms ({} slide re-rendered)",
         inc.rendered
     );
-    assert_eq!(inc.rendered, 1, "1 枚だけ再レンダリングされるはず");
+    assert_eq!(inc.rendered, 1, "exactly one slide should re-render");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
 fn generate(slides: usize, kind: &Deck) -> String {
-    let mut s = String::from("---\ntitle: ベンチ\n---\n\n");
+    let mut s = String::from("---\ntitle: Benchmark\n---\n\n");
     for i in 1..=slides {
         if i > 1 {
             s.push_str("\n---\n\n");
         }
-        s.push_str(&format!("## セクション {i}\n\n"));
+        s.push_str(&format!("## Section {i}\n\n"));
         s.push_str("```pane\n+----------+----------+\n|          |          |\n|  main    |  side    |\n|          |          |\n+----------+----------+\n```\n\n");
         s.push_str("::: pane main\n");
         match kind {
             Deck::Plain => {
                 s.push_str(&format!(
-                    "スライド {i} の本文。**強調**と `code`。\n\n- A\n- B\n- C\n"
+                    "Body text for slide {i} with **emphasis** and `code`.\n\n- A\n- B\n- C\n"
                 ));
             }
             Deck::Math => {
                 for j in 1..=5 {
                     s.push_str(&format!(
-                        "段落 {j}: $\\alpha_{{{i}}}^{{{j}}} + \\frac{{x}}{{y}}$\n\n"
+                        "Paragraph {j}: $\\alpha_{{{i}}}^{{{j}}} + \\frac{{x}}{{y}}$\n\n"
                     ));
                 }
                 for j in 1..=3 {
@@ -92,7 +92,9 @@ fn generate(slides: usize, kind: &Deck) -> String {
                 }
             }
         }
-        s.push_str(":::\n\n::: pane side\n| 列 | 値 |\n|---|---:|\n| a | 1 |\n| b | 2 |\n:::\n");
+        s.push_str(
+            ":::\n\n::: pane side\n| Key | Value |\n|---|---:|\n| a | 1 |\n| b | 2 |\n:::\n",
+        );
     }
     s
 }

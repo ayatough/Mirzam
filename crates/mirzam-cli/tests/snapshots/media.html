@@ -1,31 +1,31 @@
 <section class="slide" data-index="0">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:1fr 3fr;grid-template-areas:"head head" "desc movie"'>
-<div class="pane pane-head" style="grid-area:head"><h2>動画の埋め込み</h2>
+<div class="pane pane-head" style="grid-area:head"><h2>Video</h2>
 </div>
-<div class="pane pane-desc" style="grid-area:desc;display:flex;flex-direction:column;justify-content:center"><p>画像記法のまま、拡張子で <code>&lt;video&gt;</code> に切り替わる:</p>
-<pre><code class="language-markdown">![デモ](demo.webm){.autoplay .loop}
+<div class="pane pane-desc" style="grid-area:desc;display:flex;flex-direction:column;justify-content:center"><p>The image syntax switches to <code>&lt;video&gt;</code> based on the file extension:</p>
+<pre><code class="language-markdown">![Demo](demo.webm){.autoplay .loop}
 </code></pre>
 <ul>
-<li><code>.autoplay .loop .controls .muted</code> を指定できる</li>
-<li><code>autoplay</code> 指定時は <strong><code>muted</code> が自動付与</strong>される(ブラウザの自動再生ポリシー)</li>
-<li>PDF では <code>poster=</code> の画像、無ければプレースホルダに置換される</li>
-<li><code>mp4</code> / <code>webm</code> / <code>ogv</code> / <code>mov</code> に対応。<em><code>mp4</code>(H.264)は一部の OSS ビルドの Chromium で再生できないため、配布用には <code>webm</code> が無難</em></li>
+<li>Flags: <code>.autoplay</code>, <code>.loop</code>, <code>.controls</code>, <code>.muted</code></li>
+<li><code>autoplay</code> implies <strong><code>muted</code></strong>, since browsers block audible autoplay</li>
+<li>In PDF the video becomes its <code>poster=</code> image, or a placeholder</li>
+<li>Supports <code>mp4</code>, <code>webm</code>, <code>ogv</code>, <code>mov</code>. <em>Prefer <code>webm</code>: Chromium builds without proprietary codecs cannot play H.264.</em></li>
 </ul>
 </div>
-<div class="pane pane-movie" style="grid-area:movie"><p><video src="<data-uri len=93951>" title="デモ動画" poster="<data-uri len=38274>" autoplay muted loop controls playsinline style="object-fit:contain;width:100%;height:100%;"></video></p>
+<div class="pane pane-movie" style="grid-area:movie"><p><video src="<data-uri len=93951>" title="Demo clip" poster="<data-uri len=38274>" autoplay muted loop controls playsinline style="object-fit:contain;width:100%;height:100%;"></video></p>
 </div>
 </div>
 </section>
 <section class="slide" data-index="1">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:1fr 3fr;grid-template-areas:"head head" "desc anim"'>
-<div class="pane pane-head" style="grid-area:head"><h2>GIF の埋め込み</h2>
+<div class="pane pane-head" style="grid-area:head"><h2>GIF</h2>
 </div>
-<div class="pane pane-desc" style="grid-area:desc;display:flex;flex-direction:column;justify-content:center"><p>GIF は従来どおり <code>&lt;img&gt;</code> として扱われ、そのままループ再生される。</p>
-<pre><code class="language-markdown">![動作](media/demo.gif){w=90%}
+<div class="pane pane-desc" style="grid-area:desc;display:flex;flex-direction:column;justify-content:center"><p>GIFs stay <code>&lt;img&gt;</code> elements and loop on their own.</p>
+<pre><code class="language-markdown">![Motion](media/demo.gif){w=90%}
 </code></pre>
-<p>PDF に出力した場合は先頭フレームが使われる。</p>
+<p>PDF output uses the first frame.</p>
 </div>
-<div class="pane pane-anim" style="grid-area:anim;text-align:center;display:flex;flex-direction:column;justify-content:center"><img src="<data-uri len=102634>" alt="動作 GIF" style="width:90%;">
+<div class="pane pane-anim" style="grid-area:anim;text-align:center;display:flex;flex-direction:column;justify-content:center"><img src="<data-uri len=102634>" alt="Animated GIF" style="width:90%;">
 </div>
 </div>
 </section>

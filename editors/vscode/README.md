@@ -1,49 +1,47 @@
-# Mirzam Preview(VSCode 拡張)
+# Mirzam Preview
 
-Markdown ベースのスライドツール [Mirzam](https://github.com/ayatough/Mirzam) のライブプレビュー。
-レンダリングは **CLI と同一の Rust コア**を WebAssembly として Webview 内で実行する。
+Live preview for [Mirzam](https://github.com/ayatough/Mirzam), a Markdown-based
+slide tool. Rendering runs **the same Rust core the CLI uses**, compiled to
+WebAssembly and executed inside the webview.
 
-## 使い方
+## Usage
 
-1. `.md` ファイルを開く
-2. コマンドパレットで **「Mirzam: プレビューを開く」**(または `Ctrl+K V` / `Cmd+K V`、エディタ右上のプレビューアイコン)
-3. 横にプレビューが開き、編集すると**変更したスライドだけ**が再描画される
+1. Open a `.md` file.
+2. Run **Mirzam: Open Preview** from the command palette, press `Ctrl+K V`
+   (`Cmd+K V` on macOS), or click the preview icon in the editor title bar.
 
-その他:
+The preview opens beside your editor. Editing re-renders only the slide you
+changed, and moving the cursor scrolls the preview to the matching slide.
 
-- カーソルを動かすと、対応するスライドへプレビューが追従する
-- プレビュー内で `←` `→` ページ送り、`N` スピーカーノート、`F` 全画面
-- **「Mirzam: HTML として書き出す」**で単一ファイル HTML を保存(プレビューを開いた状態で実行)
+Inside the preview: `←` `→` to navigate, `N` for speaker notes, `F` for fullscreen.
 
-## 設定
+**Mirzam: Export as HTML** saves the deck as a single self-contained file. PDF
+export lives in the CLI (`mirzam export pdf`).
 
-| 設定 | 既定 | 内容 |
+## Settings
+
+| Setting | Default | Description |
 |---|---|---|
-| `mirzam.previewDelay` | 120 | 編集からプレビュー更新までの待ち時間(ms) |
-| `mirzam.maxAssetSize` | 20971520 | プレビューに埋め込む画像・動画の上限(バイト) |
+| `mirzam.previewDelay` | 120 | Milliseconds between an edit and the preview update |
+| `mirzam.maxAssetSize` | 20971520 | Maximum size in bytes of images and video inlined into the preview |
 
-## 対応している記法
+## Supported syntax
 
-`pane`(ASCII レイアウト)/ `::: pane`(コンテンツ割り当て)/ `shape`(図形)/ `connect`(追従コネクタ)/
-`![[file.md]]`(ファイル分割)/ frontmatter 変数と計算 / 数式(MathML)/ 動画・GIF / スピーカーノート。
+`pane` layouts, `::: pane` assignment, `chart`, `shape`, `connect`, `![[file.md]]`
+transclusion, frontmatter variables and arithmetic, math, video and GIF, custom
+themes, and speaker notes. See the [syntax
+reference](https://github.com/ayatough/Mirzam/blob/main/docs/syntax.md).
 
-詳細は [記法仕様](https://github.com/ayatough/Mirzam/blob/main/docs/markup-spec.md) を参照。
-
-## ローカルでのビルド
+## Building locally
 
 ```bash
-# リポジトリルートで
+# from the repository root
 ./scripts/build-vsix.sh
-# → editors/vscode/mirzam-preview-0.0.1.vsix
-```
-
-インストール: VSCode の拡張ビューの「…」→「VSIX からのインストール」、または
-
-```bash
 code --install-extension editors/vscode/mirzam-preview-0.0.1.vsix
 ```
 
-## 制限
+## Limitations
 
-- レンダリングは Webview 内で完結するため、ワークスペース外の絶対パス参照は解決されない
-- PDF 書き出しは CLI(`mirzam export pdf`)側の機能
+- Rendering happens in the webview, so assets referenced by absolute paths outside
+  the workspace are not resolved.
+- PDF export is a CLI feature.

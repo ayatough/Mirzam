@@ -1,10 +1,13 @@
-//! SlideSource 列 + DeckMeta → 単一ファイル HTML(ビューア内蔵)を生成する。
+//! Turns a list of `SlideSource` values plus `DeckMeta` into a single HTML
+//! file with the viewer embedded.
 
 mod assets;
+mod charts;
 mod inline;
 mod theme;
 
 pub use assets::{AssetSource, FsAssets};
+pub use charts::render_charts_in;
 pub use inline::{parse_attrs, preprocess, render_markdown};
 
 use mirzam_core::DeckMeta;
@@ -19,21 +22,21 @@ pub struct RenderResult {
     pub warnings: Vec<String>,
 }
 
-/// スライド 1 枚のレンダリング結果(`<section>` 要素、アセット埋め込み済み)
+/// One rendered slide: a `<section>` element with assets already inlined.
 pub struct RenderedSlide {
     pub html: String,
     pub warnings: Vec<String>,
-    /// このスライドが参照したローカルアセット(キャッシュ鮮度検証・監視用)
+    /// Local assets this slide referenced, for cache validation and watching.
     pub assets: Vec<std::path::PathBuf>,
 }
 
-/// スライド 1 枚を `<section>` HTML にレンダリングする(serve の差分更新単位)。
-/// アセットはファイルシステムから解決する。
+/// Renders one slide to `<section>` HTML; this is the unit `serve` updates.
+/// Assets are resolved from the filesystem.
 pub fn render_slide_html(slide: &SlideSource, index: usize, asset_dir: &Path) -> RenderedSlide {
     render_slide_html_with(slide, index, &assets::FsAssets(asset_dir))
 }
 
-/// アセット解決を差し替えられる版(WASM ではホストのテーブルを注入する)
+/// Variant with pluggable asset resolution; WASM hosts inject their own table.
 pub fn render_slide_html_with(
     slide: &SlideSource,
     index: usize,
@@ -41,7 +44,9 @@ pub fn render_slide_html_with(
 ) -> RenderedSlide {
     let mut warnings = Vec::new();
     let mut assets_used = Vec::new();
-    let html = render_slide(slide, index, &mut warnings);
+    // Charts are rendered first: they may pull in CSV data through the same
+    // asset source, and their SVG output must not be scanned for asset URLs.
+    let html = render_slide(slide, index, &mut warnings, asset_source, &mut assets_used);
     let html = assets::embed_assets(&html, asset_source, &mut warnings, &mut assets_used);
     RenderedSlide {
         html,
@@ -50,21 +55,21 @@ pub fn render_slide_html_with(
     }
 }
 
-/// ページ組み立てオプション
+/// Options for assembling the page.
 #[derive(Default)]
 pub struct PageOptions {
-    /// Some(version) でホットリロードクライアント(serve モード)を注入
+    /// When set, injects the hot-reload client used by `serve`.
     pub live_version: Option<u64>,
-    /// frontmatter `css:` で指定されたカスタム CSS(内容)
+    /// Contents of the stylesheet named by frontmatter `css:`.
     pub custom_css: Option<String>,
 }
 
-/// セクション列に数式が含まれるか(数式フォント同梱の要否)
+/// Whether any section contains math, deciding if the math font is bundled.
 pub fn sections_have_math(sections: &[String]) -> bool {
     sections.iter().any(|s| s.contains("<math"))
 }
 
-/// レンダリング済みセクション列をビューア入りの完全な HTML ページに組み立てる。
+/// Assembles rendered sections into a complete HTML page with the viewer.
 pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -> String {
     let (w, h) = meta.slide_size();
     let title = meta.title.as_deref().unwrap_or("Mirzam Deck");
@@ -82,7 +87,7 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
     };
     format!(
         r#"<!doctype html>
-<html lang="ja">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -96,7 +101,7 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <div id="deck" data-slide-w="{w}" data-slide-h="{h}">
 {sections}</div>
 <div id="hud"></div>
-<div id="hint">← → : 移動 / N : ノート / F : 全画面</div>
+<div id="hint">← → navigate / N notes / F fullscreen</div>
 <div id="notes-panel" hidden></div>
 <script>{js}</script>
 {live_js}</body>
@@ -110,9 +115,9 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
     )
 }
 
-/// 印刷用に `<video>` を静止画へ置換する。
-/// poster が指定されていればその画像を、無ければ再生アイコン付きの
-/// プレースホルダを出す(PDF は静的なので動画は再生できないため)。
+/// Replaces `<video>` with a still image for print.
+/// Uses the poster when one is given, otherwise a placeholder with a play
+/// icon, since PDF output is static.
 fn videos_to_stills(html: &str) -> String {
     static RE: OnceLock<Regex> = OnceLock::new();
     let re = RE.get_or_init(|| Regex::new(r#"<video\b([^>]*)></video>"#).expect("static regex"));
@@ -136,7 +141,7 @@ fn videos_to_stills(html: &str) -> String {
     .into_owned()
 }
 
-/// PDF 印刷用ページ(全スライドを固定サイズで縦に並べ、1 枚 = 1 ページ)
+/// Print page for PDF export: fixed-size slides stacked one per page.
 pub fn assemble_print_page(
     meta: &DeckMeta,
     sections: &[String],
@@ -153,7 +158,7 @@ pub fn assemble_print_page(
     let sections = &sections;
     format!(
         r#"<!doctype html>
-<html lang="ja">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="generator" content="mirzam 0.0.1">
@@ -180,8 +185,8 @@ section.slide {{ width: {w}px; height: {h}px; }}
     )
 }
 
-/// デッキ全体を単一 HTML にレンダリングする。
-/// `asset_dir` は画像等の相対パスの基準ディレクトリ(data URI 埋め込みに使用)。
+/// Renders a whole deck to a single HTML file.
+/// `asset_dir` is the base directory for relative asset paths.
 pub fn render_deck(meta: &DeckMeta, slides: &[SlideSource], asset_dir: &Path) -> RenderResult {
     let mut warnings = Vec::new();
     let mut sections = Vec::with_capacity(slides.len());
@@ -196,15 +201,21 @@ pub fn render_deck(meta: &DeckMeta, slides: &[SlideSource], asset_dir: &Path) ->
     }
 }
 
-fn render_slide(slide: &SlideSource, index: usize, warnings: &mut Vec<String>) -> String {
+fn render_slide(
+    slide: &SlideSource,
+    index: usize,
+    warnings: &mut Vec<String>,
+    asset_source: &dyn AssetSource,
+    chart_files: &mut Vec<std::path::PathBuf>,
+) -> String {
     let mut errors: Vec<String> = Vec::new();
 
-    // レイアウト解決
+    // Resolve the layout.
     let grid: Option<GridSpec> = match &slide.layout {
         Some(src) => match parse_grid(src) {
             Ok(g) => Some(g),
             Err(e) => {
-                errors.push(format!("スライド {}: {e}", index + 1));
+                errors.push(format!("slide {}: {e}", index + 1));
                 None
             }
         },
@@ -212,30 +223,30 @@ fn render_slide(slide: &SlideSource, index: usize, warnings: &mut Vec<String>) -
     };
 
     let body = match &grid {
-        Some(g) => render_grid_slide(g, slide, index, &mut errors),
-        None => render_single_pane_slide(slide),
+        Some(g) => render_grid_slide(g, slide, index, &mut errors, asset_source, chart_files),
+        None => render_single_pane_slide(slide, index, &mut errors, asset_source, chart_files),
     };
 
-    // shape ブロック → 静的 SVG レイヤ(ページ座標系、スケール自動追従)
+    // shape blocks become a static SVG layer in page coordinates, scaling with the slide.
     let mut shapes_html = String::new();
     if !slide.shapes.is_empty() {
         let src = slide.shapes.join("\n");
         let doc = mirzam_shape::parse_shapes(&src);
         let (svg, shape_errors) = mirzam_shape::render_svg(&doc, 1280, 720);
         for e in shape_errors {
-            errors.push(format!("スライド {}: {e}", index + 1));
+            errors.push(format!("slide {}: {e}", index + 1));
         }
         shapes_html = svg;
     }
 
-    // connect ブロック → JSON をスライドに埋め込み、ランタイムが
-    // レイアウト確定後に端点を解決して描画する(リサイズ・更新に追従)
+    // connect blocks are embedded as JSON; the runtime resolves endpoints after
+    // layout so connectors follow resizes and live updates.
     let mut connect_attr = String::new();
     if !slide.connects.is_empty() {
         let src = slide.connects.join("\n");
         let doc = mirzam_connect::parse_connectors(&src);
         for e in &doc.errors {
-            errors.push(format!("スライド {}: {e}", index + 1));
+            errors.push(format!("slide {}: {e}", index + 1));
         }
         if !doc.connectors.is_empty() {
             connect_attr = format!(
@@ -245,14 +256,14 @@ fn render_slide(slide: &SlideSource, index: usize, warnings: &mut Vec<String>) -
         }
     }
 
-    // 未実装フェーズの予約ブロック(前方互換のためパースだけして表示)
+    // Reserved blocks are parsed but only summarized, keeping decks forward compatible.
     let mut reserved_html = String::new();
     for (kind, src) in &slide.reserved {
         let phase = match kind {
             mirzam_syntax::BlockKind::Anim => "Phase 3",
         };
         reserved_html.push_str(&format!(
-            "<details class=\"mz-reserved\"><summary>```{kind} ブロック({phase} で対応予定)</summary><pre>{body}</pre></details>\n",
+            "<details class=\"mz-reserved\"><summary>```{kind} block (planned for {phase})</summary><pre>{body}</pre></details>\n",
             kind = kind.as_str(),
             body = inline::html_escape(src.trim()),
         ));
@@ -289,11 +300,13 @@ fn render_grid_slide(
     slide: &SlideSource,
     index: usize,
     errors: &mut Vec<String>,
+    asset_source: &dyn AssetSource,
+    chart_files: &mut Vec<std::path::PathBuf>,
 ) -> String {
     let names = grid.pane_names();
     let mut panes_html = String::new();
 
-    // loose コンテンツの行き先: `main` があれば main、なければ最初のペイン
+    // Unassigned content goes to `main` when it exists, else the first pane.
     let default_pane = if names.iter().any(|n| n == "main") {
         "main".to_string()
     } else {
@@ -316,7 +329,7 @@ fn render_grid_slide(
                 content.push('\n');
             }
         }
-        // ペイン属性: align(text-align)/ valign(縦位置)/ 追加クラス
+        // Pane attributes: align (text-align), valign (vertical placement), extra classes.
         let attrs = parse_attrs(attrs_src);
         let mut style = format!("grid-area:{name}");
         if let Some(a) = attrs.kv.get("align") {
@@ -338,24 +351,31 @@ fn render_grid_slide(
             .iter()
             .map(|c| format!(" {c}"))
             .collect::<String>();
+        let (content, chart_blocks) = charts::extract(&content);
+        let mut body = render_markdown(&preprocess(&content));
+        if !chart_blocks.is_empty() {
+            let (with_charts, files) =
+                charts::render_charts_in(&body, &chart_blocks, index, asset_source, errors);
+            body = with_charts;
+            chart_files.extend(files);
+        }
         panes_html.push_str(&format!(
-            "<div class=\"pane pane-{name}{extra_cls}\" style=\"{style}\">{}</div>\n",
-            render_markdown(&preprocess(&content))
+            "<div class=\"pane pane-{name}{extra_cls}\" style=\"{style}\">{body}</div>\n"
         ));
     }
 
-    // グリッドに存在しないペインへの割り当ては警告してスキップ
+    // Warn about content assigned to a pane the layout does not define.
     for pb in &slide.panes {
         if !names.contains(&pb.name) {
             errors.push(format!(
-                "スライド {}: ペイン `{}` はレイアウトに存在しません",
+                "slide {}: pane `{}` is not in the layout",
                 index + 1,
                 pb.name
             ));
         }
     }
 
-    // 注意: grid-template-areas の値は二重引用符を含むため style 属性は単引用符で囲む
+    // grid-template-areas contains double quotes, so the style attribute uses single quotes.
     format!(
         "<div class=\"grid\" style='grid-template-columns:{cols};grid-template-rows:{rows};grid-template-areas:{areas}'>\n{panes_html}</div>\n",
         cols = grid.css_columns(),
@@ -364,16 +384,29 @@ fn render_grid_slide(
     )
 }
 
-fn render_single_pane_slide(slide: &SlideSource) -> String {
+fn render_single_pane_slide(
+    slide: &SlideSource,
+    index: usize,
+    errors: &mut Vec<String>,
+    asset_source: &dyn AssetSource,
+    chart_files: &mut Vec<std::path::PathBuf>,
+) -> String {
     let mut content = slide.loose.clone();
-    // レイアウトが無いのに ::: pane があれば順に連結
+    // Without a layout, `::: pane` blocks are simply concatenated.
     for pb in &slide.panes {
         content.push('\n');
         content.push_str(&pb.body);
     }
+    let (content, chart_blocks) = charts::extract(&content);
+    let mut body = render_markdown(&preprocess(&content));
+    if !chart_blocks.is_empty() {
+        let (with_charts, files) =
+            charts::render_charts_in(&body, &chart_blocks, index, asset_source, errors);
+        body = with_charts;
+        chart_files.extend(files);
+    }
     format!(
-        "<div class=\"grid\" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:\"main\"'>\n<div class=\"pane pane-main\" style=\"grid-area:main\">{}</div>\n</div>\n",
-        render_markdown(&preprocess(&content))
+        "<div class=\"grid\" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:\"main\"'>\n<div class=\"pane pane-main\" style=\"grid-area:main\">{body}</div>\n</div>\n"
     )
 }
 
@@ -415,9 +448,9 @@ mod tests {
 
     #[test]
     fn print_video_without_poster_gets_placeholder() {
-        let out = videos_to_stills("<video src=\"a.mp4\" title=\"デモ動画\"></video>");
+        let out = videos_to_stills("<video src=\"a.mp4\" title=\"Demo clip\"></video>");
         assert!(out.contains("mz-video-still"));
-        assert!(out.contains("デモ動画"));
+        assert!(out.contains("Demo clip"));
     }
 
     #[test]

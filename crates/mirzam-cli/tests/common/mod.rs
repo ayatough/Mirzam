@@ -1,16 +1,16 @@
-//! 統合テスト共通のヘルパ
+//! Helpers shared by the integration tests.
 //!
-//! 各テストバイナリごとに取り込まれるため、使われない項目が出る
+//! Each test binary includes this module, so some items go unused.
 #![allow(dead_code)]
 
 use std::path::{Path, PathBuf};
 
-/// リポジトリルート(crates/mirzam-cli から 2 階層上)
+/// Repository root, two levels above crates/mirzam-cli.
 pub fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(Path::parent)
-        .expect("crates/mirzam-cli の 2 階層上")
+        .expect("two levels above crates/mirzam-cli")
         .to_path_buf()
 }
 
@@ -18,11 +18,11 @@ pub fn example(name: &str) -> PathBuf {
     repo_root().join("examples").join(name)
 }
 
-/// リポジトリに含まれるサンプルデッキ(ゴールデンテストの対象)
-pub const EXAMPLE_DECKS: &[&str] = &["demo.md", "seminar.md", "media.md"];
+/// Sample decks in the repository, covered by the golden tests.
+pub const EXAMPLE_DECKS: &[&str] = &["pitch.md", "showcase.md", "seminar.md", "media.md"];
 
-/// スナップショット比較用に出力を正規化する。
-/// data URI(フォント・画像・動画)は長さだけを残し、内容の差分ノイズを消す。
+/// Normalizes output for snapshot comparison.
+/// Data URIs (fonts, images, video) are reduced to their length to keep diffs readable.
 pub fn normalize(html: &str) -> String {
     let re = regex_lite(r"data:[a-z/+.-]+;base64,[A-Za-z0-9+/=]+");
     let mut out = String::with_capacity(html.len());
@@ -37,8 +37,8 @@ pub fn normalize(html: &str) -> String {
     out
 }
 
-/// 依存を増やさないための最小のパターン検索(data URI 用)。
-/// 見つかった範囲 (start, end) を返す。
+/// Minimal scanner for data URIs, avoiding an extra dependency.
+/// Returns the matched range as (start, end).
 fn regex_lite(_pattern: &str) -> impl Fn(&str) -> Option<(usize, usize)> {
     |s: &str| {
         let start = s.find("data:")?;

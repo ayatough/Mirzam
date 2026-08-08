@@ -5,6 +5,7 @@ members = [
     "crates/mirzam-core",
     "crates/mirzam-layout",
     "crates/mirzam-shape",
+    "crates/mirzam-chart",
     "crates/mirzam-connect",
     "crates/mirzam-render",
     "crates/mirzam-cli",
@@ -22,6 +23,7 @@ mirzam-syntax = { path = "crates/mirzam-syntax" }
 mirzam-core = { path = "crates/mirzam-core" }
 mirzam-layout = { path = "crates/mirzam-layout" }
 mirzam-shape = { path = "crates/mirzam-shape" }
+mirzam-chart = { path = "crates/mirzam-chart" }
 mirzam-connect = { path = "crates/mirzam-connect" }
 mirzam-render = { path = "crates/mirzam-render" }
 comrak = "0.39"

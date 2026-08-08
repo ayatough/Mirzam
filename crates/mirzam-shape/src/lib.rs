@@ -1,14 +1,14 @@
-//! `shape` ブロックの DSL パーサと、ビルド時 SVG レイヤ生成。
+//! Parser for the `shape` block DSL, plus build-time SVG layer generation.
 //!
-//! 座標系はページ全体の % (0–100)。スライドの論理ピクセルへ変換して
-//! `viewBox` 固定の SVG を生成するため、表示スケールに自動追従する。
+//! Coordinates are percentages of the page (0-100). They are converted to the
+//! slide's logical pixels inside a fixed `viewBox`, so shapes scale with the slide.
 //!
 //! ```text
-//! rect    #cache at(70%, 30%) size(30%, 14%) label="キャッシュ層" fill=@accent2
+//! rect    #cache at(70%, 30%) size(30%, 14%) label="Cache layer" fill=@accent2
 //! ellipse #db    at(70%, 70%) size(26%, 16%) label="DB"
 //! arrow   #a1    from(#cache.s) to(#db.n) style=dashed
 //! line           from(10%, 90%) to(40%, 90%)
-//! text    #cap   at(20%, 85%) "ヒット率 95%" .small
+//! text    #cap   at(20%, 85%) "95% hit rate" .small
 //! ```
 
 use std::collections::BTreeMap;
@@ -31,7 +31,7 @@ pub enum Edge {
     C,
 }
 
-/// 端点参照: 座標そのもの、または他の図形の辺
+/// An endpoint: either a literal point or an edge of another shape.
 #[derive(Debug, Clone, PartialEq)]
 pub enum EndRef {
     Point(f64, f64),
@@ -56,7 +56,7 @@ pub struct ShapeDoc {
     pub errors: Vec<String>,
 }
 
-/// shape ブロックのソースをパースする(1 行 = 1 図形)
+/// Parses a shape block; one shape per line.
 pub fn parse_shapes(src: &str) -> ShapeDoc {
     let mut shapes = Vec::new();
     let mut errors = Vec::new();
@@ -64,7 +64,7 @@ pub fn parse_shapes(src: &str) -> ShapeDoc {
         let line = line.trim();
         if line.is_empty() || line.starts_with('#') && line.len() > 1 && line.as_bytes()[1] == b' '
         {
-            // 空行と `# コメント` はスキップ
+            // Skip blank lines and `# comment` lines.
             continue;
         }
         if line.is_empty() {
@@ -73,7 +73,7 @@ pub fn parse_shapes(src: &str) -> ShapeDoc {
         match parse_line(line) {
             Ok(Some(s)) => shapes.push(s),
             Ok(None) => {}
-            Err(e) => errors.push(format!("shape 行 {}: {e}", ln + 1)),
+            Err(e) => errors.push(format!("shape line {}: {e}", ln + 1)),
         }
     }
     ShapeDoc { shapes, errors }
@@ -90,7 +90,7 @@ fn parse_line(line: &str) -> Result<Option<Shape>, String> {
         "text" => ShapeKind::Text,
         "arrow" => ShapeKind::Arrow,
         "line" => ShapeKind::Line,
-        other => return Err(format!("不明な図形種別 `{other}`")),
+        other => return Err(format!("unknown shape kind `{other}`")),
     };
     let mut s = Shape {
         kind: Some(kind),
@@ -109,7 +109,7 @@ fn parse_line(line: &str) -> Result<Option<Shape>, String> {
                 "size" => s.size = Some(parse_pair(&args)?),
                 "from" => s.from = Some(parse_endref(&args)?),
                 "to" => s.to = Some(parse_endref(&args)?),
-                other => return Err(format!("不明な指定 `{other}(...)`")),
+                other => return Err(format!("unknown setting `{other}(...)`")),
             }
         } else if let Some((k, v)) = t.split_once('=') {
             if k == "label" {
@@ -118,7 +118,7 @@ fn parse_line(line: &str) -> Result<Option<Shape>, String> {
                 s.kv.insert(k.to_string(), v.trim_matches('"').to_string());
             }
         } else {
-            return Err(format!("解釈できないトークン `{t}`"));
+            return Err(format!("unrecognized token `{t}`"));
         }
     }
     validate(&s)?;
@@ -129,24 +129,24 @@ fn validate(s: &Shape) -> Result<(), String> {
     match s.kind.unwrap() {
         ShapeKind::Rect | ShapeKind::Ellipse => {
             if s.at.is_none() || s.size.is_none() {
-                return Err("rect/ellipse には at(x,y) と size(w,h) が必要です".into());
+                return Err("rect/ellipse require at(x,y) and size(w,h)".into());
             }
         }
         ShapeKind::Text => {
             if s.at.is_none() || s.label.is_none() {
-                return Err("text には at(x,y) と \"内容\" が必要です".into());
+                return Err("text requires at(x,y) and a quoted string".into());
             }
         }
         ShapeKind::Arrow | ShapeKind::Line => {
             if s.from.is_none() || s.to.is_none() {
-                return Err("arrow/line には from(...) と to(...) が必要です".into());
+                return Err("arrow/line require from(...) and to(...)".into());
             }
         }
     }
     Ok(())
 }
 
-/// トークン分割: 引用符と括弧の内側は空白で切らない
+/// Tokenizes a line, keeping quoted strings and parenthesized groups intact.
 fn tokenize(line: &str) -> Result<Vec<String>, String> {
     let mut tokens = Vec::new();
     let mut cur = String::new();
@@ -178,7 +178,7 @@ fn tokenize(line: &str) -> Result<Vec<String>, String> {
                     }
                 }
                 if depth != 0 {
-                    return Err("括弧が閉じていません".into());
+                    return Err("unclosed parenthesis".into());
                 }
             }
             c if c.is_whitespace() => {
@@ -195,7 +195,7 @@ fn tokenize(line: &str) -> Result<Vec<String>, String> {
     Ok(tokens)
 }
 
-/// `name(args)` 形式を分解
+/// Splits a `name(args)` call.
 fn parse_call(t: &str) -> Option<(&str, String)> {
     let open = t.find('(')?;
     if !t.ends_with(')') {
@@ -208,13 +208,13 @@ fn parse_pct(s: &str) -> Result<f64, String> {
     s.trim()
         .trim_end_matches('%')
         .parse::<f64>()
-        .map_err(|_| format!("数値を解釈できません: `{s}`"))
+        .map_err(|_| format!("not a number: `{s}`"))
 }
 
 fn parse_pair(args: &str) -> Result<(f64, f64), String> {
     let (a, b) = args
         .split_once(',')
-        .ok_or_else(|| format!("`{args}` は `x, y` 形式で指定してください"))?;
+        .ok_or_else(|| format!("`{args}` must be written as `x, y`"))?;
     Ok((parse_pct(a)?, parse_pct(b)?))
 }
 
@@ -229,7 +229,7 @@ fn parse_endref(args: &str) -> Result<EndRef, String> {
                     "e" => Edge::E,
                     "w" => Edge::W,
                     "c" => Edge::C,
-                    other => return Err(format!("不明な辺 `.{other}`(n/s/e/w/c)")),
+                    other => return Err(format!("unknown edge `.{other}` (expected n/s/e/w/c)")),
                 };
                 (id.to_string(), edge)
             }
@@ -242,9 +242,9 @@ fn parse_endref(args: &str) -> Result<EndRef, String> {
     }
 }
 
-// ---- SVG 生成 ----
+// ---- SVG generation ----
 
-/// テーマカラートークン(@accent1 等)を CSS 変数へ解決。リテラル色は無害化して通す
+/// Resolves a theme token such as `@accent1` to a CSS variable; literal colors are sanitized.
 fn color(v: &str) -> String {
     if let Some(name) = v.strip_prefix('@') {
         return format!("var(--mz-{name})");
@@ -260,7 +260,7 @@ fn esc(s: &str) -> String {
         .replace('"', "&quot;")
 }
 
-/// 図形の外接矩形(px)。id 参照の解決に使う
+/// A shape's bounding box in pixels, used to resolve id references.
 #[derive(Clone, Copy)]
 struct Box_ {
     cx: f64,
@@ -281,13 +281,13 @@ impl Box_ {
     }
 }
 
-/// SVG レイヤを生成する。`(w, h)` はスライドの論理ピクセル。
+/// Generates the SVG layer. `(w, h)` is the slide's logical pixel size.
 pub fn render_svg(doc: &ShapeDoc, w: u32, h: u32) -> (String, Vec<String>) {
     let mut errors = doc.errors.clone();
     let (wf, hf) = (w as f64, h as f64);
     let px = |p: (f64, f64)| (p.0 / 100.0 * wf, p.1 / 100.0 * hf);
 
-    // 1 パス目: id → 矩形
+    // Pass 1: map ids to boxes.
     let mut boxes: BTreeMap<&str, Box_> = BTreeMap::new();
     for s in &doc.shapes {
         if let (Some(id), Some(at)) = (&s.id, s.at) {
@@ -310,14 +310,14 @@ pub fn render_svg(doc: &ShapeDoc, w: u32, h: u32) -> (String, Vec<String>) {
             EndRef::Anchor { id, edge } => match boxes.get(id.as_str()) {
                 Some(b) => Some(b.edge(*edge)),
                 None => {
-                    errors.push(format!("shape: 参照先 `#{id}` が見つかりません"));
+                    errors.push(format!("shape: no element with id `#{id}`"));
                     None
                 }
             },
         }
     };
 
-    // 2 パス目: 要素を出力
+    // Pass 2: emit the elements.
     let mut body = String::new();
     for s in &doc.shapes {
         let id_attr =
@@ -403,7 +403,7 @@ pub fn render_svg(doc: &ShapeDoc, w: u32, h: u32) -> (String, Vec<String>) {
     (svg, errors)
 }
 
-/// 矢印の先端(三角形)。線の終端角度から計算する
+/// The arrowhead triangle, oriented by the line's end angle.
 fn arrow_head(a: (f64, f64), b: (f64, f64), stroke: &str) -> String {
     let ang = (b.1 - a.1).atan2(b.0 - a.0);
     let len = 12.0;
@@ -428,15 +428,14 @@ mod tests {
 
     #[test]
     fn parse_rect_with_label() {
-        let doc = parse_shapes(
-            r#"rect #cache at(70%, 30%) size(30%, 14%) label="キャッシュ" fill=@accent2"#,
-        );
+        let doc =
+            parse_shapes(r#"rect #cache at(70%, 30%) size(30%, 14%) label="Cache" fill=@accent2"#);
         assert!(doc.errors.is_empty());
         let s = &doc.shapes[0];
         assert_eq!(s.kind, Some(ShapeKind::Rect));
         assert_eq!(s.id.as_deref(), Some("cache"));
         assert_eq!(s.at, Some((70.0, 30.0)));
-        assert_eq!(s.label.as_deref(), Some("キャッシュ"));
+        assert_eq!(s.label.as_deref(), Some("Cache"));
     }
 
     #[test]
@@ -456,9 +455,9 @@ mod tests {
 
     #[test]
     fn quoted_text_shape() {
-        let doc = parse_shapes(r#"text #t at(50, 90) "ヒット率 95%" .small"#);
+        let doc = parse_shapes(r#"text #t at(50, 90) "95% hit rate" .small"#);
         assert!(doc.errors.is_empty());
-        assert_eq!(doc.shapes[0].label.as_deref(), Some("ヒット率 95%"));
+        assert_eq!(doc.shapes[0].label.as_deref(), Some("95% hit rate"));
         assert_eq!(doc.shapes[0].classes, vec!["small"]);
     }
 
@@ -474,9 +473,9 @@ mod tests {
         let (svg, errors) = render_svg(&doc, 1280, 720);
         assert!(errors.is_empty(), "{errors:?}");
         assert!(svg.contains("viewBox=\"0 0 1280 720\""));
-        // #a の東端 = (25% + 5%) * 1280 = 384
+        // East edge of #a = (25% + 5%) * 1280 = 384
         assert!(svg.contains("x1=\"384.0\""));
-        assert!(svg.contains("<polygon")); // 矢印の先端
+        assert!(svg.contains("<polygon")); // arrowhead
     }
 
     #[test]

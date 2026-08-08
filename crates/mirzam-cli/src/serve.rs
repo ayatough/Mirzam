@@ -1,9 +1,9 @@
-//! `mirzam serve` — ホットリロード付き開発サーバ。
+//! `mirzam serve` - development server with hot reload.
 //!
-//! - ソースファイル(入力 + include)の mtime を 200ms 間隔で監視
-//! - 変更があればキャッシュ付き再ビルド(変更スライドのみ再レンダリング)
-//! - クライアントは `/events?v=N` のロングポーリングで差分を受け取り、
-//!   変更された `<section>` だけ DOM を差し替える
+//! - Polls the mtimes of the input and its includes every 200ms
+//! - Rebuilds through the cache on change, re-rendering only changed slides
+//! - Clients long-poll `/events?v=N` for the diff and patch only the
+//!   `<section>` elements that changed
 
 use crate::pipeline::{build_deck, BuildOutput, RenderCache};
 use std::collections::{BTreeSet, HashMap, VecDeque};
@@ -22,7 +22,7 @@ struct Snapshot {
     hashes: Vec<u64>,
     page_fingerprint: u64,
     custom_css: Option<String>,
-    /// 過去バージョンのハッシュ列(差分計算用)
+    /// Hash lists from previous versions, used to compute diffs.
     history: VecDeque<(u64, Vec<u64>)>,
 }
 
@@ -51,7 +51,7 @@ pub fn serve(input: &Path, port: u16) -> Result<(), String> {
         changed: Condvar::new(),
     });
 
-    // ファイル監視スレッド
+    // File-watching thread.
     {
         let shared = Arc::clone(&shared);
         let input = input.to_path_buf();
@@ -72,8 +72,8 @@ pub fn serve(input: &Path, port: u16) -> Result<(), String> {
                         publish(&shared, out, t0);
                     }
                     Err(e) => {
-                        // 編集途中の一時的なエラーは表示のみ。直前の状態を保持する
-                        eprintln!("  ✗ 再ビルド失敗: {e}");
+                        // Transient errors while editing are reported but keep the last good state.
+                        eprintln!("  ✗ rebuild failed: {e}");
                     }
                 }
             }
@@ -81,8 +81,8 @@ pub fn serve(input: &Path, port: u16) -> Result<(), String> {
     }
 
     let server = tiny_http::Server::http(("127.0.0.1", port))
-        .map_err(|e| format!("ポート {port} で待ち受けできません: {e}"))?;
-    println!("▶ http://localhost:{port} で配信中(ホットリロード有効、Ctrl-C で終了)");
+        .map_err(|e| format!("cannot listen on port {port}: {e}"))?;
+    println!("▶ serving http://localhost:{port} with hot reload (Ctrl-C to stop)");
 
     for request in server.incoming_requests() {
         let shared = Arc::clone(&shared);
@@ -97,10 +97,10 @@ fn publish(shared: &Shared, out: BuildOutput, t0: Instant) {
     }
     let mut snap = shared.snap.lock().unwrap();
     if snap.hashes == out.hashes && snap.page_fingerprint == out.page_fingerprint {
-        // 出力に変化なし(mtime のみの更新、保存のみ等)
+        // Output is unchanged (an mtime-only touch, a no-op save, ...).
         if out.rendered > 0 {
             println!(
-                "↻ 出力変化なし({} 枚を再レンダリングしたが同一内容)",
+                "↻ no output change ({} slides re-rendered, identical result)",
                 out.rendered
             );
         }
@@ -125,7 +125,7 @@ fn publish(shared: &Shared, out: BuildOutput, t0: Instant) {
         snap.history.pop_front();
     }
     println!(
-        "↻ v{v}: {}/{} 枚を更新、再レンダリング {} 枚({} ms)",
+        "↻ v{v}: {}/{} slides updated, {} re-rendered ({} ms)",
         changed,
         snap.hashes.len(),
         out.rendered,
@@ -164,7 +164,7 @@ fn handle(request: tiny_http::Request, shared: Arc<Shared>) {
     let _ = request.respond(response);
 }
 
-/// バージョンが進むまで(またはタイムアウトまで)待ち、差分 JSON を返す
+/// Waits for a new version (or a timeout) and returns the diff as JSON.
 fn wait_for_change(shared: &Shared, client_v: u64) -> String {
     let deadline = Instant::now() + LONG_POLL_TIMEOUT;
     let mut snap = shared.snap.lock().unwrap();
@@ -180,10 +180,10 @@ fn wait_for_change(shared: &Shared, client_v: u64) -> String {
         }
     }
     if snap.version == client_v {
-        // タイムアウト: 変化なし
+        // Timed out with no change.
         return serde_json::json!({ "v": client_v, "changes": [], "full": false }).to_string();
     }
-    // クライアントのバージョンのハッシュ列が履歴にあれば差分、なければ全リロード
+    // Diff against the client's version if it is still in history; otherwise reload.
     let old_hashes = snap
         .history
         .iter()
@@ -199,15 +199,15 @@ fn wait_for_change(shared: &Shared, client_v: u64) -> String {
                 .map(|(i, _)| serde_json::json!([i, snap.sections[i]]))
                 .collect();
             if changes.is_empty() {
-                // スライドは同一だがバージョンが進んだ = ページレベルの変更
-                //(カスタム CSS 等)なので全体リロード
+                // Slides are identical but the version advanced, so a page-level
+                // setting changed (custom CSS, ...) and the page must reload.
                 serde_json::json!({ "v": snap.version, "changes": [], "full": true }).to_string()
             } else {
                 serde_json::json!({ "v": snap.version, "changes": changes, "full": false })
                     .to_string()
             }
         }
-        // スライド枚数が変わった、または履歴切れ → ページ全体をリロード
+        // Slide count changed, or history expired: reload the whole page.
         _ => serde_json::json!({ "v": snap.version, "changes": [], "full": true }).to_string(),
     }
 }

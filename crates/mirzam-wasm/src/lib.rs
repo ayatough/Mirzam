@@ -1,18 +1,18 @@
-//! Mirzam コアの WebAssembly バインディング。
+//! WebAssembly bindings for the Mirzam core.
 //!
-//! ネイティブ版(CLI)と**同一のパース・レイアウト・レンダリング実装**を
-//! ブラウザ・VSCode Webview・Obsidian から呼び出すためのもの。
-//! ファイルシステムが無い環境で動くよう、include 対象ファイルとアセットは
-//! ホストがテーブル(JSON オブジェクト)として渡す。
+//! Exposes the *same* parsing, layout and rendering implementation the CLI uses
+//! to browsers, VS Code webviews and Obsidian.
+//! Since those hosts have no filesystem, transcluded files and assets are
+//! supplied by the host as JSON tables.
 //!
 //! ```js
 //! import init, { Renderer } from './mirzam_wasm.js';
 //! await init();
 //! const r = new Renderer();
-//! r.set_files(JSON.stringify({ 'sections/a.md': '## 埋め込み\n' }));
+//! r.set_files(JSON.stringify({ 'sections/a.md': '## Included\n' }));
 //! r.set_assets(JSON.stringify({ 'img/x.svg': 'data:image/svg+xml;base64,...' }));
-//! const html = r.render_page(source);          // ページ全体
-//! const changed = JSON.parse(r.render_changed(source)); // 差分だけ
+//! const html = r.render_page(source);                  // whole page
+//! const changed = JSON.parse(r.render_changed(source)); // changed slides only
 //! ```
 
 use mirzam_render::AssetSource;
@@ -22,7 +22,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use wasm_bindgen::prelude::*;
 
-/// ホストが渡したファイルテーブルから include を解決する
+/// Resolves includes from the host-provided file table.
 struct MapFiles<'a>(&'a BTreeMap<String, String>);
 
 impl FileProvider for MapFiles<'_> {
@@ -31,11 +31,11 @@ impl FileProvider for MapFiles<'_> {
         self.0
             .get(&key)
             .cloned()
-            .ok_or_else(|| format!("`{key}` はホストから渡されていません"))
+            .ok_or_else(|| format!("`{key}` was not provided by the host"))
     }
 }
 
-/// ホストが渡したアセットテーブル(パス → data URI または URL)
+/// Host-provided asset table mapping paths to data URIs or URLs.
 struct MapAssets<'a>(&'a BTreeMap<String, String>);
 
 impl AssetSource for MapAssets<'_> {
@@ -45,12 +45,12 @@ impl AssetSource for MapAssets<'_> {
             .0
             .get(&key)
             .cloned()
-            .ok_or_else(|| format!("`{key}` はホストから渡されていません"));
+            .ok_or_else(|| format!("`{key}` was not provided by the host"));
         (result, None)
     }
 }
 
-/// `./a/../b.md` のような相対パスを正規化してテーブルのキーに合わせる
+/// Normalizes paths like `./a/../b.md` so they match the table keys.
 fn normalize(path: &Path) -> String {
     let mut parts: Vec<String> = Vec::new();
     for c in path.components() {
@@ -65,22 +65,22 @@ fn normalize(path: &Path) -> String {
     parts.join("/")
 }
 
-/// レンダリング結果(ページ全体)
+/// Result of rendering a whole page.
 #[wasm_bindgen(getter_with_clone)]
 pub struct RenderOutput {
     pub html: String,
-    /// 警告メッセージ(JSON 配列)
+    /// Warnings, as a JSON array.
     pub warnings: String,
     pub slide_count: usize,
 }
 
-/// 差分レンダリング対応のレンダラ。
-/// 前回のスライド出力を保持し、変わったスライドだけを返せる。
+/// Renderer with incremental support.
+/// Keeps the previous slide output so it can return only what changed.
 #[wasm_bindgen]
 pub struct Renderer {
     files: BTreeMap<String, String>,
     assets: BTreeMap<String, String>,
-    /// 前回レンダリング時のスライド HTML(差分計算用)
+    /// Slide HTML from the previous render, used to compute diffs.
     previous: RefCell<Vec<String>>,
 }
 
@@ -101,24 +101,24 @@ impl Renderer {
         }
     }
 
-    /// include 対象のファイルテーブルを設定する(JSON: `{path: content}`)
+    /// Sets the transclusion table (JSON: `{path: content}`).
     pub fn set_files(&mut self, json: &str) -> Result<(), JsError> {
         self.files = parse_table(json)?;
         Ok(())
     }
 
-    /// 画像・動画のテーブルを設定する(JSON: `{path: dataUriOrUrl}`)
+    /// Sets the media table (JSON: `{path: dataUriOrUrl}`).
     pub fn set_assets(&mut self, json: &str) -> Result<(), JsError> {
         self.assets = parse_table(json)?;
         Ok(())
     }
 
-    /// 差分計算の基準をリセットする(次回は全スライドが「変更」として返る)
+    /// Resets the diff baseline; the next call reports every slide as changed.
     pub fn reset(&self) {
         self.previous.borrow_mut().clear();
     }
 
-    /// ビューア入りの完全な HTML ページを生成する
+    /// Renders a complete HTML page with the viewer.
     pub fn render_page(&self, source: &str) -> RenderOutput {
         let built = self.build(source);
         let opts = mirzam_render::PageOptions::default();
@@ -129,14 +129,14 @@ impl Renderer {
         }
     }
 
-    /// スライド 1 枚だけを `<section>` HTML として返す(プレビューの部分更新用)
+    /// Renders a single slide as `<section>` HTML, for partial preview updates.
     pub fn render_slide(&self, source: &str, index: usize) -> Option<String> {
         self.build(source).sections.get(index).cloned()
     }
 
-    /// 前回から変わったスライドだけを返す。
+    /// Returns only the slides that changed since the last render.
     /// JSON: `{"count": n, "changes": [[index, html], ...], "structural": bool}`
-    /// `structural` が true のときはスライド枚数が変わったので全体を作り直す。
+    /// When `structural` is true the slide count changed, so rebuild the page.
     pub fn render_changed(&self, source: &str) -> String {
         let built = self.build(source);
         let mut prev = self.previous.borrow_mut();
@@ -158,7 +158,7 @@ impl Renderer {
         json
     }
 
-    /// パースだけ行い、デッキ構造の要約を返す(アウトライン表示・診断用)。
+    /// Parses only, returning a summary of the deck structure for outlines and diagnostics.
     /// JSON: `{"slides": [{"index", "panes", "hasShapes", "hasConnectors", "notes"}], "warnings": []}`
     pub fn outline(&self, source: &str) -> String {
         let (fm, body) = mirzam_syntax::split_frontmatter(source);
@@ -206,7 +206,7 @@ impl Renderer {
             },
             None => mirzam_core::DeckMeta::default(),
         };
-        // WASM 環境ではカレントディレクトリの概念が無いため基準は空パス
+        // There is no current directory in WASM, so the base is an empty path.
         let body = mirzam_syntax::expand_includes(body, Path::new(""), &MapFiles(&self.files));
         let vars = meta.var_table();
         let body = substitute_outside_fences(&body, &vars);
@@ -231,18 +231,18 @@ impl Renderer {
 }
 
 fn parse_table(json: &str) -> Result<BTreeMap<String, String>, JsError> {
-    let value: serde_json::Value =
-        serde_json::from_str(json).map_err(|e| JsError::new(&format!("JSON 解析に失敗: {e}")))?;
+    let value: serde_json::Value = serde_json::from_str(json)
+        .map_err(|e| JsError::new(&format!("failed to parse JSON: {e}")))?;
     let obj = value
         .as_object()
-        .ok_or_else(|| JsError::new("オブジェクト `{path: value}` を渡してください"))?;
+        .ok_or_else(|| JsError::new("expected an object of the form `{path: value}`"))?;
     Ok(obj
         .iter()
         .filter_map(|(k, v)| v.as_str().map(|s| (normalize(Path::new(k)), s.to_string())))
         .collect())
 }
 
-/// コードフェンス外の行にのみ変数置換を適用する(CLI と同じ規則)
+/// Substitutes variables outside code fences, matching the CLI's rule.
 fn substitute_outside_fences(body: &str, vars: &BTreeMap<String, mirzam_core::Value>) -> String {
     let mut out = String::with_capacity(body.len());
     let mut in_code = false;
@@ -267,16 +267,15 @@ mod tests {
     #[test]
     fn renders_page_with_includes_and_assets() {
         let mut r = Renderer::new();
-        // 中身が `"##` を含むので raw string ではなく通常のエスケープで書く
-        r.set_files("{\"sections/a.md\": \"## 埋め込み見出し\\n\"}")
+        r.set_files("{\"sections/a.md\": \"## Included heading\\n\"}")
             .unwrap();
         r.set_assets(r#"{"img/x.svg": "data:image/svg+xml;base64,QUJD"}"#)
             .unwrap();
         let src =
-            "---\ntitle: T\n---\n\n# 一枚目\n\n![図](img/x.svg)\n\n---\n\n![[sections/a.md]]\n";
+            "---\ntitle: T\n---\n\n# First\n\n![figure](img/x.svg)\n\n---\n\n![[sections/a.md]]\n";
         let out = r.render_page(src);
         assert_eq!(out.slide_count, 2);
-        assert!(out.html.contains("埋め込み見出し"));
+        assert!(out.html.contains("Included heading"));
         assert!(out.html.contains("data:image/svg+xml;base64,QUJD"));
         assert_eq!(out.warnings, "[]");
     }
@@ -288,7 +287,7 @@ mod tests {
         let first: serde_json::Value = serde_json::from_str(&r.render_changed(v1)).unwrap();
         assert_eq!(first["changes"].as_array().unwrap().len(), 2);
 
-        // 2 枚目だけ変更
+        // Only the second slide changes.
         let v2 = "# A\n\n---\n\n# B2\n";
         let second: serde_json::Value = serde_json::from_str(&r.render_changed(v2)).unwrap();
         let changes = second["changes"].as_array().unwrap();
@@ -296,7 +295,7 @@ mod tests {
         assert_eq!(changes[0][0], 1);
         assert_eq!(second["structural"], false);
 
-        // 変更なしなら差分ゼロ
+        // No change means no diff.
         let third: serde_json::Value = serde_json::from_str(&r.render_changed(v2)).unwrap();
         assert_eq!(third["changes"].as_array().unwrap().len(), 0);
     }
@@ -314,19 +313,19 @@ mod tests {
     #[test]
     fn outline_reports_structure() {
         let r = Renderer::new();
-        let src = "## S\n\n```pane\n+---+---+\n| a | b |\n+---+---+\n```\n\n::: pane a\nx\n:::\n\n```shape\nrect #r at(50,50) size(10,10)\n```\n\n<!-- note: メモ -->\n";
+        let src = "## S\n\n```pane\n+---+---+\n| a | b |\n+---+---+\n```\n\n::: pane a\nx\n:::\n\n```shape\nrect #r at(50,50) size(10,10)\n```\n\n<!-- note: a memo -->\n";
         let out: serde_json::Value = serde_json::from_str(&r.outline(src)).unwrap();
         let slide = &out["slides"][0];
         assert_eq!(slide["panes"][0], "a");
         assert_eq!(slide["hasShapes"], true);
-        assert_eq!(slide["notes"][0], "メモ");
+        assert_eq!(slide["notes"][0], "a memo");
     }
 
     #[test]
     fn missing_asset_warns_but_renders() {
         let r = Renderer::new();
-        let out = r.render_page("![図](missing.png)\n");
+        let out = r.render_page("![figure](missing.png)\n");
         assert!(out.warnings.contains("missing.png"));
-        assert!(out.html.contains("<img")); // プレースホルダに置換される
+        assert!(out.html.contains("<img")); // replaced with the placeholder
     }
 }

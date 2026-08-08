@@ -1,8 +1,8 @@
-//! build / serve 共通のビルドパイプライン。
-//! スライド単位のソースハッシュでレンダリング結果をキャッシュし、
-//! 変更されたスライドだけを再レンダリングする。
-//! キャッシュはスライドが参照する画像等の mtime も検証するため、
-//! 画像ファイルだけを差し替えた場合も該当スライドだけが再レンダリングされる。
+//! The build pipeline shared by `build` and `serve`.
+//! Rendered slides are cached by source hash so only changed slides are
+//! re-rendered.
+//! Cache entries also record the mtimes of the assets a slide references, so
+//! replacing an image re-renders exactly the slides that use it.
 
 use std::collections::{BTreeSet, HashMap};
 use std::hash::{Hash, Hasher};
@@ -11,32 +11,32 @@ use std::time::SystemTime;
 
 pub struct BuildOutput {
     pub meta: mirzam_core::DeckMeta,
-    /// レンダリング済み `<section>` HTML(スライド順)
+    /// Rendered `<section>` HTML, in slide order.
     pub sections: Vec<String>,
-    /// スライドごとの出力 HTML のハッシュ(差分検出用)。
-    /// ソースではなく出力のハッシュなので、画像ファイルの内容だけが
-    /// 変わった場合(ソース不変)も配信すべき差分として検出できる
+    /// Hash of each slide's rendered HTML, used for change detection.
+    /// Hashing output rather than source means a changed image file is
+    /// detected even though the Markdown is unchanged.
     pub hashes: Vec<u64>,
-    /// ページレベル設定(タイトル・アスペクト・カスタム CSS)の指紋。
-    /// スライドは同一でもページの再組み立てが必要な変更を検出する
+    /// Fingerprint of page-level settings (title, aspect, custom CSS),
+    /// catching changes that need a page rebuild even when slides are identical.
     pub page_fingerprint: u64,
-    /// frontmatter `css:` の内容(解決済み)
+    /// Resolved contents of frontmatter `css:`.
     pub custom_css: Option<String>,
     pub warnings: Vec<String>,
-    /// このデッキを構成するソースファイル + 参照アセット(監視対象)
+    /// Source files and referenced assets making up this deck; the watch set.
     pub files: BTreeSet<PathBuf>,
-    /// このビルドで実際に再レンダリングされた枚数(キャッシュミス数)
+    /// How many slides this build actually re-rendered (cache misses).
     pub rendered: usize,
 }
 
 pub struct CacheEntry {
     html: String,
-    /// レンダリング時に参照したアセットとその mtime
+    /// Assets referenced when rendering, with their mtimes.
     assets: Vec<(PathBuf, Option<SystemTime>)>,
 }
 
 impl CacheEntry {
-    /// 参照アセットが当時と同じ mtime のままか
+    /// Whether every referenced asset still has the recorded mtime.
     fn is_fresh(&self) -> bool {
         self.assets.iter().all(|(p, t)| mtime(p) == *t)
     }
@@ -46,7 +46,7 @@ pub type RenderCache = HashMap<u64, CacheEntry>;
 
 pub fn build_deck(input: &Path, cache: &mut RenderCache) -> Result<BuildOutput, String> {
     let src = std::fs::read_to_string(input)
-        .map_err(|e| format!("{} を読めません: {e}", input.display()))?;
+        .map_err(|e| format!("cannot read {}: {e}", input.display()))?;
     let base_dir = input
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
@@ -64,7 +64,7 @@ pub fn build_deck(input: &Path, cache: &mut RenderCache) -> Result<BuildOutput, 
     };
     let mut warnings = Vec::new();
 
-    // カスタム CSS の読み込み(失敗は警告に留める)
+    // Load the custom stylesheet; failures are warnings, not errors.
     let custom_css = match &meta.css {
         Some(rel) => {
             let path = base_dir.join(rel);
@@ -72,7 +72,7 @@ pub fn build_deck(input: &Path, cache: &mut RenderCache) -> Result<BuildOutput, 
             match std::fs::read_to_string(&path) {
                 Ok(css) => Some(css),
                 Err(e) => {
-                    warnings.push(format!("css: {rel} を読めません: {e}"));
+                    warnings.push(format!("css: cannot read {rel}: {e}"));
                     None
                 }
             }
@@ -80,7 +80,7 @@ pub fn build_deck(input: &Path, cache: &mut RenderCache) -> Result<BuildOutput, 
         None => None,
     };
 
-    // 2. include 展開(読んだファイルを収集)
+    // 2. Expand includes, collecting the files that were read.
     let body = mirzam_syntax::expand_includes_tracked(
         body,
         &base_dir,
@@ -88,19 +88,19 @@ pub fn build_deck(input: &Path, cache: &mut RenderCache) -> Result<BuildOutput, 
         &mut files,
     );
 
-    // 3. 変数置換(コードフェンス内は対象外)。
-    //    変数の変更は置換後ソースの変化としてスライドハッシュに反映される。
+    // 3. Substitute variables outside code fences. A variable change shows up
+    //    as changed post-substitution source, so slide hashes pick it up.
     let vars = meta.var_table();
     let body = substitute_outside_fences(&body, &vars);
 
-    // 4. スライド分割 → スライド単位でキャッシュ参照レンダリング
+    // 4. Split into slides and render each one through the cache.
     let slide_sources = mirzam_syntax::split_slides(&body);
     let mut sections = Vec::with_capacity(slide_sources.len());
     let mut hashes = Vec::with_capacity(slide_sources.len());
     let mut rendered = 0usize;
 
     for (i, slide_src) in slide_sources.iter().enumerate() {
-        // キャッシュキーにはスライド位置も含める(data-index がセクション HTML に埋まるため)
+        // The cache key includes the slide index, since data-index is baked into the HTML.
         let key = slide_hash(slide_src, i);
         match cache.get(&key).filter(|e| e.is_fresh()) {
             Some(entry) => {
@@ -133,7 +133,7 @@ pub fn build_deck(input: &Path, cache: &mut RenderCache) -> Result<BuildOutput, 
         }
     }
 
-    // キャッシュの野放図な成長を防ぐ(編集セッションでは十分な上限)
+    // Keep the cache from growing without bound during a long editing session.
     if cache.len() > 4096 {
         let live_keys: std::collections::HashSet<u64> = slide_sources
             .iter()
@@ -149,7 +149,7 @@ pub fn build_deck(input: &Path, cache: &mut RenderCache) -> Result<BuildOutput, 
         meta.author.hash(&mut h);
         meta.aspect.hash(&mut h);
         custom_css.hash(&mut h);
-        // 数式の有無で数式フォントの同梱が変わる(serve は全体リロードで反映)
+        // Whether math is present decides if the math font is bundled.
         mirzam_render::sections_have_math(&sections).hash(&mut h);
         h.finish()
     };
@@ -183,7 +183,7 @@ fn str_hash(s: &str) -> u64 {
     h.finish()
 }
 
-/// コードフェンス外の行にのみ変数置換を適用する
+/// Substitutes variables only on lines outside code fences.
 fn substitute_outside_fences(
     body: &str,
     vars: &std::collections::BTreeMap<String, mirzam_core::Value>,

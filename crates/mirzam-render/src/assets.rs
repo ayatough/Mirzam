@@ -1,5 +1,5 @@
-//! 生成 HTML 内のローカル画像・メディアを data URI として埋め込み、
-//! 単一ファイルで配布できる HTML にする(スパイク方針)。
+//! Inlines local images and media as data URIs so a deck ships as a single
+//! self-contained HTML file.
 
 use base64::Engine as _;
 use regex::Regex;
@@ -7,15 +7,15 @@ use std::path::{Path, PathBuf};
 
 const MAX_EMBED_BYTES: u64 = 20 * 1024 * 1024;
 
-/// アセット参照の解決先。ネイティブではファイルシステム、WASM では
-/// ホスト(エディタ拡張やブラウザ)が用意したテーブルを差し替えて使う。
+/// Resolves asset references: the filesystem natively, or a host-provided
+/// table in WASM (editor extension, browser).
 pub trait AssetSource {
-    /// 相対参照を data URI 等に解決する。
-    /// 第 2 要素は監視・キャッシュ検証に使う実ファイルパス(あれば)。
+    /// Resolves a relative reference to a data URI or URL.
+    /// The second element is the real path, when one exists, for watching and cache checks.
     fn resolve(&self, rel: &str) -> (Result<String, String>, Option<PathBuf>);
 }
 
-/// std::fs ベースの既定実装
+/// Default implementation backed by `std::fs`.
 pub struct FsAssets<'a>(pub &'a Path);
 
 impl AssetSource for FsAssets<'_> {
@@ -26,9 +26,9 @@ impl AssetSource for FsAssets<'_> {
     }
 }
 
-/// ローカルアセットを data URI に置換する。
-/// 参照したファイルパス(存在しないものも含む)を `referenced` に収集し、
-/// キャッシュの鮮度検証とファイル監視に使えるようにする。
+/// Replaces local asset references with data URIs.
+/// Every referenced path is collected into `referenced` (including missing ones)
+/// so callers can validate caches and watch files.
 pub fn embed_assets(
     html: &str,
     source: &dyn AssetSource,
@@ -58,10 +58,10 @@ pub fn embed_assets(
 }
 
 fn embed_file(path: &Path) -> Result<String, String> {
-    let meta = std::fs::metadata(path).map_err(|_| "ファイルが見つかりません".to_string())?;
+    let meta = std::fs::metadata(path).map_err(|_| "file not found".to_string())?;
     if meta.len() > MAX_EMBED_BYTES {
         return Err(format!(
-            "{}MB を超えるため埋め込みをスキップしました",
+            "larger than {}MB, not inlined",
             MAX_EMBED_BYTES / 1024 / 1024
         ));
     }
@@ -90,7 +90,7 @@ fn mime_for(path: &Path) -> &'static str {
     }
 }
 
-/// 見つからないアセットのプレースホルダ画像(SVG data URI)
+/// Placeholder image (SVG data URI) for an asset that could not be found.
 fn placeholder_uri(name: &str) -> String {
     let label = name.replace(['<', '>', '&'], "");
     let svg = format!(

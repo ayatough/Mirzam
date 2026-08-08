@@ -1,133 +1,139 @@
 # Mirzam
 
-**Markdown ベースの次世代スライド作成システム** — Google スライド / PowerPoint に代わる「第三のツール」を目指すプロジェクト。
+**Presentation decks that live in your repository.** Write plain Markdown, draw the
+layout as ASCII, and get a deck with real charts, diagrams, video and math — as a
+single HTML file or a PDF.
 
-> Mirzam(ミルザム)= おおいぬ座 β 星。「先駆けて告げるもの(The Announcer)」の意。
+> Mirzam (β Canis Majoris) — "the announcer", the star that rises before Sirius.
 
-## ビジョン
+[Syntax](docs/syntax.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](docs/development.md) · [日本語](docs/ja/README.md)
 
-プレーンな Markdown として読める原稿から、PowerPoint 並みの表現力を持つスライドを、軽量・高速に生成する。人間にも AI エージェントにも読み書きしやすい記法で、テキストエディタだけでレイアウトまで完結させる。
-
-## 既存ツールの課題と Mirzam のアプローチ
-
-| 既存ツール(Marp / Touying 等)の不満 | Mirzam のアプローチ |
-|---|---|
-| 直感的なレイアウト操作ができない | ASCII アートによるペイン定義(`pane` ブロック)で、見たまま = レイアウト |
-| 画像の配置調整ができない | ペイン参照 + `fit` / `align` 属性で宣言的に配置 |
-| 図形描画の自由度が低い | 専用の `shape` レイヤ(ページ座標系の自由描画) |
-| 動画を埋め込めない | HTML ランタイムを一級市民とし、video / GIF をネイティブ再生 |
-| エクスポートが限定的 | HTML(アニメ対応)/ PDF を標準搭載、PPTX / Google スライドを拡張で |
-| スマホから編集できない | Rust コアを WASM 化し、ブラウザ / PWA で同一エンジンを動作 |
-| ページが増えると重い | ページ単位の差分パース・差分レンダリング(インクリメンタル設計) |
-| 独自マークアップが覚えにくい | CommonMark 準拠。拡張はすべて「Markdown として壊れない」形で追加 |
-| ファイル分割ができない | Obsidian 互換の埋め込み記法 `![[file.md]]` によるトランスクルージョン |
-| アニメーションは妥協 | タイムライン IR を持つ `anim` ブロック。文字単位・イージング対応 |
-
-## 記法の雰囲気
-
-````markdown
----
-title: Mirzam の紹介
-aspect: "16:9"
-vars:
-  product: Mirzam
 ---
 
-## {{product}} のアーキテクチャ
+## Why
 
+Slide tools make you choose. WYSIWYG editors give you control but produce opaque
+binaries that no one can review. Markdown slide tools are diffable but leave you
+with one column and a title. Mirzam is an attempt at both: the source is ordinary
+Markdown that renders fine on GitHub, and the output is a deck you would actually
+present.
+
+```markdown
 ```pane
-+--------------------+-------------+
-|                    |             |
-|  main              |  fig        |
-|                    |             |
-+--------------------+-------------+
-|  foot                            |
-+----------------------------------+
++------------------+-----------------+
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|  main            |  chart          |
+|                  |                 |
++------------------+-----------------+
 ```
+
+::: pane head
+## Latency after the cache rollout
+:::
 
 ::: pane main
-コアは **Rust** で実装し、[パーサ]{#p} と [レイアウトエンジン]{#l} を分離する。
+p95 dropped in [every region]{#win .u}, with the largest win in `ap-ne`.
 :::
 
-::: pane fig
-![アーキテクチャ図](img/arch.svg){fit=contain}
+::: pane chart
+```chart
+type: bar
+id: latency
+data: |
+  region, before, after
+  us-east, 210, 120
+  ap-ne, 380, 180
+```
 :::
 
-<!-- note: ここでパイプラインの図を指しながら説明する -->
-````
+```connect
+#win -> #latency-1-2 : color=@accent2
+```
+```
 
-この原稿は GitHub や Obsidian でもそのまま「読める Markdown」として表示される — これが Mirzam の設計原則。
+The layout is the box drawing. The chart comes from the data next to it. The arrow
+points from a phrase in the sentence to an individual bar, and re-routes itself
+whenever the layout changes.
 
-## ドキュメント
+## Features
 
-| ドキュメント | 内容 |
+| | |
 |---|---|
-| [docs/architecture.md](docs/architecture.md) | コンポーネント分解・データフロー・技術選定 |
-| [docs/markup-spec.md](docs/markup-spec.md) | マークアップ言語(Mirzam Flavored Markdown)ドラフト仕様 |
-| [docs/roadmap.md](docs/roadmap.md) | MVP 定義と開発ロードマップ |
-| [examples/demo.md](examples/demo.md) | 記法サンプルデッキ |
+| **Layout you can see** | Draw panes as ASCII; column widths and row heights follow what you drew |
+| **Charts from data** | `chart` blocks read inline CSV or a `.csv` file and render SVG at build time |
+| **Diagrams that stay linked** | `shape` blocks draw boxes; `connect` blocks point from text to any element, resolved live |
+| **Math** | LaTeX converted to MathML at build time — no client-side JavaScript |
+| **Video and GIF** | Embedded in the HTML, replaced by a poster frame in PDF |
+| **Files that scale** | Split a deck across files with `![[section.md]]`; only edited slides re-render |
+| **Runs anywhere** | One Rust core, compiled to a native CLI and to WebAssembly for editors and browsers |
+| **Still Markdown** | Every extension degrades to harmless code blocks in a plain CommonMark parser — enforced by a test |
 
-## リポジトリ構成(計画)
+## Install
 
-```
-Mirzam/
-├── crates/            # Rust ワークスペース(コア)
-│   ├── mirzam-syntax/     # パーサ(CommonMark + 拡張 → AST)
-│   ├── mirzam-core/       # ドキュメントモデル(IR)・変数評価・差分管理
-│   ├── mirzam-layout/     # ペイングリッド → ジオメトリ解決
-│   ├── mirzam-render/     # シーングラフ → HTML / SVG 出力
-│   ├── mirzam-connect/    # アンカー解決・コネクタ(矢印)ルーティング
-│   ├── mirzam-anim/       # アニメーションタイムライン IR
-│   ├── mirzam-cli/        # CLI(build / serve / export)
-│   └── mirzam-wasm/       # WASM バインディング
-├── web/               # TypeScript(ビューア / プレゼンタランタイム)
-├── editors/           # VSCode 拡張・Obsidian プラグイン
-├── docs/              # 設計ドキュメント
-└── examples/          # サンプルデッキ
-```
-
-## 使い方(スパイク版)
+Requires a Rust toolchain (1.75+).
 
 ```bash
-# ビルド: ビューア内蔵の単一 HTML を出力
-cargo run -p mirzam-cli -- build examples/demo.md -o out
-
-# 開発サーバ: ホットリロード付き(http://localhost:4321)
-cargo run -p mirzam-cli -- serve examples/demo.md
-
-# PDF エクスポート(ヘッドレス Chromium 使用)
-cargo run -p mirzam-cli -- export pdf examples/demo.md -o demo.pdf
+git clone https://github.com/ayatough/Mirzam
+cd Mirzam
+cargo build --release          # target/release/mirzam
 ```
 
-frontmatter の `css: custom.css` でテーマの CSS 変数(色・フォント等)を上書きできる。数式(`$...$`)はビルド時に MathML へ変換されるため、数式が多くてもクライアントは重くならない。
-
-ビューア操作: `← →` ページ移動 / `N` スピーカーノート / `F` 全画面。
-
-serve は保存のたびに**変更されたスライドだけ**を再レンダリングし、開いているブラウザの該当 `<section>` だけを差し替える(ページリロード無し・表示中ページ維持)。120 枚のデッキでも編集反映は 10ms 以下。
-
-## ステータス
-
-**MVP(v0.1)の機能・品質ゲートは実装完了。** 残るはドッグフーディング(実発表での使用)。
-
-- 実装済み: build / serve(スライド単位の差分ホットリロード)/ export pdf / ASCII ペインレイアウト / ファイル分割 / 変数・計算 / 数式(MathML)/ 図形(`shape`)/ 追従コネクタ(`connect`)/ 動画・GIF / カスタム CSS / スピーカーノート / WASM コア
-- 品質ゲート: CommonMark 互換テスト・ゴールデンテスト・差分ビルド等価性テスト・性能ベンチ・clippy/fmt(すべて CI)
-- 性能(release): 500 枚デッキでフルビルド 78ms、1 枚編集の反映 2.3ms
-
-詳細と次フェーズは [docs/roadmap.md](docs/roadmap.md) を参照。
+## Use
 
 ```bash
-cargo test --workspace                                   # 品質ゲート一式
-cargo run --release -p mirzam-cli --bin mirzam-bench     # 性能ベンチ
-./scripts/build-wasm.sh                                  # WASM ビルド(ツールは自動導入)
-./scripts/serve-wasm-demo.sh                             # ブラウザで WASM コアを試す
-./scripts/build-vsix.sh                                  # VSCode 拡張(.vsix)をビルド
+mirzam build deck.md -o out          # single self-contained HTML
+mirzam serve deck.md                 # live preview at localhost:4321
+mirzam export pdf deck.md -o deck.pdf
 ```
 
-### エディタで使う(VSCode 拡張)
+In the viewer: `←` `→` to navigate, `N` for speaker notes, `F` for fullscreen.
+
+### In your editor
 
 ```bash
 ./scripts/build-vsix.sh
 code --install-extension editors/vscode/mirzam-preview-0.0.1.vsix
 ```
 
-`.md` を開いて `Ctrl+K V`(Mac: `Cmd+K V`)でライブプレビュー。編集すると変更したスライドだけが再描画され、カーソル位置に応じてプレビューが追従します。詳細は [editors/vscode/README.md](editors/vscode/README.md)。
+Open a `.md` file and press `Ctrl+K V` (`Cmd+K V` on macOS). Editing re-renders only
+the slide you touched, and moving the cursor scrolls the preview to match.
+
+### In a browser
+
+```bash
+./scripts/serve-wasm-demo.sh    # http://localhost:8080
+```
+
+## Examples
+
+| Deck | What it shows |
+|---|---|
+| [`examples/pitch.md`](examples/pitch.md) | A sales pitch: metric tiles, charts from CSV, a custom dark theme |
+| [`examples/showcase.md`](examples/showcase.md) | Every component, side by side with its source |
+| [`examples/seminar.md`](examples/seminar.md) | A research talk in Japanese: math, tables, CJK typography |
+| [`examples/media.md`](examples/media.md) | Video and GIF embedding |
+
+```bash
+cargo run --bin mirzam -- build examples/pitch.md -o out && open out/index.html
+```
+
+## Status
+
+The MVP is feature-complete and covered by regression tests in CI. It is `0.x`:
+the markup will keep changing, so pin a commit if you depend on it.
+
+- **Working:** build, live-reload server, PDF export, ASCII pane layout, file
+  splitting, variables and arithmetic, math, charts, shapes, live connectors,
+  video, custom themes, speaker notes, VS Code extension, WebAssembly core
+- **Next:** animation (`anim` blocks), presenter mode, PowerPoint export
+- **Performance:** a 500-slide deck builds in 78 ms; a single-slide edit
+  re-renders in 2.3 ms
+
+See the [roadmap](docs/roadmap.md) for the full plan and [development
+guide](docs/development.md) to work on it.
+
+## License
+
+MIT. The bundled STIX Two Math font is licensed under the SIL Open Font License.

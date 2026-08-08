@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
-# Mirzam コアを WebAssembly にビルドする。
-# 出力: pkg/(ESM の JS グルー + .wasm + 型定義)
+# Build the Mirzam core to WebAssembly.
+# Output: pkg/ (ESM glue JS, the .wasm module, and type definitions)
 #
-# 必要なツールは自動で導入する:
+# Missing tooling is installed automatically:
 #   - rustup target add wasm32-unknown-unknown
-#   - cargo install wasm-bindgen-cli --version <Cargo.lock の解決バージョン>
+#   - cargo install wasm-bindgen-cli --version <version resolved in Cargo.lock>
 #
-# 自動導入させたくない場合は MIRZAM_NO_INSTALL=1 を設定する。
+# Set MIRZAM_NO_INSTALL=1 to opt out of automatic installation.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 OUT_DIR="${1:-pkg}"
 
-# wasm-bindgen CLI は crate と*完全に同じ*バージョンでなければならない。
-# Cargo.toml のキャレット指定ではなく、実際に解決された Cargo.lock の値を使う。
+# The wasm-bindgen CLI must match the crate version *exactly*, so read the
+# resolved value from Cargo.lock rather than the caret range in Cargo.toml.
 WANT=$(awk '/^name = "wasm-bindgen"$/{getline; gsub(/version = |"/, ""); print; exit}' Cargo.lock)
 if [ -z "$WANT" ]; then
-  echo "エラー: Cargo.lock から wasm-bindgen のバージョンを取得できません" >&2
-  echo "       先に cargo build を実行してください" >&2
+  echo "error: cannot read the wasm-bindgen version from Cargo.lock" >&2
+  echo "       run cargo build first" >&2
   exit 1
 fi
 
@@ -25,29 +25,29 @@ install_hint() {
   echo "  cargo install wasm-bindgen-cli --version $WANT" >&2
 }
 
-# wasm32 ターゲット
+# wasm32 target
 if ! rustup target list --installed 2>/dev/null | grep -q wasm32-unknown-unknown; then
   if [ -n "${MIRZAM_NO_INSTALL:-}" ]; then
-    echo "エラー: wasm32-unknown-unknown ターゲットがありません" >&2
+    echo "error: the wasm32-unknown-unknown target is not installed" >&2
     echo "  rustup target add wasm32-unknown-unknown" >&2
     exit 1
   fi
-  echo "==> wasm32-unknown-unknown ターゲットを追加します"
+  echo "==> adding the wasm32-unknown-unknown target"
   rustup target add wasm32-unknown-unknown
 fi
 
-# wasm-bindgen CLI(未導入・バージョン不一致のどちらも入れ直す)
+# wasm-bindgen CLI: install when missing or when the version differs.
 HAVE=""
 if command -v wasm-bindgen >/dev/null 2>&1; then
   HAVE=$(wasm-bindgen --version | awk '{print $2}')
 fi
 if [ "$HAVE" != "$WANT" ]; then
   if [ -n "${MIRZAM_NO_INSTALL:-}" ]; then
-    echo "エラー: wasm-bindgen CLI ${HAVE:-未導入} が必要な $WANT と一致しません" >&2
+    echo "error: wasm-bindgen CLI ${HAVE:-not installed} does not match the required $WANT" >&2
     install_hint
     exit 1
   fi
-  echo "==> wasm-bindgen-cli $WANT を導入します(${HAVE:-未導入} → $WANT、数分かかります)"
+  echo "==> installing wasm-bindgen-cli $WANT (from ${HAVE:-none}; this takes a few minutes)"
   cargo install wasm-bindgen-cli --version "$WANT" --locked
 fi
 
@@ -59,5 +59,5 @@ wasm-bindgen --target web --out-dir "$OUT_DIR" \
   target/wasm32-unknown-unknown/release/mirzam_wasm.wasm
 
 SIZE=$(du -h "$OUT_DIR"/mirzam_wasm_bg.wasm | cut -f1)
-echo "✓ $OUT_DIR に出力しました (wasm: $SIZE)"
-echo "  ブラウザで試す: scripts/serve-wasm-demo.sh"
+echo "✓ wrote $OUT_DIR (wasm: $SIZE)"
+echo "  Try it in a browser: scripts/serve-wasm-demo.sh"

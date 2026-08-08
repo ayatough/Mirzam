@@ -1,14 +1,15 @@
-// Mirzam のライブプレビュー拡張。
+// Mirzam live preview extension.
 //
-// レンダリングは Webview 内で WASM 版コア(CLI と同一実装)が行う。
-// 拡張本体(Node 側)の役割は、ファイルシステムを持たない Webview のために
-// include 対象の .md と参照アセットを読み出してテーブルとして渡すこと。
+// Rendering happens inside the webview, using the WASM build of the same core
+// the CLI uses. The extension host's job is to read transcluded .md files and
+// referenced assets from disk and hand them to the webview, which has no
+// filesystem of its own.
 
 const vscode = require("vscode");
 const path = require("path");
 const fs = require("fs");
 
-/** 開いているプレビュー: ドキュメント URI → パネル */
+/** Open previews, keyed by document URI. */
 const panels = new Map();
 
 function activate(context) {
@@ -21,7 +22,7 @@ function activate(context) {
     )
   );
 
-  // 編集に追従(デバウンスは Webview 側で行わず、ここで間引く)
+  // Follow edits; debouncing happens here rather than in the webview.
   let timer;
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument((e) => {
@@ -33,7 +34,7 @@ function activate(context) {
         .get("previewDelay", 120);
       timer = setTimeout(() => update(entry, e.document), delay);
     }),
-    // カーソル位置に対応するスライドへプレビューを追従させる
+    // Reveal the slide matching the cursor position.
     vscode.window.onDidChangeTextEditorSelection((e) => {
       const entry = panels.get(e.textEditor.document.uri.toString());
       if (!entry) return;
@@ -49,9 +50,7 @@ function activate(context) {
 function showPreview(context) {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== "markdown") {
-    vscode.window.showWarningMessage(
-      "Markdown ファイルを開いた状態で実行してください"
-    );
+    vscode.window.showWarningMessage("Open a Markdown file first");
     return;
   }
   const key = editor.document.uri.toString();
@@ -81,7 +80,7 @@ function showPreview(context) {
       entry.ready = true;
       update(entry, editor.document);
     } else if (msg.type === "error") {
-      vscode.window.showErrorMessage(`Mirzam プレビュー: ${msg.message}`);
+      vscode.window.showErrorMessage(`Mirzam preview: ${msg.message}`);
     }
   });
   panel.onDidDispose(() => panels.delete(key));
@@ -93,7 +92,7 @@ function update(entry, document) {
   const baseDir = path.dirname(document.uri.fsPath);
   const { files, assets } = collectResources(text, baseDir);
 
-  // アセットは重いので、内容が変わったときだけ送る
+  // Assets are heavy, so only resend them when they actually change.
   const assetsJson = JSON.stringify(assets);
   const payload = { type: "render", text, files: JSON.stringify(files) };
   if (assetsJson !== entry.lastAssets) {
@@ -109,7 +108,7 @@ async function exportHtml(context) {
   const entry = panels.get(editor.document.uri.toString());
   if (!entry || !entry.ready) {
     vscode.window.showWarningMessage(
-      "先にプレビューを開いてください(レンダリングはプレビュー内で実行されます)"
+      "Open the preview first; rendering runs inside it"
     );
     return;
   }
@@ -127,14 +126,14 @@ async function exportHtml(context) {
     disposable.dispose();
     await vscode.workspace.fs.writeFile(target, Buffer.from(msg.html, "utf8"));
     vscode.window.showInformationMessage(
-      `Mirzam: ${path.basename(target.fsPath)} に書き出しました`
+      `Mirzam: exported ${path.basename(target.fsPath)}`
     );
   });
 }
 
 /**
- * ソースから include(![[...]])と参照アセットを集め、Webview に渡せる形にする。
- * include されたファイルの中の参照も再帰的にたどる。
+ * Collects transcluded files (`![[...]]`) and referenced assets from the source
+ * into tables the webview can consume, following references recursively.
  */
 function collectResources(text, baseDir) {
   const maxSize = vscode.workspace
@@ -154,7 +153,7 @@ function collectResources(text, baseDir) {
       try {
         stat = fs.statSync(abs);
       } catch {
-        continue; // 見つからないものはコア側がプレースホルダで処理する
+        continue; // Missing files fall back to the core's placeholder handling.
       }
       if (rel.endsWith(".md")) {
         const content = fs.readFileSync(abs, "utf8");
@@ -169,7 +168,7 @@ function collectResources(text, baseDir) {
   return { files, assets };
 }
 
-/** `![[a.md]]` と `![alt](path)` の参照先(外部 URL・data URI は除く) */
+/** Targets of `![[a.md]]` and `![alt](path)`, excluding URLs and data URIs. */
 function references(source) {
   const out = [];
   const include = /^!\[\[([^\]]+)\]\]\s*$/gm;
@@ -185,7 +184,7 @@ function references(source) {
   return out;
 }
 
-/** コア側のキー(デッキ基準の相対パス)に揃える */
+/** Matches the core's key format: a path relative to the deck. */
 function normalize(rel, dir, baseDir) {
   const abs = path.resolve(dir, rel);
   return path.relative(baseDir, abs).split(path.sep).join("/");
@@ -207,12 +206,12 @@ function dataUri(file) {
   return `data:${mime};base64,${fs.readFileSync(file).toString("base64")}`;
 }
 
-/** 行番号がどのスライド(0 始まり)に属するか。コード柵内の `---` は無視 */
+/** Which slide (0-based) a line belongs to; `---` inside code fences is ignored. */
 function slideIndexAtLine(text, line) {
   const lines = text.split(/\r?\n/);
   let index = 0;
   let inCode = false;
-  // frontmatter を読み飛ばす
+  // Skip frontmatter.
   let start = 0;
   if (lines[0] && lines[0].trim() === "---") {
     for (let i = 1; i < lines.length; i++) {
@@ -241,7 +240,7 @@ function webviewHtml(webview, context) {
     `img-src ${webview.cspSource} data: blob:`,
     `media-src ${webview.cspSource} data: blob:`,
     `style-src ${webview.cspSource} 'unsafe-inline'`,
-    // WASM の実行と、プレビュー iframe(srcdoc)に必要
+    // Required for running WASM and for the srcdoc preview iframe.
     `script-src ${webview.cspSource} 'wasm-unsafe-eval' 'unsafe-inline'`,
     `frame-src 'self' data:`,
     `connect-src ${webview.cspSource}`,
@@ -271,7 +270,7 @@ function webviewHtml(webview, context) {
 </style>
 </head>
 <body>
-<div id="bar"><span id="stat">WASM を読み込み中…</span></div>
+<div id="bar"><span id="stat">Loading WASM…</span></div>
 <iframe id="frame" sandbox="allow-scripts allow-same-origin"></iframe>
 <div id="warn"></div>
 <script type="module" src="${client}" data-wasm-js="${wasmJs}" data-wasm-bin="${wasmBin}"></script>

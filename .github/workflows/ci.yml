@@ -11,7 +11,7 @@ env:
 
 jobs:
   test:
-    name: テスト・lint
+    name: test & lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,39 +20,39 @@ jobs:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
 
-      - name: フォーマット確認
+      - name: check formatting
         run: cargo fmt --all -- --check
 
       - name: clippy
         run: cargo clippy --workspace --all-targets
 
-      # 品質ゲート:
-      #  - ゴールデンテスト(出力の退行検知)
-      #  - CommonMark 互換テスト(拡張記法が素の Markdown を壊さない)
-      #  - 差分ビルド等価性テスト(インクリメンタル ≡ フルビルド)
-      - name: テスト
+      # Quality gates:
+      #  - golden tests (catch output regressions)
+      #  - CommonMark compatibility (extensions never break plain Markdown)
+      #  - incremental build equivalence (incremental == full rebuild)
+      - name: test
         run: cargo test --workspace
 
-      - name: サンプルデッキのビルド
+      - name: build sample decks
         run: |
-          cargo run -q --bin mirzam -- build examples/demo.md -o /tmp/out-demo
-          cargo run -q --bin mirzam -- build examples/seminar.md -o /tmp/out-seminar
-          cargo run -q --bin mirzam -- build examples/media.md -o /tmp/out-media
+          for deck in pitch showcase seminar media; do
+            cargo run -q --bin mirzam -- build "examples/$deck.md" -o "/tmp/out-$deck"
+          done
 
   bench:
-    name: 性能ベンチ
+    name: benchmark
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      # 1 枚編集の反映がスライド数に依存しないことを継続的に監視する。
-      # 閾値でなく実測値をログに残す方針(CI ランナーの変動でぶれるため)
-      - name: ベンチ実行
+      # Tracks that single-slide edit latency stays flat as decks grow.
+      # Values are logged rather than asserted, since CI runners vary.
+      - name: run benchmark
         run: cargo run --release -p mirzam-cli --bin mirzam-bench
 
   wasm:
-    name: WASM ビルド
+    name: wasm build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,11 +60,8 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
-      - name: wasm-bindgen-cli の導入
-        run: |
-          VER=$(grep -oP 'wasm-bindgen = "\K[0-9.]+' crates/mirzam-wasm/Cargo.toml)
-          cargo install wasm-bindgen-cli --version "$VER" --locked
-      - name: ビルド
+      # build-wasm.sh installs the matching wasm-bindgen CLI itself.
+      - name: build
         run: ./scripts/build-wasm.sh pkg
       - uses: actions/upload-artifact@v4
         with:

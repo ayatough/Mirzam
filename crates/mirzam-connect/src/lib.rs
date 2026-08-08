@@ -1,4 +1,4 @@
-//! `connect` ブロックの DSL パーサ。
+//! Parser for the `connect` block DSL.
 //!
 //! ```text
 //! #lat -> #cache      : arrow color=@accent1
@@ -6,27 +6,27 @@
 //! #a <-> #b
 //! ```
 //!
-//! 端点(文章中のアンカー span や図形要素)の実座標はブラウザの
-//! レイアウト確定後にしか決まらないため、Rust 側は宣言を JSON に
-//! 変換してスライドに埋め込み、ビューアランタイムが表示時・リサイズ時・
-//! ホットリロード時に端点を解決して描画する。レイアウトが変わっても
-//! コネクタが自動追従するのはこの構造による。
+//! Endpoint coordinates (text anchors, shape elements) are only known once the
+//! browser has laid the slide out, so Rust only converts the declarations to JSON
+//! and embeds them in the slide. The viewer runtime resolves endpoints and draws
+//! on show, on resize, and after hot reload. That late resolution is what makes
+//! connectors follow their anchors through any layout change.
 
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ArrowMode {
-    /// `->` 終端に矢印
+    /// `->` — arrowhead at the end.
     End,
-    /// `<->` 両端に矢印
+    /// `<->` — arrowheads at both ends.
     Both,
-    /// `--` 線のみ
+    /// `--` — plain line.
     None,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Connector {
-    /// 始点: 要素 ID(`#` なし)+ 任意の辺(`.n` 等)
+    /// Source element id (without `#`) and an optional edge (`.n` and friends).
     pub from: String,
     pub from_edge: Option<char>,
     pub to: String,
@@ -50,14 +50,14 @@ pub fn parse_connectors(src: &str) -> ConnectDoc {
         }
         match parse_line(line) {
             Ok(c) => connectors.push(c),
-            Err(e) => errors.push(format!("connect 行 {}: {e}", ln + 1)),
+            Err(e) => errors.push(format!("connect line {}: {e}", ln + 1)),
         }
     }
     ConnectDoc { connectors, errors }
 }
 
 fn parse_line(line: &str) -> Result<Connector, String> {
-    // `<端点> <op> <端点> [: 属性...]`
+    // `<endpoint> <op> <endpoint> [: attributes...]`
     let (link, attrs) = match line.split_once(':') {
         Some((l, a)) => (l.trim(), a.trim()),
         None => (line, ""),
@@ -69,7 +69,7 @@ fn parse_line(line: &str) -> Result<Connector, String> {
     } else if link.contains("--") {
         (ArrowMode::None, "--")
     } else {
-        return Err("接続演算子(-> / <-> / --)がありません".into());
+        return Err("missing connector operator (-> / <-> / --)".into());
     };
     let (lhs, rhs) = link.split_once(op).unwrap();
     let (from, from_edge) = parse_endpoint(lhs.trim())?;
@@ -80,7 +80,7 @@ fn parse_line(line: &str) -> Result<Connector, String> {
         if let Some((k, v)) = token.split_once('=') {
             kv.insert(k.to_string(), v.trim_matches('"').to_string());
         }
-        // `arrow` / `line` の種別語は演算子と重複するため無視する
+        // The words `arrow` / `line` duplicate the operator, so ignore them.
     }
     Ok(Connector {
         from,
@@ -95,9 +95,9 @@ fn parse_line(line: &str) -> Result<Connector, String> {
 fn parse_endpoint(s: &str) -> Result<(String, Option<char>), String> {
     let id = s
         .strip_prefix('#')
-        .ok_or_else(|| format!("端点は `#id` 形式で指定してください: `{s}`"))?;
+        .ok_or_else(|| format!("endpoints must be written as `#id`: `{s}`"))?;
     if id.is_empty() {
-        return Err("空の端点 ID".into());
+        return Err("empty endpoint id".into());
     }
     match id.rsplit_once('.') {
         Some((base, e)) if matches!(e, "n" | "s" | "e" | "w" | "c") => {
@@ -107,7 +107,7 @@ fn parse_endpoint(s: &str) -> Result<(String, Option<char>), String> {
     }
 }
 
-/// テーマカラートークンを CSS 変数へ解決
+/// Resolves a theme color token to a CSS variable.
 fn color(v: &str) -> String {
     if let Some(name) = v.strip_prefix('@') {
         return format!("var(--mz-{name})");
@@ -117,7 +117,7 @@ fn color(v: &str) -> String {
         .collect()
 }
 
-/// ランタイムへ渡す JSON(HTML data 属性に埋め込む)
+/// JSON handed to the runtime through an HTML data attribute.
 pub fn to_json(doc: &ConnectDoc) -> String {
     let arr: Vec<serde_json::Value> = doc
         .connectors
@@ -171,6 +171,6 @@ mod tests {
     fn bad_line_reports_error() {
         let doc = parse_connectors("#a #b");
         assert_eq!(doc.errors.len(), 1);
-        assert!(doc.errors[0].contains("接続演算子"));
+        assert!(doc.errors[0].contains("connector operator"));
     }
 }
