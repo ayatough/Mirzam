@@ -8,7 +8,6 @@ section.slide {
   background: var(--mz-slide-bg);
   break-after: page; page-break-after: always;
 }
-.mz-reserved { display: none; }
 /* Chromium drops background colours when printing, which would remove the
    scrims and leave text on an undimmed photo. */
 .mz-scrim { -webkit-print-color-adjust: exact; print-color-adjust: exact; }

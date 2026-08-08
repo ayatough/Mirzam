@@ -267,6 +267,43 @@ Connector endpoints are resolved in the browser *after* layout, on every show,
 resize and hot reload. That is why arrows keep pointing at the right thing when
 the window changes size or the theme changes metrics.
 
+## Animations
+
+````markdown
+```anim
+[enter]   .title       : chars fade-in 400ms stagger=30ms ease=out-cubic
+[click 1] #latency-0-2 : grow-y 500ms
+[after #latency-0-2 +200ms] .caption : fade-in 300ms
+[exit]    slide        : iris-out 500ms
+```
+````
+
+One line is one track: `[trigger] target : effect duration attributes...`.
+
+- **Triggers:** `enter`, `click N` (the Nth click-to-advance within the
+  slide), `exit`, and `after #id [+Nms]` (relative to another track's target,
+  the offset optional and possibly negative).
+- **Targets:** a `#id` or `.class`, or the literal `slide` for the whole
+  section. An optional `chars`, `words` or `lines` keyword before the effect
+  name splits the target's text at build time — the wrapping spans are already
+  in the HTML, so the runtime only ever selects them, never mutates the DOM to
+  make them. Splitting never breaks inline markup (`<strong>` and friends stay
+  intact), a multi-byte character, or an HTML entity.
+- **Effects:** `fade-in`, `fade-out`, `slide-in` / `slide-out` (require
+  `dir=left|right|up|down`), `grow-x`, `grow-y`, `pop`, `draw`, `iris-out`.
+- **Attributes:** a bare `400ms` sets the duration; `delay=`, `stagger=` (for a
+  split target) and `ease=` are otherwise `key=value`. `ease` is a named curve
+  (`out-cubic`, `in-out-back`, …) or `spring(mass,stiffness,damping)`, resolved
+  to a sampled curve at build time so nothing simulates physics in the browser.
+
+A line that points at nothing — a target that matches no element, or an
+`after` reference to a missing id — is a warning, not a build failure: the
+slide renders unanimated and the warning names the offending line.
+
+Compiling the DSL to a timeline is implemented; driving it in the viewer
+(entrances, click-through steps, slide transitions) is not yet — see the
+[roadmap](roadmap.md).
+
 ## Theming
 
 Set `css:` in frontmatter and override the theme tokens:
@@ -284,9 +321,3 @@ Set `css:` in frontmatter and override the theme tokens:
 See [`examples/themes/pitch.css`](../examples/themes/pitch.css) for a complete
 theme, including utility classes such as `.card`, `.metric` and `.eyebrow` that
 the sample decks use.
-
-## Reserved
-
-` ```anim ` is parsed but not yet implemented; it renders as a note in the corner
-so decks written today keep working when animation lands. See the
-[roadmap](roadmap.md).

@@ -23,11 +23,13 @@ The MVP is feature-complete and covered by regression tests in CI.
 | Custom themes, speaker notes | Done |
 | WebAssembly core, VS Code extension | Done |
 | Quality gates and benchmark in CI | Done |
-| Animation (`anim`), slide transitions | Next |
+| Layout debug overlay (`L`, `--debug-layout`) | Done |
+| `anim` DSL compiled to a timeline (`mirzam-anim`) | Done |
+| Animation runtime, slide transitions | Next |
 | Named themes (Nord, Solarized, VS Code) and dark mode | Next |
 | Annotations on images and charts, adjusted in the preview | Next |
 | Typst-flavoured math syntax | Next |
-| Layout debug overlay, presentation effects | Next |
+| Presentation effects | Next |
 | Presenter mode | Next |
 | Plugins, PPTX export, mobile editing | Later |
 
@@ -51,8 +53,8 @@ The next batch is broken into parallel streams, with the interfaces between them
 fixed in advance, in [workstreams.md](workstreams.md). What follows is the
 rationale behind those streams.
 
-**`anim` blocks.** The syntax is reserved and parsed today, so decks written now
-keep working:
+**`anim` blocks.** `mirzam-anim` compiles the DSL to the timeline JSON described
+in [workstreams.md](workstreams.md#c1-animation-timeline):
 
 ````markdown
 ```anim
@@ -64,8 +66,13 @@ keep working:
 
 Triggers (`enter`, `click N`, `exit`, `after #id`), targets (ids, classes, whole
 slide, or text split into characters/words/lines), a standard effect set, and
-programmable easing including springs. Compiled to a timeline and driven by the Web
-Animations API, with slide transitions specified the same way.
+programmable easing including springs, resolved to a sampled curve at build
+time. See [syntax.md](syntax.md#animations) for the full syntax.
+
+What is not built yet is driving the timeline: the Web Animations API playback,
+click-through stepping, and slide transitions specified the same way. A deck
+that declares `anim` blocks today compiles them into the page but nothing
+plays them back.
 
 **Presenter mode.** A second window with speaker notes, next slide, a timer, a
 pointer, and step-through control for click-triggered animations.

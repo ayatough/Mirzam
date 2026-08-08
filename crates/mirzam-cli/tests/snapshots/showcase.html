@@ -174,3 +174,16 @@
 </div>
 </div>
 </section>
+<section class="slide" data-index="9">
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:2fr 2fr;grid-template-areas:"head" "body"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Motion</span></p>
+<h2 class="anim-title"><span class="mz-split-item">A</span><span class="mz-split-item">n</span><span class="mz-split-item">i</span><span class="mz-split-item">m</span><span class="mz-split-item">a</span><span class="mz-split-item">t</span><span class="mz-split-item">i</span><span class="mz-split-item">o</span><span class="mz-split-item">n</span><span class="mz-split-item"> </span><span class="mz-split-item">c</span><span class="mz-split-item">o</span><span class="mz-split-item">m</span><span class="mz-split-item">p</span><span class="mz-split-item">i</span><span class="mz-split-item">l</span><span class="mz-split-item">e</span><span class="mz-split-item">s</span><span class="mz-split-item"> </span><span class="mz-split-item">t</span><span class="mz-split-item">o</span><span class="mz-split-item"> </span><span class="mz-split-item">a</span><span class="mz-split-item"> </span><span class="mz-split-item">t</span><span class="mz-split-item">i</span><span class="mz-split-item">m</span><span class="mz-split-item">e</span><span class="mz-split-item">l</span><span class="mz-split-item">i</span><span class="mz-split-item">n</span><span class="mz-split-item">e</span></h2>
+</div>
+<div class="pane pane-body" data-pane="body" style="grid-area:body;display:flex;flex-direction:column;justify-content:center"><p>An <code>anim</code> block compiles to the timeline JSON embedded in the slide -
+triggers, targets, effects and easing, resolved at build time so the runtime
+never has to. See <a href="../docs/syntax.md#animations">syntax.md</a>.</p>
+<p><span class="callout small">Timelines compile; playback lands with the animation runtime.</span></p>
+</div>
+</div>
+<script type="application/json" class="mz-anim">{"steps":1,"tracks":[{"delay":0,"dur":400,"ease":"out-cubic","effect":"fade-in","stagger":30,"target":{"sel":".anim-title","split":"chars"},"trigger":{"kind":"enter"}},{"delay":0,"dir":"up","dur":400,"ease":"linear(0.0000, 0.0242, 0.0860, 0.1714, 0.2697, 0.3726, 0.4739, 0.5696, 0.6568, 0.7341, 0.8009, 0.8572, 0.9035, 0.9406, 0.9695, 0.9913, 1.0071, 1.0180, 1.0248, 1.0285, 1.0298, 1.0293, 1.0277, 1.0253)","effect":"slide-in","stagger":0,"target":{"sel":".callout","split":null},"trigger":{"kind":"click","n":1}}],"transition":null}</script>
+</section>

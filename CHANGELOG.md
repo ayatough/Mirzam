@@ -40,6 +40,14 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - Layout debug overlay: `L` in the viewer (or `mirzam build --debug-layout`)
   outlines every pane, labels it with its band name, and tints the grid gaps.
   Off by default and never in print.
+- `anim` blocks: `mirzam-anim` compiles triggers (`enter`, `click N`, `exit`,
+  `after #id`), targets (ids, classes, the whole slide, and `chars`/`words`/
+  `lines` splitting), a standard effect set and easing (including `spring(...)`
+  resolved to a sampled curve at build time) into the timeline JSON embedded
+  per slide. Text splitting happens at build time so the wrapping spans are
+  already in the HTML. A target that matches nothing is a warning, not a
+  build failure. Driving the timeline in the viewer is not part of this
+  change; see `docs/roadmap.md`.
 
 ### Changed
 - Documentation is English-first; Japanese translations live under `docs/ja/`.

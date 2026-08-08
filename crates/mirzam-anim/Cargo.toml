@@ -1,0 +1,10 @@
+[package]
+name = "mirzam-anim"
+description = "`anim` DSL parser: triggers, targets and effects to a timeline IR"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde_json = "1"

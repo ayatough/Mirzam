@@ -7,6 +7,7 @@ members = [
     "crates/mirzam-shape",
     "crates/mirzam-chart",
     "crates/mirzam-connect",
+    "crates/mirzam-anim",
     "crates/mirzam-render",
     "crates/mirzam-cli",
     "crates/mirzam-wasm",
@@ -25,6 +26,7 @@ mirzam-layout = { path = "crates/mirzam-layout" }
 mirzam-shape = { path = "crates/mirzam-shape" }
 mirzam-chart = { path = "crates/mirzam-chart" }
 mirzam-connect = { path = "crates/mirzam-connect" }
+mirzam-anim = { path = "crates/mirzam-anim" }
 mirzam-render = { path = "crates/mirzam-render" }
 comrak = "0.39"
 serde = { version = "1", features = ["derive"] }

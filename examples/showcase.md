@@ -322,3 +322,33 @@ The photo is inlined with everything else, so the deck is still one file.
 ::: pane foot {align=right}
 <span class="foot">examples/showcase.md</span>
 :::
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------------------------+
+|                                    |
+|  body                              |
++------------------------------------+
+```
+
+::: pane head
+[Motion]{.eyebrow}
+## Animation compiles to a timeline {.anim-title}
+:::
+
+::: pane body {valign=middle}
+An `anim` block compiles to the timeline JSON embedded in the slide -
+triggers, targets, effects and easing, resolved at build time so the runtime
+never has to. See [syntax.md](../docs/syntax.md#animations).
+
+[Timelines compile; playback lands with the animation runtime.]{.callout .small}
+:::
+
+```anim
+[enter]   .anim-title : chars fade-in 400ms stagger=30ms ease=out-cubic
+[click 1] .callout     : slide-in 400ms dir=up ease=spring(1,180,20)
+```

@@ -1,6 +1,7 @@
 //! Turns a list of `SlideSource` values plus `DeckMeta` into a single HTML
 //! file with the viewer embedded.
 
+mod anim;
 mod assets;
 mod charts;
 mod inline;
@@ -230,7 +231,7 @@ fn render_slide(
         None => None,
     };
 
-    let body = match &grid {
+    let mut body = match &grid {
         Some(g) => render_grid_slide(g, slide, index, &mut errors, asset_source, chart_files),
         None => render_single_pane_slide(slide, index, &mut errors, asset_source, chart_files),
     };
@@ -264,18 +265,9 @@ fn render_slide(
         }
     }
 
-    // Reserved blocks are parsed but only summarized, keeping decks forward compatible.
-    let mut reserved_html = String::new();
-    for (kind, src) in &slide.reserved {
-        let phase = match kind {
-            mirzam_syntax::BlockKind::Anim => "Phase 3",
-        };
-        reserved_html.push_str(&format!(
-            "<details class=\"mz-reserved\"><summary>```{kind} block (planned for {phase})</summary><pre>{body}</pre></details>\n",
-            kind = kind.as_str(),
-            body = inline::html_escape(src.trim()),
-        ));
-    }
+    // anim blocks compile to the C1 timeline JSON. A line that points at
+    // nothing is a warning, not a build failure: the slide renders unanimated.
+    let anim_html = anim::extract(index, &slide.reserved, &mut body, &shapes_html, warnings);
 
     let error_html: String = errors
         .iter()
@@ -299,7 +291,7 @@ fn render_slide(
     };
 
     format!(
-        "<section class=\"slide\" data-index=\"{index}\"{connect_attr}>\n{error_html}{body}{shapes_html}{reserved_html}{notes_html}</section>\n"
+        "<section class=\"slide\" data-index=\"{index}\"{connect_attr}>\n{error_html}{body}{shapes_html}{anim_html}{notes_html}</section>\n"
     )
 }
 
