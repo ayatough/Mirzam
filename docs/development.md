@@ -30,6 +30,7 @@ cargo run --release -p mirzam-cli --bin mirzam-bench   # performance benchmark
 ./scripts/build-vsix.sh                                # VS Code extension
 
 node scripts/check-layout.mjs --build examples/pitch.md   # layout validation
+./scripts/build-site.sh                                  # docs site + live decks
 ```
 
 The layout checker needs a browser: `npm i playwright-core && npx playwright
@@ -89,6 +90,14 @@ MIRZAM_UPDATE_SNAPSHOTS=1 cargo test -p mirzam-cli --test golden
 
 Review the snapshot diff in your commit like any other change — that is the point
 of checking them in.
+
+## Working with coding agents
+
+[AGENTS.md](../AGENTS.md) is the entry point for agents: non-negotiables,
+definition of done, crate ownership, and which work streams can run in parallel
+without colliding. `CLAUDE.md` points there too. Keep it in sync when the build
+commands or quality gates change — an agent that follows a stale checklist will
+confidently produce work that fails CI.
 
 ## Conventions
 

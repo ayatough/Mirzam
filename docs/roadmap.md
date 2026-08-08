@@ -65,6 +65,34 @@ pointer, and step-through control for click-triggered animations.
 references that point at nothing, hover for chart data — surfaced in the VS Code
 extension.
 
+**Connector routing.** Today a connector is a single curve between two points: it
+leaves and arrives along the edge normals, but it does not know what is in the
+way. It will still cross a paragraph when the anchor sits in the middle of one,
+and leaving vertically from an underline reads as unnatural when the target is
+almost level with the text.
+
+Doing better means routing with obstacles: treat panes, text blocks, shapes and
+chart marks as rectangles to avoid, then find a short path with few bends that
+does not cross them — the problem diagram editors solve with an orthogonal or
+spline router over a visibility graph. Worth doing properly, not incrementally.
+
+Two constraints shape where it lives:
+
+- It needs the *rendered* geometry, which only exists in the browser after
+  layout. It cannot be precomputed at build time.
+- An exported deck should stay a small self-contained file, so pulling the WASM
+  core into every deck to route arrows is the wrong trade — the core is
+  megabytes, the router is kilobytes.
+
+So the router should be a **standalone dependency-free JavaScript module** under
+`web/router/`, unit-tested in isolation and inlined into a deck only when it has
+connectors — not a Rust crate. If the algorithm grows past what is comfortable to
+test in JS, the fallback is a routing-only WASM module, kept separate from the
+core so decks without connectors pay nothing.
+
+Until then, the layout guide documents how to place anchors so arrows stay clear
+of the text.
+
 ## Later
 
 **Plugins.** Two extension points: WebAssembly passes that transform the document

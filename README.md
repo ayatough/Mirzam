@@ -6,7 +6,7 @@ single HTML file or a PDF.
 
 > Mirzam (β Canis Majoris) — "the announcer", the star that rises before Sirius.
 
-[Syntax](docs/syntax.md) · [Layout guide](docs/layout.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](docs/development.md) · [日本語](docs/ja/README.md)
+[Syntax](docs/syntax.md) · [Layout guide](docs/layout.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](docs/development.md) · [Agents](AGENTS.md) · [日本語](docs/ja/README.md)
 
 ---
 
@@ -119,6 +119,9 @@ the slide you touched, and moving the cursor scrolls the preview to match.
 ```bash
 cargo run --bin mirzam -- build examples/pitch.md -o out && open out/index.html
 ```
+
+All of them are published as live decks alongside the docs; see
+`./scripts/build-site.sh` to build the site locally.
 
 ## Status
 

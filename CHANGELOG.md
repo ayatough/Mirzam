@@ -24,6 +24,10 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   demonstrated by a deck that CI renders and checks.
 - `scripts/check-layout.mjs`: renders decks in a browser and fails on clipped or
   overlapping content and undrawn connectors — problems HTML snapshots cannot see.
+- Documentation site published to GitHub Pages: the guides plus every sample deck
+  rendered as a live page (`scripts/build-site.sh`, `.github/workflows/pages.yml`).
+- `AGENTS.md` and `CLAUDE.md`: working agreement for coding agents, including how
+  to split work across several agents without colliding.
 
 ### Changed
 - Documentation is English-first; Japanese translations live under `docs/ja/`.
