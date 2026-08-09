@@ -55,7 +55,7 @@ there is. The model column follows from that:
 | W3 | Named themes and dark mode | B | Sonnet | W0 | ✅ |
 | W4 | Presentation effects | C | Fable | W0 | |
 | W5 | Typst-flavoured math | A | Sonnet | — | |
-| W6 | Annotations on images and charts | S | Opus | W0 | |
+| W6 | Annotations on images and charts | S | Opus | W0 | ✅ |
 | W7 | Source map through transclusion | A | Sonnet | — | |
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | |
 | W9 | Release hardening and merge to `main` | A | Opus | all | |
@@ -122,39 +122,52 @@ works; only the movement is dropped.
 
 ### C2. Annotation model
 
-Emitted per annotated target:
+Emitted per `annotate` block, at the end of the slide:
 
 ```html
-<script type="application/json" class="mz-annot" data-target="fig1">{ ... }</script>
+<script type="application/json" class="mz-annot" data-target="[data-pane=&quot;fig&quot;]">{ ... }</script>
 ```
 
 ```json
 {
-  "space": "image",
   "items": [
-    { "id": "a1", "kind": "rect",   "x": 40, "y": 22, "w": 18, "h": 12,
-      "label": "cache miss", "color": "@accent2" },
-    { "id": "a2", "kind": "arrow",  "x": 12, "y": 70, "x2": 38, "y2": 30 },
-    { "id": "a3", "kind": "circle", "anchor": "#latency-1-2", "pad": 6 }
+    { "kind": "rect",   "x": 40, "y": 22, "w": 18, "h": 12,
+      "label": "cache miss", "color": "var(--mz-accent2)" },
+    { "kind": "arrow",  "x": 12, "y": 70, "x2": 38, "y2": 30, "dashed": true },
+    { "kind": "circle", "anchor": "latency-1-2", "pad": 6 }
   ]
 }
 ```
 
-Coordinate spaces, in order of preference:
+`data-target` is a CSS selector: a `#id` written as such, or `[data-pane="…"]`
+for a bare pane name. It rides on the tag rather than in the blob because the
+runtime needs it before parsing anything.
 
-| `space` | Origin | Use for |
-|---|---|---|
-| `image` | The target's **painted** box — the picture itself, excluding the letterboxing `object-fit: contain` leaves | Photographs, screenshots |
-| `element` | The target's border box | Panes, tables, arbitrary blocks |
-| `anchor` (per item) | The bounding box of another element, by id | Chart marks, shape ids — no coordinates needed at all |
+Coordinates are percentages, and `x,y` is the **centre** of a `rect` or
+`circle` — the way `shape` reads, so one convention covers both.
 
-All numbers are percentages, so the annotation follows the target when the layout
-changes. That is the whole point of the feature: resizing a pane must not require
-re-tuning coordinates.
+**There is no `space` field.** The origin is derived rather than declared,
+because every value a author could pick is one they could pick wrongly:
 
-The overlay is one absolutely-positioned SVG sized to the target, re-measured with
-a `ResizeObserver`, with `vector-effect: non-scaling-stroke` so stroke weight stays
-in CSS pixels.
+| The target resolves to | Origin |
+|---|---|
+| A pane holding exactly one picture (`img`, `video`, `svg`, `canvas`) | that picture's **painted** box |
+| Anything else | its border box |
+| An item with `anchor` | the live box of the element it names — no coordinates at all |
+
+The painted box is not the element box whenever the picture is fitted with
+`object-fit: contain`, or an SVG with `preserveAspectRatio="… meet"` — a chart,
+for instance. Both are letterboxed inside a larger element, and measuring the
+element instead would offset every mark by exactly the letterboxing.
+
+The overlay is one absolutely-positioned SVG per block, sized to the slide and
+re-measured with a `ResizeObserver`. Labels are HTML rather than SVG text, so
+they stay real text: selectable, themable and never stretched by the overlay's
+own scaling.
+
+**The overlay ships in the PDF.** It is the one script the print page carries;
+see [architecture.md](architecture.md#annotations-and-the-pdf) for why that
+does not weaken the no-JavaScript guarantee.
 
 ### C3. Theme tokens
 
@@ -378,38 +391,50 @@ the crate's test suite.
 
 **Owns:** `crates/mirzam-tmath`, the math dispatch in `mirzam-render/src/inline.rs`.
 
-## W6 — Annotations on images and charts
+## W6 — Annotations on images and charts ✅
 
-**Difficulty S · Opus**
+**Difficulty S · Opus · landed**
 
 Circle the interesting part of a screenshot, point an arrow at it, label it —
 what everyone opens PowerPoint to do.
 
 ````markdown
 ::: pane fig
-![p95 by region](img/latency.png){#fig1}
+![p95 by region](img/latency.png)
+:::
 
 ```annotate
-target: #fig1
+target: fig
 rect   40,22 18x12 : label="cache miss"
 arrow  12,70 -> 38,30
-text   10,80 : "throughput doubles here"
+text   10,80 "throughput doubles here"
+circle #latency-1-2 : pad=6
 ```
-:::
 ````
 
-Model and coordinate spaces are [C2](#c2-annotation-model). Three things make or
-break this stream:
+The block sits **beside** the pane rather than inside it, the way `connect`
+does. Both are overlays that name what they point at, and one shape of thing
+should be written one way. Model in [C2](#c2-annotation-model).
 
-1. **The painted box, not the element box.** An image with `object-fit: contain`
-   is smaller than its element; annotating in element percentages puts the circle
-   in the wrong place as soon as the pane's aspect ratio changes. Compute the
-   painted box from `naturalWidth`/`naturalHeight` and re-measure on resize.
-2. **Charts need no coordinates.** Chart marks already have stable ids
-   (`<chart-id>-<series>-<row>`), and `mirzam-shape` gives shapes ids. Annotating
-   those by `anchor` is exact and survives a data change.
-3. **PDF.** The overlay is drawn by the viewer at runtime; export must wait for
-   it, or draw it. Decide, and put the answer in `docs/architecture.md`.
+The three things that made or broke this stream, and how they came out:
+
+1. **The painted box, not the element box.** This is real, and it bit
+   immediately: `target: fig` names a pane, the photo inside it is centred and
+   354px tall in a 421px pane, and the first working build put every mark 8px
+   off. Two rules fix it — a pane holding one picture *means* that picture, and
+   a picture's box is measured from its natural size and fit (`object-fit` for
+   `img`/`video`, `preserveAspectRatio` for an `svg`, which is the same rule
+   under another name). A browser probe asserts the mark lands within 2px of
+   the declared percentage, and stays there through a resize.
+2. **Charts need no coordinates**, and this is the better way to write it:
+   `circle #load-0-2 : pad=10` is exact and survives a data change. It resolves
+   to 0.0px off the mark's centre.
+3. **PDF.** The print page runs the overlay script. An annotation is drawn over
+   the slide and hides nothing, so the guarantee a scriptless page protects is
+   untouched — and a PDF that silently dropped the marks would be worse than
+   one that carries them. `annot.js` therefore never reaches for the viewer,
+   and a test enforces it. Reasoning in
+   [architecture.md](architecture.md#annotations-and-the-pdf).
 
 **Owns:** `crates/mirzam-annot`, `theme/annot.js`.
 

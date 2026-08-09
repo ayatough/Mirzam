@@ -194,6 +194,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "mirzam-annot"
+version = "0.0.1"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "mirzam-chart"
 version = "0.0.1"
 dependencies = [
@@ -242,6 +249,7 @@ dependencies = [
  "comrak",
  "math-core",
  "mirzam-anim",
+ "mirzam-annot",
  "mirzam-chart",
  "mirzam-connect",
  "mirzam-core",

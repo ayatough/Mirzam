@@ -67,6 +67,7 @@ whenever the layout changes.
 | **Charts from data** | `chart` blocks read inline CSV or a `.csv` file and render SVG at build time |
 | **Diagrams that stay linked** | `shape` blocks draw boxes; `connect` blocks point from text to any element, resolved live |
 | **Math** | LaTeX converted to MathML at build time — no client-side JavaScript |
+| **Annotations** | Circle, box, label and point at part of a photo or a single chart bar; the marks reach the PDF |
 | **Animation** | `anim` blocks compile to a timeline: entrances, click-through builds, page turns — and the PDF still shows every slide revealed |
 | **Video and GIF** | Embedded in the HTML, replaced by a poster frame in PDF |
 | **Backgrounds that stay readable** | A photo behind a pane, with `dim`, `blur` and gradient `scrim` so the text still wins |
@@ -150,9 +151,11 @@ the markup will keep changing, so pin a commit if you depend on it.
 
 - **Working:** build, live-reload server, PDF export, ASCII pane layout, file
   splitting, variables and arithmetic, math, charts, shapes, live connectors,
-  video, background images, animation and slide transitions, named themes and
-  dark mode, custom themes, speaker notes, VS Code extension, WebAssembly core
-- **Next:** presenter mode, annotations on images and charts, PowerPoint export
+  video, background images, animation and slide transitions, annotations, named
+  themes and dark mode, custom themes, speaker notes, VS Code extension,
+  WebAssembly core
+- **Next:** presenter mode, dragging an annotation back into the Markdown,
+  PowerPoint export
 - **Performance:** a 500-slide deck builds in 78 ms; a single-slide edit
   re-renders in 2.3 ms
 

@@ -254,6 +254,8 @@ pub struct SlideSource {
     pub shapes: Vec<String>,
     /// ```connect blocks.
     pub connects: Vec<String>,
+    /// ```annotate blocks.
+    pub annots: Vec<String>,
     /// Blocks reserved for a later phase.
     pub reserved: Vec<(BlockKind, String)>,
 }
@@ -292,6 +294,8 @@ pub fn parse_slide(src: &str) -> SlideSource {
                 slide.shapes.push(body);
             } else if info == "connect" {
                 slide.connects.push(body);
+            } else if info == "annotate" {
+                slide.annots.push(body);
             } else if let Some(kind) = BlockKind::from_info(info) {
                 slide.reserved.push((kind, body));
             } else {
@@ -482,6 +486,16 @@ loose text
         assert_eq!(s.connects.len(), 1);
         assert!(s.connects[0].contains("#x -> #y"));
         assert_eq!(s.notes, vec!["remember this"]);
+    }
+
+    #[test]
+    fn annotate_block_is_collected_at_slide_level() {
+        let s = parse_slide(
+            "::: pane fig\n![x](x.png)\n:::\n\n```annotate\ntarget: fig\ncircle 40,30 20x20\n```\n",
+        );
+        assert_eq!(s.annots.len(), 1);
+        assert!(s.annots[0].contains("target: fig"));
+        assert!(!s.loose.contains("annotate"));
     }
 
     #[test]

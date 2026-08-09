@@ -1,0 +1,10 @@
+[package]
+name = "mirzam-annot"
+description = "`annotate` DSL parser: circles, boxes, arrows and labels over images and charts"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde_json = "1"

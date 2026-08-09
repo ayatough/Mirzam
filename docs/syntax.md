@@ -269,6 +269,51 @@ Connector endpoints are resolved in the browser *after* layout, on every show,
 resize and hot reload. That is why arrows keep pointing at the right thing when
 the window changes size or the theme changes metrics.
 
+## Annotations
+
+Circle the part you are talking about, point at it, label it. An `annotate`
+block sits beside the pane it decorates, the way `connect` does:
+
+````markdown
+::: pane shot
+![p95 by region](img/latency.png)
+:::
+
+```annotate
+target: shot
+circle 62,38 34x34 : label="the hot corner"
+rect   10,10 20x14 : color=@accent2 style=dashed
+arrow  18,86 -> 55,48
+text   6,90 "coordinates are percentages of the picture"
+```
+````
+
+- **`target:`** is a pane name, or a `#id`. **A pane holding one picture means
+  that picture** — a photo, a video or a chart. That matters: a picture is
+  centred in its pane and rarely fills it, so measuring the pane would put
+  every mark somewhere you did not point.
+- **Coordinates are percentages of the target**, and `x,y` is the *centre* of
+  a `rect` or `circle`, the way `shape` reads. `WxH` is its size. So the
+  annotation stays put when the pane is resized, the deck is projected at a
+  different aspect, or the picture is replaced with a bigger one.
+- **An anchored item needs no coordinates at all.** Write `circle #latency-1-2`
+  and the mark is taken from that element's live box — a chart mark, a shape,
+  anything with an id. `pad=` in pixels gives it room to breathe. This survives
+  a data change, which coordinates do not.
+- **Attributes:** `label=`, `color=` (a `@token` or a literal), `style=dashed`,
+  and `pad=` for anchored items.
+- Either end of an `arrow` may be an anchor: `arrow 12,70 -> #latency-1-2`
+  stops at the edge of the mark rather than in the middle of it.
+
+A block whose `target:` or anchor matches nothing on the slide is a warning,
+not a build failure: the slide renders unannotated and the warning names it.
+
+Annotations are resolved in the browser after layout, like connectors — and,
+unlike everything else that runs there, the overlay is inlined into the PDF
+export too, so the marks survive the export. See
+[architecture.md](architecture.md#annotations-and-the-pdf) for why that is the
+one script the print page carries.
+
 ## Animations
 
 ````markdown

@@ -22,6 +22,12 @@ pub const VIEWER_JS: &str = concat!("\n", include_str!("viewer.js"));
 /// actually animate something, so an unanimated deck carries none of it.
 pub const ANIM_JS: &str = concat!("\n", include_str!("anim.js"));
 
+/// The annotation overlay. Inlined only into decks that annotate something —
+/// and, unlike every other script here, into the print page as well: an
+/// annotation is additive, so drawing it cannot hide content, and the PDF
+/// would otherwise lose the marks the deck exists to point at.
+pub const ANNOT_JS: &str = concat!("\n", include_str!("annot.js"));
+
 /// Print overrides applied after a theme's CSS.
 /// Slide dimensions and the `@page` size are appended by `assemble_print_page`.
 pub const PRINT_CSS: &str = concat!("\n", include_str!("print.css"));
@@ -218,6 +224,19 @@ mod tests {
         // The viewer must degrade when the runtime is not inlined, so it may
         // only reach for MZAnim through a guarded reference.
         assert!(!VIEWER_JS.contains("MZAnim."));
+    }
+
+    /// The overlay ships into the print page, so it may not depend on the
+    /// viewer being there — no page counter, no active slide, no MZAnim.
+    #[test]
+    fn the_annotation_overlay_stands_alone() {
+        assert!(ANNOT_JS.contains("mz-annot-layer"));
+        for viewer_only in ["MZAnim", "__mirzamGoto", "getElementById('hud')"] {
+            assert!(
+                !ANNOT_JS.contains(viewer_only),
+                "annot.js reaches for `{viewer_only}`, which the print page does not have"
+            );
+        }
     }
 }
 

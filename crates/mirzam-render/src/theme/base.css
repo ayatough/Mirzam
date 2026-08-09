@@ -176,6 +176,27 @@ svg.mz-shapes, svg.mz-connect {
 .mz-shape-label { font-size: 22px; fill: var(--mz-fg); font-family: inherit; }
 .mz-shape-label.small, text.small { font-size: 16px; fill: var(--mz-muted); }
 
+/* Annotations: an overlay drawn over a pane, an image or a chart mark by
+   theme/annot.js. It is additive - it never hides content - which is why it
+   is also inlined into the print page, so the PDF carries the marks too. */
+.mz-annot-layer {
+  position: absolute; inset: 0;
+  pointer-events: none; overflow: visible;
+}
+.mz-annot-layer > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.mz-annot-label {
+  position: absolute; transform: translate(-50%, 0);
+  color: var(--mz-accent1); background: var(--mz-slide-bg);
+  font-size: 17px; font-weight: 600; line-height: 1.3;
+  padding: 1px 8px; border-radius: 6px; white-space: nowrap;
+}
+/* A label belonging to a shape clears the top edge it is anchored to. */
+.mz-annot-label.mz-annot-above { transform: translate(-50%, -115%); }
+.mz-annot-label.mz-annot-text {
+  transform: none; background: none; padding: 0;
+  color: var(--mz-fg); font-weight: 500; white-space: pre-wrap; max-width: 46%;
+}
+
 /* Parse error display */
 .mz-error {
   border: 2px solid var(--mz-danger-border);

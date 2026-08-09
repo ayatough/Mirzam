@@ -30,17 +30,36 @@ rect #r at(50%, 50%) size(10%, 10%)
 ```connect
 #a -> #r
 ```
+
+```anim
+[enter] .title : fade-in 400ms
+```
+
+```annotate
+target: fig
+circle 40,30 20x20 : label=\"here\"
+```
+
+```chart
+type: bar
+data: |
+  k, v
+  a, 1
+```
 ";
     let html = plain_commonmark(src);
     // Fenced blocks become code blocks whose info string turns into a class.
     assert_eq!(
         html.matches("<pre>").count(),
-        3,
-        "expected three code blocks: {html}"
+        6,
+        "expected six code blocks: {html}"
     );
-    assert!(html.contains("language-pane"));
-    assert!(html.contains("language-shape"));
-    assert!(html.contains("language-connect"));
+    for kind in ["pane", "shape", "connect", "anim", "annotate", "chart"] {
+        assert!(
+            html.contains(&format!("language-{kind}")),
+            "`{kind}` did not degrade to a code block: {html}"
+        );
+    }
     // The contents remain readable; no information is lost.
     assert!(html.contains("rect #r at(50%, 50%)"));
 }

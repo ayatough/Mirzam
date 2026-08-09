@@ -76,6 +76,12 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - More effects: `wipe-in` / `wipe-out` (an edge uncovers the content instead of
   moving it), `zoom-in` / `zoom-out` and `blur-in`. More transitions:
   `wipe-left|right|up|down` and `zoom`.
+- `annotate` blocks: circle, box, arrow and label anything on a slide. An item
+  is placed either in percentages of what the target *paints* — a pane holding
+  one picture means that picture, letterboxing excluded — or by naming another
+  element's id, which needs no coordinates and survives a data change. The
+  overlay is re-measured on every resize, and it is the one script the print
+  page carries, so the marks reach the PDF.
 - `mirzam build --base-url <url>` says where the input file's directory lives
   once published, so a deck served from somewhere other than beside its source
   still resolves its links to other documents.

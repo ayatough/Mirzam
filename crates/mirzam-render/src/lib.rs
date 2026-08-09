@@ -2,6 +2,7 @@
 //! file with the viewer embedded.
 
 mod anim;
+mod annot;
 mod assets;
 mod charts;
 mod inline;
@@ -81,6 +82,12 @@ fn deck_has_anim(meta: &DeckMeta, sections: &[String]) -> bool {
     meta.transition.is_some() || sections.iter().any(|s| s.contains("class=\"mz-anim\""))
 }
 
+/// Whether the deck annotates anything, deciding if the annotation overlay is
+/// inlined — into the print page as well as the viewer.
+fn deck_has_annot(sections: &[String]) -> bool {
+    sections.iter().any(|s| s.contains("class=\"mz-annot\""))
+}
+
 /// The `data-transition` payload for `#deck`, or an empty string when the deck
 /// declares no transition or an unusable one. Reporting the problem is the
 /// build pipeline's job; rendering must not fail over it.
@@ -142,6 +149,11 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
     } else {
         String::new()
     };
+    let annot_js = if deck_has_annot(sections) {
+        format!("<script>{}</script>\n", theme::ANNOT_JS)
+    } else {
+        String::new()
+    };
     let transition = transition_attr(meta);
     let (theme_name, mode_attr) = theme_attrs(meta);
     format!(
@@ -163,7 +175,7 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <div id="hint">← → navigate / N notes / F fullscreen / L layout / D mode</div>
 <div id="notes-panel" hidden></div>
 {anim_js}<script>{js}</script>
-{live_js}</body>
+{annot_js}{live_js}</body>
 </html>
 "#,
         title = inline::html_escape(title),
@@ -279,6 +291,15 @@ pub fn assemble_print_page(
     };
     let sections: Vec<String> = sections.iter().map(|s| videos_to_stills(s)).collect();
     let sections = &sections;
+    // The one script the print page carries. An annotation is drawn *over*
+    // the deck and hides nothing, so running it cannot break the guarantee
+    // that a scriptless read shows every slide in full — and without it the
+    // PDF would lose the marks the annotated slide exists to make.
+    let annot_js = if deck_has_annot(sections) {
+        format!("<script>{}</script>\n", theme::ANNOT_JS)
+    } else {
+        String::new()
+    };
     let (theme_name, mode_attr) = theme_attrs(meta);
     format!(
         r#"<!doctype html>
@@ -298,7 +319,7 @@ section.slide {{ width: {w}px; height: {h}px; }}
 <body>
 <div id="deck">
 {sections}</div>
-</body>
+{annot_js}</body>
 </html>
 "#,
         title = inline::html_escape(title),
@@ -386,6 +407,15 @@ fn render_slide(
     // nothing is a warning, not a build failure: the slide renders unanimated.
     let anim_html = anim::extract(index, &slide.reserved, &mut body, &shapes_html, warnings);
 
+    // annotate blocks compile to the C2 model, drawn over the target once the
+    // browser has laid the slide out. Same warning rule as anim.
+    let annot_html = annot::extract(
+        index,
+        &slide.annots,
+        &format!("{body}{shapes_html}"),
+        warnings,
+    );
+
     let error_html: String = errors
         .iter()
         .map(|e| {
@@ -408,7 +438,7 @@ fn render_slide(
     };
 
     format!(
-        "<section class=\"slide\" data-index=\"{index}\"{connect_attr}>\n{error_html}{body}{shapes_html}{anim_html}{notes_html}</section>\n"
+        "<section class=\"slide\" data-index=\"{index}\"{connect_attr}>\n{error_html}{body}{shapes_html}{anim_html}{annot_html}{notes_html}</section>\n"
     )
 }
 
@@ -848,6 +878,75 @@ mod tests {
         let html = assemble_print_page(&meta, &sections, None);
         assert!(!html.contains("window.MZAnim = {"));
         assert!(!html.contains("data-transition"));
+    }
+
+    fn annotated_section() -> Vec<String> {
+        vec!["<section class=\"slide\"><div data-pane=\"fig\"></div>\
+             <script type=\"application/json\" class=\"mz-annot\" \
+             data-target=\"[data-pane=&quot;fig&quot;]\">{\"items\":[]}</script></section>"
+            .to_string()]
+    }
+
+    /// `mz-annot-layer` appears in the stylesheet whether or not the overlay
+    /// ships, so the marker for "the script is here" has to be something only
+    /// the script defines.
+    const ANNOT_MARKER: &str = "window.__mirzamAnnot";
+
+    #[test]
+    fn a_deck_without_annotations_carries_no_overlay() {
+        let html = assemble_page(&DeckMeta::default(), &[], &PageOptions::default());
+        assert!(!html.contains(ANNOT_MARKER));
+        assert!(!assemble_print_page(&DeckMeta::default(), &[], None).contains(ANNOT_MARKER));
+    }
+
+    #[test]
+    fn an_annotate_block_pulls_in_the_overlay() {
+        let html = assemble_page(
+            &DeckMeta::default(),
+            &annotated_section(),
+            &PageOptions::default(),
+        );
+        assert!(html.contains(ANNOT_MARKER));
+    }
+
+    /// The one script the print page carries, and deliberately so: an
+    /// annotation is drawn *over* the slide and hides nothing, so the PDF
+    /// would otherwise lose the marks the slide exists to make.
+    #[test]
+    fn print_pages_do_ship_the_annotation_overlay() {
+        let html = assemble_print_page(&DeckMeta::default(), &annotated_section(), None);
+        assert!(html.contains(ANNOT_MARKER));
+        assert!(!html.contains("window.MZAnim = {"));
+    }
+
+    #[test]
+    fn annotate_block_emits_the_c2_model() {
+        let slide = parse_slide(
+            "```pane\n+---+\n| fig |\n+---+\n```\n\n::: pane fig\ntext\n:::\n\n\
+             ```annotate\ntarget: fig\ncircle 40,30 20x20 : label=\"here\"\n```\n",
+        );
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(out.warnings.is_empty(), "{:?}", out.warnings);
+        assert!(out.html.contains("class=\"mz-annot\""));
+        assert!(out
+            .html
+            .contains("data-target=\"[data-pane=&quot;fig&quot;]\""));
+        assert!(out.html.contains("\"kind\":\"circle\""));
+    }
+
+    #[test]
+    fn annotate_pointing_at_nothing_warns_and_drops() {
+        let slide = parse_slide(
+            "```pane\n+---+\n| fig |\n+---+\n```\n\n::: pane fig\ntext\n:::\n\n\
+             ```annotate\ntarget: ghost\ncircle 40,30 20x20\n```\n",
+        );
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(!out.html.contains("class=\"mz-annot\""));
+        assert!(
+            out.warnings.iter().any(|w| w.contains("matches nothing")),
+            "{:?}",
+            out.warnings
+        );
     }
 
     #[test]

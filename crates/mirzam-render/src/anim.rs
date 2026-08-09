@@ -150,7 +150,7 @@ fn is_ident(s: &str) -> bool {
 /// `.class` selectors (and the always-present `:scope`) are checked; anything
 /// more complex is assumed valid, since this is a build-time heuristic, not a
 /// CSS engine.
-fn selector_exists(haystack: &str, sel: &str) -> bool {
+pub(crate) fn selector_exists(haystack: &str, sel: &str) -> bool {
     if sel == ":scope" {
         return true;
     }

@@ -59,6 +59,8 @@ changes.
 | `mirzam-shape` | Shape DSL → SVG layer, resolving shape-to-shape endpoints. |
 | `mirzam-chart` | Chart DSL + CSV → SVG, assigning stable ids to every mark. |
 | `mirzam-connect` | Connector DSL → JSON for the runtime. |
+| `mirzam-anim` | `anim` DSL → the timeline IR, with easing curves resolved at build time. |
+| `mirzam-annot` | `annotate` DSL → the annotation model drawn over a picture or a chart mark. |
 | `mirzam-render` | Assembles slides into HTML; owns the theme, viewer runtime and asset inlining. |
 | `mirzam-cli` | `build` / `serve` / `export pdf`, the caching build pipeline, the benchmark. |
 | `mirzam-wasm` | wasm-bindgen bindings over the same pipeline, with host-injected files and assets. |
@@ -110,6 +112,26 @@ A `chart` block renders SVG from CSV at build time. Every mark carries an id
 derived from the chart id, series index and row index, which is what allows a
 `connect` arrow to point at one bar. A screenshot cannot offer that, and neither
 can an embedded image.
+
+### Annotations and the PDF
+
+An annotation is positioned as a percentage of the box its target *paints*, and
+an anchored one takes the live box of the element it names. Neither is known
+until the browser has laid the slide out, so — like connectors — the overlay is
+drawn at runtime rather than baked into the HTML.
+
+That leaves the export with a choice, since the print page otherwise ships no
+JavaScript at all: drop the annotations from the PDF, or let the print page run
+the one script that draws them. **It runs the script.** The rule the no-script
+print page protects is that a deck read without JavaScript shows every slide in
+full; an annotation is drawn *over* the slide and hides nothing, so a scriptless
+read is the deck minus its marks, not a deck with something missing from the
+middle of it. Chromium loads and runs the page before printing, so the marks
+land in the PDF at exactly the coordinates the viewer shows.
+
+`theme/annot.js` is therefore written to stand alone: it never reaches for the
+viewer, the active slide or the animation runtime, and a unit test enforces
+that.
 
 ## Runtime
 

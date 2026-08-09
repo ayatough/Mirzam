@@ -356,3 +356,54 @@ curve instead of computing one. Press `→` twice.
 [click 1] .callout    : slide-in 400ms dir=up ease=spring(1,180,20)
 [click 2] .echo       : fade-in 300ms
 ```
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|  shot            |  bars           |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Annotations]{.eyebrow}
+## Circle the thing you are talking about
+:::
+
+::: pane shot {valign=middle}
+![A grid of glowing nodes](media/bg/mesh.jpg)
+:::
+
+::: pane bars
+```chart
+type: bar
+id: load
+title: Requests per node (thousands)
+data: |
+  node, weekday, weekend
+  n-1, 41, 22
+  n-2, 38, 24
+  n-3, 74, 26
+```
+:::
+
+```annotate
+target: shot
+circle 62,38 34x34 : label="the hot corner"
+arrow  18,86 -> 55,48
+text   6,90 "coordinates are percentages of the picture"
+```
+
+```annotate
+target: bars
+rect #load-0-2 : pad=10 color=@accent2 label="one node, twice the load"
+```
+
+<!-- note: The left block points with coordinates; the right one names a chart mark and needs none. -->
