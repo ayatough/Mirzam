@@ -8,6 +8,11 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- `scripts/record-demo.mjs`: records a deck being presented, by driving it in a
+  browser rather than by anyone operating one. Writes a `.webm` with no extra
+  tooling — and a GIF when a full ffmpeg is on the machine, which the one
+  Playwright ships is not. Keypresses appear on screen, because a deck that
+  advances by itself demonstrates nothing.
 - `theme: mirzam` — Mirzam's own palette as a built-in theme, in both modes,
   so a deck gets the identity's colours from one word of frontmatter. It is the
   token half of `examples/themes/mirzam.css`; the typography stays in that file,

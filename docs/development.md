@@ -41,6 +41,44 @@ The layout checker and the brand rasteriser both need a browser: `npm i
 playwright-core && npx playwright install chromium`, or point
 `MIRZAM_CHROMIUM` at an existing Chromium.
 
+## Recording a demo
+
+A screen recording of a slide tool is the one piece of documentation that cannot
+be written, and it is the piece most likely to come out badly — a hesitation
+before a keypress, a cursor crossing the slide, a pause of the wrong length.
+None of that is a recording problem; it is a *performing* problem, and a script
+does not hesitate.
+
+```bash
+node scripts/record-demo.mjs --build examples/pitch.md -o media/pitch --gif
+```
+
+It builds the deck, drives it in a browser — every slide held, every click step
+taken, the layout overlay and dark mode shown once each — and writes a `.webm`.
+Keypresses appear as a chip at the bottom of the frame, because a viewer cannot
+see a keyboard and a deck that advances by itself demonstrates nothing.
+
+The run is reproducible, which is the part worth having: change a theme, re-run
+it, and the demo is the deck as it is today rather than as it was the afternoon
+someone had time to record it.
+
+| Flag | |
+|---|---|
+| `--gif` | also write a GIF (see below) |
+| `--dwell 2.2` `--step 1.1` | seconds a slide, and a click step, is held |
+| `--width` `--height` | frame size, default 1280×720 |
+| `--fps` `--gif-width` | GIF size levers, default 12 fps at 800px |
+| `--no-keys` | drop the keypress chips |
+
+**The GIF needs a real ffmpeg.** Playwright ships one beside its browsers and it
+records the video, but it is a stripped build with two encoders and a dozen
+filters — no `palettegen`, no GIF encoder at all. The script checks what a
+candidate ffmpeg can *do* rather than whether it exists, so a missing one is
+reported before the recording rather than as a filter-graph error after it, and
+it prints the two-pass command if you would rather convert by hand. GitHub does
+not render a committed `.webm` inline, so a GIF (or a still linking to a hosted
+video) is what a README can actually show.
+
 ## Repository layout
 
 ```

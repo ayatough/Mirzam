@@ -67,6 +67,9 @@ there is. The model column follows from that:
 | W14 | Linking by annotation, not by arrow | C | Sonnet | W6 | ✅ |
 | W15 | Brand and visual identity | B | — | — | ✅ |
 | W9 | Release hardening and `v0.1.0` | A | Opus | all | ✅ |
+| W16 | Showing the thing working: demo recording, themes gallery | C | — | — | |
+| W17 | A theme per slide | B | — | — | |
+| W18 | Carrying an element from one slide to the next | S | — | W2 | |
 | W5 | Typst-flavoured math | A | Sonnet | — | deferred |
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
 
@@ -762,6 +765,90 @@ The docs no longer recommend an arrow from prose to a figure: `connect` is
 presented as the tool for two boxes in a diagram, and the syntax reference sends
 text-to-figure to the paired annotation. Cookbook rule 5 was rewritten to the new
 way, and the connector rule beside it now points at it.
+
+## W16 — Showing the thing working
+
+**Difficulty C · not started**
+
+Everything below `v0.1.0` is documentation the project cannot write in prose.
+
+- **The demo recording.** `scripts/record-demo.mjs` exists and works; what is
+  missing is deciding what gets recorded and where it lives. A README GIF has to
+  be small (GitHub will not render a large one, and will not render a committed
+  `.webm` at all), so it wants one deck, twenty seconds, no toggles. A full
+  walkthrough is a different recording and belongs on a hosted video, linked
+  rather than embedded. CI runners have a full ffmpeg, so the GIF can be
+  regenerated on a schedule instead of going stale in the repository.
+- **A themes gallery.** There are five built-in palettes and two sample
+  stylesheets, and no page shows them. One slide, rendered in each theme and
+  both modes, screenshotted by the same browser machinery the layout checker
+  uses — generated rather than curated, so it cannot drift from the CSS.
+- **A per-slide screenshot pass**, which the two above both want anyway:
+  `mirzam` renders, a script shoots, the docs embed. Everything needed is
+  already in `check-layout.mjs`.
+
+## W17 — A theme per slide
+
+**Difficulty B · not started**
+
+`theme:` is deck-wide today: the name is baked onto `<html data-theme=…>` and
+every slide gets it. A deck that wants one section in another palette — a dark
+interlude, a slide quoting someone else's brand — cannot say so.
+
+The tokens are already scoped in a way that almost allows it. Each built-in
+theme is `:where(:root[data-theme="x"])`; dropping `:root` would make the same
+block apply to any element carrying the attribute, so a
+`<section class="slide" data-theme="nord">` would re-tokenise its own subtree
+with no change to `base.css`.
+
+Two things are not free, and they are the whole difficulty:
+
+- **Mode.** The dark blocks are `:root[data-theme="x"][data-mode="dark"]` and
+  `…:not([data-mode="light"])`. A section carries no `data-mode`, so a deck
+  forced to dark would leave a per-slide theme in light. The selectors have to
+  read the mode from the document and the theme from the nearest ancestor,
+  which is a different shape: `:where(:root[data-mode="dark"] [data-theme="x"])`
+  and so on, times four themes times three blocks.
+- **The contrast test.** `every_theme_and_mode_meets_wcag_contrast` parses the
+  token blocks by selector. It has to keep parsing them.
+
+Frontmatter stays the default; the per-slide form is a pane-style attribute on
+the slide. The point is a section that reads differently, not a deck that
+changes clothes every page — worth saying in the docs, because the feature
+invites the second thing.
+
+## W18 — Carrying an element from one slide to the next
+
+**Difficulty S · not started**
+
+The case: a slide presents three components, and the next three slides take one
+each. Today that is four page turns, and the audience re-finds the component
+each time. What it should be is the component *moving* — growing out of the
+overview into the slide about it, while the other two leave.
+
+This is a shared-element transition: the same thing named on two consecutive
+slides, animated between the two boxes it occupies rather than crossfaded. It is
+what Keynote calls Magic Move and reveal.js calls auto-animate, and it is the
+one animation feature a deck tool is asked for that Mirzam has no answer to.
+
+The mechanism is FLIP, and the parts are all present:
+
+- Elements are already named — `{#id}` is the same attribute annotations and
+  connectors resolve against. An id appearing on slide N and slide N+1 is the
+  declaration; no new syntax is strictly needed, though an opt-in keyword is
+  probably kinder than making every reused id move.
+- The runtime already measures boxes against a scaled deck (`annot.js` does it
+  for every mark) and already owns the page turn (`anim.js` `turn`).
+- The resting-state rule survives: the transition is between two states that are
+  each already final, so the PDF and a reader without JavaScript see two ordinary
+  slides.
+
+The hard parts are the ones that make it Difficulty S: the two slides are
+separate DOM subtrees, so the moving element has to be lifted into a layer that
+outlives both; the deck's own page-turn effect must be suppressed for exactly
+the elements that are moving and kept for everything else; and going *backwards*
+has to be as good as going forwards, which is where most implementations of this
+give up.
 
 ## W5 — Typst-flavoured math (deferred)
 
