@@ -3,6 +3,12 @@ html, body {
   margin: 0; height: 100%;
   background: var(--mz-bg);
   overflow: hidden;
+  /* A horizontal swipe is a page turn, so claim it before the browser reads it
+     as back/forward. Without this, swiping right on a phone leaves the deck.
+     `pan-y` keeps vertical scrolling in the notes panel and the cheat sheet,
+     and keeps pinch zoom. */
+  touch-action: pan-y;
+  overscroll-behavior: none;
   /* Name Japanese fonts explicitly: without them, some systems fall back to a
      non-Japanese CJK font and render kanji with the wrong glyph shapes.
      PDF export uses the fonts installed on the exporting machine. */
@@ -270,17 +276,89 @@ svg.mz-shapes, svg.mz-connect {
 
 aside.notes { display: none; }
 
-/* HUD */
-#hud {
+/* The viewer chrome's own palette. These are literals on purpose: the chrome
+   is the viewer, not the document. It sits on --mz-bg outside the deck, it is
+   never printed, and it must not shift under the presenter every time the
+   deck's theme changes. Named here so the rules below read as one surface. */
+:root {
+  --mz-ui-fg: #dde1ee; /* theme-independent: viewer chrome */
+  --mz-ui-dim: #9aa1b8; /* theme-independent: viewer chrome */
+  --mz-ui-faint: #7a8199; /* theme-independent: viewer chrome */
+  --mz-ui-panel: #171a22; /* theme-independent: viewer chrome */
+  --mz-ui-veil: rgba(10, 12, 18, .72); /* theme-independent: viewer chrome */
+  --mz-ui-chip: rgba(120, 130, 160, .18); /* theme-independent: viewer chrome */
+  --mz-ui-chip-on: rgba(120, 130, 160, .32); /* theme-independent: viewer chrome */
+  --mz-ui-line: rgba(150, 160, 190, .3); /* theme-independent: viewer chrome */
+  --mz-ui-shadow: rgba(0, 0, 0, .5); /* theme-independent: viewer chrome */
+}
+
+/* Viewer chrome: the page counter and the control cluster, in one row outside
+   the deck so neither can ever sit over slide content. */
+#chrome {
   position: fixed; right: 18px; bottom: 12px;
-  color: #9aa1b8; /* theme-independent: viewer chrome, on --mz-bg and never printed */
-  font-size: 14px; user-select: none;
+  display: flex; align-items: center; gap: 12px;
+  user-select: none;
 }
-#hint {
-  position: fixed; left: 18px; bottom: 12px;
-  color: #5c6378; /* theme-independent: viewer chrome, on --mz-bg and never printed */
-  font-size: 12px; user-select: none;
+#hud { color: var(--mz-ui-dim); font-size: 14px; }
+/* Quiet until asked for: the cluster fades in on pointer movement or touch and
+   fades out again when the room settles. Only `opacity` animates, so waking it
+   during a talk can never reflow the slide. */
+#controls {
+  display: flex; gap: 6px;
+  opacity: 0; pointer-events: none; transition: opacity .25s ease;
 }
+html.mz-awake #controls { opacity: 1; pointer-events: auto; }
+#controls button {
+  width: 30px; height: 30px; padding: 0; line-height: 1;
+  font: inherit; font-size: 16px; cursor: pointer;
+  color: var(--mz-ui-fg); background: var(--mz-ui-chip);
+  border: 1px solid var(--mz-ui-line); border-radius: 8px;
+}
+#controls button:hover { background: var(--mz-ui-chip-on); }
+#controls button:active { transform: translateY(1px); }
+
+/* The cheat sheet: `/` or the `?` button. An overlay, so it covers the deck
+   rather than resizing it. */
+#keys {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center;
+  /* theme-independent: an overlay panel, deliberately the same in every theme */
+  background: var(--mz-ui-veil); color: var(--mz-ui-fg);
+  font-size: 15px;
+}
+#keys[hidden] { display: none; }
+#keys .mz-keys-card {
+  background: var(--mz-ui-panel); border: 1px solid var(--mz-ui-line);
+  border-radius: 14px; padding: 22px 26px;
+  max-width: min(760px, 88vw); max-height: 84vh; overflow: auto;
+  box-shadow: 0 24px 60px var(--mz-ui-shadow);
+}
+/* Two columns when there is room: the viewer's own keys on the left, whatever
+   this slide binds on the right. One column on a phone. */
+#keys .mz-keys-cols { display: flex; flex-wrap: wrap; gap: 10px 42px; }
+#keys .mz-keys-cols > div { flex: 1 1 300px; }
+#keys h4 {
+  margin: 0 0 10px; color: var(--mz-accent2);
+  font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+}
+#keys h4 + h4, #keys dl + h4 { margin-top: 18px; }
+#keys dl {
+  margin: 0; display: grid; grid-template-columns: auto 1fr;
+  gap: 6px 14px; align-items: baseline;
+}
+#keys dt { margin: 0; }
+#keys dd { margin: 0; color: var(--mz-ui-dim); }
+#keys kbd {
+  display: inline-block; min-width: 1.2em; text-align: center;
+  padding: 2px 7px; margin-right: 4px;
+  font-family: 'SF Mono', Consolas, Menlo, monospace; font-size: 13px;
+  color: var(--mz-ui-fg); background: var(--mz-ui-chip);
+  border: 1px solid var(--mz-ui-line); border-radius: 6px;
+}
+#keys .mz-keys-close { margin: 16px 0 0; color: var(--mz-ui-faint); font-size: 13px; }
+
+/* Chrome is the viewer, never the document. */
+@media print { #chrome, #keys, #notes-panel { display: none !important; } }
 #notes-panel {
   position: fixed; left: 0; right: 0; bottom: 0;
   /* theme-independent: an overlay panel, deliberately the same in every theme */

@@ -19,7 +19,9 @@ cargo build --release
 ./target/release/mirzam export pdf examples/pitch.md
 ```
 
-ビューア操作: `←` `→` ページ送り / `N` スピーカーノート / `F` 全画面。
+ビューア操作: `←` `→` ページ送り / `N` スピーカーノート / `F` 全画面 /
+`/` ショートカット一覧(そのスライドの `effects` キーも表示)。
+スマホではスワイプでページ送り、上スワイプでノート、長押しで一覧。
 
 VSCode 拡張:
 

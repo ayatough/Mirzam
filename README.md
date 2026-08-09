@@ -110,7 +110,9 @@ mirzam export pdf deck.md -o deck.pdf
 
 In the viewer: `←` `→` to navigate (and to step through a slide's animation),
 `N` for speaker notes, `F` for fullscreen, `D` for dark mode, `L` to outline the
-layout.
+layout. Press `/` for the full list, including the effect keys this particular
+deck binds. On a phone, swipe to turn the page, swipe up for notes, and long
+press for the same sheet.
 
 ### In your editor
 

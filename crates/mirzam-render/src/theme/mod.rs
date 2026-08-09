@@ -256,6 +256,44 @@ mod tests {
         assert!(PRINT_CSS.contains("html.mz-debug"));
     }
 
+    /// The chrome is the viewer, not the document: nothing here may reach a
+    /// printed page or a PDF.
+    #[test]
+    fn the_chrome_is_never_printed() {
+        assert!(BASE_CSS.contains("@media print { #chrome, #keys, #notes-panel"));
+    }
+
+    /// Swiping right on a phone is a page turn. Unless the deck claims the
+    /// gesture, the browser reads it as *back* and the presenter loses the deck.
+    #[test]
+    fn a_horizontal_swipe_belongs_to_the_deck() {
+        assert!(BASE_CSS.contains("touch-action: pan-y;"));
+        assert!(BASE_CSS.contains("overscroll-behavior: none;"));
+    }
+
+    /// The cheat sheet's whole reason for existing is the keys nobody can
+    /// guess, which are the ones a deck binds itself. It reads the same
+    /// per-slide tag `effects.js` does, so a deck that binds none - and
+    /// therefore never inlines that file - still gets a working sheet.
+    #[test]
+    fn the_cheat_sheet_reads_this_decks_effect_bindings() {
+        assert!(VIEWER_JS.contains("script.mz-fx"));
+        assert!(EFFECTS_JS.contains("script.mz-fx"));
+        assert!(VIEWER_JS.contains("'/'"));
+    }
+
+    /// A phone has no keyboard, so every way of driving the deck has a touch
+    /// equivalent - and the sheet says so on the devices that need it.
+    #[test]
+    fn every_control_has_a_touch_equivalent() {
+        for gesture in ["touchstart", "touchmove", "touchend", "pointer: coarse"] {
+            assert!(
+                VIEWER_JS.contains(gesture),
+                "viewer.js is missing {gesture}"
+            );
+        }
+    }
+
     /// A stray `*/` turns the prose after it into CSS, and the parser's error
     /// recovery then swallows the *next* rule whole. That is not a typo you
     /// see: it shipped transparent slides, and page turns showed two slides

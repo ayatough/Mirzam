@@ -61,7 +61,7 @@ there is. The model column follows from that:
 | W6 | Annotations on images and charts | S | Opus | W0 | ✅ |
 | W7 | Source map through transclusion | A | Sonnet | — | ✅ |
 | W10 | Continuation: one pane carries on, the rest hold | B | Opus | — | ✅ |
-| W11 | Viewer chrome: cheat sheet, touch controls, gestures | C | Fable | — | |
+| W11 | Viewer chrome: cheat sheet, touch controls, gestures | C | Fable | — | ✅ |
 | W12 | Presenter window | B | Sonnet | W11 | |
 | W13 | Table of contents from headings | B | Sonnet | — | |
 | W14 | Linking by annotation, not by arrow | C | Sonnet | W6 | |
@@ -477,6 +477,26 @@ Constraints: no library, no layout thrash, and the cluster must not sit over
 slide content — it is chrome outside the deck, like the page counter.
 
 **Owns:** `theme/viewer.js`, `theme/base.css` (the `#hud`/`#hint` region).
+
+**Landed as specified.** `#hint` is gone; `#chrome` holds the counter and the
+cluster in one row below the deck's bottom-right corner, and `mz-awake` on
+`<html>` drives nothing but an opacity. The sheet reads the same per-slide
+`script.mz-fx` tag `effects.js` does, so it works in a deck that binds none and
+therefore never inlines that file.
+
+One thing the brief did not anticipate, found by driving a phone rather than
+reasoning about one: **a swipe right left the deck entirely.** Chrome reads a
+horizontal overscroll as *back*, and a presenter who swipes the wrong way loses
+the talk. `touch-action: pan-y` on `html, body` claims the gesture; vertical
+scrolling and pinch zoom still work, and a test guards the rule.
+
+Two smaller things worth writing down:
+
+- A long press opens the sheet, and the click the browser synthesises after it
+  lands on the sheet that just opened — which closed it again. Gestures now set
+  a flag the following click consumes.
+- On `pointer: coarse` the sheet leads with the gestures. A cheat sheet full of
+  keys is no use on a device with no keyboard.
 
 ## W12 — Presenter window
 

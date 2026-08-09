@@ -230,7 +230,98 @@
   // on every keystroke, so this follows the cursor without animating.
   window.__mirzamGoto = (i) => show(i, { play: false });
 
+  // ---- The cheat sheet ----
+  // Every key the viewer answers to, plus the ones only this deck knows: the
+  // `effects` bindings are per-slide and nobody can guess them, which is the
+  // whole reason this overlay exists.
+  const keysPanel = document.getElementById('keys');
+  // Set when a gesture has already decided what a touch meant, so the
+  // synthetic click that follows it does not undo the gesture: a long press
+  // opens the sheet, and the click it produces lands on the sheet it just
+  // opened.
+  let handled = false;
+  const KEYS = [
+    ['Navigate', [
+      [['→', 'Space'], 'Next step, then next slide'],
+      [['←'], 'Back a step, then back a slide'],
+      [['Home', 'End'], 'First / last slide'],
+    ]],
+    ['Display', [
+      [['N'], 'Speaker notes'],
+      [['F'], 'Fullscreen'],
+      [['D'], 'Dark / light'],
+      [['L'], 'Outline the layout'],
+    ]],
+  ];
+  // On a phone the keys above are all unreachable, so the sheet leads with the
+  // gestures instead. `pointer: coarse` is the primary pointer, so a laptop
+  // with a touchscreen still gets the keyboard first.
+  const COARSE = matchMedia('(pointer: coarse)').matches;
+  const TOUCH = ['Touch', [
+    [['Swipe ←', 'Swipe →'], 'Next / previous'],
+    [['Swipe ↑', 'Swipe ↓'], 'Show / hide notes'],
+    [['Long press'], 'This sheet'],
+    [['Tap left', 'Tap right'], 'Back / forward'],
+  ]];
+  const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+  const row = (keys, what) =>
+    `<dt>${keys.map((k) => `<kbd>${esc(k)}</kbd>`).join('')}</dt><dd>${esc(what)}</dd>`;
+
+  // Effects live in the same per-slide JSON `effects.js` reads. Reading the tag
+  // rather than asking that file keeps the sheet working in a deck that binds
+  // no effects at all, where the file is not inlined.
+  function effectRows(sec) {
+    const tag = sec && sec.querySelector(':scope > script.mz-fx');
+    if (!tag) return '';
+    let list = [];
+    try { list = JSON.parse(tag.textContent) || []; } catch (e) { return ''; }
+    if (!list.length) return '';
+    const items = list.map((b) => row([b.key], b.arg ? `${b.effect} — ${b.arg}` : b.effect));
+    items.push(row(['Esc'], 'Clear whatever is flying'));
+    return `<h4>On this slide</h4><dl>${items.join('')}</dl>`;
+  }
+
+  function renderKeys() {
+    const groups = (COARSE ? [TOUCH, ...KEYS] : KEYS).map(([name, rows]) =>
+      `<h4>${name}</h4><dl>${rows.map(([k, w]) => row(k, w)).join('')}</dl>`).join('');
+    const fx = effectRows(slides()[cur]);
+    keysPanel.innerHTML = '<div class="mz-keys-card">' +
+      `<div class="mz-keys-cols"><div>${groups}</div>` +
+      (fx ? `<div>${fx}</div>` : '') + '</div>' +
+      '<p class="mz-keys-close"><kbd>/</kbd> or <kbd>Esc</kbd> to close</p></div>';
+  }
+
+  function toggleKeys(on) {
+    const want = on === undefined ? keysPanel.hidden : on;
+    if (want) renderKeys();
+    keysPanel.hidden = !want;
+  }
+  keysPanel.addEventListener('click', () => {
+    if (handled) { handled = false; return; }
+    toggleKeys(false);
+  });
+
+  // ---- The control cluster ----
+  // Quiet until someone reaches for it. `mz-awake` only drives an opacity, so
+  // waking the chrome mid-sentence cannot reflow the slide.
+  let sleepTimer = null;
+  function wake() {
+    html.classList.add('mz-awake');
+    clearTimeout(sleepTimer);
+    sleepTimer = setTimeout(() => html.classList.remove('mz-awake'), 2500);
+  }
+  addEventListener('pointermove', wake, { passive: true });
+  document.getElementById('mz-prev').addEventListener('click', retreat);
+  document.getElementById('mz-next').addEventListener('click', advance);
+  document.getElementById('mz-help').addEventListener('click', () => toggleKeys());
+
   addEventListener('keydown', (e) => {
+    // A modified key belongs to the browser: Cmd-R, Ctrl-F, Alt-Tab.
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === '/' || e.key === '?') { e.preventDefault(); toggleKeys(); return; }
+    // Escape closes the sheet. It also clears effects, which `effects.js`
+    // handles on its own listener, so this one only owns the overlay.
+    if (e.key === 'Escape') { toggleKeys(false); return; }
     if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); advance(); }
     else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); retreat(); }
     else if (e.key === 'Home') show(0);
@@ -252,6 +343,43 @@
     }
   });
 
+  // ---- Touch: a phone has no keyboard ----
+  // Swipe to turn the page, swipe up for notes, long press or a two-finger tap
+  // for the cheat sheet. The click zones stay, because that is what a presenter
+  // with a clicker or a trackpad is using.
+  const SWIPE = 45;      // px before a drag counts as a swipe rather than a tap
+  const HOLD = 550;      // ms before a still finger counts as a long press
+  let touch = null, holdTimer = null;
+
+  addEventListener('touchstart', (e) => {
+    wake();
+    clearTimeout(holdTimer);
+    if (e.touches.length > 1) { touch = null; handled = true; toggleKeys(); return; }
+    const t = e.touches[0];
+    touch = { x: t.clientX, y: t.clientY };
+    handled = false;
+    holdTimer = setTimeout(() => { handled = true; touch = null; toggleKeys(true); }, HOLD);
+  }, { passive: true });
+
+  addEventListener('touchmove', (e) => {
+    if (!touch) return;
+    const t = e.touches[0];
+    if (Math.hypot(t.clientX - touch.x, t.clientY - touch.y) > 10) clearTimeout(holdTimer);
+  }, { passive: true });
+
+  addEventListener('touchend', (e) => {
+    clearTimeout(holdTimer);
+    if (!touch) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touch.x, dy = t.clientY - touch.y;
+    touch = null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE) return;   // a tap, or a scroll
+    handled = true;
+    if (Math.abs(dx) > Math.abs(dy)) dx < 0 ? advance() : retreat();
+    else if (dy < 0) notesPanel.hidden = false;
+    else notesPanel.hidden = true;
+  }, { passive: true });
+
   // Click to advance, but never while the reader is selecting text or using a
   // control: a drag that ends on the deck is a selection, not a page turn.
   let downAt = null;
@@ -261,6 +389,8 @@
       ? Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 6
       : false;
     downAt = null;
+    // A gesture already decided what this touch meant.
+    if (handled) { handled = false; return; }
     if (moved) return;
     if ((getSelection()?.toString() || '').trim()) return;
     if (e.target.closest('a, video, details, summary, button, input')) return;

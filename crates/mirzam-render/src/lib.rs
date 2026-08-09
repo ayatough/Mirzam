@@ -196,8 +196,15 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <body>
 <div id="deck" data-slide-w="{w}" data-slide-h="{h}"{transition}{fit}>
 {sections}</div>
+<div id="chrome">
 <div id="hud"></div>
-<div id="hint">← → navigate / N notes / F fullscreen / L layout / D mode</div>
+<div id="controls">
+<button id="mz-prev" type="button" aria-label="Previous">‹</button>
+<button id="mz-next" type="button" aria-label="Next">›</button>
+<button id="mz-help" type="button" aria-label="Keyboard shortcuts">?</button>
+</div>
+</div>
+<div id="keys" hidden></div>
 <div id="notes-panel" hidden></div>
 {fit_js}{anim_js}{annot_js}<script>{js}</script>
 {effects_js}{live_js}</body>

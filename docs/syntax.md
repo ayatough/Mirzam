@@ -547,6 +547,48 @@ something it depends on.
 Under `prefers-reduced-motion` the reveals still happen, and stepping still
 works, but nothing travels to get there: an element appears instead of arriving.
 
+## Driving the viewer
+
+Press **`/`** and the deck tells you. The overlay lists every key, and — the
+reason it exists — the `effects` keys *this slide* binds, which are the ones
+nobody can guess. `Esc` or `/` closes it.
+
+| | |
+|---|---|
+| `→` `Space` `PageDown` | Next click step, then the next slide |
+| `←` `PageUp` | Back a step, then the previous slide |
+| `Home` `End` | First / last slide |
+| `N` | Speaker notes |
+| `F` | Fullscreen |
+| `D` | Dark / light |
+| `L` | Outline the layout |
+| `/` | The cheat sheet |
+| `Esc` | Close the sheet; clear any effect in flight |
+
+Clicking the left third of the slide goes back and anywhere else goes forward,
+which is what a presenter with a clicker or a trackpad is using. A drag that
+ends on the deck is a text selection, not a page turn.
+
+A quiet control cluster sits below the bottom-right corner — previous, next and
+the cheat sheet — and fades in when you move the pointer or touch the screen.
+It is outside the deck, so it never covers slide content, and it is never
+printed.
+
+### On a phone
+
+There is no keyboard, so every control has a gesture:
+
+| | |
+|---|---|
+| Swipe left / right | Next / previous |
+| Swipe up / down | Show / hide speaker notes |
+| Long press, or a two-finger tap | The cheat sheet |
+| Tap left third / elsewhere | Back / forward |
+
+The deck claims horizontal swipes from the browser, so swiping right turns the
+page instead of navigating away from the deck. On a touch device the cheat
+sheet leads with these gestures rather than with the keys.
+
 ## Theming
 
 ### Named themes
