@@ -189,3 +189,92 @@ fn reordering_slides_updates_indices() {
     );
     assert!(swapped.sections[0].contains("data-index=\"0\""));
 }
+
+/// The source map, end to end through a real build: a block written in an
+/// included file must resolve back to that file's own bytes. This is what
+/// makes an edit made in the preview writable back to the line it came from.
+#[test]
+fn a_block_resolves_back_to_the_file_it_was_written_in() {
+    let deck = TempDeck::new(
+        "srcmap",
+        "---\ntitle: T\n---\n\nintro\n\n---\n\n![[part.md]]\n",
+    );
+    let part = "## Figure\n\n```annotate\ntarget: fig\ncircle 40,30 20x20\n```\n";
+    std::fs::write(deck.dir.join("part.md"), part).expect("write part");
+
+    let mut cache = HashMap::new();
+    let out = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("build");
+
+    let slide = out
+        .slides
+        .iter()
+        .find(|s| s.text.contains("annotate"))
+        .expect("the slide holding the block");
+    let parsed = mirzam_syntax::parse_slide(&slide.text);
+    let block = parsed
+        .blocks
+        .iter()
+        .find(|b| b.info == "annotate")
+        .expect("the block was recorded");
+
+    let (file, range) = out
+        .map
+        .resolve(slide.start + block.body.start..slide.start + block.body.end)
+        .expect("resolves to one file");
+    assert_eq!(file, deck.dir.join("part.md"));
+    assert_eq!(&part[range], "target: fig\ncircle 40,30 20x20\n");
+}
+
+/// The root deck's own offsets include its frontmatter, so a range resolves
+/// against the file on disk rather than against the body alone.
+#[test]
+fn root_offsets_are_relative_to_the_whole_file() {
+    let src = "---\ntitle: T\n---\n\n## One\n\n```shape\nrect #a at(1,2) size(3,4)\n```\n";
+    let deck = TempDeck::new("srcmap-root", src);
+    let mut cache = HashMap::new();
+    let out = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("build");
+
+    let slide = &out.slides[0];
+    let parsed = mirzam_syntax::parse_slide(&slide.text);
+    let block = parsed.blocks.iter().find(|b| b.info == "shape").unwrap();
+    let (file, range) = out
+        .map
+        .resolve(slide.start + block.body.start..slide.start + block.body.end)
+        .expect("resolves");
+    assert_eq!(file, deck.path);
+    assert_eq!(&src[range], "rect #a at(1,2) size(3,4)\n");
+}
+
+/// A line the variable substitution rewrote is not a line anyone typed, so it
+/// must resolve to nothing rather than to a plausible wrong place.
+#[test]
+fn a_substituted_line_resolves_to_nothing() {
+    let deck = TempDeck::new(
+        "srcmap-vars",
+        "---\ntitle: T\nvars:\n  n: 3\n---\n\nvalue {{ n }}\n",
+    );
+    let mut cache = HashMap::new();
+    let out = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("build");
+    let slide = &out.slides[0];
+    let at = slide.start + slide.text.find("value").expect("the line is there");
+    assert_eq!(out.map.lookup(at), None);
+}
+
+/// A warning raised on a slide that came from an included file says so.
+#[test]
+fn a_warning_names_the_file_the_slide_came_from() {
+    let deck = TempDeck::new("srcmap-warn", "---\ntitle: T\n---\n\n![[part.md]]\n");
+    // An anim target that matches nothing is the standard warning path.
+    std::fs::write(
+        deck.dir.join("part.md"),
+        "## S\n\n```anim\n[enter] .nope : fade-in 400ms\n```\n",
+    )
+    .expect("write part");
+    let mut cache = HashMap::new();
+    let out = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("build");
+    assert!(
+        out.warnings.iter().any(|w| w.contains("part.md")),
+        "{:?}",
+        out.warnings
+    );
+}

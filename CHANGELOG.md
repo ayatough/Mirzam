@@ -93,6 +93,10 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   still resolves its links to other documents.
 
 ### Changed
+- A warning raised on a slide that came from an included file now names that
+  file: `mirzam-syntax` keeps a source map from the expanded document back to
+  the files it was assembled from, through nested includes, a file included
+  twice, CRLF line endings and variable substitution.
 - A `shape` with an id is emitted as one group: a box and its label, an arrow
   and its head. Animating `#box` now moves the whole shape rather than leaving
   its label behind, and connectors resolve against the group's box.

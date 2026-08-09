@@ -5,6 +5,8 @@
 //! - Slide splitting on `---` (ignored inside code fences)
 //! - Per-slide extraction: the `pane` layout block, `::: pane` divs,
 //!   `<!-- note: -->` comments, and the shape/connect/anim fenced blocks
+//! - A [`SourceMap`] from the expanded document back to the files it was
+//!   assembled from, so an offset in the deck names a place someone can edit
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -58,20 +60,70 @@ pub fn expand_includes_tracked(
     provider: &dyn FileProvider,
     files: &mut BTreeSet<PathBuf>,
 ) -> String {
-    let mut visited = BTreeSet::new();
-    expand_includes_inner(body, base_dir, provider, &mut visited, files)
+    expand_includes_mapped(body, 0, Path::new(""), base_dir, provider, files).0
 }
 
+/// Expands includes and records where every byte of the result came from.
+///
+/// The tracker above knows *which* files a deck was built from; this knows
+/// *where*, which is what turns an offset in the expanded document back into
+/// a place a person can edit. `root` is the file `body` was read from and
+/// `body_offset` is where `body` starts inside it — frontmatter has usually
+/// been split off by the time this is called, and the caller is the only one
+/// who knows how much.
+pub fn expand_includes_mapped(
+    body: &str,
+    body_offset: usize,
+    root: &Path,
+    base_dir: &Path,
+    provider: &dyn FileProvider,
+    files: &mut BTreeSet<PathBuf>,
+) -> (String, SourceMap) {
+    let mut out = String::with_capacity(body.len());
+    let mut map = SourceMap::default();
+    let mut visited = BTreeSet::new();
+    let root = map.intern(root);
+    expand_includes_inner(
+        body,
+        body_offset,
+        root,
+        base_dir,
+        provider,
+        &mut visited,
+        files,
+        &mut out,
+        &mut map,
+    );
+    (out, map)
+}
+
+#[allow(clippy::too_many_arguments)]
 fn expand_includes_inner(
     body: &str,
+    body_offset: usize,
+    file: usize,
     base_dir: &Path,
     provider: &dyn FileProvider,
     visited: &mut BTreeSet<PathBuf>,
     files: &mut BTreeSet<PathBuf>,
-) -> String {
-    let mut out = String::with_capacity(body.len());
+    out: &mut String,
+    map: &mut SourceMap,
+) {
     let mut fence: Option<usize> = None;
-    for line in body.lines() {
+    let mut pos = 0usize;
+    for raw in body.split_inclusive('\n') {
+        // The same line `lines()` would have yielded: no terminator, and no
+        // stray `\r` from a CRLF file.
+        let mut line = raw;
+        if let Some(t) = line.strip_suffix('\n') {
+            line = t;
+        }
+        if let Some(t) = line.strip_suffix('\r') {
+            line = t;
+        }
+        let src = body_offset + pos..body_offset + pos + raw.len();
+        pos += raw.len();
+
         let trimmed = line.trim();
         match fence {
             Some(open) if closes_fence(trimmed, open) => fence = None,
@@ -82,48 +134,196 @@ fn expand_includes_inner(
             }
             _ => {}
         }
-        if fence.is_some() || closes_fence(trimmed, 3) {
+        let emit = |out: &mut String, map: &mut SourceMap| {
+            let start = out.len();
             out.push_str(line);
             out.push('\n');
+            map.push(start..out.len(), file, src.clone());
+        };
+        if fence.is_some() || closes_fence(trimmed, 3) {
+            emit(out, map);
             continue;
         }
-        {
-            if let Some(target) = parse_include_line(trimmed) {
-                let path = base_dir.join(target);
-                let canon = path.canonicalize().unwrap_or_else(|_| path.clone());
-                if visited.contains(&canon) {
-                    out.push_str(&format!(
-                        "> ⚠ circular include, not expanded: `{}`\n",
-                        target
-                    ));
-                    continue;
-                }
-                match provider.read(&path) {
-                    Ok(content) => {
-                        visited.insert(canon.clone());
-                        files.insert(path.clone());
-                        // Frontmatter in included files is ignored.
-                        let (_, child_body) = split_frontmatter(&content);
-                        let child_dir = path.parent().unwrap_or(base_dir).to_path_buf();
-                        out.push_str(&expand_includes_inner(
-                            child_body, &child_dir, provider, visited, files,
-                        ));
-                        visited.remove(&canon);
-                        if !out.ends_with('\n') {
-                            out.push('\n');
-                        }
-                    }
-                    Err(e) => {
-                        out.push_str(&format!("> ⚠ include failed: {e}\n"));
-                    }
-                }
+        if let Some(target) = parse_include_line(trimmed) {
+            let path = base_dir.join(target);
+            let canon = path.canonicalize().unwrap_or_else(|_| path.clone());
+            if visited.contains(&canon) {
+                // Generated text: it belongs to no file, so it gets no span.
+                out.push_str(&format!(
+                    "> ⚠ circular include, not expanded: `{}`\n",
+                    target
+                ));
                 continue;
             }
+            match provider.read(&path) {
+                Ok(content) => {
+                    visited.insert(canon.clone());
+                    files.insert(path.clone());
+                    // Frontmatter in included files is ignored — but its
+                    // length still counts, or every offset in the child would
+                    // be short by it.
+                    let (_, child_body) = split_frontmatter(&content);
+                    let child_offset = content.len() - child_body.len();
+                    let child_dir = path.parent().unwrap_or(base_dir).to_path_buf();
+                    let child = map.intern(&path);
+                    expand_includes_inner(
+                        child_body,
+                        child_offset,
+                        child,
+                        &child_dir,
+                        provider,
+                        visited,
+                        files,
+                        out,
+                        map,
+                    );
+                    visited.remove(&canon);
+                    if !out.ends_with('\n') {
+                        out.push('\n');
+                    }
+                }
+                Err(e) => {
+                    out.push_str(&format!("> ⚠ include failed: {e}\n"));
+                }
+            }
+            continue;
         }
-        out.push_str(line);
-        out.push('\n');
+        emit(out, map);
     }
-    out
+}
+
+// ---- Source map ----
+
+/// One run of the expanded document copied verbatim from a source file.
+///
+/// `out.len() == src.len()` for the ordinary case, and the mapping inside the
+/// run is then byte-exact. A CRLF line is the exception — the expansion emits
+/// `\n` where the file has `\r\n` — so such a line becomes a run of its own
+/// rather than being merged into its neighbours and dragging the offsets of
+/// everything after it out of place.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Span {
+    pub out: std::ops::Range<usize>,
+    pub src: std::ops::Range<usize>,
+    file: usize,
+}
+
+/// Where each byte of an expanded document came from.
+#[derive(Debug, Clone, Default)]
+pub struct SourceMap {
+    files: Vec<PathBuf>,
+    spans: Vec<Span>,
+}
+
+impl SourceMap {
+    fn intern(&mut self, path: &Path) -> usize {
+        match self.files.iter().position(|p| p == path) {
+            Some(i) => i,
+            None => {
+                self.files.push(path.to_path_buf());
+                self.files.len() - 1
+            }
+        }
+    }
+
+    fn push(&mut self, out: std::ops::Range<usize>, file: usize, src: std::ops::Range<usize>) {
+        // Merge with the previous run when both are byte-exact and the two are
+        // adjacent on each side; a file included twice, or a CRLF line, breaks
+        // the run instead of being folded into a wrong offset.
+        if let Some(last) = self.spans.last_mut() {
+            let exact = last.out.len() == last.src.len() && out.len() == src.len();
+            if exact && last.file == file && last.out.end == out.start && last.src.end == src.start
+            {
+                last.out.end = out.end;
+                last.src.end = src.end;
+                return;
+            }
+        }
+        self.spans.push(Span { out, src, file });
+    }
+
+    /// Every file that contributed to the document, in the order first seen.
+    pub fn files(&self) -> &[PathBuf] {
+        &self.files
+    }
+
+    /// Records, into the map of a *derived* document, that its bytes `out` are
+    /// a verbatim copy of bytes `from` of this document.
+    ///
+    /// A later pass may rewrite the expanded text — variable substitution does
+    /// — and a line it changed no longer corresponds to anything a person can
+    /// edit. Such a line is simply not carried, so it resolves to nothing
+    /// rather than to a plausible wrong place.
+    pub fn carry(
+        &self,
+        out: std::ops::Range<usize>,
+        from: std::ops::Range<usize>,
+        into: &mut SourceMap,
+    ) {
+        if out.len() != from.len() {
+            return;
+        }
+        let Some((file, src)) = self.resolve(from) else {
+            return;
+        };
+        let file = file.to_path_buf();
+        let f = into.intern(&file);
+        into.push(out, f, src);
+    }
+
+    pub fn spans(&self) -> &[Span] {
+        &self.spans
+    }
+
+    /// The span covering `offset`, by binary search rather than a scan.
+    fn span_at(&self, offset: usize) -> Option<usize> {
+        let i = self
+            .spans
+            .partition_point(|s| s.out.start <= offset)
+            .checked_sub(1)?;
+        (offset < self.spans[i].out.end).then_some(i)
+    }
+
+    /// Which file, and where in it, a byte of the expanded document came from.
+    /// `None` for text the expansion generated itself, such as the note left
+    /// in place of a circular include.
+    pub fn lookup(&self, offset: usize) -> Option<(&Path, usize)> {
+        let s = &self.spans[self.span_at(offset)?];
+        let within = (offset - s.out.start).min(s.src.len());
+        Some((&self.files[s.file], s.src.start + within))
+    }
+
+    /// The byte range in the original file that produced `range`.
+    ///
+    /// `None` when the range covers generated text or crosses a file boundary:
+    /// a caller about to rewrite those bytes must be refused rather than
+    /// handed a range that means something else.
+    pub fn resolve(
+        &self,
+        range: std::ops::Range<usize>,
+    ) -> Option<(&Path, std::ops::Range<usize>)> {
+        if range.start >= range.end {
+            let (f, at) = self.lookup(range.start)?;
+            return Some((f, at..at));
+        }
+        let lo = self.span_at(range.start)?;
+        let hi = self.span_at(range.end - 1)?;
+        // Every byte between them must be mapped, and mapped from the same
+        // file in order, or the range covers something this map cannot speak
+        // for — generated text, or a second file spliced into the middle.
+        for pair in self.spans[lo..=hi].windows(2) {
+            if pair[0].out.end != pair[1].out.start
+                || pair[0].file != pair[1].file
+                || pair[0].src.end != pair[1].src.start
+            {
+                return None;
+            }
+        }
+        let (first, last) = (&self.spans[lo], &self.spans[hi]);
+        let start = first.src.start + (range.start - first.out.start).min(first.src.len());
+        let end = last.src.start + (range.end - last.out.start).min(last.src.len());
+        (start <= end).then(|| (self.files[first.file].as_path(), start..end))
+    }
 }
 
 /// Number of leading backticks when a line opens or closes a fence.
@@ -151,19 +351,47 @@ fn parse_include_line(line: &str) -> Option<&str> {
     Some(inner.trim())
 }
 
+/// A slide, and where its text starts in the document it was split from.
+///
+/// The expansion emits `\n` line endings throughout, so a slide's text is
+/// exactly `body[start..start + text.len()]` — which is what lets a range
+/// inside a slide be carried back through [`SourceMap`] to a file.
+#[derive(Debug, Clone)]
+pub struct SlideSpan {
+    pub text: String,
+    pub start: usize,
+}
+
 /// Splits the body into slides on `---` lines outside code fences.
 pub fn split_slides(body: &str) -> Vec<String> {
     split_slides_at(body, None)
 }
 
-/// Splits into slides on `---`, and additionally before every heading of
-/// `level` when given. Heading splitting is what lets an ordinary document -
-/// a README, a set of notes - become a deck without editing it.
-pub fn split_slides_at(body: &str, level: Option<u8>) -> Vec<String> {
-    let mut slides = Vec::new();
+/// [`split_slides_at`], keeping each slide's offset in `body`.
+pub fn split_slides_spanned(body: &str, level: Option<u8>) -> Vec<SlideSpan> {
+    let mut slides: Vec<SlideSpan> = Vec::new();
     let mut current = String::new();
+    let mut start = 0usize;
     let mut fence: Option<usize> = None;
-    for line in body.lines() {
+    let mut pos = 0usize;
+    let mut flush = |current: &mut String, start: &mut usize, next: usize| {
+        slides.push(SlideSpan {
+            text: std::mem::take(current),
+            start: *start,
+        });
+        *start = next;
+    };
+    for raw in body.split_inclusive('\n') {
+        let mut line = raw;
+        if let Some(t) = line.strip_suffix('\n') {
+            line = t;
+        }
+        if let Some(t) = line.strip_suffix('\r') {
+            line = t;
+        }
+        let here = pos;
+        pos += raw.len();
+
         let trimmed = line.trim();
         match fence {
             Some(open) if closes_fence(trimmed, open) => fence = None,
@@ -176,23 +404,37 @@ pub fn split_slides_at(body: &str, level: Option<u8>) -> Vec<String> {
         }
         let in_code = fence.is_some();
         if !in_code && is_slide_break(trimmed) {
-            slides.push(std::mem::take(&mut current));
+            flush(&mut current, &mut start, pos);
             continue;
         }
         if !in_code && level.is_some_and(|l| heading_level(trimmed) == Some(l)) {
             // The first heading opens the deck rather than an empty slide.
             if !current.trim().is_empty() {
-                slides.push(std::mem::take(&mut current));
+                flush(&mut current, &mut start, here);
+            } else {
+                start = here;
             }
         }
         current.push_str(line);
         current.push('\n');
     }
-    slides.push(current);
-    // Drop slides that are only whitespace.
+    slides.push(SlideSpan {
+        text: current,
+        start,
+    });
     slides
         .into_iter()
-        .filter(|s| !s.trim().is_empty())
+        .filter(|s| !s.text.trim().is_empty())
+        .collect()
+}
+
+/// Splits into slides on `---`, and additionally before every heading of
+/// `level` when given. Heading splitting is what lets an ordinary document -
+/// a README, a set of notes - become a deck without editing it.
+pub fn split_slides_at(body: &str, level: Option<u8>) -> Vec<String> {
+    split_slides_spanned(body, level)
+        .into_iter()
+        .map(|s| s.text)
         .collect()
 }
 
@@ -260,27 +502,77 @@ pub struct SlideSource {
     pub effects: Vec<String>,
     /// Blocks reserved for a later phase.
     pub reserved: Vec<(BlockKind, String)>,
+    /// Where each fenced block sits in the slide's own text. Carrying the
+    /// ranges here is what lets an edit made in the preview be written back to
+    /// the line of Markdown it came from, via [`SourceMap`].
+    pub blocks: Vec<BlockSpan>,
+}
+
+/// A fenced block's place in the slide text it was parsed from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BlockSpan {
+    /// The fence's info string: `pane`, `annotate`, `chart`, …
+    pub info: String,
+    /// The content between the fences.
+    pub body: std::ops::Range<usize>,
+    /// The whole block, fences included.
+    pub whole: std::ops::Range<usize>,
+}
+
+/// Lines of `src` with the byte offset each one starts at, terminators
+/// stripped the way `lines()` strips them.
+fn line_offsets(src: &str) -> Vec<(usize, &str)> {
+    let mut out = Vec::new();
+    let mut pos = 0;
+    for raw in src.split_inclusive('\n') {
+        let mut line = raw;
+        if let Some(t) = line.strip_suffix('\n') {
+            line = t;
+        }
+        if let Some(t) = line.strip_suffix('\r') {
+            line = t;
+        }
+        out.push((pos, line));
+        pos += raw.len();
+    }
+    out
 }
 
 /// Decomposes a slide's source into its parts.
 pub fn parse_slide(src: &str) -> SlideSource {
     let mut slide = SlideSource::default();
-    let mut lines = src.lines().peekable();
+    let lines = line_offsets(src);
+    // The offset just past line `i`, which is where line `i + 1` begins.
+    let after = |i: usize| lines.get(i + 1).map(|(o, _)| *o).unwrap_or(src.len());
+    let mut i = 0;
 
-    while let Some(line) = lines.next() {
+    while i < lines.len() {
+        let (line_at, line) = lines[i];
+        i += 1;
         let trimmed = line.trim();
 
         // fenced code block
         if let Some(open) = fence_len(trimmed) {
             let info = trimmed[open..].trim();
+            let body_at = after(i - 1);
             let mut body = String::new();
-            for inner in lines.by_ref() {
+            let mut body_end = body_at;
+            while i < lines.len() {
+                let (at, inner) = lines[i];
+                i += 1;
                 if closes_fence(inner.trim(), open) {
+                    body_end = at;
                     break;
                 }
                 body.push_str(inner);
                 body.push('\n');
+                body_end = after(i - 1);
             }
+            slide.blocks.push(BlockSpan {
+                info: info.to_string(),
+                body: body_at..body_end,
+                whole: line_at..after(i - 1),
+            });
             // A longer fence quotes Mirzam syntax rather than using it.
             if open > 3 {
                 slide.loose.push_str(&format!(
@@ -315,7 +607,9 @@ pub fn parse_slide(src: &str) -> SlideSource {
             if let Some((pane_name, attrs)) = parse_pane_open(rest) {
                 let mut body = String::new();
                 let mut inner_fence: Option<usize> = None;
-                for inner in lines.by_ref() {
+                while i < lines.len() {
+                    let (_, inner) = lines[i];
+                    i += 1;
                     let t = inner.trim();
                     match inner_fence {
                         Some(open) if closes_fence(t, open) => inner_fence = None,
@@ -349,13 +643,12 @@ pub fn parse_slide(src: &str) -> SlideSource {
         if trimmed.starts_with("<!--") {
             let mut comment = String::from(trimmed);
             while !comment.contains("-->") {
-                match lines.next() {
-                    Some(l) => {
-                        comment.push('\n');
-                        comment.push_str(l);
-                    }
-                    None => break,
+                if i >= lines.len() {
+                    break;
                 }
+                comment.push('\n');
+                comment.push_str(lines[i].1);
+                i += 1;
             }
             if let Some(note) = parse_note_comment(&comment) {
                 slide.notes.push(note);
@@ -407,6 +700,217 @@ fn parse_note_comment(comment: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeMap;
+
+    /// A filesystem in a map, so include tests need no temporary directory.
+    struct Mem(BTreeMap<String, String>);
+
+    impl Mem {
+        fn new(files: &[(&str, &str)]) -> Self {
+            Mem(files
+                .iter()
+                .map(|(p, c)| (p.to_string(), c.to_string()))
+                .collect())
+        }
+    }
+
+    impl FileProvider for Mem {
+        fn read(&self, path: &Path) -> Result<String, String> {
+            self.0
+                .get(path.to_string_lossy().as_ref())
+                .cloned()
+                .ok_or_else(|| format!("cannot read {}", path.display()))
+        }
+    }
+
+    fn mapped(body: &str, files: &[(&str, &str)]) -> (String, SourceMap) {
+        let mut seen = BTreeSet::new();
+        expand_includes_mapped(
+            body,
+            0,
+            Path::new("deck.md"),
+            Path::new(""),
+            &Mem::new(files),
+            &mut seen,
+        )
+    }
+
+    /// What `lookup` says about the byte at `needle` inside the expanded text.
+    fn source_of<'a>(out: &str, map: &'a SourceMap, needle: &str) -> (&'a Path, usize) {
+        let at = out.find(needle).expect("needle is in the output");
+        map.lookup(at).expect("that byte came from a file")
+    }
+
+    #[test]
+    fn a_document_with_no_includes_maps_to_itself() {
+        let body = "# Title\n\nbody text\n";
+        let (out, map) = mapped(body, &[]);
+        assert_eq!(out, body);
+        // One run: nothing broke the 1:1 correspondence.
+        assert_eq!(map.spans().len(), 1);
+        for (i, _) in body.char_indices() {
+            assert_eq!(map.lookup(i), Some((Path::new("deck.md"), i)), "byte {i}");
+        }
+    }
+
+    #[test]
+    fn an_included_file_maps_into_that_file() {
+        let child = "## Section\n\nfrom the child\n";
+        let (out, map) = mapped("intro\n\n![[part.md]]\n\nouter\n", &[("part.md", child)]);
+        let (file, at) = source_of(&out, &map, "from the child");
+        assert_eq!(file, Path::new("part.md"));
+        assert_eq!(&child[at..at + 14], "from the child");
+        // Text on either side still maps to the parent.
+        assert_eq!(source_of(&out, &map, "intro").0, Path::new("deck.md"));
+        assert_eq!(source_of(&out, &map, "outer").0, Path::new("deck.md"));
+    }
+
+    #[test]
+    fn an_included_file_skips_its_own_frontmatter_but_not_its_offsets() {
+        let child = "---\ntitle: ignored\n---\nreal content\n";
+        let (out, map) = mapped("![[part.md]]\n", &[("part.md", child)]);
+        assert!(!out.contains("ignored"));
+        let (_, at) = source_of(&out, &map, "real content");
+        assert_eq!(&child[at..at + 12], "real content");
+    }
+
+    #[test]
+    fn nested_includes_map_to_the_innermost_file() {
+        let (out, map) = mapped(
+            "![[a.md]]\n",
+            &[("a.md", "a says\n\n![[b.md]]\n"), ("b.md", "b says\n")],
+        );
+        assert_eq!(source_of(&out, &map, "a says").0, Path::new("a.md"));
+        assert_eq!(source_of(&out, &map, "b says").0, Path::new("b.md"));
+    }
+
+    #[test]
+    fn an_include_inside_a_fence_is_text_and_maps_to_the_parent() {
+        let body = "```markdown\n![[part.md]]\n```\n";
+        let (out, map) = mapped(body, &[("part.md", "expanded!\n")]);
+        assert!(!out.contains("expanded!"), "{out}");
+        assert_eq!(
+            source_of(&out, &map, "![[part.md]]").0,
+            Path::new("deck.md")
+        );
+    }
+
+    #[test]
+    fn a_file_included_twice_maps_each_copy_to_the_same_file() {
+        let child = "shared\n";
+        let (out, map) = mapped(
+            "![[part.md]]\n\nmiddle\n\n![[part.md]]\n",
+            &[("part.md", child)],
+        );
+        let first = out.find("shared").unwrap();
+        let second = out[first + 1..].find("shared").unwrap() + first + 1;
+        assert_ne!(first, second);
+        // Both copies point at the one place the text actually lives.
+        assert_eq!(map.lookup(first), Some((Path::new("part.md"), 0)));
+        assert_eq!(map.lookup(second), Some((Path::new("part.md"), 0)));
+    }
+
+    #[test]
+    fn crlf_line_endings_still_map_to_the_right_bytes() {
+        let body = "alpha\r\nbeta\r\ngamma\r\n";
+        let (out, map) = mapped(body, &[]);
+        assert_eq!(out, "alpha\nbeta\ngamma\n");
+        for word in ["alpha", "beta", "gamma"] {
+            let (_, at) = source_of(&out, &map, word);
+            assert_eq!(&body[at..at + word.len()], word, "{word}");
+        }
+        // A CRLF line cannot merge with its neighbours without dragging every
+        // later offset out of place, so each one is its own run.
+        assert_eq!(map.spans().len(), 3);
+    }
+
+    #[test]
+    fn generated_text_belongs_to_no_file() {
+        let (out, map) = mapped("![[missing.md]]\n", &[]);
+        let at = out.find("include failed").unwrap();
+        assert_eq!(map.lookup(at), None);
+    }
+
+    #[test]
+    fn resolve_returns_the_range_a_block_occupies_in_its_own_file() {
+        let child = "text\n\n```annotate\ntarget: fig\ncircle 40,30 20x20\n```\n";
+        let (out, map) = mapped("![[part.md]]\n", &[("part.md", child)]);
+        let start = out.find("target: fig").unwrap();
+        let end = out.find("```\n").unwrap();
+        let (file, range) = map.resolve(start..end).expect("one file, one range");
+        assert_eq!(file, Path::new("part.md"));
+        assert_eq!(&child[range], "target: fig\ncircle 40,30 20x20\n");
+    }
+
+    #[test]
+    fn resolve_refuses_a_range_that_crosses_two_files() {
+        let (out, map) = mapped(
+            "![[a.md]]\n![[b.md]]\n",
+            &[("a.md", "aaa\n"), ("b.md", "bbb\n")],
+        );
+        let start = out.find("aaa").unwrap();
+        let end = out.find("bbb").unwrap() + 3;
+        assert_eq!(map.resolve(start..end), None);
+    }
+
+    #[test]
+    fn slide_spans_index_back_into_the_document() {
+        let body = "one\n\n---\n\ntwo\n\n---\n\nthree\n";
+        for slide in split_slides_spanned(body, None) {
+            assert_eq!(
+                &body[slide.start..slide.start + slide.text.len()],
+                slide.text,
+                "slide text is not the bytes it claims"
+            );
+        }
+    }
+
+    #[test]
+    fn heading_split_slide_spans_start_at_the_heading() {
+        let body = "# Title\n\nintro\n\n## A\n\nbody a\n";
+        let slides = split_slides_spanned(body, Some(2));
+        assert_eq!(slides.len(), 2);
+        assert_eq!(&body[slides[1].start..slides[1].start + 4], "## A");
+        for slide in &slides {
+            assert_eq!(
+                &body[slide.start..slide.start + slide.text.len()],
+                slide.text
+            );
+        }
+    }
+
+    #[test]
+    fn block_spans_cover_the_fence_and_its_contents() {
+        let src = "intro\n\n```annotate\ntarget: fig\ncircle 1,2 3x4\n```\n\ntail\n";
+        let slide = parse_slide(src);
+        let block = slide
+            .blocks
+            .iter()
+            .find(|b| b.info == "annotate")
+            .expect("the block was recorded");
+        assert_eq!(&src[block.body.clone()], "target: fig\ncircle 1,2 3x4\n");
+        assert!(src[block.whole.clone()].starts_with("```annotate"));
+        assert!(src[block.whole.clone()].ends_with("```\n"));
+        // The recorded body is exactly what the parser handed the renderer.
+        assert_eq!(slide.annots[0], src[block.body.clone()]);
+    }
+
+    #[test]
+    fn a_block_range_survives_the_trip_back_to_its_file() {
+        // The whole point of this stream: preview -> slide -> document -> file.
+        let child = "## Figure\n\n```annotate\ntarget: fig\ncircle 40,30 20x20\n```\n";
+        let (doc, map) = mapped("intro\n\n---\n\n![[part.md]]\n", &[("part.md", child)]);
+        let slide = split_slides_spanned(&doc, None)
+            .into_iter()
+            .find(|s| s.text.contains("annotate"))
+            .expect("the slide with the block");
+        let parsed = parse_slide(&slide.text);
+        let block = parsed.blocks.iter().find(|b| b.info == "annotate").unwrap();
+        let in_doc = slide.start + block.body.start..slide.start + block.body.end;
+        let (file, range) = map.resolve(in_doc).expect("resolves to one file");
+        assert_eq!(file, Path::new("part.md"));
+        assert_eq!(&child[range], "target: fig\ncircle 40,30 20x20\n");
+    }
 
     #[test]
     fn frontmatter_split() {

@@ -56,7 +56,7 @@ there is. The model column follows from that:
 | W4 | Presentation effects | C | Fable | W0 | ✅ |
 | W5 | Typst-flavoured math | A | Sonnet | — | |
 | W6 | Annotations on images and charts | S | Opus | W0 | ✅ |
-| W7 | Source map through transclusion | A | Sonnet | — | |
+| W7 | Source map through transclusion | A | Sonnet | — | ✅ |
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | |
 | W9 | Release hardening and merge to `main` | A | Opus | all | |
 
@@ -456,22 +456,35 @@ The three things that made or broke this stream, and how they came out:
 
 **Owns:** `crates/mirzam-annot`, `theme/annot.js`.
 
-## W7 — Source map through transclusion
+## W7 — Source map through transclusion ✅
 
-**Difficulty A · Sonnet**
+**Difficulty A · Sonnet · landed**
 
-`expand_includes_tracked` knows *which* files a deck came from. W8 needs to know
-*where*: given a byte range in the expanded document, which file and which byte
-range in it. Pure, self-contained, and unit-testable — nested includes, an
-include inside a fence, CRLF, and a file included twice are the interesting
-cases.
+`expand_includes_tracked` knows *which* files a deck came from; `SourceMap`
+knows *where*. `expand_includes_mapped` returns it alongside the expanded
+text, `SlideSpan` carries each slide's offset in that text, and `BlockSpan`
+carries each fenced block's range within its slide. Composing the three turns
+"this block, on this slide" into "these bytes, in this file" — which is the
+whole point, and the round trip is tested through a real build.
 
-Extend the tracker to return a sorted map of `(expanded_range → (file, range))`,
-add `SlideSource` byte ranges for each fenced block so a block can be located
-without re-parsing, and expose a lookup that is a binary search, not a scan.
+Three things the design turns on:
 
-Useful on its own beyond W8: error messages can finally say which file a warning
-came from.
+- **A run, not a table.** Spans are coalesced while the invariant
+  `out.len() == src.len()` holds, so an ordinary deck is a handful of runs and
+  lookup is a binary search. A CRLF line breaks the run rather than being
+  folded in — the expansion emits `\n` where the file has `\r\n`, and merging
+  would drag every later offset out of place by one byte per line.
+- **Refusing beats guessing.** `resolve` returns `None` for a range that
+  covers generated text (the note left in place of a circular include) or
+  crosses a file boundary. A caller about to rewrite those bytes must be
+  stopped, not handed a range that means something else.
+- **Substitution is a derivation.** Variable substitution rewrites lines and
+  changes their length, so the map is carried through it: a line left alone
+  still points at its file, and a line that had a `{{ }}` in it points at
+  nothing. The value on screen is not text anyone typed there.
+
+Useful already, ahead of W8: a warning on a slide that came from an included
+file now names that file.
 
 **Owns:** `crates/mirzam-syntax`.
 

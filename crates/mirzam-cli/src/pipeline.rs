@@ -27,6 +27,12 @@ pub struct BuildOutput {
     pub files: BTreeSet<PathBuf>,
     /// How many slides this build actually re-rendered (cache misses).
     pub rendered: usize,
+    /// Where every byte of the expanded document came from. With the slide
+    /// spans below, this is what turns "this block, on this slide" back into
+    /// "these bytes, in this file".
+    pub map: mirzam_syntax::SourceMap,
+    /// Each slide's text and its offset in the expanded document.
+    pub slides: Vec<mirzam_syntax::SlideSpan>,
 }
 
 pub struct CacheEntry {
@@ -106,9 +112,13 @@ pub fn build_deck_with(
         None => None,
     };
 
-    // 2. Expand includes, collecting the files that were read.
-    let body = mirzam_syntax::expand_includes_tracked(
+    // 2. Expand includes, collecting the files that were read and where every
+    //    byte of the result came from.
+    let body_offset = src.len() - body.len();
+    let (body, map) = mirzam_syntax::expand_includes_mapped(
         body,
+        body_offset,
+        input,
         &base_dir,
         &mirzam_syntax::FsProvider,
         &mut files,
@@ -117,11 +127,12 @@ pub fn build_deck_with(
     // 3. Substitute variables outside code fences. A variable change shows up
     //    as changed post-substitution source, so slide hashes pick it up.
     let vars = meta.var_table();
-    let body = substitute_outside_fences(&body, &vars);
+    let (body, map) = substitute_outside_fences(&body, &vars, &map);
 
     // 4. Split into slides and render each one through the cache.
     let level = split_override.or_else(|| meta.split_level());
-    let slide_sources = mirzam_syntax::split_slides_at(&body, level);
+    let slides = mirzam_syntax::split_slides_spanned(&body, level);
+    let slide_sources: Vec<&str> = slides.iter().map(|s| s.text.as_str()).collect();
     let mut sections = Vec::with_capacity(slide_sources.len());
     let mut hashes: Vec<u64> = Vec::with_capacity(slide_sources.len());
     let mut rendered = 0usize;
@@ -140,7 +151,19 @@ pub fn build_deck_with(
             None => {
                 let slide = mirzam_syntax::parse_slide(slide_src);
                 let out = mirzam_render::render_slide_html(&slide, i, &base_dir);
-                warnings.extend(out.warnings);
+                // "slide 7" is not much help when slide 7 lives in a file the
+                // author has not opened. Now that the map knows, say so.
+                //
+                // Measured from the slide's first real character, not its
+                // first byte: a slide that begins with the blank line the
+                // parent left before `![[…]]` would otherwise be attributed
+                // to the parent.
+                let head = slides[i].text.find(|c: char| !c.is_whitespace());
+                let from = match head.and_then(|o| map.lookup(slides[i].start + o)) {
+                    Some((f, _)) if f != input => format!(" (in {})", f.display()),
+                    _ => String::new(),
+                };
+                warnings.extend(out.warnings.into_iter().map(|w| format!("{w}{from}")));
                 let assets: Vec<(PathBuf, Option<SystemTime>)> =
                     out.assets.iter().map(|p| (p.clone(), mtime(p))).collect();
                 for (p, _) in &assets {
@@ -202,6 +225,8 @@ pub fn build_deck_with(
         warnings,
         files,
         rendered,
+        map,
+        slides,
     })
 }
 
@@ -222,14 +247,24 @@ fn str_hash(s: &str) -> u64 {
     h.finish()
 }
 
-/// Substitutes variables only on lines outside code fences.
+/// Substitutes variables only on lines outside code fences, carrying the
+/// source map through: a line the substitution left alone still points at the
+/// file it came from, and a line it rewrote points at nothing, because the
+/// value on screen is not text anyone typed there.
 fn substitute_outside_fences(
     body: &str,
     vars: &std::collections::BTreeMap<String, mirzam_core::Value>,
-) -> String {
+    map: &mirzam_syntax::SourceMap,
+) -> (String, mirzam_syntax::SourceMap) {
     let mut out = String::with_capacity(body.len());
+    let mut derived = mirzam_syntax::SourceMap::default();
     let mut in_code = false;
-    for line in body.lines() {
+    let mut pos = 0usize;
+    for raw in body.split_inclusive('\n') {
+        let line = raw.strip_suffix('\n').unwrap_or(raw);
+        let from = pos..pos + raw.len();
+        pos += raw.len();
+        let start = out.len();
         if line.trim_start().starts_with("```") {
             in_code = !in_code;
             out.push_str(line);
@@ -239,6 +274,7 @@ fn substitute_outside_fences(
             out.push_str(&mirzam_core::substitute_vars(line, vars));
         }
         out.push('\n');
+        map.carry(start..out.len(), from, &mut derived);
     }
-    out
+    (out, derived)
 }
