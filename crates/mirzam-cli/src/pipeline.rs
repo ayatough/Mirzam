@@ -31,8 +31,21 @@ pub struct BuildOutput {
     /// spans below, this is what turns "this block, on this slide" back into
     /// "these bytes, in this file".
     pub map: mirzam_syntax::SourceMap,
-    /// Each slide's text and its offset in the expanded document.
+    /// Each *authored* slide's text and its offset in the expanded document.
+    /// A slide broken by `<!-- next -->` renders as several sections but is one
+    /// entry here: this list is the source view, and there is only one source.
     pub slides: Vec<mirzam_syntax::SlideSpan>,
+}
+
+/// One rendered section, and the authored slide it came from. The two differ
+/// only where `<!-- next -->` broke a slide into parts.
+struct Part {
+    text: String,
+    /// Index into [`BuildOutput::slides`].
+    from: usize,
+    /// Parts of the same broken slide share a group; the viewer reads it as
+    /// "cut, do not animate".
+    group: Option<usize>,
 }
 
 pub struct CacheEntry {
@@ -132,37 +145,78 @@ pub fn build_deck_with(
     // 4. Split into slides and render each one through the cache.
     let level = split_override.or_else(|| meta.split_level());
     let slides = mirzam_syntax::split_slides_spanned(&body, level);
-    let slide_sources: Vec<&str> = slides.iter().map(|s| s.text.as_str()).collect();
-    let mut sections = Vec::with_capacity(slide_sources.len());
-    let mut hashes: Vec<u64> = Vec::with_capacity(slide_sources.len());
+
+    // "slide 7" is not much help when slide 7 lives in a file the author has
+    // not opened. Now that the map knows, say so.
+    //
+    // Measured from the slide's first real character, not its first byte: a
+    // slide that begins with the blank line the parent left before `![[…]]`
+    // would otherwise be attributed to the parent.
+    let origin = |si: usize| -> String {
+        let s: &mirzam_syntax::SlideSpan = &slides[si];
+        let head = s.text.find(|c: char| !c.is_whitespace());
+        match head.and_then(|o| map.lookup(s.start + o)) {
+            Some((f, _)) if f != input => format!(" (in {})", f.display()),
+            _ => String::new(),
+        }
+    };
+
+    // 4a. Expand `<!-- next -->`. A slide that breaks one pane becomes several
+    //     slides, identical but for that pane. Doing it on the text, before
+    //     anything is parsed, keeps the rest of the pipeline - anim, annotate,
+    //     connectors, notes, the render cache - free of the idea.
+    let mut parts: Vec<Part> = Vec::with_capacity(slides.len());
+    for (si, slide) in slides.iter().enumerate() {
+        match mirzam_syntax::expand_continuations(&slide.text) {
+            Ok(texts) if texts.len() > 1 => {
+                // The group only has to be unique within the deck.
+                let group = Some(si);
+                for text in texts {
+                    parts.push(Part {
+                        text,
+                        from: si,
+                        group,
+                    });
+                }
+            }
+            Ok(_) => parts.push(Part {
+                text: slide.text.clone(),
+                from: si,
+                group: None,
+            }),
+            // Two panes breaking at once is a cross product no author can
+            // predict. Say so and render the slide whole: the content is all
+            // still there, just not split.
+            Err(e) => {
+                warnings.push(format!("{e}{}", origin(si)));
+                parts.push(Part {
+                    text: slide.text.clone(),
+                    from: si,
+                    group: None,
+                });
+            }
+        }
+    }
+
+    let mut sections = Vec::with_capacity(parts.len());
+    let mut hashes: Vec<u64> = Vec::with_capacity(parts.len());
     let mut rendered = 0usize;
 
-    for (i, slide_src) in slide_sources.iter().enumerate() {
+    for (i, part) in parts.iter().enumerate() {
+        let slide_src = &part.text;
         // The cache key includes the slide index, since data-index is baked into the HTML.
         let key = slide_hash(slide_src, i);
-        match cache.get(&key).filter(|e| e.is_fresh()) {
+        let mut html = match cache.get(&key).filter(|e| e.is_fresh()) {
             Some(entry) => {
                 for (p, _) in &entry.assets {
                     files.insert(p.clone());
                 }
-                hashes.push(str_hash(&entry.html));
-                sections.push(entry.html.clone());
+                entry.html.clone()
             }
             None => {
                 let slide = mirzam_syntax::parse_slide(slide_src);
                 let out = mirzam_render::render_slide_html(&slide, i, &base_dir);
-                // "slide 7" is not much help when slide 7 lives in a file the
-                // author has not opened. Now that the map knows, say so.
-                //
-                // Measured from the slide's first real character, not its
-                // first byte: a slide that begins with the blank line the
-                // parent left before `![[…]]` would otherwise be attributed
-                // to the parent.
-                let head = slides[i].text.find(|c: char| !c.is_whitespace());
-                let from = match head.and_then(|o| map.lookup(slides[i].start + o)) {
-                    Some((f, _)) if f != input => format!(" (in {})", f.display()),
-                    _ => String::new(),
-                };
+                let from = origin(part.from);
                 warnings.extend(out.warnings.into_iter().map(|w| format!("{w}{from}")));
                 let assets: Vec<(PathBuf, Option<SystemTime>)> =
                     out.assets.iter().map(|p| (p.clone(), mtime(p))).collect();
@@ -176,11 +230,15 @@ pub fn build_deck_with(
                         assets,
                     },
                 );
-                hashes.push(str_hash(&out.html));
-                sections.push(out.html);
                 rendered += 1;
+                out.html
             }
+        };
+        if let Some(g) = part.group {
+            html = mirzam_render::mark_continuation(&html, g);
         }
+        hashes.push(str_hash(&html));
+        sections.push(html);
     }
 
     // Applied outside the cache: the base URL is a property of this build, not
@@ -194,10 +252,10 @@ pub fn build_deck_with(
 
     // Keep the cache from growing without bound during a long editing session.
     if cache.len() > 4096 {
-        let live_keys: std::collections::HashSet<u64> = slide_sources
+        let live_keys: std::collections::HashSet<u64> = parts
             .iter()
             .enumerate()
-            .map(|(i, s)| slide_hash(s, i))
+            .map(|(i, p)| slide_hash(&p.text, i))
             .collect();
         cache.retain(|k, _| live_keys.contains(k));
     }

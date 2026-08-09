@@ -46,7 +46,7 @@ above it needs at least two lines; a heading that wraps needs three.
 Panes clip their content. A heading that outgrows its band is cut off, and if the
 pane below has a background it looks as if the heading vanished behind it.
 
-There are three fixes, in order of preference:
+There are four fixes, in order of preference:
 
 1. **Give the band more lines.** The layout is the specification; if the content
    needs more room, say so in the drawing.
@@ -54,6 +54,16 @@ There are three fixes, in order of preference:
    headings.
 3. **Move it to another pane.** Long prose belongs in a body pane, not a heading
    band.
+4. **Break the pane in two.** `<!-- next -->` inside a pane carries it on to the
+   next slide while every other pane stays exactly where it is — the audience
+   sees the words change and nothing else move. Rule 7 in
+   [`examples/cookbook.md`](../examples/cookbook.md) demonstrates it; the
+   [syntax reference](syntax.md#carrying-one-pane-on-to-the-next-slide) has the
+   rules.
+
+`fit: shrink` is the fifth answer and a different kind: it keeps the slide whole
+and gives up type size instead. Use it when the overflow is small and the break
+is not worth a page.
 
 Heading panes (`head`, `title`) are allowed to overflow rather than be silently
 cut, so the text stays legible while you fix the band. That is a diagnostic, not

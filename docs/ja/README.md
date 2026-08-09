@@ -46,6 +46,7 @@ code --install-extension editors/vscode/mirzam-preview-0.0.1.vsix
 | `{#id .class}` | 属性(アンカー・装飾) | ただの文字 |
 | `{{ price * 12 }}` | 変数と計算 | ただの文字 |
 | `![[file.md]]` | ファイル分割 | 画像風リンク(Obsidian では埋め込み) |
+| `<!-- next -->` | そのペインだけを次スライドへ送る(他のペインは静止) | 非表示 |
 | `<!-- note: -->` | スピーカーノート | 非表示 |
 
 **設計上の約束**: 拡張記法はすべて、素の CommonMark パーサで読んでも壊れません

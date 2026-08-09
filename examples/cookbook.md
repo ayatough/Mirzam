@@ -275,6 +275,57 @@ The photo becomes texture, and the words come forward.
 +------------------------------------+
 |                                    |
 |  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|  fig             |  body           |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Rule 7]{.eyebrow}
+## Break the prose where you want it broken
+:::
+
+::: pane fig {valign=middle}
+```chart
+type: bar
+id: cont
+title: Time to first byte (ms)
+data: |
+  release, p50, p95
+  4.2, 180, 640
+  4.3, 140, 520
+  4.4, 95, 210
+```
+:::
+
+::: pane body {valign=middle}
+This pane carries `<!-- next -->`, so it arrives in three parts. Watch the
+chart: it does not move, does not fade, does not redraw.
+
+<!-- next -->
+
+The audience is looking at one slide the whole time. Only the words change,
+which is the point — a page turn under a figure you are still talking about
+throws the eye away from it.
+
+<!-- next -->
+
+Shrinking the type would have kept it on one slide. Sometimes that is right.
+When it is not, choose the break yourself instead of letting the box choose it.
+:::
+
+<!-- note: One slide in the source, three in the deck. The chart is byte-identical on all three, so the viewer cuts rather than turning the page. -->
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
 +------------------------------------+
 |                                    |
 |                                    |
@@ -285,7 +336,7 @@ The photo becomes texture, and the words come forward.
 ```
 
 ::: pane head
-[Rule 7]{.eyebrow}
+[Rule 8]{.eyebrow}
 ## Let the checker find what your eye misses
 :::
 

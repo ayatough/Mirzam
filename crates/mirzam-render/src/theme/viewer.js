@@ -58,7 +58,14 @@
     if (play && from && idx === cur && !(opts && opts.first)) return;
     const backwards = idx < cur;
     const changed = from && idx !== cur;
-    if (changed && play) leave(from, backwards);
+    // Parts of a slide broken by `<!-- next -->` are one slide the author chose
+    // to serve in instalments: every other pane holds the same elements in the
+    // same places, so moving between them is a cut, not a page turn.
+    const group = (s) => (s && s.dataset.cont) || null;
+    const cut = changed && group(from) !== null && group(from) === group(ss[idx]);
+    const turn = play && !cut;
+    if (changed && turn) leave(from, backwards);
+    else if (changed && anim) anim.settle(from);
     cur = idx;
     const sec = ss[cur];
     ss.forEach((s, j) => s.classList.toggle('active', j === cur));
@@ -68,7 +75,7 @@
     // Shrink-to-fit measures boxes, and a slide only has boxes once it is the
     // one displayed - so it runs here, before anything else measures anything.
     if (window.__mirzamFit) window.__mirzamFit(sec);
-    if (anim) anim.show(sec, step, transition, { play, backwards: backwards && changed, arriving: changed });
+    if (anim) anim.show(sec, step, transition, { play: turn, backwards: backwards && changed, arriving: changed });
     showStep(sec);
     updateHud(ss.length, sec);
     // replaceState throws inside srcdoc iframes (editor previews). Recording the

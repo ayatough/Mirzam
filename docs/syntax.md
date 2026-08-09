@@ -313,6 +313,39 @@ clipping default, which is the documented fallback rather than a broken state.
 If a pane is shrinking a lot, that is the deck telling you the slide has two
 slides' worth on it.
 
+### Carrying one pane on to the next slide
+
+When shrinking is the wrong answer — a prose pane you would rather break at a
+sentence you chose — put `<!-- next -->` where the break belongs:
+
+```markdown
+::: pane body
+The estimator is unbiased under the stated conditions.
+
+<!-- next -->
+
+The variance, though, is where the argument actually happens.
+:::
+```
+
+That slide becomes **two slides**, identical except for `body`. Every other
+pane — the figure, the heading, the citations — is the same markup rendered
+into the same place, and the viewer *cuts* between the parts instead of turning
+the page, so the audience sees only the text change. `<!-- more -->` is accepted
+as the same marker, and both are HTML comments, so a plain Markdown parser
+shows nothing.
+
+The expansion happens before a slide is parsed, so the parts are ordinary
+slides: they animate, annotate and export like any other, and the PDF gets one
+page per part.
+
+Two rules follow from what this is:
+
+- **One pane per slide may break.** Two panes breaking at once is a cross
+  product nobody can predict. Mirzam reports it and renders the slide whole.
+- **`<!-- next -->` outside every pane** breaks the slide body itself, which is
+  what you want on a slide with no `pane` layout at all.
+
 ## Citations
 
 `[^key]` marks a claim and the note lands at the foot of **that slide** — a

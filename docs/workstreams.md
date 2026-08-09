@@ -60,7 +60,7 @@ there is. The model column follows from that:
 | W4 | Presentation effects | C | Fable | W0 | ✅ |
 | W6 | Annotations on images and charts | S | Opus | W0 | ✅ |
 | W7 | Source map through transclusion | A | Sonnet | — | ✅ |
-| W10 | Continuation: one pane carries on, the rest hold | B | Opus | — | |
+| W10 | Continuation: one pane carries on, the rest hold | B | Opus | — | ✅ |
 | W11 | Viewer chrome: cheat sheet, touch controls, gestures | C | Fable | — | |
 | W12 | Presenter window | B | Sonnet | W11 | |
 | W13 | Table of contents from headings | B | Sonnet | — | |
@@ -441,6 +441,19 @@ that plainly and everything downstream keeps working unchanged: `anim`,
 
 **Owns:** `mirzam-syntax` (the marker), the slide expansion in
 `mirzam-cli/src/pipeline.rs`, `theme/viewer.js` (the cut).
+
+**Landed as specified.** `expand_continuations` runs on the slide text between
+splitting and parsing, so nothing downstream learns the feature exists; the
+generated sections carry `data-cont="<group>"`, and `show()` in the viewer turns
+the page only when the group changes. The counter shows real slide numbers.
+
+Two things worth knowing:
+
+- `BuildOutput::slides` stays the **authored** list — one entry per slide as
+  written. The source map is about source, and splitting a slide does not
+  create a second one to write back to.
+- A marker inside a fence is a marker being quoted, not one being used, so the
+  documentation for this feature can be written in Mirzam.
 
 ## W11 — Viewer chrome: cheat sheet, touch controls, gestures
 

@@ -212,6 +212,24 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
     )
 }
 
+/// Tags a rendered slide as one part of a continuation group.
+///
+/// `<!-- next -->` breaks one pane of a slide across several slides that are
+/// otherwise identical. The viewer reads this attribute as *cut, do not
+/// animate*: the panes that did not break are the same elements in the same
+/// places, and turning the page between them is exactly the flicker the
+/// feature exists to avoid.
+///
+/// Applied after rendering rather than during it, because which group a slide
+/// belongs to is a property of the deck around it, not of the slide.
+pub fn mark_continuation(section: &str, group: usize) -> String {
+    section.replacen(
+        "<section class=\"slide\"",
+        &format!("<section class=\"slide\" data-cont=\"{group}\""),
+        1,
+    )
+}
+
 /// Rewrites document-relative hyperlinks so they still resolve when the deck
 /// is published somewhere other than beside its source.
 ///

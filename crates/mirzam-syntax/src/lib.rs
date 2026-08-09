@@ -538,6 +538,122 @@ fn line_offsets(src: &str) -> Vec<(usize, &str)> {
     out
 }
 
+/// The author-chosen break inside a pane: `<!-- next -->`.
+///
+/// An HTML comment, so a plain Markdown parser shows nothing at all — the same
+/// reason speaker notes are written that way.
+fn is_continue_marker(trimmed: &str) -> bool {
+    let Some(inner) = trimmed.strip_prefix("<!--") else {
+        return false;
+    };
+    matches!(
+        inner.strip_suffix("-->").unwrap_or(inner).trim(),
+        "next" | "more"
+    )
+}
+
+/// Splits a slide at `<!-- next -->` into the slides it stands for.
+///
+/// A slide with *n* markers in one pane becomes *n + 1* slides, identical
+/// except for that pane — every other line is copied verbatim, so the panes
+/// that did not break render to exactly the same HTML and the audience sees
+/// them hold still. A slide with no marker yields itself, unchanged.
+///
+/// Doing this on the *text*, before the slide is parsed, is what keeps the rest
+/// of the pipeline free of special cases: what comes out is ordinary slides,
+/// and `anim`, `annotate`, `connect`, notes and the render cache never learn
+/// that continuation exists.
+///
+/// `Err` when two panes both break: the result would be a cross product no
+/// author can predict, so the caller reports it and renders the slide whole.
+pub fn expand_continuations(slide: &str) -> Result<Vec<String>, String> {
+    let lines = line_offsets(slide);
+    // Which pane each line belongs to: `None` outside every `::: pane`.
+    let mut owner: Vec<Option<String>> = vec![None; lines.len()];
+    let mut current: Option<String> = None;
+    let mut fence: Option<usize> = None;
+    // A marker inside a fence is a marker being quoted, not one being used.
+    let mut fenced = vec![false; lines.len()];
+    for (i, (_, line)) in lines.iter().enumerate() {
+        let t = line.trim();
+        match fence {
+            Some(open) if closes_fence(t, open) => fence = None,
+            None => {
+                if let Some(n) = fence_len(t) {
+                    fence = Some(n);
+                }
+            }
+            _ => {}
+        }
+        if fence.is_some() {
+            owner[i] = current.clone();
+            fenced[i] = true;
+            continue;
+        }
+        if let Some(rest) = t.strip_prefix(":::") {
+            let rest = rest.trim();
+            if rest.is_empty() {
+                current = None;
+                continue;
+            }
+            if let Some((name, _)) = parse_pane_open(rest) {
+                current = Some(name);
+                continue;
+            }
+        }
+        owner[i] = current.clone();
+    }
+
+    let marks: Vec<usize> = (0..lines.len())
+        .filter(|i| !fenced[*i] && is_continue_marker(lines[*i].1.trim()))
+        .collect();
+    if marks.is_empty() {
+        return Ok(vec![slide.to_string()]);
+    }
+    let mut panes: Vec<Option<String>> = marks.iter().map(|i| owner[*i].clone()).collect();
+    panes.dedup();
+    if panes.len() > 1 {
+        let named = |p: &Option<String>| p.clone().unwrap_or_else(|| "the slide body".into());
+        let names = panes.iter().map(named).collect::<Vec<_>>().join(", ");
+        return Err(format!(
+            "`<!-- next -->` appears in more than one pane ({names}); \
+             only one pane may carry on to the next slide"
+        ));
+    }
+    let region = panes.into_iter().next().unwrap_or(None);
+
+    // Lines of the breaking region, cut into segments at each marker.
+    let mut segments: Vec<Vec<usize>> = vec![Vec::new()];
+    for (i, _) in lines.iter().enumerate() {
+        if owner[i] != region {
+            continue;
+        }
+        if marks.contains(&i) {
+            segments.push(Vec::new());
+        } else {
+            segments
+                .last_mut()
+                .expect("one segment always exists")
+                .push(i);
+        }
+    }
+
+    let mut out = Vec::with_capacity(segments.len());
+    for keep in &segments {
+        let mut text = String::with_capacity(slide.len());
+        for (i, (_, line)) in lines.iter().enumerate() {
+            let mine = owner[i] == region;
+            if marks.contains(&i) || (mine && !keep.contains(&i)) {
+                continue;
+            }
+            text.push_str(line);
+            text.push('\n');
+        }
+        out.push(text);
+    }
+    Ok(out)
+}
+
 /// Decomposes a slide's source into its parts.
 pub fn parse_slide(src: &str) -> SlideSource {
     let mut slide = SlideSource::default();
@@ -1041,5 +1157,86 @@ loose text
         assert_eq!(parse_include_line("![[a/b.md]]"), Some("a/b.md"));
         assert_eq!(parse_include_line("![](x.png)"), None);
         assert_eq!(parse_include_line("text ![[a.md]]"), None);
+    }
+
+    /// A slide holding a layout, a still pane and a `main` pane broken into
+    /// `parts` segments. `parts` are joined by the marker.
+    fn continued(parts: &[&str]) -> String {
+        format!(
+            "```pane\n+---+---+\n| a | b |\n+---+---+\n```\n\n\
+             ::: pane a\nstill\n:::\n\n\
+             ::: pane b\n{}\n:::\n",
+            parts.join("\n<!-- next -->\n")
+        )
+    }
+
+    #[test]
+    fn a_slide_with_no_marker_is_left_alone() {
+        let src = continued(&["one"]);
+        assert_eq!(expand_continuations(&src), Ok(vec![src.clone()]));
+    }
+
+    #[test]
+    fn each_marker_adds_a_slide() {
+        let out = expand_continuations(&continued(&["one", "two", "three"])).unwrap();
+        assert_eq!(out.len(), 3);
+        for (i, want) in ["one", "two", "three"].iter().enumerate() {
+            let body = parse_slide(&out[i]);
+            let b = body
+                .panes
+                .iter()
+                .find(|p| p.name == "b")
+                .expect("the broken pane survives");
+            assert_eq!(b.body.trim(), *want, "part {i}");
+        }
+        // No marker reaches the rendered text.
+        assert!(out.iter().all(|s| !s.contains("<!-- next -->")));
+    }
+
+    #[test]
+    fn the_panes_that_did_not_break_are_byte_identical() {
+        let out = expand_continuations(&continued(&["one", "two"])).unwrap();
+        let others = |s: &str| {
+            let p = parse_slide(s);
+            (
+                p.layout.clone(),
+                p.panes
+                    .iter()
+                    .filter(|p| p.name != "b")
+                    .map(|p| (p.name.clone(), p.body.clone()))
+                    .collect::<Vec<_>>(),
+            )
+        };
+        assert_eq!(others(&out[0]), others(&out[1]));
+    }
+
+    #[test]
+    fn two_panes_breaking_at_once_is_an_error() {
+        let src = "::: pane a\none\n<!-- next -->\ntwo\n:::\n\
+                   ::: pane b\nthree\n<!-- next -->\nfour\n:::\n";
+        let err = expand_continuations(src).expect_err("a cross product is refused");
+        assert!(err.contains('a') && err.contains('b'), "{err}");
+    }
+
+    #[test]
+    fn a_marker_outside_every_pane_breaks_the_slide_body() {
+        let out = expand_continuations("one\n\n<!-- next -->\n\ntwo\n").unwrap();
+        assert_eq!(out.len(), 2);
+        assert!(out[0].contains("one") && !out[0].contains("two"));
+        assert!(out[1].contains("two") && !out[1].contains("one"));
+    }
+
+    #[test]
+    fn a_marker_inside_a_code_fence_is_just_text() {
+        let src = "::: pane a\n```text\n<!-- next -->\n```\n:::\n";
+        assert_eq!(expand_continuations(src).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn more_is_accepted_as_a_spelling_of_next() {
+        assert!(is_continue_marker("<!-- more -->"));
+        assert!(is_continue_marker("<!--next-->"));
+        assert!(!is_continue_marker("<!-- next slide -->"));
+        assert!(!is_continue_marker("next"));
     }
 }

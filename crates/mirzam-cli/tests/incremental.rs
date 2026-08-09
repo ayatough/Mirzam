@@ -278,3 +278,96 @@ fn a_warning_names_the_file_the_slide_came_from() {
         out.warnings
     );
 }
+
+// ---- `<!-- next -->`: one pane carried on to the next slide ----
+
+/// A slide with `fig` holding still and `body` broken into `parts`.
+fn continued_deck(parts: &[&str]) -> String {
+    format!(
+        "---\ntitle: T\n---\n\n\
+         ```pane\n+-----+-----+\n| fig | body|\n+-----+-----+\n```\n\n\
+         ::: pane fig\nheld still\n:::\n\n\
+         ::: pane body\n{}\n:::\n",
+        parts.join("\n\n<!-- next -->\n\n")
+    )
+}
+
+/// The pane between the markers is the only thing that differs, and the
+/// generated sections say which group they belong to so the viewer can cut
+/// rather than turn the page between them.
+#[test]
+fn a_broken_pane_becomes_several_slides_that_share_a_group() {
+    let deck = TempDeck::new("cont", &continued_deck(&["first", "second", "third"]));
+    let mut cache = HashMap::new();
+    let out = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("build");
+
+    assert_eq!(out.sections.len(), 3);
+    // One authored slide: the source view does not gain entries.
+    assert_eq!(out.slides.len(), 1);
+    for (i, word) in ["first", "second", "third"].iter().enumerate() {
+        assert!(out.sections[i].contains("data-cont=\"0\""), "part {i}");
+        assert!(out.sections[i].contains(word), "part {i}");
+    }
+    assert!(!out.sections[0].contains("second"));
+    assert!(!out.sections[2].contains("first"));
+
+    // The pane that did not break renders identically on every part.
+    let fig = |s: &str| {
+        let at = s.find("data-pane=\"fig\"").expect("the still pane");
+        let end = s.find("data-pane=\"body\"").expect("the broken pane");
+        s[at..end].to_string()
+    };
+    assert_eq!(fig(&out.sections[0]), fig(&out.sections[1]));
+    assert_eq!(fig(&out.sections[1]), fig(&out.sections[2]));
+}
+
+/// A slide with no marker is untouched, and carries no group: an ordinary
+/// page turn is still an ordinary page turn.
+#[test]
+fn a_slide_without_a_marker_gains_nothing() {
+    let deck = TempDeck::new("cont-none", &continued_deck(&["only"]));
+    let mut cache = HashMap::new();
+    let out = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("build");
+    assert_eq!(out.sections.len(), 1);
+    assert!(!out.sections[0].contains("data-cont"));
+}
+
+/// Two panes breaking at once is a cross product no author can predict. It is
+/// reported, and the slide renders whole rather than not at all.
+#[test]
+fn two_panes_breaking_warns_and_renders_the_slide_whole() {
+    let src = "---\ntitle: T\n---\n\n\
+               ```pane\n+-----+-----+\n| a   | b   |\n+-----+-----+\n```\n\n\
+               ::: pane a\none\n\n<!-- next -->\n\ntwo\n:::\n\n\
+               ::: pane b\nthree\n\n<!-- next -->\n\nfour\n:::\n";
+    let deck = TempDeck::new("cont-two", src);
+    let mut cache = HashMap::new();
+    let out = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("build");
+    assert_eq!(out.sections.len(), 1);
+    assert!(
+        out.warnings
+            .iter()
+            .any(|w| w.contains("more than one pane")),
+        "{:?}",
+        out.warnings
+    );
+    for word in ["one", "two", "three", "four"] {
+        assert!(out.sections[0].contains(word), "{word} survived");
+    }
+}
+
+/// Continuation runs before the cache, so an edit to one part re-renders that
+/// part and leaves its siblings alone - the invariant the whole cache rests on.
+#[test]
+fn editing_one_part_re_renders_only_that_part() {
+    let deck = TempDeck::new("cont-edit", &continued_deck(&["first", "second"]));
+    let mut cache = HashMap::new();
+    let warm = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("build");
+    assert_eq!(warm.rendered, 2);
+
+    deck.write(&continued_deck(&["first", "second, revised"]));
+    let out = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("rebuild");
+    assert_eq!(out.rendered, 1, "only the edited part re-rendered");
+    assert_eq!(out.sections[0], warm.sections[0]);
+    assert!(out.sections[1].contains("revised"));
+}

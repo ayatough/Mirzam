@@ -73,6 +73,7 @@ whenever the layout changes.
 | **Video, audio and embeds** | Files inlined; YouTube and Vimeo embedded, with a link in the PDF |
 | **Citations** | `[^key]` footnotes land at the foot of the slide that cites them |
 | **Nothing silently lost** | `fit: shrink` scales an overfull pane down instead of clipping it |
+| **Your break, not the box's** | `<!-- next -->` carries one pane on to the next slide while the rest hold still |
 | **Backgrounds that stay readable** | A photo behind a pane, with `dim`, `blur` and gradient `scrim` so the text still wins |
 | **Files that scale** | Split a deck across files with `![[section.md]]`; only edited slides re-render |
 | **Runs anywhere** | One Rust core, compiled to a native CLI and to WebAssembly for editors and browsers |
