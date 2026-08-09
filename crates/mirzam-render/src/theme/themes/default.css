@@ -1,4 +1,4 @@
-:root[data-theme="default"] {
+:where(:root[data-theme="default"]) {
   --mz-bg: #14161d;
   --mz-slide-bg: #ffffff;
   --mz-fg: #23272f;
@@ -17,7 +17,7 @@
   --mz-danger-border: #e5484d;
 }
 @media (prefers-color-scheme: dark) {
-  :root[data-theme="default"]:not([data-mode="light"]) {
+  :where(:root[data-theme="default"]:not([data-mode="light"])) {
     --mz-bg: #14161d;
     --mz-slide-bg: #1b1e27;
     --mz-fg: #eef0f6;
@@ -36,7 +36,7 @@
     --mz-danger-border: #e5484d;
   }
 }
-:root[data-theme="default"][data-mode="dark"] {
+:where(:root[data-theme="default"][data-mode="dark"]) {
   --mz-bg: #14161d;
   --mz-slide-bg: #1b1e27;
   --mz-fg: #eef0f6;

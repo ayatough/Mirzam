@@ -78,6 +78,16 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - Upgraded comrak to 0.54 and enabled CJK-friendly emphasis.
 
 ### Fixed
+- A deck's own `css:` stopped overriding the palette: named themes moved the
+  tokens behind `:root[data-theme="…"]`, which outranks the plain `:root` a
+  custom stylesheet uses, so every deck with a custom theme silently reverted
+  to the built-in one — dark styling on a light background in light mode, and
+  text lost against the background in dark mode. Built-in theme selectors are
+  wrapped in `:where()` now, so they carry no specificity and an author's
+  `:root` always wins.
+- The sample background used to demonstrate `blur=` was already out of focus,
+  so blurring it showed nothing. It carries a crisp grid now, and the mountain
+  photo a sharp treeline.
 - The documentation site linked its guides as `docs/*.html`, which the static
   Pages deployment never produced — no Jekyll runs on an uploaded artifact, so
   every one of those links 404'd. The prose is now linked to GitHub, and

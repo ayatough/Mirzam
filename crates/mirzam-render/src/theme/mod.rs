@@ -2,7 +2,11 @@
 //! files in this directory, and selects a named theme's tokens.
 //!
 //! - `themes/*.css` — one file per built-in theme, each defining the full
-//!   token set for both light and dark mode ([C3] in `docs/workstreams.md`)
+//!   token set for both light and dark mode ([C3] in `docs/workstreams.md`).
+//!   Every selector is wrapped in `:where()`, which contributes no
+//!   specificity: a deck's own `css:` overrides tokens with a plain `:root`
+//!   block, and `:root[data-theme="x"]` would otherwise outrank it no matter
+//!   what order the stylesheets appear in.
 //! - `base.css` — layout, typography, panes; everything that reads a token
 //!   rather than defining one, shared by every theme
 //! - `print.css` — overrides applied for PDF export
@@ -134,9 +138,28 @@ mod tests {
         let css = theme_css("default");
         assert!(css
             .trim_start()
-            .starts_with(":root[data-theme=\"default\"]"));
+            .starts_with(":where(:root[data-theme=\"default\"])"));
         assert!(css.contains("--mz-accent1"));
         assert!(css.contains("* { box-sizing: border-box; }"));
+    }
+
+    /// A deck's own `css:` overrides tokens with a plain `:root { }` block.
+    /// `:root[data-theme="x"]` outranks that on specificity, so wrapping the
+    /// built-in selectors in the zero-specificity `:where()` is the only thing
+    /// keeping custom themes working - a bare selector here silently reverts
+    /// every deck that ships its own palette back to the built-in one.
+    #[test]
+    fn built_in_theme_tokens_carry_no_specificity() {
+        for (name, css) in THEMES {
+            for line in css.lines().filter(|l| l.contains("data-theme=")) {
+                assert!(
+                    line.trim_start().starts_with(":where("),
+                    "{name}: `{}` must be wrapped in :where(), or a deck's own \
+                     css: can no longer override the palette",
+                    line.trim()
+                );
+            }
+        }
     }
 
     #[test]
@@ -269,15 +292,15 @@ mod contrast_tests {
     }
 
     fn light_selector(name: &str) -> String {
-        format!(":root[data-theme=\"{name}\"] {{")
+        format!(":where(:root[data-theme=\"{name}\"]) {{")
     }
 
     fn dark_selector(name: &str) -> String {
-        format!(":root[data-theme=\"{name}\"][data-mode=\"dark\"] {{")
+        format!(":where(:root[data-theme=\"{name}\"][data-mode=\"dark\"]) {{")
     }
 
     fn auto_dark_selector(name: &str) -> String {
-        format!(":root[data-theme=\"{name}\"]:not([data-mode=\"light\"]) {{")
+        format!(":where(:root[data-theme=\"{name}\"]:not([data-mode=\"light\"])) {{")
     }
 
     const ALL_TOKENS: &[&str] = &[

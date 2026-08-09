@@ -126,14 +126,33 @@ def mountains():
             pts.append((x, y))
         pts.append((W, H))
         ImageDraw.Draw(layer).polygon(pts, fill=color + (255,))
-        if i == 0:
-            layer = layer.filter(ImageFilter.GaussianBlur(2))
         img = Image.alpha_composite(img.convert("RGBA"), layer).convert("RGB")
+
+    # A stand of conifers on the near ridge. The sample decks use this photo to
+    # demonstrate `blur=`, so it needs detail fine enough to visibly lose: a
+    # softly drawn background cannot show what blurring does to one.
+    trees = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    td = ImageDraw.Draw(trees)
+    for _ in range(90):
+        x = rng.uniform(-0.02, 1.02) * W
+        h = rng.uniform(0.05, 0.13) * H
+        base_y = rng.uniform(0.88, 0.99) * H
+        w = h * rng.uniform(0.22, 0.34)
+        td.polygon(
+            [(x, base_y - h), (x - w, base_y), (x + w, base_y)],
+            fill=(18, 24, 44, 255),
+        )
+    img = Image.alpha_composite(img.convert("RGBA"), trees).convert("RGB")
     return grain(img)
 
 
 def mesh():
-    """Soft colour mesh: a texture to sit behind a chart or a quote."""
+    """A colour wash under a crisp technical grid.
+
+    The cookbook uses this one to show `blur=` buying contrast, so the detail
+    on top has to be sharp: blurring something already soft demonstrates
+    nothing. The wash gives the colour, the grid gives the detail to lose.
+    """
     rng = random.Random(3)
     img = Image.new("RGB", (W, H), (16, 22, 40))
     blobs = Image.new("RGB", (W, H), (16, 22, 40))
@@ -146,6 +165,28 @@ def mesh():
         bd.ellipse([x - r, y - r, x + r, y + r], fill=c)
     blobs = blobs.filter(ImageFilter.GaussianBlur(150))
     img = Image.blend(img, blobs, 0.92)
+
+    grid = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    gd = ImageDraw.Draw(grid)
+    step = W // 24
+    for x in range(0, W + step, step):
+        gd.line([(x, 0), (x, H)], fill=(226, 236, 255, 46), width=1)
+    for y in range(0, H + step, step):
+        gd.line([(0, y), (W, y)], fill=(226, 236, 255, 46), width=1)
+    # Nodes on a scattered subset of the intersections, and short runs joining
+    # them - fine enough that a 3px blur erases them completely.
+    nodes = []
+    for x in range(step, W, step):
+        for y in range(step, H, step):
+            if rng.random() < 0.10:
+                nodes.append((x, y))
+                gd.ellipse([x - 3, y - 3, x + 3, y + 3], fill=(226, 236, 255, 190))
+    for x, y in nodes:
+        if rng.random() < 0.5:
+            gd.line([(x, y), (x + step * 2, y)], fill=(226, 236, 255, 120), width=2)
+        else:
+            gd.line([(x, y), (x, y + step * 2)], fill=(226, 236, 255, 120), width=2)
+    img = Image.alpha_composite(img.convert("RGBA"), grid).convert("RGB")
     return grain(img, 4)
 
 

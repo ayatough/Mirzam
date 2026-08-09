@@ -1,4 +1,4 @@
-:root[data-theme="nord"] {
+:where(:root[data-theme="nord"]) {
   --mz-bg: #2e3440;
   --mz-slide-bg: #eceff4;
   --mz-fg: #2e3440;
@@ -17,7 +17,7 @@
   --mz-danger-border: #bf616a;
 }
 @media (prefers-color-scheme: dark) {
-  :root[data-theme="nord"]:not([data-mode="light"]) {
+  :where(:root[data-theme="nord"]:not([data-mode="light"])) {
     --mz-bg: #2e3440;
     --mz-slide-bg: #3b4252;
     --mz-fg: #eceff4;
@@ -36,7 +36,7 @@
     --mz-danger-border: #bf616a;
   }
 }
-:root[data-theme="nord"][data-mode="dark"] {
+:where(:root[data-theme="nord"][data-mode="dark"]) {
   --mz-bg: #2e3440;
   --mz-slide-bg: #3b4252;
   --mz-fg: #eceff4;

@@ -1,4 +1,4 @@
-:root[data-theme="vscode"] {
+:where(:root[data-theme="vscode"]) {
   --mz-bg: #1e1e1e;
   --mz-slide-bg: #ffffff;
   --mz-fg: #000000;
@@ -17,7 +17,7 @@
   --mz-danger-border: #cd3131;
 }
 @media (prefers-color-scheme: dark) {
-  :root[data-theme="vscode"]:not([data-mode="light"]) {
+  :where(:root[data-theme="vscode"]:not([data-mode="light"])) {
     --mz-bg: #1e1e1e;
     --mz-slide-bg: #1e1e1e;
     --mz-fg: #d4d4d4;
@@ -36,7 +36,7 @@
     --mz-danger-border: #cd3131;
   }
 }
-:root[data-theme="vscode"][data-mode="dark"] {
+:where(:root[data-theme="vscode"][data-mode="dark"]) {
   --mz-bg: #1e1e1e;
   --mz-slide-bg: #1e1e1e;
   --mz-fg: #d4d4d4;
