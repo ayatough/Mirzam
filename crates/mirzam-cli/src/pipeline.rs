@@ -45,15 +45,20 @@ impl CacheEntry {
 pub type RenderCache = HashMap<u64, CacheEntry>;
 
 pub fn build_deck(input: &Path, cache: &mut RenderCache) -> Result<BuildOutput, String> {
-    build_deck_with(input, cache, None)
+    build_deck_with(input, cache, None, None)
 }
 
 /// `split_override` forces heading-based slide splitting regardless of
 /// frontmatter, which is how `--split` turns an unmodified document into a deck.
+///
+/// `base_url` is the URL the input file's directory maps to once published.
+/// Set it when the deck is served from somewhere other than beside its source,
+/// so its links to other documents still resolve.
 pub fn build_deck_with(
     input: &Path,
     cache: &mut RenderCache,
     split_override: Option<u8>,
+    base_url: Option<&str>,
 ) -> Result<BuildOutput, String> {
     let src = std::fs::read_to_string(input)
         .map_err(|e| format!("cannot read {}: {e}", input.display()))?;
@@ -118,7 +123,7 @@ pub fn build_deck_with(
     let level = split_override.or_else(|| meta.split_level());
     let slide_sources = mirzam_syntax::split_slides_at(&body, level);
     let mut sections = Vec::with_capacity(slide_sources.len());
-    let mut hashes = Vec::with_capacity(slide_sources.len());
+    let mut hashes: Vec<u64> = Vec::with_capacity(slide_sources.len());
     let mut rendered = 0usize;
 
     for (i, slide_src) in slide_sources.iter().enumerate() {
@@ -153,6 +158,15 @@ pub fn build_deck_with(
                 rendered += 1;
             }
         }
+    }
+
+    // Applied outside the cache: the base URL is a property of this build, not
+    // of a slide, so a cached slide must not carry one build's URLs into the next.
+    if let Some(base) = base_url {
+        for section in &mut sections {
+            *section = mirzam_render::rewrite_relative_links(section, base);
+        }
+        hashes = sections.iter().map(|s| str_hash(s)).collect();
     }
 
     // Keep the cache from growing without bound during a long editing session.

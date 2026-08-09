@@ -25,6 +25,7 @@ pub const EXAMPLE_DECKS: &[&str] = &[
     "cookbook.md",
     "seminar.md",
     "media.md",
+    "motion.md",
 ];
 
 /// Normalizes output for snapshot comparison.

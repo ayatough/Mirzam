@@ -72,12 +72,18 @@
 <div class="pane pane-right" data-pane="right" style="grid-area:right"></div>
 </div>
 <svg class="mz-shapes" viewBox="0 0 1280 720" preserveAspectRatio="none" aria-hidden="true">
-<rect id="core" x="729.6" y="180.0" width="435.2" height="100.8" rx="10" style="fill:var(--mz-shape-fill);stroke:var(--mz-accent1)" stroke-width="2.5"/>
+<g id="core">
+<rect x="729.6" y="180.0" width="435.2" height="100.8" rx="10" style="fill:var(--mz-shape-fill);stroke:var(--mz-accent1)" stroke-width="2.5"/>
 <text x="947.2" y="230.4" text-anchor="middle" dominant-baseline="central" class="mz-shape-label">Rust core</text>
-<rect id="native" x="627.2" y="399.6" width="281.6" height="93.6" rx="10" style="fill:var(--mz-shape-fill);stroke:var(--mz-accent1)" stroke-width="2.5"/>
+</g>
+<g id="native">
+<rect x="627.2" y="399.6" width="281.6" height="93.6" rx="10" style="fill:var(--mz-shape-fill);stroke:var(--mz-accent1)" stroke-width="2.5"/>
 <text x="768.0" y="446.4" text-anchor="middle" dominant-baseline="central" class="mz-shape-label">CLI</text>
-<rect id="wasm" x="985.6" y="399.6" width="281.6" height="93.6" rx="10" style="fill:var(--mz-shape-fill);stroke:var(--mz-accent2)" stroke-width="2.5"/>
+</g>
+<g id="wasm">
+<rect x="985.6" y="399.6" width="281.6" height="93.6" rx="10" style="fill:var(--mz-shape-fill);stroke:var(--mz-accent2)" stroke-width="2.5"/>
 <text x="1126.4" y="446.4" text-anchor="middle" dominant-baseline="central" class="mz-shape-label">WASM</text>
+</g>
 <line x1="947.2" y1="280.8" x2="768.0" y2="399.6" style="stroke:var(--mz-accent1)" stroke-width="2.5"/>
 <polygon points="768.0,399.6 774.1,389.3 779.9,398.0" style="fill:var(--mz-accent1)"/>
 <line x1="947.2" y1="280.8" x2="1126.4" y2="399.6" style="stroke:var(--mz-accent1)" stroke-width="2.5"/>

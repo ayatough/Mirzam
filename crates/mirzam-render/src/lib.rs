@@ -174,6 +174,70 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
     )
 }
 
+/// Rewrites document-relative hyperlinks so they still resolve when the deck
+/// is published somewhere other than beside its source.
+///
+/// Images and video are inlined by [`assets::embed_assets`], so what is left
+/// relative is links to other documents — and `docs/layout.md` next to
+/// `README.md` is not `docs/layout.md` next to `decks/readme/index.html`.
+/// `base` is the URL the *source file's directory* maps to.
+///
+/// Absolute URLs, protocol-relative URLs, root-relative paths and bare
+/// fragments are left exactly as they are.
+pub fn rewrite_relative_links(html: &str, base: &str) -> String {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| Regex::new(r#"href="([^"]*)""#).expect("static regex"));
+    re.replace_all(html, |c: &regex::Captures| match resolve_url(base, &c[1]) {
+        Some(url) => format!("href=\"{}\"", inline::html_escape(&url)),
+        None => c[0].to_string(),
+    })
+    .into_owned()
+}
+
+/// `None` when `rel` is not a document-relative reference and must be left
+/// alone.
+fn resolve_url(base: &str, rel: &str) -> Option<String> {
+    if rel.is_empty() || rel.starts_with('#') || rel.starts_with('/') {
+        return None;
+    }
+    // A scheme (`https:`, `mailto:`, ...) before any slash means it is absolute.
+    if let Some(colon) = rel.find(':') {
+        if !rel[..colon].contains('/') {
+            return None;
+        }
+    }
+
+    // Keep the query and fragment out of path resolution, then put them back.
+    let (path, suffix) = match rel.find(['#', '?']) {
+        Some(i) => (&rel[..i], &rel[i..]),
+        None => (rel, ""),
+    };
+
+    let (origin, base_path) = split_origin(base);
+    let mut segs: Vec<&str> = base_path.split('/').filter(|s| !s.is_empty()).collect();
+    for seg in path.split('/') {
+        match seg {
+            "" | "." => {}
+            ".." => {
+                segs.pop();
+            }
+            other => segs.push(other),
+        }
+    }
+    Some(format!("{origin}/{}{suffix}", segs.join("/")))
+}
+
+/// Splits `https://host/a/b/` into `("https://host", "/a/b/")`.
+fn split_origin(base: &str) -> (&str, &str) {
+    match base.find("://") {
+        Some(i) => match base[i + 3..].find('/') {
+            Some(j) => (&base[..i + 3 + j], &base[i + 3 + j..]),
+            None => (base, "/"),
+        },
+        None => ("", base),
+    }
+}
+
 /// Replaces `<video>` with a still image for print.
 /// Uses the poster when one is given, otherwise a placeholder with a play
 /// icon, since PDF output is static.
@@ -704,6 +768,31 @@ mod tests {
         let html = assemble_print_page(&meta, &[], None);
         assert!(html.contains("data-theme=\"solarized\""));
         assert!(html.contains("data-mode=\"dark\""));
+    }
+
+    #[test]
+    fn relative_links_resolve_against_the_publish_base() {
+        let base = "https://github.com/ayatough/Mirzam/blob/main/";
+        let html = r#"<a href="docs/layout.md">a</a><a href="../docs/syntax.md#anim">b</a>"#;
+        let out = rewrite_relative_links(html, base);
+        assert!(out.contains("https://github.com/ayatough/Mirzam/blob/main/docs/layout.md"));
+        // `..` climbs out of the base directory, as it would on disk.
+        assert!(out.contains("https://github.com/ayatough/Mirzam/blob/docs/syntax.md#anim"));
+    }
+
+    #[test]
+    fn absolute_and_in_page_links_are_left_alone() {
+        let base = "https://example.com/a/";
+        for href in [
+            "https://example.org/x",
+            "mailto:someone@example.com",
+            "//cdn.example.com/x.js",
+            "/root/path",
+            "#section",
+        ] {
+            let html = format!("<a href=\"{href}\">x</a>");
+            assert_eq!(rewrite_relative_links(&html, base), html, "{href}");
+        }
     }
 
     #[test]

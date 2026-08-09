@@ -18,6 +18,7 @@ fn main() -> ExitCode {
             let mut out_dir = PathBuf::from("out");
             let mut split: Option<u8> = None;
             let mut debug_layout = false;
+            let mut base_url: Option<String> = None;
             let mut i = 1;
             while i < args.len() {
                 match args[i].as_str() {
@@ -26,6 +27,13 @@ fn main() -> ExitCode {
                         match args.get(i) {
                             Some(dir) => out_dir = PathBuf::from(dir),
                             None => return usage("-o requires an output path"),
+                        }
+                    }
+                    "--base-url" => {
+                        i += 1;
+                        match args.get(i) {
+                            Some(u) => base_url = Some(u.clone()),
+                            None => return usage("--base-url requires a URL"),
                         }
                     }
                     "--split" => {
@@ -46,7 +54,13 @@ fn main() -> ExitCode {
             let Some(input) = input else {
                 return usage("an input file is required");
             };
-            run(build(&input, &out_dir, split, debug_layout))
+            run(build(
+                &input,
+                &out_dir,
+                split,
+                debug_layout,
+                base_url.as_deref(),
+            ))
         }
         Some("serve") => {
             let mut input: Option<PathBuf> = None;
@@ -184,13 +198,15 @@ fn help_text() -> String {
         env!("CARGO_PKG_VERSION"),
         r#"
 Usage:
-  mirzam build <input.md> [-o <out_dir>] [--split h1|h2|h3] [--debug-layout]
+  mirzam build <input.md> [-o <out_dir>] [--split h1|h2|h3] [--base-url <url>] [--debug-layout]
   mirzam serve <input.md> [-p <port>]
   mirzam export pdf <input.md> [-o <out.pdf>] [--chromium <bin>]
 
   build   write <out_dir>/index.html, a single file with the viewer embedded
           --split starts a new slide at every heading of that level, which
           turns an ordinary document into a deck without editing it
+          --base-url is where the input file's directory lives once published,
+          so links to other documents still resolve from the deck's own path
           --debug-layout bakes on the pane outline overlay, for screenshotting
           a broken deck (toggle it live in the viewer with the L key instead)
   serve   development server with hot reload (default port 4321)
@@ -208,10 +224,11 @@ fn build(
     out_dir: &Path,
     split: Option<u8>,
     debug_layout: bool,
+    base_url: Option<&str>,
 ) -> Result<(), String> {
     let t0 = Instant::now();
     let mut cache = HashMap::new();
-    let out = pipeline::build_deck_with(input, &mut cache, split)?;
+    let out = pipeline::build_deck_with(input, &mut cache, split, base_url)?;
     let opts = mirzam_render::PageOptions {
         live_version: None,
         custom_css: out.custom_css.clone(),

@@ -67,6 +67,7 @@ whenever the layout changes.
 | **Charts from data** | `chart` blocks read inline CSV or a `.csv` file and render SVG at build time |
 | **Diagrams that stay linked** | `shape` blocks draw boxes; `connect` blocks point from text to any element, resolved live |
 | **Math** | LaTeX converted to MathML at build time — no client-side JavaScript |
+| **Animation** | `anim` blocks compile to a timeline: entrances, click-through builds, page turns — and the PDF still shows every slide revealed |
 | **Video and GIF** | Embedded in the HTML, replaced by a poster frame in PDF |
 | **Backgrounds that stay readable** | A photo behind a pane, with `dim`, `blur` and gradient `scrim` so the text still wins |
 | **Files that scale** | Split a deck across files with `![[section.md]]`; only edited slides re-render |
@@ -102,7 +103,9 @@ mirzam serve deck.md                 # live preview at localhost:4321
 mirzam export pdf deck.md -o deck.pdf
 ```
 
-In the viewer: `←` `→` to navigate, `N` for speaker notes, `F` for fullscreen.
+In the viewer: `←` `→` to navigate (and to step through a slide's animation),
+`N` for speaker notes, `F` for fullscreen, `D` for dark mode, `L` to outline the
+layout.
 
 ### In your editor
 
@@ -128,6 +131,7 @@ the slide you touched, and moving the cursor scrolls the preview to match.
 | [`examples/showcase.md`](examples/showcase.md) | Every component, side by side with its source |
 | [`examples/cookbook.md`](examples/cookbook.md) | Layout rules, one per slide — the companion to [docs/layout.md](docs/layout.md) |
 | [`examples/seminar.md`](examples/seminar.md) | A research talk in Japanese: math, tables, CJK typography |
+| [`examples/motion.md`](examples/motion.md) | Animation: entrances, click-through builds, a diagram that draws itself |
 | [`examples/media.md`](examples/media.md) | Video and GIF embedding |
 
 ```bash
@@ -146,9 +150,9 @@ the markup will keep changing, so pin a commit if you depend on it.
 
 - **Working:** build, live-reload server, PDF export, ASCII pane layout, file
   splitting, variables and arithmetic, math, charts, shapes, live connectors,
-  video, background images, custom themes, speaker notes, VS Code extension,
-  WebAssembly core
-- **Next:** animation (`anim` blocks), presenter mode, PowerPoint export
+  video, background images, animation and slide transitions, named themes and
+  dark mode, custom themes, speaker notes, VS Code extension, WebAssembly core
+- **Next:** presenter mode, annotations on images and charts, PowerPoint export
 - **Performance:** a 500-slide deck builds in 78 ms; a single-slide edit
   re-renders in 2.3 ms
 

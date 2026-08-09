@@ -94,7 +94,7 @@ pub struct Track {
     pub trigger: Trigger,
     pub target: Target,
     pub effect: String,
-    /// Only meaningful (and only allowed) on `slide-in` / `slide-out`.
+    /// Only meaningful (and only allowed) on a [`DIRECTIONAL`] effect.
     pub dir: Option<Direction>,
     pub dur_ms: u32,
     pub delay_ms: u32,
@@ -108,18 +108,26 @@ pub struct AnimDoc {
     pub errors: Vec<String>,
 }
 
-/// Effect set for v1. `slide-in` / `slide-out` additionally require `dir=`.
+/// Effect set for v1. The directional ones additionally require `dir=`.
 const EFFECTS: &[&str] = &[
     "fade-in",
     "fade-out",
     "slide-in",
     "slide-out",
+    "wipe-in",
+    "wipe-out",
+    "zoom-in",
+    "zoom-out",
+    "blur-in",
     "grow-x",
     "grow-y",
     "pop",
     "draw",
     "iris-out",
 ];
+
+/// Effects that travel, and so need `dir=` to say which way.
+const DIRECTIONAL: &[&str] = &["slide-in", "slide-out", "wipe-in", "wipe-out"];
 
 /// Named easing curves the DSL accepts, beyond `spring(...)`, each paired with
 /// the CSS easing function it lowers to. The lowering happens here rather than
@@ -245,6 +253,11 @@ const TRANSITIONS: &[&str] = &[
     "slide-right",
     "slide-up",
     "slide-down",
+    "wipe-left",
+    "wipe-right",
+    "wipe-up",
+    "wipe-down",
+    "zoom",
     "iris",
 ];
 
@@ -279,10 +292,15 @@ pub fn parse_transition(src: &str) -> Result<Transition, String> {
         "none" => ("none", "none", None),
         "fade" => ("fade-in", "fade-out", None),
         "iris" => ("fade-in", "iris-out", None),
+        "zoom" => ("zoom-in", "zoom-out", None),
         "slide-left" => ("slide-in", "slide-out", Some(Direction::Left)),
         "slide-right" => ("slide-in", "slide-out", Some(Direction::Right)),
         "slide-up" => ("slide-in", "slide-out", Some(Direction::Up)),
         "slide-down" => ("slide-in", "slide-out", Some(Direction::Down)),
+        "wipe-left" => ("wipe-in", "wipe-out", Some(Direction::Left)),
+        "wipe-right" => ("wipe-in", "wipe-out", Some(Direction::Right)),
+        "wipe-up" => ("wipe-in", "wipe-out", Some(Direction::Up)),
+        "wipe-down" => ("wipe-in", "wipe-out", Some(Direction::Down)),
         _ => unreachable!("checked against TRANSITIONS above"),
     };
     Ok(Transition {
@@ -410,15 +428,17 @@ fn parse_line(line: &str) -> Result<Track, String> {
     if let Some(split) = parsed.split {
         target.split = Some(split);
     }
-    if matches!(parsed.effect.as_str(), "slide-in" | "slide-out") && parsed.dir.is_none() {
+    let directional = DIRECTIONAL.contains(&parsed.effect.as_str());
+    if directional && parsed.dir.is_none() {
         return Err(format!(
             "`{}` needs a direction: add `dir=left|right|up|down`",
             parsed.effect
         ));
     }
-    if parsed.dir.is_some() && !matches!(parsed.effect.as_str(), "slide-in" | "slide-out") {
+    if parsed.dir.is_some() && !directional {
         return Err(format!(
-            "`dir=` only applies to slide-in/slide-out, not `{}`",
+            "`dir=` only applies to {}, not `{}`",
+            DIRECTIONAL.join("/"),
             parsed.effect
         ));
     }

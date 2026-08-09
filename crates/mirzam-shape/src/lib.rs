@@ -320,10 +320,12 @@ pub fn render_svg(doc: &ShapeDoc, w: u32, h: u32) -> (String, Vec<String>) {
     // Pass 2: emit the elements.
     let mut body = String::new();
     for s in &doc.shapes {
-        let id_attr =
-            s.id.as_ref()
-                .map(|i| format!(" id=\"{}\"", esc(i)))
-                .unwrap_or_default();
+        // A shape's parts are emitted together and, when it has an id, wrapped
+        // in a group carrying it. A labelled box is a box *and* its text, and
+        // an arrow is a line *and* its head: an id on the geometry alone would
+        // let `anim` move half a shape and leave the rest behind.
+        let mut part = String::new();
+        let id_attr = String::new();
         let cls_attr = if s.classes.is_empty() {
             String::new()
         } else {
@@ -347,20 +349,20 @@ pub fn render_svg(doc: &ShapeDoc, w: u32, h: u32) -> (String, Vec<String>) {
                 let stroke = color(s.kv.get("stroke").map(String::as_str).unwrap_or("@accent1"));
                 if s.kind == Some(ShapeKind::Rect) {
                     let rx = s.kv.get("radius").map(String::as_str).unwrap_or("10");
-                    body.push_str(&format!(
+                    part.push_str(&format!(
                         "<rect{id_attr}{cls_attr} x=\"{:.1}\" y=\"{:.1}\" width=\"{bw:.1}\" height=\"{bh:.1}\" rx=\"{rx}\" style=\"fill:{fill};stroke:{stroke}\" stroke-width=\"{stroke_w}\"{dash}/>\n",
                         cx - bw / 2.0,
                         cy - bh / 2.0,
                     ));
                 } else {
-                    body.push_str(&format!(
+                    part.push_str(&format!(
                         "<ellipse{id_attr}{cls_attr} cx=\"{cx:.1}\" cy=\"{cy:.1}\" rx=\"{:.1}\" ry=\"{:.1}\" style=\"fill:{fill};stroke:{stroke}\" stroke-width=\"{stroke_w}\"{dash}/>\n",
                         bw / 2.0,
                         bh / 2.0,
                     ));
                 }
                 if let Some(label) = &s.label {
-                    body.push_str(&format!(
+                    part.push_str(&format!(
                         "<text x=\"{cx:.1}\" y=\"{cy:.1}\" text-anchor=\"middle\" dominant-baseline=\"central\" class=\"mz-shape-label\">{}</text>\n",
                         esc(label)
                     ));
@@ -369,7 +371,7 @@ pub fn render_svg(doc: &ShapeDoc, w: u32, h: u32) -> (String, Vec<String>) {
             ShapeKind::Text => {
                 let (cx, cy) = px(s.at.unwrap());
                 let fill = color(s.kv.get("color").map(String::as_str).unwrap_or("@fg"));
-                body.push_str(&format!(
+                part.push_str(&format!(
                     "<text{id_attr}{cls_attr} x=\"{cx:.1}\" y=\"{cy:.1}\" text-anchor=\"middle\" dominant-baseline=\"central\" class=\"mz-shape-label{}\" style=\"fill:{fill}\">{}</text>\n",
                     s.classes
                         .iter()
@@ -386,14 +388,22 @@ pub fn render_svg(doc: &ShapeDoc, w: u32, h: u32) -> (String, Vec<String>) {
                     continue;
                 };
                 let stroke = color(s.kv.get("color").map(String::as_str).unwrap_or("@accent1"));
-                body.push_str(&format!(
+                part.push_str(&format!(
                     "<line{id_attr}{cls_attr} x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" style=\"stroke:{stroke}\" stroke-width=\"{stroke_w}\"{dash}/>\n",
                     a.0, a.1, b.0, b.1
                 ));
                 if s.kind == Some(ShapeKind::Arrow) {
-                    body.push_str(&arrow_head(a, b, &stroke));
+                    part.push_str(&arrow_head(a, b, &stroke));
                 }
             }
+        }
+        match &s.id {
+            Some(id) => {
+                body.push_str(&format!("<g id=\"{}\">\n", esc(id)));
+                body.push_str(&part);
+                body.push_str("</g>\n");
+            }
+            None => body.push_str(&part),
         }
     }
 

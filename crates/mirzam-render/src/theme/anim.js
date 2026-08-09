@@ -16,7 +16,7 @@
   // Every property arming may write. Saved per element before the first write
   // and put back afterwards, so an inline style the renderer set (a pane's
   // grid-area, a blurred background's transform) is never lost.
-  const PROPS = ['opacity', 'transform', 'transformOrigin', 'clipPath',
+  const PROPS = ['opacity', 'transform', 'transformOrigin', 'clipPath', 'filter',
                  'strokeDasharray', 'strokeDashoffset'];
   const STROKES = 'path,line,polyline,polygon,circle,ellipse,rect';
 
@@ -54,6 +54,21 @@
     }[dir] || ['none', 'none'];
   }
 
+  // The collapsed clip for a wipe travelling in `dir`. Entering, the content
+  // is hidden on the side the edge starts from; leaving, on the side it ends.
+  function wipe(dir, entering) {
+    const side = entering
+      ? { right: 'right', left: 'left', down: 'bottom', up: 'top' }[dir]
+      : { right: 'left', left: 'right', down: 'top', up: 'bottom' }[dir];
+    // Keyed by the edge the clip eats in from, in `inset(top right bottom left)`.
+    return {
+      top:    'inset(100% 0 0 0)',
+      bottom: 'inset(0 0 100% 0)',
+      left:   'inset(0 0 0 100%)',
+      right:  'inset(0 100% 0 0)',
+    }[side] || 'inset(0 0 0 0)';
+  }
+
   function keyframes(effect, dir, far) {
     const t = travel(dir, far);
     // A whole slide sliding is a page turn: it is opaque, and covers what it
@@ -67,6 +82,18 @@
                                  to:   { ...solid, transform: 'none' } };
       case 'slide-out': return { from: { ...solid, transform: 'none' },
                                  to:   { ...fade, transform: t[1] }, out: true };
+      // A wipe uncovers rather than moves: the content sits still while the
+      // edge that reveals it travels in `dir`.
+      case 'wipe-in':   return { from: { clipPath: wipe(dir, true) },
+                                 to:   { clipPath: 'inset(0 0 0 0)' } };
+      case 'wipe-out':  return { from: { clipPath: 'inset(0 0 0 0)' },
+                                 to:   { clipPath: wipe(dir, false) }, out: true };
+      case 'zoom-in':   return { from: { opacity: '0', transform: 'scale(.85)' },
+                                 to:   { opacity: '1', transform: 'scale(1)' } };
+      case 'zoom-out':  return { from: { opacity: '1', transform: 'scale(1)' },
+                                 to:   { opacity: '0', transform: 'scale(1.15)' }, out: true };
+      case 'blur-in':   return { from: { opacity: '0', filter: 'blur(12px)' },
+                                 to:   { opacity: '1', filter: 'blur(0px)' } };
       case 'grow-x':    return { from: { transform: 'scaleX(0)', transformOrigin: 'left center' },
                                  to:   { transform: 'scaleX(1)', transformOrigin: 'left center' } };
       case 'grow-y':    return { from: { transform: 'scaleY(0)', transformOrigin: 'center bottom' },
@@ -102,6 +129,11 @@
   function drawTargets(el) {
     return el.matches && el.matches(STROKES) ? [el] : Array.from(el.querySelectorAll(STROKES));
   }
+
+  // A shape is a group: an arrow is its line plus its head, a box is its
+  // outline plus its label. Only the stroked parts can be drawn, so the group
+  // fades in over the same beat and the rest arrives with the line.
+  const isGroup = (el) => !(el.matches && el.matches(STROKES));
 
   // Resolves the timeline once per section: which elements each track owns,
   // which batch it belongs to, and when within that batch it starts. `after`
@@ -181,6 +213,7 @@
     for (const el of t.els) {
       save(el);
       if (kf.draw) {
+        if (isGroup(el)) el.style.opacity = '0';
         for (const s of drawTargets(el)) {
           const len = s.getTotalLength ? s.getTotalLength() : 0;
           save(s);
@@ -214,6 +247,14 @@
       const delay = t.start + stagger * i;
       end = Math.max(end, delay + dur);
       if (kf.draw) {
+        if (isGroup(el)) {
+          save(el);
+          el.style.opacity = '0';
+          const g = track(sec, el.animate([{ opacity: 0 }, { opacity: 1 }], {
+            duration: dur, delay, easing: t.ease, fill: 'both',
+          }));
+          g.onfinish = () => { g.cancel(); unsave(el); };
+        }
         for (const s of drawTargets(el)) {
           const len = s.getTotalLength ? s.getTotalLength() : 0;
           save(s);

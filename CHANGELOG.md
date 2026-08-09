@@ -69,8 +69,20 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   viewer's URL, `D` to toggle for the session, and `prefers-color-scheme`
   when nothing is set - in that priority order, with no reload needed for the
   OS-preference case.
+- `examples/motion.md`: the animation sample. Text entrances, a chart whose bars
+  grow one click at a time, a diagram that assembles itself box by box and
+  arrow by arrow, and a slide that overrides the deck's page turn.
+- More effects: `wipe-in` / `wipe-out` (an edge uncovers the content instead of
+  moving it), `zoom-in` / `zoom-out` and `blur-in`. More transitions:
+  `wipe-left|right|up|down` and `zoom`.
+- `mirzam build --base-url <url>` says where the input file's directory lives
+  once published, so a deck served from somewhere other than beside its source
+  still resolves its links to other documents.
 
 ### Changed
+- A `shape` with an id is emitted as one group: a box and its label, an arrow
+  and its head. Animating `#box` now moves the whole shape rather than leaving
+  its label behind, and connectors resolve against the group's box.
 - Documentation is English-first; Japanese translations live under `docs/ja/`.
 - All source comments, CLI output and UI strings are English.
 - Math conversion moved from `latex2mathml` to `math-core`, fixing sub/superscript
@@ -78,6 +90,9 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - Upgraded comrak to 0.54 and enabled CJK-friendly emphasis.
 
 ### Fixed
+- Links inside a deck published away from its source 404'd: the README rendered
+  as a deck at `/decks/readme/` still pointed at `docs/layout.md`, which does
+  not exist there. The site now builds every deck with `--base-url`.
 - A deck's own `css:` stopped overriding the palette: named themes moved the
   tokens behind `:root[data-theme="…"]`, which outranks the plain `:root` a
   custom stylesheet uses, so every deck with a custom theme silently reverted

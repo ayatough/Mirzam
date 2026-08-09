@@ -6,18 +6,25 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 OUT="${1:-site}"
-DECKS=(pitch showcase cookbook seminar media)
+DECKS=(pitch showcase cookbook seminar media motion)
 
 rm -rf "$OUT"
 mkdir -p "$OUT/decks"
 
+# A deck published under /decks/<name>/ cannot resolve the links its source
+# wrote relative to its own directory, so each build is told where that
+# directory lives on GitHub.
+REPO_BLOB="https://github.com/ayatough/Mirzam/blob/main"
+
 echo "==> building decks"
 cargo build --release --bin mirzam
 for deck in "${DECKS[@]}"; do
-  ./target/release/mirzam build "examples/$deck.md" -o "$OUT/decks/$deck"
+  ./target/release/mirzam build "examples/$deck.md" -o "$OUT/decks/$deck" \
+    --base-url "$REPO_BLOB/examples/"
 done
 # The README with no Mirzam syntax at all, split at its own headings.
-./target/release/mirzam build README.md -o "$OUT/decks/readme" --split h2
+./target/release/mirzam build README.md -o "$OUT/decks/readme" --split h2 \
+  --base-url "$REPO_BLOB/"
 
 # The prose stays on GitHub, linked absolutely from the landing page below.
 # `actions/deploy-pages` serves this directory verbatim - no Jekyll runs, so a
@@ -73,6 +80,7 @@ cat > "$OUT/index.html" <<'HTML'
     <a class="card" href="decks/showcase/"><b>Component gallery</b><span>Every feature beside its source</span></a>
     <a class="card" href="decks/cookbook/"><b>Layout cookbook</b><span>One layout rule per slide</span></a>
     <a class="card" href="decks/seminar/"><b>Research talk</b><span>Math, tables, Japanese typography</span></a>
+    <a class="card" href="decks/motion/"><b>Motion</b><span>Entrances, click-through builds, page turns</span></a>
     <a class="card" href="decks/media/"><b>Media</b><span>Video and GIF embedding</span></a>
     <a class="card" href="decks/readme/"><b>This README, as a deck</b><span>No Mirzam syntax: <code>--split h2</code> on an ordinary document</span></a>
   </div>

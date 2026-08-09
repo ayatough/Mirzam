@@ -285,13 +285,16 @@ One line is one track: `[trigger] target : effect duration attributes...`.
   slide), `exit`, and `after #id [+Nms]` (relative to another track's target,
   the offset optional and possibly negative).
 - **Targets:** a `#id` or `.class`, or the literal `slide` for the whole
-  section. An optional `chars`, `words` or `lines` keyword before the effect
+  section. A `shape` with an id is one group — a box and its label, an arrow
+  and its head — so animating it moves the whole thing. An optional `chars`, `words` or `lines` keyword before the effect
   name splits the target's text at build time — the wrapping spans are already
   in the HTML, so the runtime only ever selects them, never mutates the DOM to
   make them. Splitting never breaks inline markup (`<strong>` and friends stay
   intact), a multi-byte character, or an HTML entity.
-- **Effects:** `fade-in`, `fade-out`, `slide-in` / `slide-out` (require
-  `dir=left|right|up|down`), `grow-x`, `grow-y`, `pop`, `draw`, `iris-out`.
+- **Effects:** `fade-in`, `fade-out`, `slide-in` / `slide-out` and `wipe-in` /
+  `wipe-out` (all four require `dir=left|right|up|down`), `zoom-in`,
+  `zoom-out`, `blur-in`, `grow-x`, `grow-y`, `pop`, `draw`, `iris-out`.
+  A `slide` travels; a `wipe` stays put while an edge uncovers it.
 - **Attributes:** a bare `400ms` sets the duration; `delay=`, `stagger=` (for a
   split target) and `ease=` are otherwise `key=value`. `ease` is a named curve
   (`out-cubic`, `in-out-back`, …) or `spring(mass,stiffness,damping)`, resolved
@@ -323,9 +326,14 @@ transition: slide-left 400ms ease=out-cubic
 ---
 ```
 
-`none`, `fade`, `slide-left`, `slide-right`, `slide-up`, `slide-down` and
-`iris`, each optionally with a duration and an `ease=`. Going backwards plays
-the sliding ones in the opposite direction.
+`none`, `fade`, `slide-left`, `slide-right`, `slide-up`, `slide-down`,
+`wipe-left`, `wipe-right`, `wipe-up`, `wipe-down`, `zoom` and `iris`, each
+optionally with a duration and an `ease=`. Going backwards plays the
+directional ones the other way.
+
+[`examples/motion.md`](../examples/motion.md) demonstrates all of this: text
+entrances, a chart whose bars grow one click at a time, a diagram that assembles
+itself box by box, and a slide that overrides the deck's page turn.
 
 A slide that declares its own whole-slide track overrides the matching half —
 `[enter] slide : …` replaces the incoming transition for that slide, `[exit]
