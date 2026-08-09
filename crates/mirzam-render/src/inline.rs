@@ -144,14 +144,24 @@ fn heading_attrs(line: &str) -> String {
     }
 }
 
-/// `![alt](src){attrs}` becomes an `<img>` (or `<video>`, see below).
+/// `![alt](src){attrs}` becomes an `<img>`, `<video>`, `<audio>` or an embed.
+///
+/// The attribute block is optional, because what a reference *is* follows from
+/// its target, not from whether the author wrote any attributes: a bare
+/// `![clip](talk.mp4)` used to slip past this and become a broken image.
+/// A plain image with no attributes is handed back untouched for the Markdown
+/// parser to render, which keeps `title` text and reference links working.
 fn image_attrs(line: &str) -> String {
     static RE: OnceLock<Regex> = OnceLock::new();
-    let r = re(&RE, r#"!\[([^\]]*)\]\(([^()\s"]+)\)\{([^{}]*)\}"#);
+    let r = re(&RE, r#"!\[([^\]]*)\]\(([^()\s"]+)\)(?:\{([^{}]*)\})?"#);
     r.replace_all(line, |c: &regex::Captures| {
         let alt = html_escape(&c[1]);
         let src = &c[2];
-        let attrs = parse_attrs(&c[3]);
+        let braces = c.get(3);
+        if braces.is_none() && !is_video(src) && !is_audio(src) && embed_url(src).is_none() {
+            return c[0].to_string();
+        }
+        let attrs = parse_attrs(braces.map(|m| m.as_str()).unwrap_or(""));
         let mut style = String::new();
         match attrs.kv.get("fit").map(String::as_str) {
             Some("contain") => style.push_str("object-fit:contain;width:100%;height:100%;"),
@@ -175,6 +185,12 @@ fn image_attrs(line: &str) -> String {
         if is_video(src) {
             return video_html(src, &alt, &attrs, &style_attr);
         }
+        if is_audio(src) {
+            return audio_html(src, &alt, &attrs);
+        }
+        if let Some(embed) = embed_url(src) {
+            return embed_html(&embed, src, &alt, &attrs);
+        }
         format!(
             "<img src=\"{src}\" alt=\"{alt}\"{}{style_attr}>",
             attrs.html_id_class()
@@ -183,15 +199,98 @@ fn image_attrs(line: &str) -> String {
     .into_owned()
 }
 
+fn extension_of(src: &str) -> Option<String> {
+    let path = src.split(['?', '#']).next().unwrap_or(src);
+    path.rsplit('.').next().map(str::to_ascii_lowercase)
+}
+
 /// Whether an image reference points at a video; GIFs stay images.
 fn is_video(src: &str) -> bool {
-    let path = src.split(['?', '#']).next().unwrap_or(src);
     matches!(
-        path.rsplit('.')
-            .next()
-            .map(str::to_ascii_lowercase)
-            .as_deref(),
+        extension_of(src).as_deref(),
         Some("mp4" | "webm" | "ogv" | "mov" | "m4v")
+    )
+}
+
+fn is_audio(src: &str) -> bool {
+    matches!(
+        extension_of(src).as_deref(),
+        Some("mp3" | "m4a" | "wav" | "oga" | "ogg" | "flac" | "aac" | "opus")
+    )
+}
+
+/// `![Interview](clip.mp3)` becomes an `<audio>`. The file is inlined like
+/// any other asset, so a deck with a recording in it is still one file.
+fn audio_html(src: &str, alt: &str, attrs: &Attrs) -> String {
+    let autoplay = attrs.classes.iter().any(|c| c == "autoplay");
+    let mut flags = String::from(" controls");
+    if autoplay {
+        flags.push_str(" autoplay");
+    }
+    if attrs.classes.iter().any(|c| c == "loop") {
+        flags.push_str(" loop");
+    }
+    let mut carried = attrs.clone();
+    carried
+        .classes
+        .retain(|c| !matches!(c.as_str(), "autoplay" | "loop" | "controls"));
+    format!(
+        "<div class=\"mz-audio\"{}><audio src=\"{src}\" title=\"{alt}\"{flags}></audio>\
+         <span class=\"mz-audio-label\">{alt}</span></div>",
+        carried.html_id_class()
+    )
+}
+
+/// The player URL for a video-host page, or `None` when this is not one.
+///
+/// Only the two hosts worth special-casing: anything else can be written as a
+/// link, and an author who wants some other embed can still write the `iframe`
+/// by hand.
+fn embed_url(src: &str) -> Option<String> {
+    let rest = src
+        .strip_prefix("https://")
+        .or_else(|| src.strip_prefix("http://"))?;
+    let rest = rest.strip_prefix("www.").unwrap_or(rest);
+    let id_ok = |s: &str| {
+        !s.is_empty()
+            && s.chars()
+                .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+    };
+
+    if let Some(q) = rest.strip_prefix("youtube.com/watch?") {
+        let id = q
+            .split('&')
+            .find_map(|p| p.strip_prefix("v="))?
+            .split('#')
+            .next()?;
+        return id_ok(id).then(|| format!("https://www.youtube-nocookie.com/embed/{id}"));
+    }
+    if let Some(id) = rest.strip_prefix("youtu.be/") {
+        let id = id.split(['?', '#']).next()?;
+        return id_ok(id).then(|| format!("https://www.youtube-nocookie.com/embed/{id}"));
+    }
+    if let Some(id) = rest.strip_prefix("vimeo.com/") {
+        let id = id.split(['?', '#', '/']).next()?;
+        return id
+            .chars()
+            .all(|c| c.is_ascii_digit())
+            .then(|| format!("https://player.vimeo.com/video/{id}"));
+    }
+    None
+}
+
+/// A hosted video, as an `iframe` filling its pane.
+///
+/// This is the one thing in a deck that is *not* self-contained: the frame is
+/// fetched when the slide is shown. The original page URL is carried on the
+/// wrapper so the print path can offer it as a link instead — a PDF cannot
+/// play anything.
+fn embed_html(player: &str, page: &str, alt: &str, attrs: &Attrs) -> String {
+    format!(
+        "<div class=\"mz-embed\"{} data-href=\"{page}\" data-title=\"{alt}\">\
+         <iframe src=\"{player}\" title=\"{alt}\" loading=\"lazy\" allowfullscreen \
+         allow=\"accelerometer; clipboard-write; encrypted-media; picture-in-picture\"></iframe></div>",
+        attrs.html_id_class()
     )
 }
 
@@ -312,6 +411,12 @@ pub fn render_markdown(md: &str) -> String {
     options.extension.tasklist = true;
     // Handles emphasis adjacent to CJK text and punctuation correctly.
     options.extension.cjk_friendly_emphasis = true;
+    // Citations. A slide is rendered on its own, so the notes collect at the
+    // foot of the slide that cites them, which is where a reference belongs on
+    // a slide rather than at the end of a document nobody scrolls.
+    options.extension.footnotes = true;
+    // A bare DOI or arXiv URL in a reference becomes a link without ceremony.
+    options.extension.autolink = true;
     options.render.r#unsafe = true;
     comrak::markdown_to_html(md, &options)
 }
@@ -338,6 +443,64 @@ mod tests {
         let out = preprocess("see [word]{#w .u} and [link](http://x)\n");
         assert!(out.contains("<span id=\"w\" class=\"u\">word</span>"));
         assert!(out.contains("[link](http://x)"));
+    }
+
+    #[test]
+    fn audio_becomes_a_player_with_its_label() {
+        let out = preprocess("![An interview](media/talk.mp3)\n");
+        assert!(out.contains("<audio src=\"media/talk.mp3\""), "{out}");
+        assert!(out.contains(" controls"));
+        assert!(out.contains("An interview</span>"), "{out}");
+    }
+
+    #[test]
+    fn media_is_recognised_without_an_attribute_block() {
+        // The braces used to be required, so a bare reference to a video
+        // silently became a broken image.
+        let out = preprocess("![clip](media/talk.mp4)\n");
+        assert!(out.contains("<video src=\"media/talk.mp4\""), "{out}");
+    }
+
+    #[test]
+    fn a_plain_image_is_left_to_the_markdown_parser() {
+        let src = "![alt](img/a.png)\n";
+        assert_eq!(preprocess(src), src);
+    }
+
+    #[test]
+    fn video_hosts_become_embeds() {
+        for url in [
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            "https://youtu.be/dQw4w9WgXcQ",
+        ] {
+            let out = preprocess(&format!("![Talk]({url})\n"));
+            assert!(
+                out.contains("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"),
+                "{url}: {out}"
+            );
+            // The page URL is carried so the print path can link to it.
+            assert!(out.contains(&format!("data-href=\"{url}\"")), "{out}");
+        }
+        let out = preprocess("![V](https://vimeo.com/76979871)\n");
+        assert!(
+            out.contains("https://player.vimeo.com/video/76979871"),
+            "{out}"
+        );
+    }
+
+    #[test]
+    fn a_link_that_merely_mentions_a_host_is_not_an_embed() {
+        assert_eq!(embed_url("https://example.com/youtube.com/watch?v=x"), None);
+        assert_eq!(embed_url("https://www.youtube.com/watch?list=x"), None);
+        assert_eq!(embed_url("https://vimeo.com/channels/staffpicks"), None);
+        assert_eq!(embed_url("img/a.png"), None);
+    }
+
+    #[test]
+    fn footnotes_render_as_slide_local_references() {
+        let out = render_markdown("Claim[^a].\n\n[^a]: Someone, *A paper*, 2026.\n");
+        assert!(out.contains("footnote-ref"), "{out}");
+        assert!(out.contains("A paper"), "{out}");
     }
 
     #[test]

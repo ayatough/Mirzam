@@ -200,7 +200,34 @@
 </div>
 </div>
 </section>
-<section class="slide" data-index="9">
+<section class="slide" data-index="9" data-connectors="[{&quot;arrow&quot;:&quot;end&quot;,&quot;color&quot;:&quot;var(--mz-accent2)&quot;,&quot;curve&quot;:null,&quot;dashed&quot;:false,&quot;from&quot;:&quot;t-peak&quot;,&quot;fromEdge&quot;:null,&quot;to&quot;:&quot;peak&quot;,&quot;toEdge&quot;:null}]">
+<div class="grid" style='grid-template-columns:21fr 18fr;grid-template-rows:3fr 5fr;grid-template-areas:"head head" "fig read"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">先行研究</span></p>
+<h2>元論文の Fig. 3 と、本測定の対応</h2>
+</div>
+<div class="pane pane-fig" data-pane="fig" style="grid-area:fig;display:flex;flex-direction:column;justify-content:center"><img src="<data-uri len=78378>" alt="Fig. 3 of the reference paper" style="object-fit:contain;width:100%;height:100%;">
+</div>
+<div class="pane pane-read mz-fit" data-pane="read" style="grid-area:read;display:flex;flex-direction:column;justify-content:center"><p>論文<sup class="footnote-ref"><a href="#fn-ref1" id="fnref-ref1" data-footnote-ref>1</a></sup> では τ ≈ 5 µs で忠実度が<span id="t-peak" class="u">頭打ちになる</span>と報告されている。
+本測定でも同じ位置に極大が出ており、以降の低下は <math><msub><mi>T</mi><mn>1</mn></msub></math> 緩和で説明できる。</p>
+<p><math display="block"><mi>F</mi><mo stretchy="false">(</mo><mi>τ</mi><mo stretchy="false">)</mo><mo>=</mo><msub><mi>F</mi><mi>∞</mi></msub><mspace style="margin-left:-0.16666667em;"/><mrow><mo>(</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo lspace="0" rspace="0">−</mo><mi>τ</mi><mo lspace="0" rspace="0">/</mo><msub><mi>τ</mi><mi>c</mi></msub></mrow></msup><mo>)</mo></mrow><mo>−</mo><mi>α</mi><mspace width="0.16666667em"/><msup><mi>τ</mi><mn>2</mn></msup></math></p>
+<p>第2項が緩和による損失で、係数 <math><mi>α</mi></math> は <math><msub><mi>T</mi><mn>1</mn></msub></math> から独立に決まる<sup class="footnote-ref"><a href="#fn-ref2" id="fnref-ref2" data-footnote-ref>2</a></sup>。</p>
+<section class="footnotes" data-footnotes>
+<ol>
+<li id="fn-ref1">
+<p>A. Researcher et al., <em>Dispersive readout with a parametric amplifier</em>, Phys. Rev. Applied <strong>21</strong>, 034001 (2026). <a href="https://doi.org/10.1103/PhysRevApplied.21.034001">https://doi.org/10.1103/PhysRevApplied.21.034001</a> <a href="#fnref-ref1" class="footnote-backref" data-footnote-backref data-footnote-backref-idx="1" aria-label="Back to reference 1">↩</a></p>
+</li>
+<li id="fn-ref2">
+<p>B. Coauthor and C. Third, <em>Relaxation-limited readout</em>, arXiv:2601.00042. <a href="#fnref-ref2" class="footnote-backref" data-footnote-backref data-footnote-backref-idx="2" aria-label="Back to reference 2">↩</a></p>
+</li>
+</ol>
+</section>
+</div>
+</div>
+<script type="application/json" class="mz-annot" data-target="[data-pane=&quot;fig&quot;]">{"items":[{"kind":"circle","id":"peak","x":52,"y":14,"w":22,"h":16,"label":"τ ≈ 5 µs","step":1}]}</script>
+<aside class="notes"><p>図は引用。出典は脚注に置き、スライド内で完結させる</p>
+</aside>
+</section>
+<section class="slide" data-index="10">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:3fr 1fr;grid-template-areas:"main" "foot"'>
 <div class="pane pane-main" data-pane="main" style="grid-area:main;text-align:center;display:flex;flex-direction:column;justify-content:center"><h2>まとめ</h2>
 <p>JPA 導入と積分時間最適化により</p>

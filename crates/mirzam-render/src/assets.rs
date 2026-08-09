@@ -84,8 +84,18 @@ fn mime_for(path: &Path) -> &'static str {
         "jpg" | "jpeg" => "image/jpeg",
         "gif" => "image/gif",
         "webp" => "image/webp",
-        "mp4" => "video/mp4",
+        "avif" => "image/avif",
+        "mp4" | "m4v" => "video/mp4",
         "webm" => "video/webm",
+        "ogv" => "video/ogg",
+        "mov" => "video/quicktime",
+        // A browser will not play a recording served as octet-stream, so the
+        // audio types matter as much as the video ones.
+        "mp3" => "audio/mpeg",
+        "m4a" | "aac" => "audio/mp4",
+        "wav" => "audio/wav",
+        "oga" | "ogg" | "opus" => "audio/ogg",
+        "flac" => "audio/flac",
         _ => "application/octet-stream",
     }
 }

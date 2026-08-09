@@ -269,6 +269,68 @@ Connector endpoints are resolved in the browser *after* layout, on every show,
 resize and hot reload. That is why arrows keep pointing at the right thing when
 the window changes size or the theme changes metrics.
 
+## Audio, and video that lives somewhere else
+
+```markdown
+![Interview with the author](media/talk.mp3)
+![The paper's own talk](https://www.youtube.com/watch?v=…)
+```
+
+- An audio file becomes a player with the alt text as its label, inlined like
+  any other asset — a deck with a recording in it is still one file.
+- A YouTube or Vimeo page URL becomes an embed, served from
+  `youtube-nocookie.com`. **This is the one thing in a deck that is not
+  self-contained:** the frame is fetched when the slide is shown, so it needs
+  the network and it cannot be printed. The PDF gets a placeholder carrying
+  the link instead, and audio gets its label without the transport.
+- What a reference *is* follows from what it points at, so the attribute block
+  is optional: `![clip](talk.mp4)` is a video whether or not you wrote `{}`.
+
+## When a slide has too much on it
+
+By default a pane **clips** what does not fit. That keeps the layout you drew
+and `scripts/check-layout.mjs` reports the overflow before anyone presents it —
+but nothing warns you while you are writing, and text that silently disappears
+is a bad way to find out.
+
+```yaml
+---
+fit: shrink        # every pane on every slide
+---
+```
+
+```markdown
+::: pane body {fit=shrink}
+```
+
+`fit=shrink` gives up the type size to keep the words: the pane's contents are
+scaled down in small steps until they fit, to a floor of 55%, and re-measured
+on every page turn and window resize. It runs in the PDF too — it only ever
+makes content smaller than a box it is already overflowing, so a page that runs
+it shows strictly more than one that does not. Without JavaScript you get the
+clipping default, which is the documented fallback rather than a broken state.
+
+If a pane is shrinking a lot, that is the deck telling you the slide has two
+slides' worth on it.
+
+## Citations
+
+`[^key]` marks a claim and the note lands at the foot of **that slide** — a
+reference belongs on the slide that made the claim, not in a bibliography at
+the end that nobody will be looking at.
+
+```markdown
+Attention replaced recurrence[^vas], and the same block pretrains[^dev].
+
+[^vas]: Vaswani et al., *Attention Is All You Need*, NeurIPS 2017.
+[^dev]: Devlin et al., *BERT*, NAACL 2019. https://arxiv.org/abs/1810.04805
+```
+
+A bare DOI or arXiv URL becomes a link on its own. See
+[`examples/seminar.md`](../examples/seminar.md) for the shape of a reading-group
+talk: a figure quoted from the paper, annotated and pointed at from the prose,
+with its citation at the foot of the same slide.
+
 ## Presentation effects
 
 Flourishes the speaker fires with a key, bound per slide:

@@ -39,6 +39,12 @@ section.slide { background: var(--mz-slide-bg); border-radius: inherit; }
   gap: 20px; padding: 44px 60px;
 }
 .pane { min-width: 0; min-height: 0; overflow: hidden; padding: 2px 4px; }
+/* A pane that shrinks its text rather than clipping it. The wrapper is what
+   `fit.js` scales; without the script the pane behaves exactly as any other,
+   which is to say it clips - the documented fallback, not a broken state. */
+#deck[data-fit="shrink"] .pane .mz-fit-inner, .pane.mz-fit .mz-fit-inner {
+  transform-origin: top left;
+}
 /* A heading band that is drawn too short would silently clip its heading.
    Allow the text to stay legible instead, and let the author widen the band. */
 .pane-head, .pane-title { overflow: visible; }
@@ -135,6 +141,27 @@ code { font-family: 'SF Mono', Consolas, Menlo, monospace; }
 p code, li code { background: var(--mz-surface); border-radius: 4px; padding: .1em .35em; font-size: .9em; }
 blockquote { border-left: 4px solid var(--mz-accent2); margin: .5em 0; padding: .1em 1em; color: var(--mz-muted); }
 
+/* Citations. `[^key]` marks the claim and the note lands at the foot of the
+   slide that made it — a reference on a slide belongs on that slide, not in a
+   bibliography at the end that nobody will be looking at. */
+sup.footnote-ref a {
+  text-decoration: none; font-weight: 700; font-size: .9em;
+  padding: 0 .15em; color: var(--mz-accent2);
+}
+section.footnotes {
+  margin-top: 1.1em; padding-top: .5em;
+  border-top: 1px solid var(--mz-border);
+}
+section.footnotes ol { margin: 0; padding-left: 1.4em; }
+section.footnotes li { font-size: .78em; line-height: 1.45; color: var(--mz-muted); margin: .15em 0; }
+/* A DOI is one unbreakable word wider than the column it sits in; without
+   this it overflows horizontally no matter how small the type gets, which
+   also sends shrink-to-fit all the way to its floor chasing it. */
+section.footnotes a { overflow-wrap: anywhere; }
+section.footnotes p { font-size: 1em; margin: 0; display: inline; }
+/* The ↩ link is for a document you scroll, not a slide you project. */
+section.footnotes .footnote-backref { display: none; }
+
 img, video { max-width: 100%; max-height: 100%; }
 /* An image alone in a paragraph is a figure, not a word. Laying it out as a
    block drops the baseline gap that otherwise pushes it past the pane. */
@@ -144,6 +171,22 @@ p > img:only-child, p > video:only-child,
   display: block; margin: 0 auto;
 }
 video { background: #000; /* theme-independent: letterbox behind the frame */ border-radius: 6px; }
+
+/* A recording: the player plus the label the reference's alt text gave it,
+   because an audio element on its own says nothing about what it holds. */
+.mz-audio { display: flex; flex-direction: column; gap: .5em; align-items: stretch; }
+.mz-audio audio { width: 100%; }
+.mz-audio-label { color: var(--mz-muted); font-size: .9em; }
+
+/* A hosted video. The one thing in a deck that is not self-contained - the
+   frame is fetched when the slide is shown - so it is drawn on a surface that
+   still looks deliberate if the network is not there. */
+.mz-embed {
+  position: relative; width: 100%; aspect-ratio: 16 / 9;
+  background: var(--mz-surface); border: 1px solid var(--mz-border);
+  border-radius: 8px; overflow: hidden;
+}
+.mz-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 
 /* Video placeholder in PDF output, when no poster is given */
 .mz-video-still {

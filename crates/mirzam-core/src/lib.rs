@@ -28,6 +28,10 @@ pub struct DeckMeta {
     /// declares its own whole-slide `[enter]`/`[exit]` track overrides the
     /// matching half. Parsed by `mirzam_anim::parse_transition`.
     pub transition: Option<String>,
+    /// `fit: shrink` asks every pane to shrink its text rather than clip it.
+    /// Panes opt in individually with `{fit=shrink}`; this is the same thing
+    /// said once for the whole deck.
+    pub fit: Option<String>,
     pub vars: BTreeMap<String, serde_yaml::Value>,
 }
 

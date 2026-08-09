@@ -76,6 +76,24 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - More effects: `wipe-in` / `wipe-out` (an edge uncovers the content instead of
   moving it), `zoom-in` / `zoom-out` and `blur-in`. More transitions:
   `wipe-left|right|up|down` and `zoom`.
+- Audio: `![Interview](talk.mp3)` becomes a player, inlined like any other
+  asset. `.mp3`, `.m4a`, `.wav`, `.ogg`, `.flac`, `.opus` and friends, each
+  served with the media type a browser will actually play.
+- YouTube and Vimeo page URLs become embeds, from `youtube-nocookie.com`. This
+  is the one thing in a deck that is not self-contained: the frame is fetched
+  when the slide is shown, and the PDF gets a placeholder carrying the link.
+- Media is recognised by what it points at rather than by whether attributes
+  were written, so a bare `![clip](talk.mp4)` is a video instead of a broken
+  image.
+- `fit: shrink` in frontmatter, or `{fit=shrink}` on a pane: content that would
+  overflow is scaled down until it fits rather than clipped, to a floor of 55%,
+  re-measured on every page turn and resize. Runs in the PDF too, for the same
+  reason the annotation overlay does — it only ever reveals what a clipped pane
+  would have swallowed.
+- Citations: `[^key]` footnotes render at the foot of the slide that cites them,
+  and a bare DOI or arXiv URL becomes a link. `examples/seminar.md` gains a
+  slide quoting a figure from the paper under discussion, annotated, pointed at
+  from the prose, with its references beneath it.
 - `effects` blocks: presenter-triggered flourishes bound to a key — `flash`,
   `shake`, `lines` (集中線), `boom`, `burst 🎉`, `confetti` and a Nico-Nico-style
   `danmaku`. These are part of the performance rather than the document: they

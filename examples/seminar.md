@@ -268,6 +268,56 @@ text  at(84%, 78%) "300 K" .small
 ---
 
 ```pane
++----------------------------------------+
+|                                        |
+|  head                                  |
+|                                        |
++---------------------+------------------+
+|                     |                  |
+|                     |                  |
+|  fig                |  read            |
+|                     |                  |
+|                     |                  |
++---------------------+------------------+
+```
+
+::: pane head
+[先行研究]{.eyebrow}
+## 元論文の Fig. 3 と、本測定の対応
+:::
+
+::: pane fig {valign=middle}
+![Fig. 3 of the reference paper](media/paper-fig3.png){fit=contain}
+:::
+
+::: pane read {valign=middle fit=shrink}
+論文[^ref1] では τ ≈ 5 µs で忠実度が[頭打ちになる]{#t-peak .u}と報告されている。
+本測定でも同じ位置に極大が出ており、以降の低下は $T_1$ 緩和で説明できる。
+
+$$
+F(\tau) = F_\infty\!\left(1 - e^{-\tau/\tau_c}\right) - \alpha\,\tau^2
+$$
+
+第2項が緩和による損失で、係数 $\alpha$ は $T_1$ から独立に決まる[^ref2]。
+
+[^ref1]: A. Researcher et al., *Dispersive readout with a parametric amplifier*, Phys. Rev. Applied **21**, 034001 (2026). https://doi.org/10.1103/PhysRevApplied.21.034001
+[^ref2]: B. Coauthor and C. Third, *Relaxation-limited readout*, arXiv:2601.00042.
+:::
+
+```annotate
+target: fig
+circle 52,14 22x16 : id=peak label="τ ≈ 5 µs" step=1
+```
+
+```connect
+#t-peak -> #peak : color=@accent2
+```
+
+<!-- note: 図は引用。出典は脚注に置き、スライド内で完結させる -->
+
+---
+
+```pane
 +------------------------------------+
 |                                    |
 |  main                              |

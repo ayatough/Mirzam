@@ -70,7 +70,9 @@ whenever the layout changes.
 | **Annotations** | Circle, box, label and point at part of a photo or a single chart bar; the marks reach the PDF |
 | **Effects on a key** | Flash, shake, 集中線, confetti, danmaku — fired while presenting, never in the export |
 | **Animation** | `anim` blocks compile to a timeline: entrances, click-through builds, page turns — and the PDF still shows every slide revealed |
-| **Video and GIF** | Embedded in the HTML, replaced by a poster frame in PDF |
+| **Video, audio and embeds** | Files inlined; YouTube and Vimeo embedded, with a link in the PDF |
+| **Citations** | `[^key]` footnotes land at the foot of the slide that cites them |
+| **Nothing silently lost** | `fit: shrink` scales an overfull pane down instead of clipping it |
 | **Backgrounds that stay readable** | A photo behind a pane, with `dim`, `blur` and gradient `scrim` so the text still wins |
 | **Files that scale** | Split a deck across files with `![[section.md]]`; only edited slides re-render |
 | **Runs anywhere** | One Rust core, compiled to a native CLI and to WebAssembly for editors and browsers |

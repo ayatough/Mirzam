@@ -70,7 +70,7 @@ fn example_slide_counts() {
         ("pitch.md", 9),
         ("showcase.md", 14),
         ("cookbook.md", 8),
-        ("seminar.md", 10),
+        ("seminar.md", 11),
         ("media.md", 2),
         ("motion.md", 8),
     ] {

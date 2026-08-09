@@ -65,6 +65,9 @@
     // Arriving from a later slide means arriving at a slide already fully
     // revealed; arriving forwards means starting from its first step.
     if (changed) step = backwards ? stepsOn(sec) : 0;
+    // Shrink-to-fit measures boxes, and a slide only has boxes once it is the
+    // one displayed - so it runs here, before anything else measures anything.
+    if (window.__mirzamFit) window.__mirzamFit(sec);
     if (anim) anim.show(sec, step, transition, { play, backwards: backwards && changed, arriving: changed });
     showStep(sec);
     updateHud(ss.length, sec);

@@ -33,6 +33,11 @@ pub const EFFECTS_JS: &str = concat!("\n", include_str!("effects.js"));
 /// would otherwise lose the marks the deck exists to point at.
 pub const ANNOT_JS: &str = concat!("\n", include_str!("annot.js"));
 
+/// Shrink-to-fit for panes that ask for it. Inlined into the print page too:
+/// it only ever makes content smaller than a box it is already overflowing, so
+/// a page that runs it shows strictly more than one that does not.
+pub const FIT_JS: &str = concat!("\n", include_str!("fit.js"));
+
 /// Print overrides applied after a theme's CSS.
 /// Slide dimensions and the `@page` size are appended by `assemble_print_page`.
 pub const PRINT_CSS: &str = concat!("\n", include_str!("print.css"));

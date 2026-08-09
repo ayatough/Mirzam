@@ -89,6 +89,20 @@ fn deck_has_annot(sections: &[String]) -> bool {
     sections.iter().any(|s| s.contains("class=\"mz-annot\""))
 }
 
+/// Whether anything asks to be shrunk to fit, deciding if `fit.js` is inlined
+/// — into the print page too, since it only ever reveals content a clipped
+/// pane would have swallowed.
+fn deck_fit_attr(meta: &DeckMeta) -> &'static str {
+    match meta.fit.as_deref().map(str::trim) {
+        Some("shrink") => " data-fit=\"shrink\"",
+        _ => "",
+    }
+}
+
+fn deck_has_fit(meta: &DeckMeta, sections: &[String]) -> bool {
+    !deck_fit_attr(meta).is_empty() || sections.iter().any(|s| s.contains("mz-fit"))
+}
+
 /// The `data-transition` payload for `#deck`, or an empty string when the deck
 /// declares no transition or an unusable one. Reporting the problem is the
 /// build pipeline's job; rendering must not fail over it.
@@ -160,6 +174,11 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
     } else {
         String::new()
     };
+    let fit_js = if deck_has_fit(meta, sections) {
+        format!("<script>{}</script>\n", theme::FIT_JS)
+    } else {
+        String::new()
+    };
     let transition = transition_attr(meta);
     let (theme_name, mode_attr) = theme_attrs(meta);
     format!(
@@ -175,12 +194,12 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <style>{custom_css}</style>
 </head>
 <body>
-<div id="deck" data-slide-w="{w}" data-slide-h="{h}"{transition}>
+<div id="deck" data-slide-w="{w}" data-slide-h="{h}"{transition}{fit}>
 {sections}</div>
 <div id="hud"></div>
 <div id="hint">← → navigate / N notes / F fullscreen / L layout / D mode</div>
 <div id="notes-panel" hidden></div>
-{anim_js}{annot_js}<script>{js}</script>
+{fit_js}{anim_js}{annot_js}<script>{js}</script>
 {effects_js}{live_js}</body>
 </html>
 "#,
@@ -188,6 +207,7 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
         css = theme::theme_css(theme_name),
         custom_css = opts.custom_css.as_deref().unwrap_or(""),
         js = theme::VIEWER_JS,
+        fit = deck_fit_attr(meta),
         sections = sections.concat(),
     )
 }
@@ -256,15 +276,18 @@ fn split_origin(base: &str) -> (&str, &str) {
     }
 }
 
-/// Replaces `<video>` with a still image for print.
-/// Uses the poster when one is given, otherwise a placeholder with a play
-/// icon, since PDF output is static.
+/// Replaces the things a page cannot play with something a page can show.
+///
+/// A `<video>` becomes its poster, or a placeholder; a hosted embed becomes a
+/// placeholder carrying the link it came from; an `<audio>` keeps its label
+/// and loses its controls. PDF output is static, and silently printing an
+/// empty box would be worse than saying what is missing.
 fn videos_to_stills(html: &str) -> String {
     static RE: OnceLock<Regex> = OnceLock::new();
     let re = RE.get_or_init(|| Regex::new(r#"<video\b([^>]*)></video>"#).expect("static regex"));
     static ATTR: OnceLock<Regex> = OnceLock::new();
     let attr_re = ATTR.get_or_init(|| Regex::new(r#"(\w[\w-]*)="([^"]*)""#).expect("static regex"));
-    re.replace_all(html, |c: &regex::Captures| {
+    let out = re.replace_all(html, |c: &regex::Captures| {
         let mut attrs: std::collections::BTreeMap<&str, &str> = Default::default();
         for a in attr_re.captures_iter(&c[1]) {
             let (k, v) = (a.get(1).unwrap().as_str(), a.get(2).unwrap().as_str());
@@ -279,7 +302,34 @@ fn videos_to_stills(html: &str) -> String {
             ),
         }
     })
-    .into_owned()
+    .into_owned();
+
+    // A hosted video cannot be printed either, and unlike a local file it has
+    // somewhere to send the reader: the page it came from.
+    static EMBED: OnceLock<Regex> = OnceLock::new();
+    let embed = EMBED.get_or_init(|| {
+        Regex::new(
+            r#"<div class="mz-embed"[^>]*data-href="([^"]*)" data-title="([^"]*)"[^>]*>.*?</div>"#,
+        )
+        .expect("static regex")
+    });
+    let out = embed
+        .replace_all(&out, |c: &regex::Captures| {
+            format!(
+                "<div class=\"mz-video-still\"><span>▶</span><em>{}</em>\
+                 <a href=\"{}\">{}</a></div>",
+                &c[2], &c[1], &c[1]
+            )
+        })
+        .into_owned();
+
+    // A recording keeps its label and loses the transport it cannot offer.
+    static AUDIO: OnceLock<Regex> = OnceLock::new();
+    let audio =
+        AUDIO.get_or_init(|| Regex::new(r#"<audio\b[^>]*></audio>"#).expect("static regex"));
+    audio
+        .replace_all(&out, "<div class=\"mz-video-still\"><span>♪</span></div>")
+        .into_owned()
 }
 
 /// Print page for PDF export: fixed-size slides stacked one per page.
@@ -306,6 +356,11 @@ pub fn assemble_print_page(
     } else {
         String::new()
     };
+    let fit_js = if deck_has_fit(meta, sections) {
+        format!("<script>{}</script>\n", theme::FIT_JS)
+    } else {
+        String::new()
+    };
     let (theme_name, mode_attr) = theme_attrs(meta);
     format!(
         r#"<!doctype html>
@@ -323,14 +378,15 @@ section.slide {{ width: {w}px; height: {h}px; }}
 <style>{custom_css}</style>
 </head>
 <body>
-<div id="deck">
+<div id="deck"{fit}>
 {sections}</div>
-{annot_js}</body>
+{fit_js}{annot_js}</body>
 </html>
 "#,
         title = inline::html_escape(title),
         css = theme::theme_css(theme_name),
         print_css = theme::PRINT_CSS,
+        fit = deck_fit_attr(meta),
         custom_css = custom_css.unwrap_or(""),
         sections = sections.concat(),
     )
@@ -503,11 +559,18 @@ fn render_grid_slide(
             }
             _ => {}
         }
-        let extra_cls = attrs
+        let mut extra_cls = attrs
             .classes
             .iter()
             .map(|c| format!(" {c}"))
             .collect::<String>();
+        // `fit=shrink` on the pane: keep the words and give up the type size,
+        // rather than clipping. `fit: shrink` in frontmatter says the same for
+        // every pane, and rides on `#deck` since a slide is rendered without
+        // knowing the deck it belongs to.
+        if attrs.kv.get("fit").map(String::as_str) == Some("shrink") {
+            extra_cls.push_str(" mz-fit");
+        }
         let (content, chart_blocks) = charts::extract(&content);
         let mut body = render_markdown(&preprocess(&content));
         if !chart_blocks.is_empty() {
