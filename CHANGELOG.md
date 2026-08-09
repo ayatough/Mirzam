@@ -89,7 +89,10 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   overlay is re-measured on every resize, and it is the one script the print
   page carries, so the marks reach the PDF. `step=N` holds an item back until
   the Nth click, counting towards the slide's steps like any other build —
-  and a page with no viewer still shows every mark.
+  and a page with no viewer still shows every mark. `id=` names a mark so a
+  `connect` arrow can run from a sentence to the circle drawn over a
+  photograph; the connector is routed once the mark exists and re-routed
+  whenever it moves.
 - `mirzam build --base-url <url>` says where the input file's directory lives
   once published, so a deck served from somewhere other than beside its source
   still resolves its links to other documents.

@@ -146,6 +146,10 @@
       const common = { stroke: color, fill: 'none', 'stroke-width': 3,
                        'vector-effect': 'non-scaling-stroke' };
       if (dash) common['stroke-dasharray'] = dash;
+      // An id put on the drawn shape lets the rest of the deck point at it —
+      // a `connect` arrow from a sentence to the circle, say. It is the only
+      // way to name something that does not exist until the page is laid out.
+      if (item.id) common.id = item.id;
       let labelAt = { x: a.x + a.w / 2, y: a.y };
 
       if (item.kind === 'rect') {
@@ -218,6 +222,9 @@
       const m = metrics(l.sec);
       draw(l.overlay, l.items, paintedBox(l.target, m), l.sec, m, stepOn(l.sec));
     }
+    // A connector may point at a mark drawn here, and the marks are only laid
+    // out now — so the connectors have to be re-routed after, not before.
+    if (window.__mirzamConnectors) window.__mirzamConnectors();
   }
 
   function init() {

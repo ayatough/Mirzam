@@ -343,9 +343,13 @@ text   6,90 "coordinates are percentages of the picture"
   anything with an id. `pad=` in pixels gives it room to breathe. This survives
   a data change, which coordinates do not.
 - **Attributes:** `label=`, `color=` (a `@token` or a literal), `style=dashed`,
-  `pad=` for anchored items, and `step=N` to hold an item back until the Nth
-  click. Attributes always come after ` : `, including on a `text` item:
-  `text 6,90 "…" : step=2`.
+  `pad=` for anchored items, `id=` to name the mark, and `step=N` to hold an
+  item back until the Nth click. Attributes always come after ` : `, including
+  on a `text` item: `text 6,90 "…" : step=2`.
+- **`id=` makes the mark itself a target.** A `connect` arrow can run from a
+  phrase in the prose to the circle drawn over the photograph — the only way
+  to point at something that does not exist until the page is laid out. The
+  connector appears with the mark and is re-routed whenever it moves.
 - **`step=` counts as a click for the slide**, so `→` reveals the annotation
   before it turns the page — and a page with no viewer, the PDF included,
   shows every item regardless. An annotation waits for a click; it does not

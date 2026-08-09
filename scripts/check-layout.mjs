@@ -37,7 +37,22 @@ async function checkDeck(page, file) {
   const problems = [];
   for (let i = 0; i < count; i++) {
     await page.evaluate((n) => window.__mirzamGoto && window.__mirzamGoto(n), i);
-    await page.waitForTimeout(60);
+    // Measure the slide the audience ends on, not the one it starts as. An
+    // element revealed on the third click can overflow its pane, and a
+    // connector pointing at an annotation cannot be routed until that
+    // annotation has been drawn — the state a reader without JavaScript, and
+    // the PDF, both see.
+    await page.evaluate(() => {
+      const sec = document.querySelector("section.slide.active");
+      const n = Math.max(
+        window.MZAnim && sec ? window.MZAnim.steps(sec) : 0,
+        window.MZAnnot && sec ? window.MZAnnot.steps(sec) : 0
+      );
+      for (let s = 0; s < n; s++) {
+        dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" }));
+      }
+    });
+    await page.waitForTimeout(120);
     const found = await page.evaluate(
       ([index, tol]) => {
         const sec = document.querySelector(`section.slide[data-index="${index}"]`);

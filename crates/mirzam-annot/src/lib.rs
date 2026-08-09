@@ -52,6 +52,11 @@ pub enum Place {
 #[derive(Debug, Clone)]
 pub struct Item {
     pub kind: Kind,
+    /// `id=` on the item, put on the drawn shape so the rest of the deck can
+    /// refer to it — a `connect` arrow from a sentence to the circle, for
+    /// instance. The mark is drawn from the live layout, so pointing at it
+    /// keeps working when the layout moves.
+    pub id: Option<String>,
     pub place: Place,
     /// `w x h` for rect/circle placed by coordinates; unused for anchors.
     pub size: Option<(f64, f64)>,
@@ -128,6 +133,7 @@ fn parse_item(line: &str) -> Result<Item, String> {
 
     let mut item = Item {
         kind,
+        id: None,
         place: Place::At(0.0, 0.0),
         size: None,
         to: None,
@@ -185,6 +191,16 @@ fn parse_item(line: &str) -> Result<Item, String> {
         match k {
             "label" => item.label = Some(v),
             "color" => item.color = Some(v),
+            "id" => {
+                if v.is_empty()
+                    || !v
+                        .chars()
+                        .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+                {
+                    return Err(format!("`{v}` is not a valid id"));
+                }
+                item.id = Some(v);
+            }
             "pad" => {
                 item.pad = Some(
                     v.parse::<f64>()
@@ -288,6 +304,9 @@ pub fn to_json(doc: &AnnotDoc) -> String {
             out.push(',');
         }
         let _ = write!(out, "{{\"kind\":\"{}\"", item.kind.as_str());
+        if let Some(id) = &item.id {
+            let _ = write!(out, ",\"id\":{}", esc_json(id));
+        }
         match &item.place {
             Place::At(x, y) => {
                 let _ = write!(out, ",\"x\":{x},\"y\":{y}");
@@ -442,6 +461,20 @@ mod tests {
         // `;`, `{` and `}` are gone: nothing an attribute value can smuggle
         // into a style survives the filter.
         assert_eq!(json["items"][0]["color"], "red body");
+    }
+
+    #[test]
+    fn an_item_may_carry_an_id_for_the_rest_of_the_deck_to_point_at() {
+        let doc = parse("target: fig\ncircle 40,30 20x20 : id=a-hot label=\"here\"\n");
+        assert!(doc.errors.is_empty(), "{:?}", doc.errors);
+        assert_eq!(doc.items[0].id.as_deref(), Some("a-hot"));
+        assert!(to_json(&doc).contains("\"id\":\"a-hot\""));
+    }
+
+    #[test]
+    fn an_id_that_would_not_survive_a_selector_is_refused() {
+        let doc = parse("target: fig\ncircle 40,30 20x20 : id=\"a b\"\n");
+        assert!(doc.errors[0].contains("not a valid id"), "{:?}", doc.errors);
     }
 
     #[test]

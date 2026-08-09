@@ -208,6 +208,11 @@
       (notes && notes.innerHTML.trim() ? notes.innerHTML : '<em>(no notes for this slide)</em>');
   }
 
+  // Re-route the current slide's connectors. The annotation overlay calls
+  // this after it draws, because a connector may point at a mark that does
+  // not exist until the overlay has laid it out.
+  window.__mirzamConnectors = () => drawConnectors(slides()[cur]);
+
   // Restore the current page after a live update. An edit must not replay the
   // slide's entrance: the presenter is looking at a step, not at slide one.
   window.__mirzamRefresh = () => show(cur, { play: false });

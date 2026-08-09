@@ -364,18 +364,15 @@ curve instead of computing one. Press `→` twice.
 |                                        |
 |  head                                  |
 |                                        |
-+------------------+---------------------+
-|                  |                     |
-|                  |                     |
-|                  |                     |
-|  shot            |  small              |
-|                  |                     |
-|                  |                     |
-|                  |                     |
-+------------------+---------------------+
-|                                        |
-|  note                                  |
-+----------------------------------------+
++---------------------+------------------+
+|                     |                  |
+|                     |                  |
+|                     |                  |
+|  shot               |  text            |
+|                     |                  |
+|                     |                  |
+|                     |                  |
++---------------------+------------------+
 ```
 
 ::: pane head
@@ -387,46 +384,94 @@ curve instead of computing one. Press `→` twice.
 ![A grid of glowing nodes](media/bg/mesh.jpg){fit=contain}
 :::
 
-::: pane small {valign=middle}
-![The same picture, in a different box](media/bg/mesh.jpg){fit=contain}
-:::
+::: pane text {valign=middle}
+Press `→` twice.
 
-::: pane note {valign=middle}
-Press `→`. The same four numbers over two differently shaped boxes: a coordinate is a percentage of the **picture**, not of the pane — so the letterboxing either side of it does not move the mark.
+A mark is placed in percentages of the **picture**, and given an id — so the
+sentence can point at [the region itself]{#t-hot .u}, not at a spot on the
+slide.
+
+```markdown
+circle 62,38 34x34 : id=hot step=1
+```
 :::
 
 ```annotate
 target: shot
-circle 62,38 34x34 : label="the hot corner" step=1
-arrow  18,86 -> 55,48 : step=1
-text   6,90 "resize the window - the marks stay put" : step=2
+circle 62,38 34x34 : id=hot label="the hot corner" step=1
+arrow  16,88 -> 55,48 : step=2
 ```
 
-```annotate
-target: small
-circle 62,38 34x34 : color=@accent2 step=1
+```connect
+#t-hot -> #hot : color=@accent2
 ```
 
-<!-- note: One click adds the marks. The same block over a smaller copy lands on the same node - and the PDF, which has no clicks, shows every mark. -->
+<!-- note: The connector's endpoint is drawn by the annotation overlay, so it only exists once the marks do - and it arrives with them. -->
 
 ---
 
 ```pane
-+------------------------------------+
-|                                    |
-|  head                              |
-+------------------+-----------------+
-|                  |                 |
-|                  |                 |
-|  bars            |  note           |
-|                  |                 |
-|                  |                 |
-+------------------+-----------------+
++----------------------------------------+
+|                                        |
+|  head                                  |
+|                                        |
++------------------+---------------------+
+|                  |                     |
+|  text            |                     |
+|                  |  shot               |
+|                  |                     |
++------------------+                     |
+|  foot            |                     |
++------------------+---------------------+
 ```
 
 ::: pane head
 [Annotations]{.eyebrow}
-## A chart needs no coordinates at all
+## The same three lines, after you moved everything
+:::
+
+::: pane text {valign=middle}
+This slide's `annotate` block is **byte for byte the one on the slide before**.
+Everything around it changed: the picture swapped sides, took a different
+shape, and lost a third of its width.
+
+The circle is still on the same node.
+:::
+
+::: pane foot {valign=middle}
+[The numbers are not pixels, and that is the point.]{.small}
+:::
+
+::: pane shot {valign=middle}
+![The same picture, re-laid-out](media/bg/mesh.jpg){fit=contain}
+:::
+
+```annotate
+target: shot
+circle 62,38 34x34 : id=hot label="the hot corner" step=1
+arrow  16,88 -> 55,48 : step=2
+```
+
+<!-- note: Byte for byte the block on the slide before. Nothing in it knows where the pane went. -->
+
+---
+
+```pane
++----------------------------------------+
+|                                        |
+|  head                                  |
++---------------------+------------------+
+|                     |                  |
+|                     |                  |
+|  bars               |  note            |
+|                     |                  |
+|                     |                  |
++---------------------+------------------+
+```
+
+::: pane head
+[Annotations]{.eyebrow}
+## A chart mark needs no coordinates
 :::
 
 ::: pane bars
@@ -443,19 +488,76 @@ data: |
 :::
 
 ::: pane note {valign=middle}
-Every chart mark already has an id, so an annotation can name one instead of
-measuring it:
+Every chart mark already has an id, so an annotation names one instead of
+measuring it. `#load-0-2` is series 0, row 2 — the third node on a weekday.
 
 ```markdown
+  n-1, 41, 22
+  n-2, 38, 24
+  n-3, 74, 26
+
 rect #load-0-2 : pad=10 step=1
 ```
-
-[Change the numbers in the CSV and the box follows the bar. A hand-tuned coordinate would not.]{.small}
 :::
 
 ```annotate
 target: bars
-rect #load-0-2 : pad=10 color=@accent2 label="one node, twice the load" step=1
+rect #load-0-2 : pad=10 color=@accent2 label="#load-0-2" step=1
 ```
 
-<!-- note: The mark is taken from the bar's live box, so it survives a data change. -->
+<!-- note: The next slide changes two numbers in the CSV. The annotate block is identical. -->
+
+---
+
+```pane
++----------------------------------------+
+|                                        |
+|  head                                  |
++---------------------+------------------+
+|                     |                  |
+|                     |                  |
+|  bars               |  note            |
+|                     |                  |
+|                     |                  |
++---------------------+------------------+
+```
+
+::: pane head
+[Annotations]{.eyebrow}
+## Change the numbers; the box follows
+:::
+
+::: pane bars
+```chart
+type: bar
+id: load
+title: Requests per node (thousands)
+data: |
+  node, weekday, weekend
+  n-1, 77, 22
+  n-2, 38, 24
+  n-3, 19, 26
+```
+:::
+
+::: pane note {valign=middle}
+**Two numbers changed** in the CSV above, and the `annotate` block did not.
+The box is still around `#load-0-2` — which is now the *short* bar, so it
+shrank and moved down with it.
+
+```markdown
+  n-1, 77, 22
+  n-2, 38, 24
+  n-3, 19, 26
+
+rect #load-0-2 : pad=10 step=1
+```
+:::
+
+```annotate
+target: bars
+rect #load-0-2 : pad=10 color=@accent2 label="#load-0-2" step=1
+```
+
+<!-- note: A hand-measured rectangle would now be pointing at empty air. -->
+
