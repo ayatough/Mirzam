@@ -9,8 +9,8 @@ slide and tests — that can be merged on its own. Half a feature cannot.
 
 ## Ground rules for this batch
 
-1. **Branch from `main`, not from another stream.** W0 lands first; everything
-   else branches from `main` after it.
+1. **Branch from `main`, not from another stream.** Every stream in the current
+   batch branches from `main`; none of them blocks another.
 2. **One stream owns a file.** The contention hotspots are listed per stream. If
    you need to touch a file another stream owns, change the contract in this
    document instead and say so.
@@ -26,15 +26,19 @@ slide and tests — that can be merged on its own. Half a feature cannot.
    themed must look correct with JavaScript disabled and in PDF export. The
    runtime opts *into* motion; it never opts out of correctness.
 
-## Sequencing
+## Where this stands
+
+The first batch (W0–W7) is on `main` and in daily use. What follows is the
+second batch, written after presenting with the thing: every item below came
+from a deck someone was actually trying to give.
 
 | Phase | Streams | Why |
 |---|---|---|
-| 0 | W0 | Splits the one file every other stream needs to edit |
-| 1 | W1, W3, W4, W5, W7 | Independent; different crates and different theme files |
-| 2 | W2, W6 | Need a contract from phase 1, not its code |
-| 3 | W8 | Needs W6 (annotations) and W7 (source map) |
-| 4 | W9 | Integration, then `main` |
+| done | W0–W4, W6, W7 | Animation, effects, themes, annotations, source map |
+| 1 | W10, W11 | Independent; the viewer's own chrome and the authoring layer |
+| 2 | W12, W13 | W12 needs the chrome from W10; W13 needs nothing |
+| 3 | W14 | Retires an authoring pattern the other streams now cover |
+| 4 | W9 | Integration, benchmark, `v0.1.0` |
 
 ## Assignment
 
@@ -54,11 +58,30 @@ there is. The model column follows from that:
 | W2 | Animation runtime and slide transitions | S | Opus | W0, W1 contract | ✅ |
 | W3 | Named themes and dark mode | B | Sonnet | W0 | ✅ |
 | W4 | Presentation effects | C | Fable | W0 | ✅ |
-| W5 | Typst-flavoured math | A | Sonnet | — | |
 | W6 | Annotations on images and charts | S | Opus | W0 | ✅ |
 | W7 | Source map through transclusion | A | Sonnet | — | ✅ |
-| W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | |
-| W9 | Release hardening and merge to `main` | A | Opus | all | |
+| W10 | Continuation: one pane carries on, the rest hold | B | Opus | — | |
+| W11 | Viewer chrome: cheat sheet, touch controls, gestures | C | Fable | — | |
+| W12 | Presenter window | B | Sonnet | W11 | |
+| W13 | Table of contents from headings | B | Sonnet | — | |
+| W14 | Linking by annotation, not by arrow | C | Sonnet | W6 | |
+| W9 | Release hardening and `v0.1.0` | A | Opus | all | |
+| W5 | Typst-flavoured math | A | Sonnet | — | deferred |
+| W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
+
+### What is deferred, and why
+
+Neither is cancelled; both are off the critical path to a tool people present
+with every week.
+
+- **W5 (Typst math).** LaTeX already renders correctly through MathML, and the
+  decks that need it are being written today. A second front end is a
+  convenience for authors who dislike LaTeX, not a capability the deck lacks.
+- **W8 (drag an annotation back into the Markdown).** The most expensive stream
+  in the plan — an edit channel, byte-range rewriting, conflict handling — and
+  the one whose absence hurts least, because the editing surface people
+  actually use is their editor, with `mirzam serve` beside it. W7 landed, so
+  the hard half is already done whenever this comes back.
 
 ---
 
@@ -379,9 +402,150 @@ everything.
 
 **Owns:** `theme/effects.js`, `crates/mirzam-render/src/effects.rs`.
 
-## W5 — Typst-flavoured math
+## W10 — Continuation: one pane carries on, the rest hold
 
-**Difficulty A · Sonnet**
+**Difficulty B · Opus**
+
+A pane of prose is often one slide's worth of *layout* and two slides' worth of
+*text*. `fit: shrink` answers that by making the type smaller, which is the
+right answer up to a point and the wrong one past it. Typst's Touying splits
+the page automatically and chooses the break itself; the break is exactly the
+decision an author wants to make.
+
+```markdown
+::: pane body
+The first half of the argument.
+
+<!-- next -->
+
+The second half, on the following slide.
+:::
+```
+
+**This is a build-time expansion, not a runtime feature.** A slide with *n*
+breaks in one pane becomes *n + 1* slides, identical except for that pane. Say
+that plainly and everything downstream keeps working unchanged: `anim`,
+`annotate`, `connect`, notes and the cache all see ordinary slides.
+
+- The marker is an HTML comment, so a plain Markdown parser shows nothing at
+  all — the same reason speaker notes are written that way.
+- Only one pane may break per slide. Two panes breaking at once is a cross
+  product nobody can predict; report it and render the slide unsplit.
+- **No page turn between continuation slides.** The other panes are identical,
+  and animating them is the flicker this feature exists to avoid. The generated
+  slides carry a marker the viewer reads as "cut, do not animate".
+- A slide's `anim` steps repeat on each continuation, which is what an author
+  writing "click 1 reveals the chart" means on every one of them.
+- Decide and document: does the counter say `4 / 20` or `4 / 12 (2 of 3)`? Start
+  with real slide numbers; a sub-count is a later refinement, not a blocker.
+
+**Owns:** `mirzam-syntax` (the marker), the slide expansion in
+`mirzam-cli/src/pipeline.rs`, `theme/viewer.js` (the cut).
+
+## W11 — Viewer chrome: cheat sheet, touch controls, gestures
+
+**Difficulty C · Fable**
+
+The viewer's keys are invisible until someone tells you about them, and on a
+phone there is no keyboard to press.
+
+- **`/` opens a cheat sheet**, as an overlay listing every key the deck
+  responds to — including the `effects` this deck binds, which are the ones
+  nobody can guess. `Esc` or `/` closes it.
+- **A control cluster** in the bottom-right: previous, next, and a button that
+  opens the same cheat sheet. Quiet by default, fading in on pointer movement
+  or touch, and never in print.
+- **Gestures**: swipe left/right to turn the page, swipe up for notes, and a
+  two-finger tap (or long press) for the cheat sheet. The existing click-zone
+  behaviour stays, since it is what a presenter with a clicker uses.
+- The hint line at the bottom-left becomes redundant; fold it into this.
+
+Constraints: no library, no layout thrash, and the cluster must not sit over
+slide content — it is chrome outside the deck, like the page counter.
+
+**Owns:** `theme/viewer.js`, `theme/base.css` (the `#hud`/`#hint` region).
+
+## W12 — Presenter window
+
+**Difficulty B · Sonnet · after W11**
+
+`P` opens a second window: the current slide, the next one, the slide's notes,
+a clock and an elapsed timer. Both windows are the same self-contained file
+opened with a flag, so nothing needs a server and the deck stays one file.
+
+- The two windows stay in step over `BroadcastChannel`, falling back to
+  `localStorage` events. Either window may drive; the presenter window is not
+  privileged.
+- Closing or reloading either one must not strand the other.
+- The audience window loses nothing: no extra chrome appears on it.
+- The notes panel (`N`) stays, for a talk given on one screen.
+
+**Owns:** `theme/presenter.js`, the `P` binding in `theme/viewer.js`.
+
+## W13 — Table of contents from headings
+
+**Difficulty B · Sonnet**
+
+````markdown
+```toc
+depth: 2
+```
+````
+
+Collects every heading in the deck, renders a list, and links each entry to the
+slide it is on. Clicking an entry goes there.
+
+The wrinkle is that this is the first thing in the deck that **needs to know
+about slides other than its own**. Slides render independently and are cached
+by content hash, so the block emits a placeholder and the pipeline substitutes
+the resolved list once every slide has rendered — the same shape as the chart
+placeholder, one level up.
+
+- `depth:` limits the heading level; default 2.
+- A heading only appears once, at the first slide that carries it.
+- Worth having and cheap once the plumbing exists: `current:` marks the section
+  being presented, which is how a section-divider deck shows progress.
+- The PDF gets the same list, with the page numbers rather than links.
+
+**Owns:** `mirzam-render/src/toc.rs`, the substitution pass in `pipeline.rs`.
+
+## W14 — Linking by annotation, not by arrow
+
+**Difficulty C · Sonnet · after W6**
+
+An arrow from a sentence to a picture is the hardest thing in the deck to make
+look deliberate: it has to leave the text without striking through it, cross
+the slide without colliding with anything, and arrive somewhere meaningful.
+`connect` does it, and it is still the feature most likely to look wrong.
+
+**The linkage is what the author wants; the line is one way to draw it.** Mark
+the phrase and mark the target *at the same moment, in the same colour*, and a
+room reads the pairing instantly with nothing crossing the slide:
+
+```markdown
+The largest win was in [ap-ne]{#t-ap}.
+
+```annotate
+target: chart
+highlight #t-ap      : color=@accent2 step=1
+rect      #lat-0-2   : color=@accent2 step=1 pad=8
+```
+```
+
+So: an annotation may target **text** as well as a picture, and gains the
+kinds text needs — `highlight`, `underline`, `box`. Both halves are annotation
+items with the same `step`, which is what makes them arrive together.
+
+`connect` stays for what it is good at: shape to shape inside a diagram, where
+both ends are boxes and the route is short. The docs should recommend that and
+stop recommending text-to-picture arrows.
+
+**Owns:** `crates/mirzam-annot`, `theme/annot.js`, the connector section of
+`docs/syntax.md`.
+
+## W5 — Typst-flavoured math (deferred)
+
+**Difficulty A · Sonnet · deferred, see the table above**
 
 LaTeX is hard to write from memory; Typst's math syntax is not. Support it as an
 alternative front end.
@@ -488,9 +652,9 @@ file now names that file.
 
 **Owns:** `crates/mirzam-syntax`.
 
-## W8 — Annotation editing, written back to Markdown
+## W8 — Annotation editing, written back to Markdown (deferred)
 
-**Difficulty S · Opus · depends on W6 and W7**
+**Difficulty S · Opus · deferred; W7 landed, so the source map is ready**
 
 The one the user asked about directly: drag the circle in the preview, and the
 Markdown updates.
@@ -519,11 +683,12 @@ editing; undo (the editor's own undo, on the Markdown file, is the story).
 
 **Owns:** `crates/mirzam-cli/src/serve.rs`, `theme/annot-edit.js`.
 
-## W9 — Release hardening and merge to `main`
+## W9 — Release hardening and `v0.1.0`
 
 **Difficulty A · Opus · last**
 
-The batch is only useful once it is on `main` and usable.
+`main` is already where the work lands; what is left is calling a version of it
+finished.
 
 - Every new block form goes through `commonmark_compat.rs`. That test is the
   promise the project makes; five new fenced blocks is exactly when it gets
