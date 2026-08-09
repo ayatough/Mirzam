@@ -101,6 +101,38 @@ Violet is the signature. Cyan, green, yellow and red are reserved for data,
 status and annotation — spending them on decoration is what makes a chart stop
 meaning anything. Full tables, light and dark, in [`palette.md`](palette.md).
 
+## In a deck
+
+The identity ships as a deck theme. Put this in a deck's frontmatter:
+
+```yaml
+css: themes/mirzam.css
+```
+
+[`examples/themes/mirzam.css`](../../examples/themes/mirzam.css) is the palette
+and the type ladder and nothing else;
+[`examples/themes/pitch.css`](../../examples/themes/pitch.css) is the same thing
+with a sales deck's furniture on top — oversized metrics, card panes — and is
+what the published sample decks use. Either can be dropped in place of the
+other: both define `.card`, `.metric` and `.eyebrow`.
+
+Three things differ from the tables above, each for a reason a web page does not
+have:
+
+- **`--mz-accent2` is the cyan, not the second violet.** In a deck that token is
+  also chart series 2, and two violets side by side in a bar chart is a chart
+  that has stopped saying anything. The second violet becomes series 6.
+- **The light theme's marks are darker.** The palette is drawn against a
+  `#F7F8FC` page; a slide is white, and the yellow fell to 2.6:1 there.
+- **The fonts are named, not fetched.** A deck is one self-contained file, so an
+  `@import` would put a network request between the audience and the first
+  slide — and the venue may have no network. Install the fonts, or accept the
+  fallback that every stack ends in.
+
+Both themes are held to `cargo test -p mirzam-cli --test sample_themes`: every
+token defined in both modes, body text at 4.5:1 and chart marks at 3:1 against
+both the slide and a raised surface.
+
 ## Regenerating
 
 The rasters are built from the files next to them, so they can be rebuilt at any
