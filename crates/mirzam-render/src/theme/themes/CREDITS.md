@@ -63,3 +63,23 @@ are drawn from memory of the published defaults (editor background/
 foreground, the `textLink.foreground` accent, syntax-highlighting colors for
 strings/keywords/types) rather than fetched from the live source, so treat
 them as representative of the VS Code look rather than a pixel-exact extract.
+
+## `mirzam`
+
+Ours, from [`docs/brand/palette.md`](../../../../../docs/brand/palette.md). The
+token half of `examples/themes/mirzam.css`; that file is still where the
+identity's *type* lives — a built-in theme is loaded before `base.css` and so
+can only set tokens, not typography.
+
+The brand sheet is drawn for a web page and a deck is not one, so two families
+of value moved. `--mz-muted` in light mode is a step darker than the brand's
+`#68708a`: that reads fine on the site's `#f7f8fc`, but a deck's raised surface
+is lighter still and secondary text on a card came out at 4.4:1. The light chart
+marks are darker than the brand's chart colours for the same reason — those are
+drawn for `#f7f8fc`, a slide is white, and the yellow fell to 2.6:1 against it.
+Same hues, enough ink to be seen.
+
+`--mz-accent2` is deliberately *not* the brand's second violet. In a deck it is
+also chart series 2, and two violets side by side in a bar chart is a chart that
+has stopped saying anything; it takes the brand's cyan, and the second violet
+becomes series 6, far from the first.

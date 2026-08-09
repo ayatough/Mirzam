@@ -726,11 +726,19 @@ theme: nord
 | `nord` | [Nord](https://www.nordtheme.com/), MIT |
 | `solarized` | [Solarized](https://ethanschoonover.com/solarized/), MIT |
 | `vscode` | VS Code Light+/Dark+, MIT |
+| `mirzam` | Mirzam's own palette, from [the brand sheet](brand/palette.md) |
 
 An unknown `theme:` name is a warning, not a build failure, and falls back to
 `default`. See
 [`themes/CREDITS.md`](../crates/mirzam-render/src/theme/themes/CREDITS.md) for
 where each palette comes from and how it maps to Mirzam's tokens.
+
+A named theme is a **palette**, not a design. `theme: mirzam` gives a deck
+Mirzam's colours in both modes; the identity's typography — Space Grotesk, the
+weight ladder, the violet rule under a section heading — lives in
+`examples/themes/mirzam.css`, because a built-in theme is loaded before the
+layout stylesheet and can only set tokens. Write `css: themes/mirzam.css` for
+the whole thing.
 
 ### Dark mode
 

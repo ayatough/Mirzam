@@ -7,6 +7,13 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+### Added
+- `theme: mirzam` — Mirzam's own palette as a built-in theme, in both modes,
+  so a deck gets the identity's colours from one word of frontmatter. It is the
+  token half of `examples/themes/mirzam.css`; the typography stays in that file,
+  because a built-in theme is loaded before the layout stylesheet and can only
+  set tokens. `css: themes/mirzam.css` is still how you get the whole thing.
+
 ## [0.1.0] - 2026-08-09
 
 First tagged release. Prebuilt binaries, a browser editor, and a deck you can

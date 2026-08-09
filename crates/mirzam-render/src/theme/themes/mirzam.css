@@ -1,0 +1,76 @@
+/* Mirzam's own palette, as a built-in theme.
+
+   This is the token half of `examples/themes/mirzam.css`, translated rather
+   than copied. A built-in theme is a token set and nothing else: `theme_css`
+   puts it *before* `base.css`, so a type rule written here would be overridden
+   by the very stylesheet it is meant to sit on top of. `theme: mirzam` gives a
+   deck the colours; `css: themes/mirzam.css` gives it the whole identity —
+   Space Grotesk, the weight ladder, the violet rule under a section heading.
+
+   The other translation is which mode comes first. The sample file is written
+   dark-first, because that is how the mark is drawn and how a deck is usually
+   shown. A built-in cannot make that choice: the bare selector is what a
+   reader whose system prefers light gets, so light lives there and dark is
+   reached through `prefers-color-scheme` or an explicit `data-mode`. A deck
+   that wants dark on every machine writes `mode: dark`.
+
+   Palette: docs/brand/palette.md. Where a value differs from the brand sheet,
+   the reason is a deck's contrast floor rather than a change of mind — see
+   themes/CREDITS.md. */
+
+:where(:root[data-theme="mirzam"]) {
+  --mz-bg: #e7eaf4;
+  --mz-slide-bg: #ffffff;
+  --mz-fg: #17203a;
+  --mz-muted: #616981;
+  --mz-border: #dde1ec;
+  --mz-surface: #f1f3fa;
+  --mz-shape-fill: #f1f3fa;
+  --mz-accent1: #6557d9;
+  --mz-accent2: #3c6e9e;
+  --mz-chart3: #3f7f63;
+  --mz-chart4: #9e7828;
+  --mz-chart5: #b2495b;
+  --mz-chart6: #7a69f0;
+  --mz-danger-bg: #fdecef;
+  --mz-danger-fg: #b3253a;
+  --mz-danger-border: #c96a78;
+}
+@media (prefers-color-scheme: dark) {
+  :where(:root[data-theme="mirzam"]:not([data-mode="light"])) {
+    --mz-bg: #05080f;
+    --mz-slide-bg: #080c18;
+    --mz-fg: #f4f6ff;
+    --mz-muted: #8f9ab8;
+    --mz-border: #252e47;
+    --mz-surface: #0e1425;
+    --mz-shape-fill: #131b2e;
+    --mz-accent1: #9b8cff;
+    --mz-accent2: #72b5e8;
+    --mz-chart3: #72c6a2;
+    --mz-chart4: #ddb86a;
+    --mz-chart5: #e58a9a;
+    --mz-chart6: #c0b7ff;
+    --mz-danger-bg: #21131a;
+    --mz-danger-fg: #e58a9a;
+    --mz-danger-border: #c96a78;
+  }
+}
+:where(:root[data-theme="mirzam"][data-mode="dark"]) {
+  --mz-bg: #05080f;
+  --mz-slide-bg: #080c18;
+  --mz-fg: #f4f6ff;
+  --mz-muted: #8f9ab8;
+  --mz-border: #252e47;
+  --mz-surface: #0e1425;
+  --mz-shape-fill: #131b2e;
+  --mz-accent1: #9b8cff;
+  --mz-accent2: #72b5e8;
+  --mz-chart3: #72c6a2;
+  --mz-chart4: #ddb86a;
+  --mz-chart5: #e58a9a;
+  --mz-chart6: #c0b7ff;
+  --mz-danger-bg: #21131a;
+  --mz-danger-fg: #e58a9a;
+  --mz-danger-border: #c96a78;
+}

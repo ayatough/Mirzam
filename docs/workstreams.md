@@ -646,6 +646,55 @@ allows it.
 --check`, and `./scripts/build-site.sh` completing with its link check green.
 
 
+### Answers to W15's requests against W9's paths
+
+W15 asked for four things across the boundary. All four are granted; two are
+already done.
+
+**`theme: mirzam` — done, in this repository now.** `theme/themes/mirzam.css`,
+registered in `mod.rs` and `THEME_NAMES`, credited in `themes/CREDITS.md`, and
+listed in `docs/syntax.md`. It rides the existing contrast test and passes in
+both modes.
+
+It is a **token translation, not a promotion**, and the difference is worth
+stating because "one line later" turned out not to be true in a second sense as
+well. A built-in theme is concatenated *before* `base.css`, so a type rule
+written in one is overridden by the stylesheet it is meant to sit on top of.
+`theme: mirzam` therefore gives a deck the palette; Space Grotesk, the weight
+ladder and the violet rule under a section heading stay in
+`examples/themes/mirzam.css`, reached with `css:`. Both are documented that way.
+The other translation is mode order: the sample file is dark-first, a built-in
+cannot be, since the bare selector is what a light-preferring reader gets.
+
+**`docs/syntax.md` — done**, as the row above and a paragraph saying what a
+named theme does and does not carry.
+
+**`examples/brand.md` on the quality gates — granted in advance.** The deck does
+not exist yet, so there is nothing to wire up; when it lands, W15 may edit these
+three, which are otherwise W9's:
+
+| Path | Change |
+|---|---|
+| `crates/mirzam-cli/tests/common/mod.rs` | one line in `EXAMPLE_DECKS` |
+| `crates/mirzam-cli/tests/snapshots/brand.html` | generated, never hand-written: `MIRZAM_UPDATE_SNAPSHOTS=1 cargo test -p mirzam-cli --test golden` |
+| `.github/workflows/ci.yml` | one deck name in the layout-check list |
+
+The judgement behind the request is right and worth keeping: a sample deck that
+CI does not render is a deck that breaks without anyone finding out, and the
+other six are only trustworthy because they are checked.
+
+**`assets.rs` `srcset` — ratified, not reverted.** It crossed into `crates/**`,
+and it should have: a `<picture>` offering a light and a dark wordmark is how
+the README stays legible on both GitHub themes, and without inlining the
+`srcset` the source the reader's theme picks is the one still pointing at a
+relative path. The comma split is correct for data URIs with commas in the
+payload, and W9 depends on it.
+
+**`docs/brand/` stays where it is.** The root README reaches it as
+`docs/brand/...`, `scripts/build-site.sh` copies from there, and every deck and
+document that references the assets is already written against that path.
+Moving it back would be a rename with no reader-visible benefit.
+
 **Landed.** The mark, wordmark, icon, hero images, palette and pipeline diagram
 are in `docs/brand/`; `examples/themes/mirzam.css` carries the identity as a
 deck theme, and `pitch.css` was redrawn in the same palette, so every published

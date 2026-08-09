@@ -54,9 +54,10 @@ const THEMES: &[(&str, &str)] = &[
     ("nord", include_str!("themes/nord.css")),
     ("solarized", include_str!("themes/solarized.css")),
     ("vscode", include_str!("themes/vscode.css")),
+    ("mirzam", include_str!("themes/mirzam.css")),
 ];
 
-pub const THEME_NAMES: &[&str] = &["default", "nord", "solarized", "vscode"];
+pub const THEME_NAMES: &[&str] = &["default", "nord", "solarized", "vscode", "mirzam"];
 
 /// Token CSS for a named theme. Unknown names fall back to `default`; call
 /// [`theme_warning`] first if the name came from frontmatter and an unknown
@@ -356,6 +357,7 @@ mod tests {
             ("themes/nord.css", theme_tokens("nord")),
             ("themes/solarized.css", theme_tokens("solarized")),
             ("themes/vscode.css", theme_tokens("vscode")),
+            ("themes/mirzam.css", theme_tokens("mirzam")),
         ] {
             // CSS comments do not nest: `/*` inside one is ordinary text, and
             // the first `*/` ends it. So the scan alternates strictly between
