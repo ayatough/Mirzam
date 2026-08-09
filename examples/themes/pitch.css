@@ -1,6 +1,12 @@
-/* "Aurora" - a bold pitch-deck theme.
-   Overrides only the theme tokens plus a few utility classes; everything else
-   comes from the built-in stylesheet.
+/* "Aurora" - the bold pitch-deck theme, redrawn in Mirzam's palette.
+
+   Same colours and type as `themes/mirzam.css` - see docs/brand/palette.md -
+   with the furniture a sales deck needs on top: oversized metrics, card panes,
+   eyebrow labels. Reach for `mirzam.css` when you want the identity and nothing
+   else, and for this when a slide has to carry a number the back row can read.
+
+   The name and the `--aurora-*` token prefix are kept because docs/syntax.md
+   points at both by name; what changed is the palette underneath them.
 
    The theme defines both modes. A custom stylesheet's plain `:root` outranks
    the built-in tokens (which are wrapped in `:where()` and carry no
@@ -9,74 +15,112 @@
    adds specificity over this file's own `:root`, which is what makes the
    toggle work.
 
-   Aurora is a dark theme by intent, so `:root` is the dark palette and the
-   deck stays dark unless a reader asks for light. A deck that would rather
-   follow the reader's system setting writes `mode:` in its frontmatter, or
-   mirrors the built-in themes' `prefers-color-scheme` block. */
+   Dark by intent, so `:root` is the dark palette and the deck stays dark
+   unless a reader asks for light. A deck that would rather follow the reader's
+   system setting writes `mode:` in its frontmatter, or mirrors the built-in
+   themes' `prefers-color-scheme` block. */
 
 :root {
-  --mz-bg: #05070b;
-  --mz-slide-bg: #0d1117;
-  --mz-fg: #e9edf5;
-  --mz-muted: #8b93ad;
-  --mz-accent1: #5b8cff;
-  --mz-accent2: #2dd4bf;
-  --mz-border: #232a3a;
-  --mz-shape-fill: #161d2c;
-  --mz-chart3: #f6c177;
-  --mz-chart4: #c4a7e7;
-  --mz-chart5: #eb6f92;
-  --mz-chart6: #9ccfd8;
+  --mz-bg: #05080F;
+  --mz-slide-bg: #080C18;
+  --mz-fg: #F4F6FF;
+  --mz-muted: #8F9AB8;
+  --mz-border: #252E47;
+  --mz-shape-fill: #131B2E;
+
+  /* Violet leads. `--mz-accent2` is the brand's cyan rather than its second
+     violet, because in a deck this token is also chart series 2 - and two
+     violets side by side in a bar chart is a chart that says nothing. The
+     second violet becomes series 6, as far from the first as the ramp allows. */
+  --mz-accent1: #9B8CFF;
+  --mz-accent2: #72B5E8;
+  --mz-chart3: #72C6A2;
+  --mz-chart4: #DDB86A;
+  --mz-chart5: #E58A9A;
+  --mz-chart6: #C0B7FF;
+
   /* Raised panels and the error box. A custom theme has to set these too:
      they are what the shared stylesheet paints code, table headers and
      warnings with, and inheriting the built-in light values would put a pale
      panel on this dark slide. */
-  --mz-surface: #161d2c;
-  --mz-danger-bg: #3a2226;
-  --mz-danger-fg: #ff9b9b;
-  --mz-danger-border: #e5484d;
-  /* Aurora's own shades, so the rules below name a token rather than a
-     literal - a literal is a colour that cannot have a second mode. */
-  --aurora-body: #c7cede;
-  --aurora-strong: #ffffff;
-  --aurora-card: #131a27;
-  --aurora-quiet: #7b839c;
-  --aurora-pre: #0b0f16;
-  --aurora-code: #1a2231;
+  --mz-surface: #0E1425;
+  --mz-danger-bg: #21131A;
+  --mz-danger-fg: #E58A9A;
+  --mz-danger-border: #C96A78;
+
+  /* This theme's own shades, so the rules below name a token rather than a
+     literal - a literal is a colour that cannot have a second mode. The two
+     rule colours are the brand's two violets, named separately from the chart
+     tokens so decoration never spends a colour that carries data. */
+  --aurora-body: #DDE2F5;
+  --aurora-strong: #FFFFFF;
+  --aurora-card: #0E1425;
+  --aurora-quiet: #8590AD;
+  --aurora-pre: #11192D;
+  --aurora-code: #11192D;
+  --aurora-rule-a: #6557D9;
+  --aurora-rule-b: #C0B7FF;
 }
 
 :root[data-mode="light"] {
-  --mz-bg: #e8ecf3;
-  --mz-slide-bg: #ffffff;
-  --mz-fg: #10151f;
-  --mz-muted: #576076;
-  --mz-accent1: #2450c8;
-  --mz-accent2: #0a6558;
-  --mz-border: #d5dbe6;
-  --mz-shape-fill: #f1f4fa;
-  --mz-chart3: #9a6410;
-  --mz-chart4: #6d4bab;
-  --mz-chart5: #bc3060;
-  --mz-chart6: #2b6f7d;
-  --mz-surface: #f1f4fa;
-  --mz-danger-bg: #fdecec;
-  --mz-danger-fg: #97181c;
-  --mz-danger-border: #e5484d;
-  --aurora-body: #293143;
-  --aurora-strong: #05070b;
-  --aurora-card: #f6f8fc;
-  --aurora-quiet: #626b80;
-  --aurora-pre: #f3f6fb;
-  --aurora-code: #e9eefb;
+  --mz-bg: #E7EAF4;
+  --mz-slide-bg: #FFFFFF;
+  --mz-fg: #17203A;
+  /* A step darker than the brand's `muted` (#68708A), which is drawn for a
+     #F7F8FC page: on this theme's lighter card it came out at 4.4:1. */
+  --mz-muted: #616981;
+  --mz-border: #DDE1EC;
+  --mz-shape-fill: #F1F3FA;
+
+  /* Darker than the brand's chart colours for the same reason: those are drawn
+     against #F7F8FC, and a slide is white. Yellow fell to 2.6:1 there. */
+  --mz-accent1: #6557D9;
+  --mz-accent2: #3C6E9E;
+  --mz-chart3: #3F7F63;
+  --mz-chart4: #9E7828;
+  --mz-chart5: #B2495B;
+  --mz-chart6: #7A69F0;
+
+  --mz-surface: #F1F3FA;
+  --mz-danger-bg: #FDECEF;
+  --mz-danger-fg: #B3253A;
+  --mz-danger-border: #C96A78;
+
+  --aurora-body: #2A3352;
+  --aurora-strong: #080C18;
+  --aurora-card: #F6F8FC;
+  --aurora-quiet: #626B80;
+  --aurora-pre: #F1F3FA;
+  --aurora-code: #EEF0F7;
+  --aurora-rule-a: #6557D9;
+  --aurora-rule-b: #8B7CFF;
+}
+
+/* Type: Space Grotesk sets headings, Inter sets text - see docs/brand/README.md
+   for the weight ladder and why it gets heavier as the type gets smaller. The
+   faces are named but not fetched: a deck is one self-contained file, and an
+   `@import` would put a network request between the audience and the first
+   slide. Anyone with them installed gets them; every stack ends in a system
+   face of similar width for everyone else, Japanese included. */
+
+#deck, .grid {
+  font-family: Inter, "IBM Plex Sans", 'Hiragino Kaku Gothic ProN', 'Hiragino Sans',
+    'Noto Sans CJK JP', 'Noto Sans JP', 'Yu Gothic Medium', Meiryo, sans-serif;
+}
+
+h1, h2, h3, .eyebrow, .metric {
+  font-family: "Space Grotesk", 'Hiragino Kaku Gothic ProN', 'Hiragino Sans',
+    'Noto Sans CJK JP', 'Noto Sans JP', 'Yu Gothic Medium', Meiryo, sans-serif;
 }
 
 .grid { padding: 52px 68px; gap: 26px; }
 
-h1 { font-size: 3em; letter-spacing: -0.02em; line-height: 1.15; }
+h1 { font-weight: 300; font-size: 3em; letter-spacing: -0.03em; line-height: 1.15; }
 h2 {
+  font-weight: 400;
   font-size: 1.7em;
   border-bottom: none;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   padding-bottom: 0;
 }
 /* A short accent rule under section headings instead of a full-width border */
@@ -87,16 +131,18 @@ h2 {
   height: 4px;
   margin-top: 14px;
   border-radius: 2px;
-  background: linear-gradient(90deg, var(--mz-accent1), var(--mz-accent2));
+  background: linear-gradient(90deg, var(--aurora-rule-a), var(--aurora-rule-b));
 }
-h3 { color: var(--mz-accent2); letter-spacing: .02em; }
+h3 { font-weight: 500; color: var(--mz-accent1); letter-spacing: -0.01em; }
 p, li { color: var(--aurora-body); }
 strong { color: var(--aurora-strong); }
-blockquote { border-left-color: var(--mz-accent2); color: var(--mz-fg); font-size: 1.05em; }
+blockquote { border-left-color: var(--mz-accent1); color: var(--mz-fg); font-size: 1.05em; }
 
 /* Oversized figure used for headline metrics */
-.metric { font-size: 4.4em; font-weight: 700; line-height: 1; color: var(--aurora-strong); letter-spacing: -0.03em; }
-.metric-up { color: var(--mz-accent2); }
+.metric { font-size: 4.4em; font-weight: 500; line-height: 1; color: var(--aurora-strong); letter-spacing: -0.04em; }
+/* A number that went the right way is green, not violet: the semantic colours
+   are reserved for meaning, and "up" is the one thing this class means. */
+.metric-up { color: var(--mz-chart3); }
 .metric-label { font-size: 1.05em; color: var(--mz-muted); margin-top: .35em; }
 
 /* Card-like panes */
@@ -108,10 +154,11 @@ blockquote { border-left-color: var(--mz-accent2); color: var(--mz-fg); font-siz
 }
 .card h3 { margin-top: 0; }
 
-/* Eyebrow label above a heading */
+/* Eyebrow label above a heading. The one place Space Grotesk is set below 20px,
+   so it goes up to 500 and opens its tracking out to stay a label. */
 .eyebrow {
-  font-size: .85em; letter-spacing: .18em; text-transform: uppercase;
-  color: var(--mz-accent2); margin-bottom: .4em;
+  font-size: .85em; font-weight: 500; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--mz-accent1); margin-bottom: .4em;
 }
 
 /* Quiet footer line */
@@ -122,7 +169,7 @@ th { background: var(--mz-surface); color: var(--mz-fg); }
 th, td { border-color: var(--mz-border); }
 
 pre { background: var(--aurora-pre); border-color: var(--mz-border); }
-p code, li code { background: var(--aurora-code); color: var(--mz-accent2); }
+p code, li code { background: var(--aurora-code); color: var(--mz-accent1); }
 
-.title-slide { font-size: 3.6em; }
+.title-slide { font-size: 3.6em; font-weight: 300; letter-spacing: -0.03em; }
 section.slide:has(.title-slide) p { color: var(--mz-muted); }

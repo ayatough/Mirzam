@@ -14,6 +14,11 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   tokens. Documented in [docs/brand/README.md](docs/brand/README.md) and
   [docs/brand/palette.md](docs/brand/palette.md); the rasters rebuild with
   `node scripts/make-brand-raster.mjs`.
+- `examples/themes/mirzam.css`: the identity as a deck theme — `css:
+  themes/mirzam.css` in a deck's frontmatter. Both modes, chart series that can
+  be told apart, and the brand type ladder. `examples/themes/pitch.css` keeps
+  its name and its pitch-deck furniture but is redrawn in the same palette, so
+  every published sample deck now looks like Mirzam.
 - `srcset` is now inlined alongside `src` and `poster`, so a `<picture>` that
   offers one image for a light background and another for a dark one still
   makes a self-contained deck. Previously the source the reader's theme
