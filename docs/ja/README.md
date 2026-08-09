@@ -1,9 +1,14 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../brand/mirzam-wordmark-dark.svg">
+  <img src="../../brand/mirzam-wordmark-light.svg" alt="Mirzam" width="300">
+</picture>
+
 # Mirzam(日本語)
 
 > このディレクトリは日本語話者向けの補助資料です。**正式なドキュメントは英語版**で、
 > 使い方は英語版だけで完結します。翻訳が古い場合は英語版が正です。
 >
-> [README](../../README.md) · [クイックスタート](quickstart.md) · [記法](../syntax.md) · [アーキテクチャ](../architecture.md) · [ロードマップ](../roadmap.md) · [開発ガイド](../development.md)
+> [README](../../README.md) · [クイックスタート](quickstart.md) · [記法](../syntax.md) · [アーキテクチャ](../architecture.md) · [ロードマップ](../roadmap.md) · [開発ガイド](../development.md) · [ブランド](../../brand/README.md)
 
 ## 一言でいうと
 

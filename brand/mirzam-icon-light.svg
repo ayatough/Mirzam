@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Mirzam">
+  <defs>
+    <filter id="g" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+    <linearGradient id="h" x1="0" x2="1">
+      <stop offset="0" stop-color="#6557D9" stop-opacity="0"/>
+      <stop offset=".5" stop-color="#6557D9"/>
+      <stop offset="1" stop-color="#6557D9" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#FFFFFF"/>
+  <ellipse cx="256" cy="380" rx="165" ry="20" fill="#6557D9" opacity=".28" filter="url(#g)"/>
+  <path d="M80 380 C145 366 202 360 256 360 C310 360 367 366 432 380" fill="none" stroke="url(#h)" stroke-width="6"/>
+  <g transform="translate(256 224) scale(2.1875) translate(-64 -64)">
+    <path d="M64 7
+C66.2 40.2 68.6 55.3 121 64
+C68.6 72.7 66.2 87.8 64 121
+C61.8 87.8 59.4 72.7 7 64
+C59.4 55.3 61.8 40.2 64 7Z" fill="#17203A"/>
+  </g>
+</svg>

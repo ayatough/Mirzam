@@ -8,6 +8,16 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- `brand/`: the mark, palette and type used to present Mirzam — wordmark and
+  icon in light and dark, hero backgrounds, the pipeline diagram, a 1200×630
+  social card, and `mirzam-theme.css` carrying the Mirzam Light / Mirzam Dark
+  tokens. Documented in [brand/README.md](brand/README.md) and
+  [brand/palette.md](brand/palette.md); the rasters rebuild with
+  `node scripts/make-brand-raster.mjs`.
+- `srcset` is now inlined alongside `src` and `poster`, so a `<picture>` that
+  offers one image for a light background and another for a dark one still
+  makes a self-contained deck. Previously the source the reader's theme
+  selected was the one left pointing at a relative path.
 - `chart` blocks: `bar`, `line`, `area` and `pie` charts rendered to SVG at build
   time from inline CSV or a `.csv` file. Individual marks get stable ids
   (`<chart-id>-<series>-<row>`) so `connect` can point at a single bar or point.
@@ -221,6 +231,15 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   `chart` block quoted inside a longer fence was executed instead of shown. This
   is how documentation about Mirzam is written, and it also fixed the README's own
   example block.
+- The pipeline diagram's ASCII layout panel drew as `| | |`: XML collapses runs
+  of whitespace in `<text>` unless told otherwise, which flattened the one part
+  of the illustration whose point was its alignment.
+
+### Changed
+- The published landing page and the browser editor now use the Mirzam palette
+  and type — Space Grotesk for headings, Inter for text, IBM Plex Mono for code
+  — and follow the reader's `prefers-color-scheme` instead of being dark only.
+  The page carries a favicon and a social card, so a link to it unfurls.
 
 ## [0.0.1] - unreleased
 

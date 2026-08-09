@@ -1,4 +1,7 @@
-# Mirzam
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="brand/mirzam-wordmark-dark.svg">
+  <img src="brand/mirzam-wordmark-light.svg" alt="Mirzam" width="340">
+</picture>
 
 **Presentation decks that live in your repository.** Write plain Markdown, draw the
 layout as ASCII, and get a deck with real charts, diagrams, video and math — as a
@@ -8,7 +11,7 @@ single HTML file or a PDF.
 
 **[See the decks running →](https://ayatough.github.io/Mirzam/)**
 
-[Quick start](docs/quickstart.md) · [Syntax](docs/syntax.md) · [Layout guide](docs/layout.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](docs/development.md) · [Agents](AGENTS.md) · [日本語](docs/ja/README.md)
+[Quick start](docs/quickstart.md) · [Syntax](docs/syntax.md) · [Layout guide](docs/layout.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](docs/development.md) · [Brand](brand/README.md) · [Agents](AGENTS.md) · [日本語](docs/ja/README.md)
 
 ---
 
@@ -58,6 +61,14 @@ data: |
 The layout is the box drawing. The chart comes from the data next to it. The arrow
 points from a phrase in the sentence to an individual bar, and re-routes itself
 whenever the layout changes.
+
+## How it works
+
+![Markdown becomes an ASCII layout, then real components, then a self-contained HTML or PDF deck](brand/mirzam-concept-workflow.svg)
+
+Four stages, all at build time. Nothing in the output phones home: the charts are
+SVG, the math is MathML, the images are inlined, and the deck is one file you can
+email.
 
 ## Features
 

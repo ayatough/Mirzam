@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1442 330" role="img" aria-labelledby="t">
+  <title id="t">Mirzam Light and Mirzam Dark palettes</title>
+  <style>
+    .h { font: 500 15px "Space Grotesk", system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+    .n { font: 400 13px Inter, system-ui, sans-serif; }
+    .m { font: 400 12px "IBM Plex Mono", ui-monospace, monospace; }
+  </style>
+  <rect width="1442" height="154" fill="#F7F8FC"/>
+  <rect y="154" width="1442" height="176" fill="#080C18"/>
+  <text x="22" y="42" class="h" fill="#17203A">Mirzam Light</text>
+  <rect x="22" y="56" width="56" height="56" rx="12" fill="#F7F8FC" stroke="#D9DDEB"/>
+  <text x="22" y="132" class="n" fill="#17203A">bg</text>
+  <text x="22" y="148" class="m" fill="#68708A">#F7F8FC</text>
+  <rect x="150" y="56" width="56" height="56" rx="12" fill="#EEF0F7" stroke="#D9DDEB"/>
+  <text x="150" y="132" class="n" fill="#17203A">surface</text>
+  <text x="150" y="148" class="m" fill="#68708A">#EEF0F7</text>
+  <rect x="278" y="56" width="56" height="56" rx="12" fill="#17203A" stroke="#D9DDEB"/>
+  <text x="278" y="132" class="n" fill="#17203A">text</text>
+  <text x="278" y="148" class="m" fill="#68708A">#17203A</text>
+  <rect x="406" y="56" width="56" height="56" rx="12" fill="#68708A" stroke="#D9DDEB"/>
+  <text x="406" y="132" class="n" fill="#17203A">muted</text>
+  <text x="406" y="148" class="m" fill="#68708A">#68708A</text>
+  <rect x="534" y="56" width="56" height="56" rx="12" fill="#D9DDEB" stroke="#D9DDEB"/>
+  <text x="534" y="132" class="n" fill="#17203A">border</text>
+  <text x="534" y="148" class="m" fill="#68708A">#D9DDEB</text>
+  <rect x="662" y="56" width="56" height="56" rx="12" fill="#6557D9" stroke="#D9DDEB"/>
+  <text x="662" y="132" class="n" fill="#17203A">accent</text>
+  <text x="662" y="148" class="m" fill="#68708A">#6557D9</text>
+  <rect x="790" y="56" width="56" height="56" rx="12" fill="#8B7CFF" stroke="#D9DDEB"/>
+  <text x="790" y="132" class="n" fill="#17203A">accent 2</text>
+  <text x="790" y="148" class="m" fill="#68708A">#8B7CFF</text>
+  <rect x="918" y="56" width="56" height="56" rx="12" fill="#4F8CC9" stroke="#D9DDEB"/>
+  <text x="918" y="132" class="n" fill="#17203A">cyan</text>
+  <text x="918" y="148" class="m" fill="#68708A">#4F8CC9</text>
+  <rect x="1046" y="56" width="56" height="56" rx="12" fill="#4F9A7A" stroke="#D9DDEB"/>
+  <text x="1046" y="132" class="n" fill="#17203A">green</text>
+  <text x="1046" y="148" class="m" fill="#68708A">#4F9A7A</text>
+  <rect x="1174" y="56" width="56" height="56" rx="12" fill="#C49A45" stroke="#D9DDEB"/>
+  <text x="1174" y="132" class="n" fill="#17203A">yellow</text>
+  <text x="1174" y="148" class="m" fill="#68708A">#C49A45</text>
+  <rect x="1302" y="56" width="56" height="56" rx="12" fill="#C96A78" stroke="#D9DDEB"/>
+  <text x="1302" y="132" class="n" fill="#17203A">red</text>
+  <text x="1302" y="148" class="m" fill="#68708A">#C96A78</text>
+  <text x="22" y="196" class="h" fill="#F4F6FF">Mirzam Dark</text>
+  <rect x="22" y="210" width="56" height="56" rx="12" fill="#080C18" stroke="#252E47"/>
+  <text x="22" y="286" class="n" fill="#F4F6FF">bg</text>
+  <text x="22" y="302" class="m" fill="#8F9AB8">#080C18</text>
+  <rect x="150" y="210" width="56" height="56" rx="12" fill="#0E1425" stroke="#252E47"/>
+  <text x="150" y="286" class="n" fill="#F4F6FF">surface</text>
+  <text x="150" y="302" class="m" fill="#8F9AB8">#0E1425</text>
+  <rect x="278" y="210" width="56" height="56" rx="12" fill="#F4F6FF" stroke="#252E47"/>
+  <text x="278" y="286" class="n" fill="#F4F6FF">text</text>
+  <text x="278" y="302" class="m" fill="#8F9AB8">#F4F6FF</text>
+  <rect x="406" y="210" width="56" height="56" rx="12" fill="#8F9AB8" stroke="#252E47"/>
+  <text x="406" y="286" class="n" fill="#F4F6FF">muted</text>
+  <text x="406" y="302" class="m" fill="#8F9AB8">#8F9AB8</text>
+  <rect x="534" y="210" width="56" height="56" rx="12" fill="#252E47" stroke="#252E47"/>
+  <text x="534" y="286" class="n" fill="#F4F6FF">border</text>
+  <text x="534" y="302" class="m" fill="#8F9AB8">#252E47</text>
+  <rect x="662" y="210" width="56" height="56" rx="12" fill="#9B8CFF" stroke="#252E47"/>
+  <text x="662" y="286" class="n" fill="#F4F6FF">accent</text>
+  <text x="662" y="302" class="m" fill="#8F9AB8">#9B8CFF</text>
+  <rect x="790" y="210" width="56" height="56" rx="12" fill="#C0B7FF" stroke="#252E47"/>
+  <text x="790" y="286" class="n" fill="#F4F6FF">accent 2</text>
+  <text x="790" y="302" class="m" fill="#8F9AB8">#C0B7FF</text>
+  <rect x="918" y="210" width="56" height="56" rx="12" fill="#72B5E8" stroke="#252E47"/>
+  <text x="918" y="286" class="n" fill="#F4F6FF">cyan</text>
+  <text x="918" y="302" class="m" fill="#8F9AB8">#72B5E8</text>
+  <rect x="1046" y="210" width="56" height="56" rx="12" fill="#72C6A2" stroke="#252E47"/>
+  <text x="1046" y="286" class="n" fill="#F4F6FF">green</text>
+  <text x="1046" y="302" class="m" fill="#8F9AB8">#72C6A2</text>
+  <rect x="1174" y="210" width="56" height="56" rx="12" fill="#DDB86A" stroke="#252E47"/>
+  <text x="1174" y="286" class="n" fill="#F4F6FF">yellow</text>
+  <text x="1174" y="302" class="m" fill="#8F9AB8">#DDB86A</text>
+  <rect x="1302" y="210" width="56" height="56" rx="12" fill="#E58A9A" stroke="#252E47"/>
+  <text x="1302" y="286" class="n" fill="#F4F6FF">red</text>
+  <text x="1302" y="302" class="m" fill="#8F9AB8">#E58A9A</text>
+</svg>

@@ -1,0 +1,68 @@
+/* Mirzam brand tokens: colour, type and the weights that go with each size.
+ *
+ * This is the brand layer, for the README, the site and anything promotional.
+ * Deck themes live in crates/mirzam-render/src/theme/themes/ and do not read
+ * this file; see brand/README.md for why.
+ *
+ * The fonts are named but not loaded here, so this stylesheet stays a plain
+ * token file with no network dependency. Load them yourself, or let the
+ * fallbacks stand — every stack ends in a system font that is close in width.
+ *
+ *   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+ *   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500&family=Inter:wght@300;400;500&display=swap">
+ */
+
+:root {
+  /* Mirzam Light */
+  --mirzam-bg: #F7F8FC;
+  --mirzam-surface: #EEF0F7;
+  --mirzam-text: #17203A;
+  --mirzam-muted: #68708A;
+  --mirzam-border: #D9DDEB;
+  --mirzam-accent: #6557D9;
+  --mirzam-accent-2: #8B7CFF;
+  --mirzam-cyan: #4F8CC9;
+  --mirzam-green: #4F9A7A;
+  --mirzam-yellow: #C49A45;
+  --mirzam-red: #C96A78;
+
+  /* Type. Space Grotesk sets headings, Inter sets text, IBM Plex Mono sets
+     code — and the Japanese fallback is named in every stack, because the
+     three Latin faces have no CJK coverage at all. */
+  --mirzam-font-display: "Space Grotesk", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --mirzam-font-body: "Inter", "IBM Plex Sans", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --mirzam-font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Weights by role, not by name. Space Grotesk stops at 300, and 300 only
+     holds its shape at display sizes, so the ladder gets heavier as the type
+     gets smaller rather than lighter. */
+  --mirzam-weight-display: 300;  /* Space Grotesk, 40px and up */
+  --mirzam-weight-heading: 400;  /* Space Grotesk, 20-32px */
+  --mirzam-weight-eyebrow: 500;  /* Space Grotesk, under 20px, tracked out */
+  --mirzam-weight-lead: 300;     /* Inter, 18px and up */
+  --mirzam-weight-body: 400;
+
+  /* Space Grotesk is wide and open; large sizes want the tracking pulled in. */
+  --mirzam-tracking-display: -0.03em;
+  --mirzam-tracking-heading: -0.02em;
+  --mirzam-tracking-eyebrow: 0.12em;
+}
+
+[data-theme="dark"] {
+  /* Mirzam Dark */
+  --mirzam-bg: #080C18;
+  --mirzam-surface: #0E1425;
+  --mirzam-text: #F4F6FF;
+  --mirzam-muted: #8F9AB8;
+  --mirzam-border: #252E47;
+  --mirzam-accent: #9B8CFF;
+  --mirzam-accent-2: #C0B7FF;
+  --mirzam-cyan: #72B5E8;
+  --mirzam-green: #72C6A2;
+  --mirzam-yellow: #DDB86A;
+  --mirzam-red: #E58A9A;
+
+  /* Light type on a dark ground looks a step thinner than it measures, so the
+     light lead weight is not used here: leads set at body weight instead. */
+  --mirzam-weight-lead: 400;
+}

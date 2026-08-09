@@ -104,6 +104,7 @@ collide:
 | CLI / server | `crates/mirzam-cli` | Owns caching and watching |
 | Editor / browser | `editors/vscode`, `web/`, `mirzam-wasm` | JavaScript plus bindings |
 | Docs / samples | `docs/`, `examples/` | Prose and decks |
+| Brand | `brand/`, the landing page in `scripts/build-site.sh` | Mark, palette, type; nothing here ships inside a user's deck |
 
 **Contention hotspots.** Coordinate before two agents edit these at once:
 
@@ -130,6 +131,12 @@ slide to `examples/showcase.md` → update snapshots.
 layout shared by every theme, or `theme/themes/*.css` for one theme's tokens →
 rebuild the sample decks → run the layout checker → look at the screenshots →
 update snapshots.
+
+**Touch the brand.** `brand/` is presentation, not product: the README header,
+the site, link previews. Deck themes are separate on purpose, so a change here
+never rewrites a snapshot. The wordmark carries its type as outlines because
+GitHub loads no webfonts - regenerate it rather than retyping the paths, and see
+[brand/README.md](brand/README.md) for the recipe and the weights.
 
 **Fix a rendering bug.** Reproduce it in a minimal deck first and keep that deck as
 a test fixture if it is small. Check whether `scripts/check-layout.mjs` could have

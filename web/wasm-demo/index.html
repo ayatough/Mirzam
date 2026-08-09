@@ -4,38 +4,47 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Write a Mirzam deck in your browser</title>
+<!-- Copied in beside this file by scripts/build-site.sh, so the editor tab
+     carries the same mark as the rest of the site. -->
+<link rel="icon" href="favicon.svg">
 <style>
+  /* Mirzam Dark, from brand/mirzam-theme.css. */
+  :root {
+    --bg: #080C18; --surface: #0E1425; --raised: #161E33; --fg: #F4F6FF;
+    --muted: #8F9AB8; --line: #252E47; --accent: #9B8CFF; --accent-2: #C0B7FF;
+    --green: #72C6A2; --red: #E58A9A;
+  }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; font-family: system-ui, 'Hiragino Sans', 'Noto Sans CJK JP', sans-serif; }
-  body { display: flex; flex-direction: column; background: #14161d; color: #dde1ee; }
+  html, body { margin: 0; height: 100%; font-family: Inter, system-ui, 'Hiragino Sans', 'Noto Sans CJK JP', sans-serif; }
+  body { display: flex; flex-direction: column; background: var(--bg); color: var(--fg); }
   header {
     padding: 8px 12px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
-    border-bottom: 1px solid #2a2e3d;
+    border-bottom: 1px solid var(--line);
   }
   header h1 { font-size: 15px; margin: 0 6px 0 0; font-weight: 600; white-space: nowrap; }
-  .stat { font-size: 12px; color: #9aa1b8; font-variant-numeric: tabular-nums; }
-  .stat b { color: #12b8a6; font-weight: 600; }
+  .stat { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .stat b { color: var(--green); font-weight: 600; }
   .spacer { flex: 1; }
   button, label.btn {
     font: inherit; font-size: 13px; padding: 5px 11px; border-radius: 8px; cursor: pointer;
-    color: #dde1ee; background: #232838; border: 1px solid #39405a; white-space: nowrap;
+    color: var(--fg); background: var(--raised); border: 1px solid var(--line); white-space: nowrap;
   }
-  button:hover, label.btn:hover { background: #2d3348; }
-  button.primary { background: #1f6f66; border-color: #2aa294; color: #fff; }
-  button.primary:hover { background: #24857a; }
-  button[aria-pressed="true"] { background: #2d3348; border-color: #5b8cff; }
+  button:hover, label.btn:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #101627; font-weight: 600; }
+  button.primary:hover { background: var(--accent-2); border-color: var(--accent-2); }
+  button[aria-pressed="true"] { background: var(--raised); border-color: var(--accent); }
   input[type=file] { display: none; }
   main { flex: 1; display: flex; min-height: 0; }
   textarea {
-    width: 42%; resize: horizontal; border: 0; border-right: 1px solid #2a2e3d;
-    background: #1b1e28; color: #dde1ee; padding: 14px;
-    font-family: 'SF Mono', Consolas, monospace; font-size: 13px; line-height: 1.6;
+    width: 42%; resize: horizontal; border: 0; border-right: 1px solid var(--line);
+    background: var(--surface); color: var(--fg); padding: 14px;
+    font-family: 'IBM Plex Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-size: 13px; line-height: 1.6;
     outline: none;
   }
-  #preview { flex: 1; border: 0; background: #14161d; }
+  #preview { flex: 1; border: 0; background: var(--bg); }
   #warnings {
     max-height: 22%; overflow: auto; padding: 6px 14px; font-size: 12px;
-    color: #ffb4b4; background: #2a1e22; border-top: 1px solid #4a2a2a;
+    color: var(--red); background: #21131A; border-top: 1px solid #45222E;
   }
   #warnings:empty { display: none; }
   #tabs { display: none; gap: 6px; }
