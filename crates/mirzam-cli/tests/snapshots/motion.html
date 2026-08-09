@@ -98,11 +98,11 @@ label, as one group — so a bar rises with its number on top:</p>
 </div>
 <div class="pane pane-c ph-c" data-pane="c" style="grid-area:c;display:flex;flex-direction:column;justify-content:center"><p><img src="<data-uri len=37895>" alt="Mountains at dusk" /></p>
 </div>
-<div class="pane pane-foot" data-pane="foot" style="grid-area:foot"><p><span class="small">A pane holding a photo is a target like any other: two fades in, then the first fades <strong>out</strong> as the last arrives. Step <code>←</code> and it comes back; the PDF shows all three.</span></p>
+<div class="pane pane-foot" data-pane="foot" style="grid-area:foot"><p><span class="small">A pane holding a photo is a target like any other. Each one arrives on its own click, and none of them leaves — stepping <code>←</code> takes them back off in the order they came.</span></p>
 </div>
 </div>
-<script type="application/json" class="mz-anim">{"steps":3,"tracks":[{"delay":0,"dur":500,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".ph-a","split":null},"trigger":{"kind":"click","n":1}},{"delay":0,"dur":500,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".ph-b","split":null},"trigger":{"kind":"click","n":2}},{"delay":0,"dur":400,"ease":"linear","effect":"fade-out","stagger":0,"target":{"sel":".ph-a","split":null},"trigger":{"kind":"click","n":3}},{"delay":0,"dur":500,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".ph-c","split":null},"trigger":{"kind":"click","n":3}}]}</script>
-<aside class="notes"><p>fade-out holds its end state; stepping back cancels it and restores the photo.</p>
+<script type="application/json" class="mz-anim">{"steps":3,"tracks":[{"delay":0,"dur":500,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".ph-a","split":null},"trigger":{"kind":"click","n":1}},{"delay":0,"dur":500,"ease":"linear","effect":"zoom-in","stagger":0,"target":{"sel":".ph-b","split":null},"trigger":{"kind":"click","n":2}},{"delay":0,"dir":"up","dur":500,"ease":"linear","effect":"wipe-in","stagger":0,"target":{"sel":".ph-c","split":null},"trigger":{"kind":"click","n":3}}]}</script>
+<aside class="notes"><p>Three photos, three clicks, three different entrances.</p>
 </aside>
 </section>
 <section class="slide" data-index="5">

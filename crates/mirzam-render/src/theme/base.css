@@ -29,7 +29,7 @@ section.slide.active { display: block; z-index: 1; }
 section.slide.mz-leaving { display: block; z-index: 0; pointer-events: none; }
 /* Opaque so a sliding page turn covers the slide it is replacing instead of
    showing both sets of words at once. Identical to the deck's own colour, so
-   nothing changes outside a transition. */
+   nothing changes outside a transition.
    While a slide is being composited for a transform animation Chromium applies
    the deck's overflow clip without its corner radius, so the slide carries the
    radius itself and the corners stay right mid-turn. */

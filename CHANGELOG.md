@@ -87,7 +87,9 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   one picture means that picture, letterboxing excluded — or by naming another
   element's id, which needs no coordinates and survives a data change. The
   overlay is re-measured on every resize, and it is the one script the print
-  page carries, so the marks reach the PDF.
+  page carries, so the marks reach the PDF. `step=N` holds an item back until
+  the Nth click, counting towards the slide's steps like any other build —
+  and a page with no viewer still shows every mark.
 - `mirzam build --base-url <url>` says where the input file's directory lives
   once published, so a deck served from somewhere other than beside its source
   still resolves its links to other documents.
@@ -114,6 +116,17 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - Upgraded comrak to 0.54 and enabled CJK-friendly emphasis.
 
 ### Fixed
+- Slides were transparent, so a page turn showed the departing slide through
+  the arriving one and the previous layout appeared to linger. A stray `*/` had
+  closed a comment early in `base.css`; the prose after it became CSS, and the
+  parser's error recovery swallowed the rule that paints a slide opaque. Two
+  tests now stand where the comment was: one rejects a `*/` outside a comment
+  in any shipped stylesheet, the other asserts the rule itself is present.
+- Turning back to a slide that declares its own `[enter] slide` track played no
+  arrival at all — the custom track replaced the page turn, and a backwards
+  entrance is deliberately not replayed — so the departing slide slid away with
+  nothing covering it. Going backwards now always plays the deck's page turn,
+  reversed.
 - Arriving at a slide whose exit transition was still running left it stranded
   off-screen: the guard that stops a repaint from cancelling an animation in
   flight also skipped staging the slide being arrived at, so it kept the

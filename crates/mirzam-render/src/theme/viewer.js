@@ -20,7 +20,21 @@
   try { transition = JSON.parse(deck.dataset.transition || 'null'); } catch (e) {}
   // How far through the current slide's click steps we are.
   let step = 0;
-  const stepsOn = (sec) => (anim && sec ? anim.steps(sec) : 0);
+  // The annotation overlay is loaded after this file, and is absent from decks
+  // that annotate nothing, so it is looked up when needed rather than captured.
+  const annot = () => window.MZAnnot || null;
+  // A slide's steps are however many the animation and the annotations
+  // between them ask for: either may be the last thing waiting for a click.
+  const stepsOn = (sec) => {
+    if (!sec) return 0;
+    const a = anim ? anim.steps(sec) : 0;
+    const n = annot();
+    return Math.max(a, n ? n.steps(sec) : 0);
+  };
+  const showStep = (sec) => {
+    const n = annot();
+    if (n && sec) n.show(sec, step);
+  };
 
   function fit() {
     const s = Math.min(innerWidth / (W + 40), innerHeight / (H + 40));
@@ -52,6 +66,7 @@
     // revealed; arriving forwards means starting from its first step.
     if (changed) step = backwards ? stepsOn(sec) : 0;
     if (anim) anim.show(sec, step, transition, { play, backwards: backwards && changed, arriving: changed });
+    showStep(sec);
     updateHud(ss.length, sec);
     // replaceState throws inside srcdoc iframes (editor previews). Recording the
     // page position is optional, so a failure must not abort the rest of the update.
@@ -74,9 +89,12 @@
     const ms = anim.leave(sec, transition, backwards);
     clearTimeout(leaveTimer);
     document.querySelectorAll('section.mz-leaving').forEach((s) => s.classList.remove('mz-leaving'));
-    if (!ms) return;
+    if (!ms) { anim.settle(sec); return; }
     sec.classList.add('mz-leaving');
-    leaveTimer = setTimeout(() => sec.classList.remove('mz-leaving'), ms + 30);
+    leaveTimer = setTimeout(() => {
+      sec.classList.remove('mz-leaving');
+      anim.settle(sec);
+    }, ms + 30);
   }
 
   // Forward through the slide's click steps first, then on to the next slide.
@@ -84,7 +102,8 @@
     const sec = slides()[cur];
     if (step < stepsOn(sec)) {
       step += 1;
-      anim.step(sec, step);
+      if (anim) anim.step(sec, step);
+      showStep(sec);
       updateHud(slides().length, sec);
     } else {
       show(cur + 1);
@@ -94,8 +113,9 @@
   function retreat() {
     const sec = slides()[cur];
     if (step > 0) {
-      anim.unstep(sec, step);
+      if (anim) anim.unstep(sec, step);
       step -= 1;
+      showStep(sec);
       updateHud(slides().length, sec);
     } else {
       show(cur - 1);

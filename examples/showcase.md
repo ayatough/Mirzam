@@ -360,16 +360,22 @@ curve instead of computing one. Press `→` twice.
 ---
 
 ```pane
-+------------------------------------+
-|                                    |
-|  head                              |
-+------------------+-----------------+
-|                  |                 |
-|                  |                 |
-|  shot            |  bars           |
-|                  |                 |
-|                  |                 |
-+------------------+-----------------+
++----------------------------------------+
+|                                        |
+|  head                                  |
+|                                        |
++------------------+---------------------+
+|                  |                     |
+|                  |                     |
+|                  |                     |
+|  shot            |  small              |
+|                  |                     |
+|                  |                     |
+|                  |                     |
++------------------+---------------------+
+|                                        |
+|  note                                  |
++----------------------------------------+
 ```
 
 ::: pane head
@@ -378,7 +384,49 @@ curve instead of computing one. Press `→` twice.
 :::
 
 ::: pane shot {valign=middle}
-![A grid of glowing nodes](media/bg/mesh.jpg)
+![A grid of glowing nodes](media/bg/mesh.jpg){fit=contain}
+:::
+
+::: pane small {valign=middle}
+![The same picture, in a different box](media/bg/mesh.jpg){fit=contain}
+:::
+
+::: pane note {valign=middle}
+Press `→`. The same four numbers over two differently shaped boxes: a coordinate is a percentage of the **picture**, not of the pane — so the letterboxing either side of it does not move the mark.
+:::
+
+```annotate
+target: shot
+circle 62,38 34x34 : label="the hot corner" step=1
+arrow  18,86 -> 55,48 : step=1
+text   6,90 "resize the window - the marks stay put" : step=2
+```
+
+```annotate
+target: small
+circle 62,38 34x34 : color=@accent2 step=1
+```
+
+<!-- note: One click adds the marks. The same block over a smaller copy lands on the same node - and the PDF, which has no clicks, shows every mark. -->
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|  bars            |  note           |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Annotations]{.eyebrow}
+## A chart needs no coordinates at all
 :::
 
 ::: pane bars
@@ -394,16 +442,20 @@ data: |
 ```
 :::
 
-```annotate
-target: shot
-circle 62,38 34x34 : label="the hot corner"
-arrow  18,86 -> 55,48
-text   6,90 "coordinates are percentages of the picture"
+::: pane note {valign=middle}
+Every chart mark already has an id, so an annotation can name one instead of
+measuring it:
+
+```markdown
+rect #load-0-2 : pad=10 step=1
 ```
+
+[Change the numbers in the CSV and the box follows the bar. A hand-tuned coordinate would not.]{.small}
+:::
 
 ```annotate
 target: bars
-rect #load-0-2 : pad=10 color=@accent2 label="one node, twice the load"
+rect #load-0-2 : pad=10 color=@accent2 label="one node, twice the load" step=1
 ```
 
-<!-- note: The left block points with coordinates; the right one names a chart mark and needs none. -->
+<!-- note: The mark is taken from the bar's live box, so it survives a data change. -->

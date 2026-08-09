@@ -180,8 +180,8 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <div id="hud"></div>
 <div id="hint">← → navigate / N notes / F fullscreen / L layout / D mode</div>
 <div id="notes-panel" hidden></div>
-{anim_js}<script>{js}</script>
-{annot_js}{effects_js}{live_js}</body>
+{anim_js}{annot_js}<script>{js}</script>
+{effects_js}{live_js}</body>
 </html>
 "#,
         title = inline::html_escape(title),

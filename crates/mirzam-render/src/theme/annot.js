@@ -131,13 +131,14 @@
     return { x: c.x - dx * t, y: c.y - dy * t };
   }
 
-  function draw(overlay, items, box, sec, m) {
+  function draw(overlay, items, box, sec, m, step) {
     const svg = overlay.firstChild;
     svg.setAttribute('viewBox', `0 0 ${sec.offsetWidth} ${sec.offsetHeight}`);
     while (svg.firstChild) svg.removeChild(svg.firstChild);
     overlay.querySelectorAll('.mz-annot-label').forEach((n) => n.remove());
 
     for (const item of items) {
+      if ((item.step || 0) > step) continue;
       const a = place(item, 'from', box, sec, m);
       if (!a) continue;
       const color = item.color || 'var(--mz-accent1)';
@@ -204,10 +205,18 @@
   }
 
   const layers = [];
-  function refresh() {
+
+  // How far through the slide's clicks we are. `Infinity` until a viewer says
+  // otherwise, so a page with no viewer — the PDF export above all — shows
+  // every mark. An annotation waits for a click; it does not depend on one.
+  const steps = new WeakMap();
+  const stepOn = (sec) => (steps.has(sec) ? steps.get(sec) : Infinity);
+
+  function refresh(only) {
     for (const l of layers) {
+      if (only && l.sec !== only) continue;
       const m = metrics(l.sec);
-      draw(l.overlay, l.items, paintedBox(l.target, m), l.sec, m);
+      draw(l.overlay, l.items, paintedBox(l.target, m), l.sec, m, stepOn(l.sec));
     }
   }
 
@@ -229,6 +238,30 @@
     }
     window.__mirzamAnnot = refresh;
   }
+
+  // What the viewer talks to. Present from the moment this file runs, because
+  // the viewer asks for a slide's step count before the overlays are mounted.
+  window.MZAnnot = {
+    // The highest click any of this slide's annotations waits for, so the
+    // viewer knows to keep stepping before it turns the page.
+    steps(sec) {
+      let n = 0;
+      for (const tag of sec.querySelectorAll(':scope > script.mz-annot')) {
+        try {
+          for (const item of JSON.parse(tag.textContent).items || []) {
+            n = Math.max(n, item.step || 0);
+          }
+        } catch (e) { /* a malformed block simply adds no steps */ }
+      }
+      return n;
+    },
+
+    show(sec, step) {
+      if (steps.get(sec) === step) return;
+      steps.set(sec, step);
+      refresh(sec);
+    },
+  };
 
   if (document.readyState === 'loading') addEventListener('DOMContentLoaded', init);
   else init();

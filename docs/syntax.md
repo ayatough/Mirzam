@@ -343,7 +343,13 @@ text   6,90 "coordinates are percentages of the picture"
   anything with an id. `pad=` in pixels gives it room to breathe. This survives
   a data change, which coordinates do not.
 - **Attributes:** `label=`, `color=` (a `@token` or a literal), `style=dashed`,
-  and `pad=` for anchored items.
+  `pad=` for anchored items, and `step=N` to hold an item back until the Nth
+  click. Attributes always come after ` : `, including on a `text` item:
+  `text 6,90 "…" : step=2`.
+- **`step=` counts as a click for the slide**, so `→` reveals the annotation
+  before it turns the page — and a page with no viewer, the PDF included,
+  shows every item regardless. An annotation waits for a click; it does not
+  depend on one.
 - Either end of an `arrow` may be an anchor: `arrow 12,70 -> #latency-1-2`
   stops at the edge of the mark rather than in the middle of it.
 

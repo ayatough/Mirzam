@@ -62,6 +62,10 @@ pub struct Item {
     pub label: Option<String>,
     pub color: Option<String>,
     pub dashed: bool,
+    /// The click step this item appears on; 0 means it is there from the
+    /// start. A deck read without the viewer — the PDF included — shows every
+    /// item regardless, the way an animated slide prints fully revealed.
+    pub step: u32,
 }
 
 #[derive(Debug, Default)]
@@ -131,6 +135,7 @@ fn parse_item(line: &str) -> Result<Item, String> {
         label: None,
         color: None,
         dashed: false,
+        step: 0,
     };
 
     match kind {
@@ -185,6 +190,11 @@ fn parse_item(line: &str) -> Result<Item, String> {
                     v.parse::<f64>()
                         .map_err(|_| format!("pad is a number of pixels, got `{v}`"))?,
                 )
+            }
+            "step" => {
+                item.step = v
+                    .parse::<u32>()
+                    .map_err(|_| format!("step is a click number, got `{v}`"))?
             }
             "style" if v == "dashed" => item.dashed = true,
             "style" => return Err(format!("unknown style `{v}` (only `dashed`)")),
@@ -310,6 +320,9 @@ pub fn to_json(doc: &AnnotDoc) -> String {
         if item.dashed {
             out.push_str(",\"dashed\":true");
         }
+        if item.step > 0 {
+            let _ = write!(out, ",\"step\":{}", item.step);
+        }
         out.push('}');
     }
     out.push_str("]}");
@@ -429,6 +442,28 @@ mod tests {
         // `;`, `{` and `}` are gone: nothing an attribute value can smuggle
         // into a style survives the filter.
         assert_eq!(json["items"][0]["color"], "red body");
+    }
+
+    #[test]
+    fn an_item_may_wait_for_a_click() {
+        let doc = parse("target: fig\ncircle 40,30 20x20 : step=2 label=\"here\"\n");
+        assert!(doc.errors.is_empty(), "{:?}", doc.errors);
+        assert_eq!(doc.items[0].step, 2);
+        assert!(to_json(&doc).contains("\"step\":2"));
+    }
+
+    #[test]
+    fn an_item_with_no_step_is_there_from_the_start() {
+        let doc = parse("target: fig\ncircle 40,30 20x20\n");
+        assert_eq!(doc.items[0].step, 0);
+        // Absent rather than zero: the runtime's default is "always shown".
+        assert!(!to_json(&doc).contains("step"));
+    }
+
+    #[test]
+    fn a_step_that_is_not_a_number_is_refused() {
+        let doc = parse("target: fig\ncircle 40,30 20x20 : step=soon\n");
+        assert!(doc.errors[0].contains("click number"), "{:?}", doc.errors);
     }
 
     #[test]

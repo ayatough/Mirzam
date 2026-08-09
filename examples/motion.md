@@ -204,17 +204,16 @@ arrow #a2 from(#store.s) to(#serve.n)
 :::
 
 ::: pane foot
-[A pane holding a photo is a target like any other: two fades in, then the first fades **out** as the last arrives. Step `←` and it comes back; the PDF shows all three.]{.small}
+[A pane holding a photo is a target like any other. Each one arrives on its own click, and none of them leaves — stepping `←` takes them back off in the order they came.]{.small}
 :::
 
 ```anim
 [click 1] .ph-a : fade-in 500ms
-[click 2] .ph-b : fade-in 500ms
-[click 3] .ph-a : fade-out 400ms
-[click 3] .ph-c : fade-in 500ms
+[click 2] .ph-b : zoom-in 500ms
+[click 3] .ph-c : wipe-in 500ms dir=up
 ```
 
-<!-- note: fade-out holds its end state; stepping back cancels it and restores the photo. -->
+<!-- note: Three photos, three clicks, three different entrances. -->
 
 ---
 

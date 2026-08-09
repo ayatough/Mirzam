@@ -223,6 +223,59 @@ mod tests {
         assert!(PRINT_CSS.contains("html.mz-debug"));
     }
 
+    /// A stray `*/` turns the prose after it into CSS, and the parser's error
+    /// recovery then swallows the *next* rule whole. That is not a typo you
+    /// see: it shipped transparent slides, and page turns showed two slides
+    /// through each other until someone noticed.
+    #[test]
+    fn stylesheets_have_no_stray_comment_markers() {
+        for (name, css) in [
+            ("base.css", BASE_CSS),
+            ("print.css", PRINT_CSS),
+            ("themes/default.css", theme_tokens("default")),
+            ("themes/nord.css", theme_tokens("nord")),
+            ("themes/solarized.css", theme_tokens("solarized")),
+            ("themes/vscode.css", theme_tokens("vscode")),
+        ] {
+            // CSS comments do not nest: `/*` inside one is ordinary text, and
+            // the first `*/` ends it. So the scan alternates strictly between
+            // code and comment, and a `*/` found in *code* is the mistake.
+            let mut rest = css;
+            loop {
+                let Some(open) = rest.find("/*") else {
+                    assert!(
+                        !rest.contains("*/"),
+                        "{name}: `*/` with no comment open before it — \
+                         everything after it is being parsed as CSS"
+                    );
+                    break;
+                };
+                assert!(
+                    !rest[..open].contains("*/"),
+                    "{name}: `*/` with no comment open before it — \
+                     everything after it is being parsed as CSS"
+                );
+                let body = &rest[open + 2..];
+                let close = body
+                    .find("*/")
+                    .unwrap_or_else(|| panic!("{name}: unterminated comment"));
+                rest = &body[close + 2..];
+            }
+        }
+    }
+
+    /// The one property a page turn depends on: a slide that is not opaque
+    /// lets the slide it is replacing show through it.
+    #[test]
+    fn slides_are_painted_opaque() {
+        assert!(
+            BASE_CSS.contains(
+                "section.slide { background: var(--mz-slide-bg); border-radius: inherit; }"
+            ),
+            "the rule that makes a slide opaque is missing or reworded"
+        );
+    }
+
     #[test]
     fn the_animation_runtime_is_separate_from_the_viewer() {
         assert!(ANIM_JS.contains("window.MZAnim"));

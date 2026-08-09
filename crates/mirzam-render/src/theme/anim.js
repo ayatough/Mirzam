@@ -352,10 +352,19 @@
       // cursor sync and live reload both land here while the previous page
       // turn is still running.
       if (!play && !arriving && busy(sec)) return;
+      // A slide's own `[enter] slide` track replaces the deck's page turn on
+      // the way forward. Backwards it does not: an entrance reversed is not a
+      // meaningful animation, and without *something* covering the departing
+      // slide the page appears to cut while the old one slides out beneath.
+      const turnIn = () => {
+        if (play && (backwards || !ownTrack(sec, 'enter'))) {
+          turn(sec, spec, spec && spec.in, backwards);
+        }
+      };
       const tl = timeline(sec);
       stop(sec);
       if (!tl) {
-        if (play && !ownTrack(sec, 'enter')) turn(sec, spec, spec && spec.in, backwards);
+        turnIn();
         return;
       }
       for (const t of tl.tracks) {
@@ -367,7 +376,7 @@
         else armTrack(sec, t);
       }
       if (!play) return;
-      if (!ownTrack(sec, 'enter')) turn(sec, spec, spec && spec.in, backwards);
+      turnIn();
       // Entering backwards lands on a slide the audience has already seen, so
       // its entrance has nothing left to reveal.
       if (!backwards) playBatch(sec, 'enter');
@@ -402,6 +411,21 @@
       let end = playBatch(sec, 'exit');
       if (!ownTrack(sec, 'exit')) end = Math.max(end, turn(sec, spec, spec && spec.out, backwards));
       return end;
+    },
+
+    // Called once a departed slide is off screen. An exit holds its end state
+    // in a *live* animation - it has no resting state to hand back to - and
+    // nothing cancelled it until the slide was next shown, so a walk through a
+    // long deck left one held animation per page behind it. Off screen there
+    // is nothing left to hold.
+    settle(sec) {
+      stop(sec);
+      const tl = timeline(sec);
+      if (!tl) return;
+      for (const t of tl.tracks) {
+        for (const el of t.els) unsave(el);
+      }
+      unsave(sec);
     },
   };
 
