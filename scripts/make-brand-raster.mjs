@@ -1,21 +1,21 @@
 // Renders the raster brand assets that a vector file cannot stand in for: the
 // social preview card (link unfurls want a PNG) and the square app icon.
 //
-//   node scripts/make-brand-raster.mjs           # writes into brand/
+//   node scripts/make-brand-raster.mjs           # writes into docs/brand/
 //   MIRZAM_CHROMIUM=/path/to/chrome node scripts/make-brand-raster.mjs
 //
-// Everything it composes is already in brand/, and the wordmark carries its type
-// as outlines, so this needs no font download and no network.
+// Everything it composes is already in docs/brand/, and the wordmark carries its
+// type as outlines, so this needs no font download and no network.
 
 import { chromium } from "playwright-core";
 import { readFileSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
-const BRAND = resolve(dirname(fileURLToPath(import.meta.url)), "..", "brand");
+const BRAND = resolve(dirname(fileURLToPath(import.meta.url)), "..", "docs", "brand");
 const MIME = { svg: "image/svg+xml", webp: "image/webp", png: "image/png" };
 
-/** brand/<name> as a data: URI, so the page needs no file:// permissions. */
+/** docs/brand/<name> as a data: URI, so the page needs no file:// permissions. */
 function asset(name) {
   const ext = name.split(".").pop();
   return `data:${MIME[ext]};base64,${readFileSync(join(BRAND, name)).toString("base64")}`;

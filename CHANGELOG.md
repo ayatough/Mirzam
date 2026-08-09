@@ -8,11 +8,11 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
-- `brand/`: the mark, palette and type used to present Mirzam — wordmark and
+- `docs/brand/`: the mark, palette and type used to present Mirzam — wordmark and
   icon in light and dark, hero backgrounds, the pipeline diagram, a 1200×630
   social card, and `mirzam-theme.css` carrying the Mirzam Light / Mirzam Dark
-  tokens. Documented in [brand/README.md](brand/README.md) and
-  [brand/palette.md](brand/palette.md); the rasters rebuild with
+  tokens. Documented in [docs/brand/README.md](docs/brand/README.md) and
+  [docs/brand/palette.md](docs/brand/palette.md); the rasters rebuild with
   `node scripts/make-brand-raster.mjs`.
 - `srcset` is now inlined alongside `src` and `poster`, so a `<picture>` that
   offers one image for a light background and another for a dark one still

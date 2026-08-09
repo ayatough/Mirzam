@@ -35,7 +35,7 @@ echo "==> building the browser editor"
 if [ "${MIRZAM_SKIP_WASM:-}" != "1" ] && ./scripts/build-wasm.sh web/wasm-demo/pkg; then
   mkdir -p "$OUT/try"
   cp -R web/wasm-demo/. "$OUT/try/"
-  cp brand/mirzam-icon-light.svg "$OUT/try/favicon.svg"
+  cp docs/brand/mirzam-icon-light.svg "$OUT/try/favicon.svg"
   TRY_CARD='<a class="card" href="try/"><b>Write one in the browser</b><span>The Rust core as WebAssembly: no install, and it runs on a phone</span></a>'
 else
   echo "  (skipped; the landing page will not link to it)"
@@ -46,7 +46,7 @@ fi
 # fetches that image separately, and cannot follow a data: URI.
 echo "==> copying brand assets"
 mkdir -p "$OUT/brand"
-cp brand/*.svg brand/*.png brand/*.webp "$OUT/brand/"
+cp docs/brand/*.svg docs/brand/*.png docs/brand/*.webp "$OUT/brand/"
 
 # The prose stays on GitHub, linked absolutely from the landing page below.
 # `actions/deploy-pages` serves this directory verbatim - no Jekyll runs, so a
@@ -76,7 +76,7 @@ cat > "$OUT/index.html" <<'HTML'
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500&family=Inter:wght@300;400&family=IBM+Plex+Mono:wght@400&display=swap">
 <style>
-  /* Mirzam Light and Mirzam Dark, straight from brand/mirzam-theme.css. The
+  /* Mirzam Light and Mirzam Dark, straight from docs/brand/mirzam-theme.css. The
      page has no theme switch: it follows the reader's, and both are drawn. */
   :root {
     --bg:#F7F8FC; --surface:#EEF0F7; --fg:#17203A; --muted:#68708A; --line:#D9DDEB;
@@ -232,7 +232,7 @@ cat > "$OUT/index.html" <<'HTML'
     <li><a href="https://github.com/ayatough/Mirzam/blob/main/docs/architecture.md">Architecture</a> — how it is built and why</li>
     <li><a href="https://github.com/ayatough/Mirzam/blob/main/docs/roadmap.md">Roadmap</a> — what works today, what is next</li>
     <li><a href="https://github.com/ayatough/Mirzam/blob/main/docs/development.md">Development guide</a> — build, test, contribute</li>
-    <li><a href="https://github.com/ayatough/Mirzam/blob/main/brand/README.md">Brand assets</a> — the mark, the palette, the type</li>
+    <li><a href="https://github.com/ayatough/Mirzam/blob/main/docs/brand/README.md">Brand assets</a> — the mark, the palette, the type</li>
     <li><a href="https://github.com/ayatough/Mirzam/blob/main/docs/ja/README.md">日本語</a></li>
   </ul>
 

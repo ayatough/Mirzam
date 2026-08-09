@@ -31,7 +31,7 @@ cargo run --release -p mirzam-cli --bin mirzam-bench   # performance benchmark
 
 node scripts/check-layout.mjs --build examples/pitch.md   # layout validation
 ./scripts/build-site.sh                                  # docs site + live decks
-node scripts/make-brand-raster.mjs                       # brand/ social card + icon PNG
+node scripts/make-brand-raster.mjs                       # docs/brand/ social card + icon PNG
 ```
 
 The layout checker and the brand rasteriser both need a browser: `npm i
@@ -55,7 +55,7 @@ crates/
 editors/vscode     live preview extension (webview runs the WASM core)
 web/wasm-demo      browser playground for the core
 examples/          sample decks, themes and data, also used as test fixtures
-brand/             mark, palette and type for the README and the site
+docs/brand/        mark, palette and type for the README and the site
 scripts/           build helpers
 ```
 

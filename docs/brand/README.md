@@ -1,6 +1,6 @@
 # Mirzam brand assets
 
-Everything used to present Mirzam: the [README](../README.md) header, the
+Everything used to present Mirzam: the [README](../../README.md) header, the
 [site](https://ayatough.github.io/Mirzam/), link previews, and any talk or post
 about the project. Colour and type tokens are in
 [`mirzam-theme.css`](mirzam-theme.css); the palette is written out in
@@ -28,8 +28,8 @@ serve both and let the browser choose:
 
 ```html
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="brand/mirzam-wordmark-dark.svg">
-  <img src="brand/mirzam-wordmark-light.svg" alt="Mirzam" width="360">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/mirzam-wordmark-dark.svg">
+  <img src="docs/brand/mirzam-wordmark-light.svg" alt="Mirzam" width="360">
 </picture>
 ```
 
@@ -52,7 +52,7 @@ Behind text, the heroes need help: the flare in the lower left is bright enough
 to swallow body copy. In a deck, that is what `dim` and `scrim` are for:
 
 ```markdown
-::: pane hero {bg=brand/mirzam-hero-dark.webp dim=0.35 scrim=bottom}
+::: pane hero {bg=docs/brand/mirzam-hero-dark.webp dim=0.35 scrim=bottom}
 ```
 
 ## Type

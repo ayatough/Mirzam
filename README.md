@@ -1,6 +1,6 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="brand/mirzam-wordmark-dark.svg">
-  <img src="brand/mirzam-wordmark-light.svg" alt="Mirzam" width="340">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/mirzam-wordmark-dark.svg">
+  <img src="docs/brand/mirzam-wordmark-light.svg" alt="Mirzam" width="340">
 </picture>
 
 **Presentation decks that live in your repository.** Write plain Markdown, draw the
@@ -11,7 +11,7 @@ single HTML file or a PDF.
 
 **[See the decks running →](https://ayatough.github.io/Mirzam/)**
 
-[Quick start](docs/quickstart.md) · [Syntax](docs/syntax.md) · [Layout guide](docs/layout.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](docs/development.md) · [Brand](brand/README.md) · [Agents](AGENTS.md) · [日本語](docs/ja/README.md)
+[Quick start](docs/quickstart.md) · [Syntax](docs/syntax.md) · [Layout guide](docs/layout.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](docs/development.md) · [Brand](docs/brand/README.md) · [Agents](AGENTS.md) · [日本語](docs/ja/README.md)
 
 ---
 
@@ -64,7 +64,7 @@ whenever the layout changes.
 
 ## How it works
 
-![Markdown becomes an ASCII layout, then real components, then a self-contained HTML or PDF deck](brand/mirzam-concept-workflow.svg)
+![Markdown becomes an ASCII layout, then real components, then a self-contained HTML or PDF deck](docs/brand/mirzam-concept-workflow.svg)
 
 Four stages, all at build time. Nothing in the output phones home: the charts are
 SVG, the math is MathML, the images are inlined, and the deck is one file you can
