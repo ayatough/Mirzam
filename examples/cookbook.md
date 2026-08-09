@@ -164,14 +164,13 @@ the cleanest way to add breathing room.
 :::
 
 ::: pane note {valign=middle}
-Between two boxes a connector is the right tool. From
-a sentence it is usually not — see Rule 5. When you
-do use one, give it a clear path.
+Between two boxes a connector is the right tool.
+From a sentence it usually is not — see Rule 5.
 
-A connector from a phrase leaves through the top or
-bottom of its underline, never sideways. Put the
-anchored phrase at the end of a line, or on a line of
-its own:
+When you do use one, give it a clear path: it
+leaves through the top or bottom of the
+underline, never sideways. Put the anchored
+phrase at the end of a line, or on one of its own.
 
 the request first hits the [cache]{#c-cache .u}
 
@@ -227,12 +226,11 @@ data: |
 ::: pane note {valign=middle}
 Every mark has an id: `#cook-<series>-<row>`.
 
-Origin traffic keeps falling even as volume grows —
+Origin traffic keeps falling —
 [by Q3 it is the smaller half]{#c-q3}
 
-Press `→`: the phrase and the bar light up together,
-in one colour. No arrow crosses the slide, and
-nothing has to be routed around the text.
+Press `→`: the phrase and the bar light up
+together, in one colour.
 :::
 
 ```annotate

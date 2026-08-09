@@ -588,8 +588,6 @@ and arrive somewhere meaningful.
 Marking both ends [at the same moment]{#s-moment}, [in the same colour]{#s-colour},
 says it with nothing travelling between them — and it
 [survives an edit]{#s-edit} to the sentence.
-
-A phrase that wraps is marked line by line.
 :::
 
 ::: pane src {.card valign=middle}
