@@ -71,7 +71,8 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   OS-preference case.
 - `examples/motion.md`: the animation sample. Text entrances, a chart whose bars
   grow one click at a time, a diagram that assembles itself box by box and
-  arrow by arrow, and a slide that overrides the deck's page turn.
+  arrow by arrow, photos that fade in and out (and come back when you step
+  back), and a slide that overrides the deck's page turn.
 - More effects: `wipe-in` / `wipe-out` (an edge uncovers the content instead of
   moving it), `zoom-in` / `zoom-out` and `blur-in`. More transitions:
   `wipe-left|right|up|down` and `zoom`.
@@ -83,6 +84,13 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - A `shape` with an id is emitted as one group: a box and its label, an arrow
   and its head. Animating `#box` now moves the whole shape rather than leaving
   its label behind, and connectors resolve against the group's box.
+- A bar chart mark's id likewise names a group holding the bar *and* its value
+  label, so a bar animated with `wipe-in dir=up` rises with its number on top
+  instead of leaving it hanging in the air.
+- `draw` no longer fades the whole shape in alongside the stroke, which showed
+  an arrow's head at half strength before the line had reached it. Strokes draw
+  tip-first over the full duration; fills — the head, a label's glyphs, a box's
+  wash — ink in over the last stretch.
 - Documentation is English-first; Japanese translations live under `docs/ja/`.
 - All source comments, CLI output and UI strings are English.
 - Math conversion moved from `latex2mathml` to `math-core`, fixing sub/superscript
@@ -90,6 +98,15 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - Upgraded comrak to 0.54 and enabled CJK-friendly emphasis.
 
 ### Fixed
+- Advancing past the last slide (or retreating before the first, or pressing
+  `End` while already there) replayed the current slide's entrance: the viewer
+  clamped the index and treated the result as an arrival. Navigating to the
+  slide already showing is now a no-op.
+- An element faded out with a click could not be brought back: stepping back
+  only re-armed the track, while the finished animation kept holding the hidden
+  end state. Stepping back now cancels it and restores the element — and
+  arriving from a *later* slide correctly keeps it hidden, since that exit has
+  already played.
 - Links inside a deck published away from its source 404'd: the README rendered
   as a deck at `/decks/readme/` still pointed at `docs/layout.md`, which does
   not exist there. The site now builds every deck with `--base-url`.

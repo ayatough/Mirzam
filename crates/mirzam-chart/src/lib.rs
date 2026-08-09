@@ -353,15 +353,18 @@ fn render_cartesian(svg: &mut String, spec: &ChartSpec, table: &Table, id: &str,
                     let bh = (v / max) * ph;
                     let x = left + slot * ci as f64 + (slot - group) / 2.0 + bw * si as f64;
                     let y = top + ph - bh;
+                    // The mark's id sits on a group holding the bar *and* its
+                    // value label, so animating `#chart-0-1` moves the number
+                    // with the bar instead of leaving it floating.
                     let _ = write!(
                         svg,
-                        "<rect class=\"mz-chart-bar\" id=\"{id}-{si}-{ci}\" x=\"{x:.1}\" y=\"{y:.1}\" width=\"{:.1}\" height=\"{bh:.1}\" rx=\"3\" fill=\"{c}\"{}/>",
+                        "<g id=\"{id}-{si}-{ci}\"><rect class=\"mz-chart-bar\" x=\"{x:.1}\" y=\"{y:.1}\" width=\"{:.1}\" height=\"{bh:.1}\" rx=\"3\" fill=\"{c}\"{}/>",
                         (bw - 3.0).max(1.0),
                         dim(si)
                     );
                     let _ = write!(
                         svg,
-                        "<text class=\"mz-chart-value\" x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\">{}</text>",
+                        "<text class=\"mz-chart-value\" x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\">{}</text></g>",
                         x + (bw - 3.0).max(1.0) / 2.0,
                         y - 6.0,
                         num(*v)
@@ -540,6 +543,19 @@ mod tests {
         let svg = render_svg(&doc, "chart1");
         assert!(svg.contains("id=\"rev\""));
         assert!(svg.contains("id=\"rev-0-0\""));
+    }
+
+    #[test]
+    fn bar_mark_id_groups_bar_with_its_value_label() {
+        let doc = parse_chart("type: bar\nid: rev\ndata: |\n  k, s\n  a, 1\n", none);
+        let svg = render_svg(&doc, "chart1");
+        let group = svg
+            .split("<g id=\"rev-0-0\">")
+            .nth(1)
+            .and_then(|rest| rest.split("</g>").next())
+            .expect("mark group present");
+        assert!(group.contains("mz-chart-bar"));
+        assert!(group.contains("mz-chart-value"));
     }
 
     #[test]

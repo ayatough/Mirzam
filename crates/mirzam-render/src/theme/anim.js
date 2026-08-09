@@ -17,8 +17,8 @@
   // and put back afterwards, so an inline style the renderer set (a pane's
   // grid-area, a blurred background's transform) is never lost.
   const PROPS = ['opacity', 'transform', 'transformOrigin', 'clipPath', 'filter',
-                 'strokeDasharray', 'strokeDashoffset'];
-  const STROKES = 'path,line,polyline,polygon,circle,ellipse,rect';
+                 'strokeDasharray', 'strokeDashoffset', 'fillOpacity'];
+  const PAINTED = 'path,line,polyline,polygon,circle,ellipse,rect,text';
 
   // Live reload replaces whole <section> elements, so keying on the element
   // invalidates the cache for free.
@@ -126,14 +126,23 @@
     return items.length ? items : base;
   }
 
-  function drawTargets(el) {
-    return el.matches && el.matches(STROKES) ? [el] : Array.from(el.querySelectorAll(STROKES));
+  // Everything SVG shows is painted by a stroke, a fill, or both. `draw`
+  // treats them differently: strokes are drawn tip-first over the full beat,
+  // and fills - an arrow's head, a box's wash, a label's glyphs - are inked
+  // in over the last stretch, once the pen has reached them. Fading the whole
+  // group instead would show the arrowhead before the line arrives at it.
+  function drawParts(el) {
+    const els = el.matches && el.matches(PAINTED) ? [el] : Array.from(el.querySelectorAll(PAINTED));
+    const parts = [];
+    for (const p of els) {
+      const cs = getComputedStyle(p);
+      const len = cs.stroke !== 'none' && p.getTotalLength ? p.getTotalLength() : 0;
+      const fill = cs.fill !== 'none';
+      if (len || fill) parts.push({ el: p, len, fill });
+    }
+    return parts;
   }
-
-  // A shape is a group: an arrow is its line plus its head, a box is its
-  // outline plus its label. Only the stroked parts can be drawn, so the group
-  // fades in over the same beat and the rest arrives with the line.
-  const isGroup = (el) => !(el.matches && el.matches(STROKES));
+  const INK = 0.65;   // fills start inking at this fraction of the duration
 
   // Resolves the timeline once per section: which elements each track owns,
   // which batch it belongs to, and when within that batch it starts. `after`
@@ -213,12 +222,13 @@
     for (const el of t.els) {
       save(el);
       if (kf.draw) {
-        if (isGroup(el)) el.style.opacity = '0';
-        for (const s of drawTargets(el)) {
-          const len = s.getTotalLength ? s.getTotalLength() : 0;
-          save(s);
-          s.style.strokeDasharray = len;
-          s.style.strokeDashoffset = len;
+        for (const p of drawParts(el)) {
+          save(p.el);
+          if (p.len) {
+            p.el.style.strokeDasharray = p.len;
+            p.el.style.strokeDashoffset = p.len;
+          }
+          if (p.fill) p.el.style.fillOpacity = '0';
         }
       } else {
         Object.assign(el.style, kf.from);
@@ -226,13 +236,23 @@
     }
   }
 
-  function finalTrack(t) {
+  // Restores a track's elements to their resting state. A `played` out-effect
+  // instead rests in its hidden *end* state: arriving from a later slide, an
+  // element that faded out during the talk stays faded out.
+  function finalTrack(sec, t, played) {
     for (const el of t.els) {
       unsave(el);
-      // Only a `draw` track ever touches stroked descendants. Scanning them
+      // Only a `draw` track ever touches painted descendants. Scanning them
       // unconditionally would let a whole-slide track reach into every shape
       // and chart mark on the slide and undo another track's arming.
-      if (t.effect === 'draw') for (const s of drawTargets(el)) unsave(s);
+      if (t.effect === 'draw') for (const p of drawParts(el)) unsave(p.el);
+    }
+    const kf = played && keyframes(t.effect, t.dir, farFor(sec, t));
+    if (kf && kf.out) {
+      for (const el of t.els) {
+        save(el);
+        Object.assign(el.style, kf.to);
+      }
     }
   }
 
@@ -247,23 +267,30 @@
       const delay = t.start + stagger * i;
       end = Math.max(end, delay + dur);
       if (kf.draw) {
-        if (isGroup(el)) {
-          save(el);
-          el.style.opacity = '0';
-          const g = track(sec, el.animate([{ opacity: 0 }, { opacity: 1 }], {
-            duration: dur, delay, easing: t.ease, fill: 'both',
-          }));
-          g.onfinish = () => { g.cancel(); unsave(el); };
-        }
-        for (const s of drawTargets(el)) {
-          const len = s.getTotalLength ? s.getTotalLength() : 0;
-          save(s);
-          s.style.strokeDasharray = len;
-          const a = track(sec, s.animate(
-            [{ strokeDashoffset: len }, { strokeDashoffset: 0 }],
-            { duration: dur, delay, easing: t.ease, fill: 'both' }
-          ));
-          a.onfinish = () => { a.cancel(); unsave(s); };
+        for (const p of drawParts(el)) {
+          // Strokes and fills of one part can animate together, so the part
+          // is handed back to the stylesheet only when its last animation ends.
+          let open = 0;
+          const done = (a) => { a.cancel(); if (--open === 0) unsave(p.el); };
+          save(p.el);
+          if (p.len) {
+            p.el.style.strokeDasharray = p.len;
+            open += 1;
+            const a = track(sec, p.el.animate(
+              [{ strokeDashoffset: p.len }, { strokeDashoffset: 0 }],
+              { duration: dur, delay, easing: t.ease, fill: 'both' }
+            ));
+            a.onfinish = () => done(a);
+          }
+          if (p.fill) {
+            p.el.style.fillOpacity = '0';
+            open += 1;
+            const a = track(sec, p.el.animate(
+              [{ fillOpacity: 0 }, { fillOpacity: 1 }],
+              { duration: dur * (1 - INK), delay: delay + dur * INK, easing: 'ease-out', fill: 'both' }
+            ));
+            a.onfinish = () => done(a);
+          }
         }
         return;
       }
@@ -325,10 +352,12 @@
         return;
       }
       for (const t of tl.tracks) {
-        const isPast = t.batch === 'enter'
-          || (t.batch === 'exit')
+        const played = t.batch === 'enter'
           || (t.batch.startsWith('click:') && +t.batch.slice(6) <= step);
-        if (isPast) finalTrack(t); else armTrack(sec, t);
+        // Exit tracks rest visible too - they have not played yet - but they
+        // never rest in an armed state, so they are not `played` here.
+        if (played || t.batch === 'exit') finalTrack(sec, t, played);
+        else armTrack(sec, t);
       }
       if (!play) return;
       if (!ownTrack(sec, 'enter')) turn(sec, spec, spec && spec.in, backwards);
@@ -348,7 +377,16 @@
     // than playing in reverse is deliberate: going back is a correction, and
     // a correction should be instant.
     unstep(sec, n) {
-      for (const t of tracksIn(timeline(sec), 'click:' + n)) armTrack(sec, t);
+      for (const t of tracksIn(timeline(sec), 'click:' + n)) {
+        // An exit effect holds its end state in a live animation (it has no
+        // resting state to hand back to), so stepping back must cancel it
+        // and restore the element, not just re-arm.
+        for (const el of t.els) {
+          for (const a of el.getAnimations({ subtree: true })) a.cancel();
+          unsave(el);
+        }
+        armTrack(sec, t);
+      }
     },
 
     // Leaves a slide: its `exit` tracks, plus the deck's page turn. Returns

@@ -226,7 +226,8 @@ instead name a `.csv` file, which is resolved like any other asset (and watched 
 
 Each mark gets an id of the form `<chart-id>-<series>-<row>`, so the second bar of
 the first series above is `#latency-0-1`. That is what makes it possible to point
-an arrow at one bar.
+an arrow at one bar. For a bar chart the id names a group holding the bar *and*
+its value label, so animating a mark moves the number with the bar.
 
 ## Shapes
 
@@ -294,7 +295,10 @@ One line is one track: `[trigger] target : effect duration attributes...`.
 - **Effects:** `fade-in`, `fade-out`, `slide-in` / `slide-out` and `wipe-in` /
   `wipe-out` (all four require `dir=left|right|up|down`), `zoom-in`,
   `zoom-out`, `blur-in`, `grow-x`, `grow-y`, `pop`, `draw`, `iris-out`.
-  A `slide` travels; a `wipe` stays put while an edge uncovers it.
+  A `slide` travels; a `wipe` stays put while an edge uncovers it. `draw`
+  runs the strokes tip-first over the full duration and inks the fills —
+  an arrow's head, a label's glyphs — in over the last stretch, once the
+  line has arrived at them.
 - **Attributes:** a bare `400ms` sets the duration; `delay=`, `stagger=` (for a
   split target) and `ease=` are otherwise `key=value`. `ease` is a named curve
   (`out-cubic`, `in-out-back`, …) or `spring(mass,stiffness,damping)`, resolved

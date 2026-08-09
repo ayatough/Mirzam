@@ -97,23 +97,24 @@ data: |
 :::
 
 ::: pane note {valign=middle}
-Every mark already has an id, so a bar is a target like any other:
+Every mark already has an id — and the id names the bar *and* its value
+label, as one group — so a bar rises with its number on top:
 
 ```markdown
-[click 1] #rev-0-0 : grow-y 500ms
-[click 1] #rev-1-0 : grow-y 500ms delay=80ms
+[click 1] #rev-0-0 : wipe-in dir=up
+[click 1] #rev-1-0 : wipe-in dir=up delay=80ms
 ```
 
 [Growth is broad, not one region carrying the quarter.]{.m-punch}
 :::
 
 ```anim
-[click 1] #rev-0-0 : grow-y 450ms ease=out-cubic
-[click 1] #rev-1-0 : grow-y 450ms delay=80ms ease=out-cubic
-[click 2] #rev-0-1 : grow-y 450ms ease=out-cubic
-[click 2] #rev-1-1 : grow-y 450ms delay=80ms ease=out-cubic
-[click 3] #rev-0-2 : grow-y 450ms ease=out-cubic
-[click 3] #rev-1-2 : grow-y 450ms delay=80ms ease=out-cubic
+[click 1] #rev-0-0 : wipe-in 450ms dir=up ease=out-cubic
+[click 1] #rev-1-0 : wipe-in 450ms dir=up delay=80ms ease=out-cubic
+[click 2] #rev-0-1 : wipe-in 450ms dir=up ease=out-cubic
+[click 2] #rev-1-1 : wipe-in 450ms dir=up delay=80ms ease=out-cubic
+[click 3] #rev-0-2 : wipe-in 450ms dir=up ease=out-cubic
+[click 3] #rev-1-2 : wipe-in 450ms dir=up delay=80ms ease=out-cubic
 [after #rev-1-2 +150ms] .m-punch : fade-in 400ms
 ```
 
@@ -169,6 +170,51 @@ arrow #a2 from(#store.s) to(#serve.n)
 ```
 
 <!-- note: Five clicks: box, arrow, box, arrow, box. The caption follows on its own. -->
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++-----------+-----------+------------+
+|           |           |            |
+|  a        |  b        |  c         |
+|           |           |            |
++-----------+-----------+------------+
+|  foot                              |
++------------------------------------+
+```
+
+::: pane head
+[Images]{.eyebrow}
+## Photos come and go
+:::
+
+::: pane a {.ph-a valign=middle}
+![A grid of glowing nodes](media/bg/mesh.jpg)
+:::
+
+::: pane b {.ph-b valign=middle}
+![A city at night](media/bg/city-night.jpg)
+:::
+
+::: pane c {.ph-c valign=middle}
+![Mountains at dusk](media/bg/mountains.jpg)
+:::
+
+::: pane foot
+[A pane holding a photo is a target like any other: two fades in, then the first fades **out** as the last arrives. Step `←` and it comes back; the PDF shows all three.]{.small}
+:::
+
+```anim
+[click 1] .ph-a : fade-in 500ms
+[click 2] .ph-b : fade-in 500ms
+[click 3] .ph-a : fade-out 400ms
+[click 3] .ph-c : fade-in 500ms
+```
+
+<!-- note: fade-out holds its end state; stepping back cancels it and restores the photo. -->
 
 ---
 

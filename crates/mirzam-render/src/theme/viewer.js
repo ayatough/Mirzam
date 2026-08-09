@@ -37,6 +37,11 @@
     const ss = slides();
     const from = ss[cur];
     const idx = Math.min(Math.max(i, 0), ss.length - 1);
+    // Navigating to the slide already showing - advancing past the end,
+    // retreating before the start, End on the last page - is not an arrival,
+    // and must not replay the slide's entrance. Only the initial paint plays
+    // in place.
+    if (play && from && idx === cur && !(opts && opts.first)) return;
     const backwards = idx < cur;
     const changed = from && idx !== cur;
     if (changed && play) leave(from, backwards);
@@ -233,5 +238,5 @@
   addEventListener('resize', () => { fit(); show(cur, { play: false }); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => show(cur, { play: false }));
   fit();
-  show(cur);
+  show(cur, { first: true });
 })();
