@@ -36,9 +36,22 @@ will keep changing.
 | Per-pane continuation (`<!-- next -->`) | Done |
 | Contents page generated from headings | Done |
 | Browser editor (WebAssembly), prebuilt binaries | Done |
+| A theme per slide | Next |
+| Carrying an element from one slide to the next | Next |
+| Demo recording and a generated themes gallery | Next |
 | Dragging an annotation back into the Markdown | Next |
-| Typst-flavoured math syntax | Next |
+| Typst-flavoured math syntax | Later |
 | Plugins, PPTX export | Later |
+
+Each of those has a brief — what it is for, what is not free about it, and where
+it stops — in [workstreams.md](workstreams.md). "Next" means the reasoning is
+written down, not that a date exists.
+
+The one worth naming here is **carrying an element from one slide to the next**:
+a slide presents three components and the next three take one each, and the
+component *moves* into its own slide rather than the deck turning the page under
+it. It is the one animation a deck tool gets asked for that Mirzam has no answer
+to today.
 
 ### Measured performance
 
@@ -61,40 +74,9 @@ the finished deck, and only then hashes — so the whole-document pass got a
 little longer while the per-slide render did not. The shape is what matters and
 it is unchanged: 25× the slides costs about 8× the edit.
 
-## Next: animation and presenting
+## Still open
 
-The next batch is broken into parallel streams, with the interfaces between them
-fixed in advance, in [workstreams.md](workstreams.md). What follows is the
-rationale behind those streams.
-
-**`anim` blocks.** `mirzam-anim` compiles the DSL to the timeline JSON described
-in [workstreams.md](workstreams.md#c1-animation-timeline):
-
-````markdown
-```anim
-[enter]   .title     : chars fade-in 400ms stagger=30ms ease=out-cubic
-[click 1] #latency-0-2 : grow-y 500ms
-[exit]    slide      : iris-out 500ms
-```
-````
-
-Triggers (`enter`, `click N`, `exit`, `after #id`), targets (ids, classes, whole
-slide, or text split into characters/words/lines), a standard effect set, and
-programmable easing including springs, resolved to a curve at build time. The
-viewer plays it through the Web Animations API and steps through `click`
-triggers before turning the page; `transition:` in frontmatter says how pages
-turn. See [syntax.md](syntax.md#animations) for the full syntax.
-
-The runtime is the only thing that ever puts an element in its initial state, so
-a deck without JavaScript — and the PDF export, which ships none — shows every
-slide fully revealed.
-
-**Presenter mode.** A second window with speaker notes, next slide, a timer, a
-pointer, and step-through control for click-triggered animations.
-
-**Language server.** Completion for pane names and anchor ids, diagnostics for
-references that point at nothing, hover for chart data — surfaced in the VS Code
-extension.
+Two things below `1.0` that are not features so much as unfinished thinking.
 
 **Connector routing.** Today a connector is a single curve between two points: it
 leaves and arrives along the edge normals, but it does not know what is in the
@@ -122,7 +104,13 @@ test in JS, the fallback is a routing-only WASM module, kept separate from the
 core so decks without connectors pay nothing.
 
 Until then, the layout guide documents how to place anchors so arrows stay clear
-of the text.
+of the text. It is also less pressing than it was: pairing a phrase with the
+thing it refers to, in one colour on one click, turned out to be the better
+answer for text-to-figure — and it crosses nothing, so it needs no route.
+
+**Language server.** Completion for pane names and anchor ids, diagnostics for
+references that point at nothing, hover for chart data — surfaced in the VS Code
+extension, which today previews but does not understand.
 
 ## Later
 

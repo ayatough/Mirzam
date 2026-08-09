@@ -192,6 +192,56 @@ workspace version.
   written today will keep rendering. See the roadmap for what still has to land
   first.
 
+### When to release, and why not more often
+
+**A release is not what happens when a feature lands.** Pushing to `main` builds
+nothing for anyone to download; only a tag, or the Release workflow run with
+`publish`, does that. So the two are already decoupled, and the question is only
+when it is worth asking people to upgrade.
+
+Release when there is **a reason to upgrade**, not when there is a change:
+
+- a fix for something that stops someone getting work done — immediately, as a
+  patch;
+- enough accumulated features that the changelog reads like news — batched, on
+  the order of a month;
+- never merely because a stream finished.
+
+Batching is not about the ten files a release attaches; GitHub keeps those
+happily and nobody is counting. It is about the two things that *are* expensive
+per release and are done by hand: writing a changelog section someone would
+actually read, and checking that the documentation still describes the software.
+Doing that well four times a year beats doing it carelessly forty.
+
+The counterweight is that **there is already a continuous release**: every push
+to `main` republishes the docs site and the browser editor, so anyone who wants
+the newest behaviour has it without a version number. Tagged binaries are for
+people who want a fixed thing, and those people are not helped by frequency.
+
+### `main` is the development branch
+
+There is no `develop`. A long-lived integration branch earns its cost when
+`main` must stay releasable at every commit — because releases are cut
+continuously, or because hotfixes have to bypass in-flight work. Neither is true
+here: nothing is released without someone asking for it, and every push to
+`main` already runs the full gate before it lands anywhere a reader can see.
+
+Adding one would buy a merge on every change and a second CI surface, in
+exchange for a property `main` already has.
+
+The worry a `develop` branch is usually reaching for — *did the documentation
+keep up?* — is not a branching problem, and a branch would not have caught any
+of the times it went wrong here. What catches it is machinery: the dead-link
+check in `scripts/build-site.sh`, `commonmark_compat.rs` walking
+`BLOCK_KINDS` so a new block form cannot ship undocumented and unchecked, the
+contrast test reading the shipped CSS rather than a copy of it. When
+documentation drifts from code, the fix is another check of that kind, not
+another branch.
+
+Use a branch when work is genuinely speculative, or when two agents are editing
+the same crate — which is what the ownership tables in
+[workstreams.md](workstreams.md) exist to prevent.
+
 ## Release checklist
 
 1. `cargo test --workspace` and `cargo clippy --workspace --all-targets` are clean
