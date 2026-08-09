@@ -1,6 +1,14 @@
 /* Mirzam - the project's own identity, as a deck theme.
    Use it with `css: themes/mirzam.css` in a deck's frontmatter.
 
+   `theme: mirzam` is the other half of this file and not a substitute for it.
+   A built-in theme is a token set: `theme_css` puts it *before* `base.css`, so
+   a type rule written there would be overridden by the very stylesheet it is
+   meant to sit on. `theme: mirzam` gives a deck the colours; this file adds the
+   part a token cannot carry - Space Grotesk, the weight ladder, the violet rule
+   under a section heading, `.card` and `.metric`. Reach for `theme:` when the
+   palette is what you wanted, and for `css:` when the identity is.
+
    The palette is docs/brand/palette.md; the type ladder is docs/brand/README.md.
    Where this file departs from the brand sheet, the reason is written beside
    the line - a deck has constraints a web page does not.

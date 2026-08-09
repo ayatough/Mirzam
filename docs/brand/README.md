@@ -103,11 +103,27 @@ meaning anything. Full tables, light and dark, in [`palette.md`](palette.md).
 
 ## In a deck
 
-The identity ships as a deck theme. Put this in a deck's frontmatter:
+Two ways in, and they are not the same size.
 
 ```yaml
-css: themes/mirzam.css
+theme: mirzam                 # the colours
+css: themes/mirzam.css        # the colours and everything else
 ```
+
+**`theme: mirzam` gives a deck the palette, not the identity.** A built-in theme
+is a token set: its stylesheet is concatenated *before* `base.css`, so a type
+rule written in one is overridden by the very stylesheet it is meant to sit on
+top of. Space Grotesk, the weight ladder, the violet rule under a section
+heading, `.card` and `.metric` all live in the sample file and are reached with
+`css:`. If you write `theme: mirzam` and wonder where the headings went, this
+paragraph is the answer.
+
+The two also disagree about which mode comes first, and have to. The sample file
+is dark-first, because that is how the mark is drawn. A built-in cannot make
+that choice — its bare selector is what a reader whose system prefers light
+gets — so there light comes first and dark arrives through
+`prefers-color-scheme`. A deck that wants dark on every machine writes
+`mode: dark`.
 
 [`examples/themes/mirzam.css`](../../examples/themes/mirzam.css) is the palette
 and the type ladder and nothing else;
