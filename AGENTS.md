@@ -32,11 +32,19 @@ the user view, [docs/architecture.md](docs/architecture.md) for the design, and
 A change is finished when all of these hold:
 
 ```bash
+export RUSTFLAGS="-D warnings"               # CI sets this; without it, clippy only advises
 cargo test --workspace                       # 23 suites
 cargo clippy --workspace --all-targets       # zero warnings
 cargo fmt --all -- --check
 node scripts/check-layout.mjs --build examples/pitch.md examples/showcase.md examples/cookbook.md
 ```
+
+**Run these on the same toolchain CI does.** CI uses `dtolnay/rust-toolchain@stable`,
+which is often newer than what is installed here, and each release adds lints. A
+clean local run on an older compiler is not evidence: a `question_mark` lint that
+did not exist in 1.94 broke the first build that ever reached CI. If `rustc
+--version` is behind, `rustup toolchain install stable` and run the gate with
+`cargo +stable`.
 
 plus, when the change is user-visible:
 

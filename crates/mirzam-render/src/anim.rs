@@ -172,13 +172,12 @@ fn selector_exists(haystack: &str, sel: &str) -> bool {
 fn locate(html: &str, sel: &str) -> Option<(usize, usize)> {
     let attr_start = if let Some(id) = simple_id(sel) {
         html.find(&format!("id=\"{id}\""))?
-    } else if let Some(class) = simple_class(sel) {
+    } else {
+        let class = simple_class(sel)?;
         class_regex()
             .captures_iter(html)
             .find(|c| c[1].split_whitespace().any(|t| t == class))
             .map(|c| c.get(0).unwrap().start())?
-    } else {
-        return None;
     };
 
     let tag_start = html[..attr_start].rfind('<')?;

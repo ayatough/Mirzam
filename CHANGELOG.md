@@ -78,6 +78,11 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - Upgraded comrak to 0.54 and enabled CJK-friendly emphasis.
 
 ### Fixed
+- The documentation site linked its guides as `docs/*.html`, which the static
+  Pages deployment never produced — no Jekyll runs on an uploaded artifact, so
+  every one of those links 404'd. The prose is now linked to GitHub, and
+  `scripts/build-site.sh` fails the build if the landing page points at a file
+  the artifact does not contain.
 - Inline code, `pre` blocks, table headers and the parse-error box kept a
   hard-coded light background in dark mode, so their text was light on light
   and unreadable. Those surfaces are now theme tokens (`--mz-surface`,

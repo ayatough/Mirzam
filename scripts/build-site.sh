@@ -19,10 +19,11 @@ done
 # The README with no Mirzam syntax at all, split at its own headings.
 ./target/release/mirzam build README.md -o "$OUT/decks/readme" --split h2
 
-# Markdown docs are rendered by GitHub Pages' Jekyll, so copy them as-is.
-echo "==> copying docs"
-cp -r docs "$OUT/docs"
-cp README.md CHANGELOG.md "$OUT/"
+# The prose stays on GitHub, linked absolutely from the landing page below.
+# `actions/deploy-pages` serves this directory verbatim - no Jekyll runs, so a
+# copied `syntax.md` would never become the `syntax.html` the page linked to,
+# and every one of those links 404'd. The site's job is showing the decks
+# running; GitHub already renders Markdown well, anchors and all.
 
 cat > "$OUT/index.html" <<'HTML'
 <!doctype html>
@@ -78,12 +79,12 @@ cat > "$OUT/index.html" <<'HTML'
 
   <h2>Read</h2>
   <ul>
-    <li><a href="docs/syntax.html">Syntax reference</a> — every block and inline form</li>
-    <li><a href="docs/layout.html">Layout guide</a> — sizing, spacing, keeping arrows out of the text</li>
-    <li><a href="docs/architecture.html">Architecture</a> — how it is built and why</li>
-    <li><a href="docs/roadmap.html">Roadmap</a> — what works today, what is next</li>
-    <li><a href="docs/development.html">Development guide</a> — build, test, contribute</li>
-    <li><a href="docs/ja/">日本語</a></li>
+    <li><a href="https://github.com/ayatough/Mirzam/blob/main/docs/syntax.md">Syntax reference</a> — every block and inline form</li>
+    <li><a href="https://github.com/ayatough/Mirzam/blob/main/docs/layout.md">Layout guide</a> — sizing, spacing, keeping arrows out of the text</li>
+    <li><a href="https://github.com/ayatough/Mirzam/blob/main/docs/architecture.md">Architecture</a> — how it is built and why</li>
+    <li><a href="https://github.com/ayatough/Mirzam/blob/main/docs/roadmap.md">Roadmap</a> — what works today, what is next</li>
+    <li><a href="https://github.com/ayatough/Mirzam/blob/main/docs/development.md">Development guide</a> — build, test, contribute</li>
+    <li><a href="https://github.com/ayatough/Mirzam/blob/main/docs/ja/README.md">日本語</a></li>
   </ul>
 
   <h2>Try it</h2>
@@ -101,12 +102,14 @@ cd Mirzam &amp;&amp; cargo build --release
 </html>
 HTML
 
-# Jekyll needs front matter to render bare .md; a config is enough here.
-cat > "$OUT/_config.yml" <<'YML'
-theme: jekyll-theme-primer
-title: Mirzam
-description: Presentation decks that live in your repository
-YML
+# Every local link on the landing page must resolve in the artifact, since
+# nothing rewrites paths after this point.
+echo "==> checking links"
+missing=0
+for href in $(grep -o 'href="[^"h][^"]*"' "$OUT/index.html" | sed 's/href="//;s/"$//'); do
+  [ -e "$OUT/${href%/}" ] || [ -e "$OUT/${href}index.html" ] || { echo "  ✗ dead link: $href"; missing=1; }
+done
+[ "$missing" = 0 ] || { echo "error: the landing page links to files the site does not contain"; exit 1; }
 
 echo "✓ site in $OUT/ ($(du -sh "$OUT" | cut -f1))"
 echo "  preview: python3 -m http.server -d $OUT 8080"
