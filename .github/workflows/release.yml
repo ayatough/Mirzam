@@ -1,0 +1,159 @@
+name: Release
+
+# Publishes prebuilt `mirzam` binaries so using it does not require a Rust
+# toolchain. Pushing a `v*` tag builds every target and attaches the archives
+# to a GitHub Release; `workflow_dispatch` does the same build and stops before
+# publishing, so the matrix can be exercised without cutting a release.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          # Pure-Rust dependency graph, so a cross linker is all this needs.
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            linker: aarch64-linux-gnu-gcc
+            apt: gcc-aarch64-linux-gnu
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: macos-13
+            target: x86_64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: install cross linker
+        if: matrix.apt != ''
+        run: sudo apt-get update && sudo apt-get install -y ${{ matrix.apt }}
+
+      - name: build
+        shell: bash
+        env:
+          # Cargo reads the linker from a target-specific variable whose name
+          # is the target in SCREAMING_SNAKE_CASE. Empty for native builds,
+          # where the default linker is the right one.
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.linker }}
+        run: cargo build --release --locked --bin mirzam --target ${{ matrix.target }}
+
+      # One archive per target, named for the version it carries so a download
+      # is self-identifying once it leaves the browser.
+      - name: package
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Every crate takes its version from `[workspace.package]`, whose
+          # `version` is the first one in the root manifest.
+          version=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          # scripts/install.sh builds the download URL from the tag, so a tag
+          # that disagrees with the manifest publishes archives nobody can
+          # install. Fail here rather than at the other end.
+          case "$GITHUB_REF" in
+            refs/tags/*)
+              [ "${GITHUB_REF_NAME}" = "v${version}" ] || {
+                echo "tag ${GITHUB_REF_NAME} does not match workspace version ${version}" >&2
+                exit 1
+              } ;;
+          esac
+          name="mirzam-v${version}-${{ matrix.target }}"
+          mkdir -p "dist/$name"
+          if [ -f "target/${{ matrix.target }}/release/mirzam.exe" ]; then
+            cp "target/${{ matrix.target }}/release/mirzam.exe" "dist/$name/"
+          else
+            cp "target/${{ matrix.target }}/release/mirzam" "dist/$name/"
+          fi
+          cp README.md LICENSE CHANGELOG.md "dist/$name/"
+          cd dist
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            7z a -tzip "$name.zip" "$name" >/dev/null
+            asset="$name.zip"
+          else
+            tar czf "$name.tar.gz" "$name"
+            asset="$name.tar.gz"
+          fi
+          # Checksums travel with the archive, so a download can be verified
+          # without trusting the page it came from.
+          if command -v sha256sum >/dev/null; then
+            sha256sum "$asset" > "$asset.sha256"
+          else
+            shasum -a 256 "$asset" > "$asset.sha256"
+          fi
+          echo "asset=$asset" >> "$GITHUB_OUTPUT"
+
+      - name: smoke test
+        # A binary that cannot build a deck is not a release. Skipped when
+        # cross-compiled, where the artifact does not run on this machine.
+        if: matrix.target != 'aarch64-unknown-linux-gnu'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bin="target/${{ matrix.target }}/release/mirzam"
+          [ -f "$bin.exe" ] && bin="$bin.exe"
+          "$bin" --version
+          "$bin" build examples/pitch.md -o "$RUNNER_TEMP/smoke"
+          test -s "$RUNNER_TEMP/smoke/index.html"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: dist/${{ steps.package.outputs.asset }}*
+          if-no-files-found: error
+
+  publish:
+    name: publish release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      # The tag's section of the changelog becomes the release notes, so the
+      # notes and the repository never disagree.
+      - name: extract release notes
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          awk -v v="${tag#v}" '
+            $0 ~ "^## \\[" v "\\]" { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "See CHANGELOG.md for what changed in $tag." > notes.md
+          fi
+
+      - name: publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file notes.md \
+            dist/*

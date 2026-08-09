@@ -5,7 +5,10 @@ crates fit together, and how versions are handled.
 
 ## Setup
 
-Rust 1.75+ is the only hard requirement.
+Rust 1.91+ is the only hard requirement. The floor is declared as
+`rust-version` in the root manifest and comes from `math-core`, not from our own
+code; CI builds the workspace on exactly that toolchain so the number stays
+true.
 
 ```bash
 cargo build              # native CLI
@@ -77,11 +80,11 @@ will break the browser build, so route it through these traits.
 
 | Gate | Location | What it protects |
 |---|---|---|
-| CommonMark compatibility | `tests/commonmark_compat.rs` | Extensions must degrade to harmless code blocks and readable text in a plain parser |
+| CommonMark compatibility | `tests/commonmark_compat.rs` | Extensions must degrade to harmless code blocks and readable text in a plain parser. It walks `mirzam_syntax::BLOCK_KINDS`, so a new block form is covered the moment it is added to that list |
 | Golden snapshots | `tests/golden.rs`, `tests/snapshots/` | Rendered output of every sample deck; data URIs are normalized to their length |
 | Incremental equivalence | `tests/incremental.rs` | An incremental build equals a full rebuild, and only affected slides re-render |
 | Benchmark | `bin/mirzam-bench` | Edit latency stays flat as decks grow; values are logged, not asserted |
-| Layout check | `scripts/check-layout.mjs` | Renders every sample deck in a browser and fails on clipped or overlapping content, which HTML snapshots cannot detect |
+| Layout check | `scripts/check-layout.mjs` | Renders every sample deck in a browser and fails on what HTML snapshots cannot detect: clipped or overlapping content, an undrawn connector or annotation, an element left in its entrance state after its animation has played, and a debug overlay left baked in |
 | Lint | CI | `cargo fmt --check` and `cargo clippy` with warnings denied |
 
 When you intentionally change rendered output:
@@ -125,6 +128,10 @@ confidently produce work that fails CI.
 3. Emit HTML/SVG from `mirzam-render`, styling it through theme variables rather
    than hard-coded colors.
 4. Add it to `examples/showcase.md` and refresh the snapshots.
+5. If it is a fenced block, add its name to `mirzam_syntax::BLOCK_KINDS` and a
+   sample body to `sample_block` in `tests/commonmark_compat.rs`. The promise
+   that plain Markdown still reads is only kept for forms that list is aware
+   of.
 
 ## Versioning
 
@@ -134,19 +141,27 @@ workspace version.
 - **`0.x` means the markup can change.** Breaking syntax changes are allowed in a
   minor bump, and they must be listed in [`CHANGELOG.md`](../CHANGELOG.md).
 - A release is cut by bumping `[workspace.package] version` in the root
-  `Cargo.toml`, updating the changelog, and tagging `vX.Y.Z`.
+  `Cargo.toml`, updating the changelog, and tagging `vX.Y.Z`. Pushing the tag
+  runs `.github/workflows/release.yml`, which builds `mirzam` for five targets,
+  smoke-tests each native one by building a deck with it, and publishes the
+  archives with that version's changelog section as the notes. The tag must
+  equal `v` plus the workspace version — the release build checks, because
+  `scripts/install.sh` derives the download URL from the tag.
 - The VS Code extension carries its own version but is released alongside the
   core; its `package.json` version matches the tag it was built from.
 - Nothing is published to crates.io yet. Depend on a git tag or commit.
 - `1.0` is reserved for the point where the markup is stable enough that decks
   written today will keep rendering. See the roadmap for what still has to land
-  first — animation and presenter mode are the main gaps.
+  first.
 
 ## Release checklist
 
 1. `cargo test --workspace` and `cargo clippy --workspace --all-targets` are clean
 2. `cargo run --release -p mirzam-cli --bin mirzam-bench` shows no regression
 3. Sample decks build and pass the layout check: `pitch`, `showcase`, `cookbook`,
-   `seminar`, `media`
+   `seminar`, `media`, `motion`
 4. `./scripts/build-wasm.sh` and `./scripts/build-vsix.sh` succeed
-5. `CHANGELOG.md` updated, version bumped, tag pushed
+5. `CHANGELOG.md` updated, version bumped in the root `Cargo.toml` and in
+   `editors/vscode/package.json`
+6. Tag `vX.Y.Z` and push it. Watch the release workflow: it publishes the
+   binaries, and until it is green there is nothing for `install.sh` to fetch.

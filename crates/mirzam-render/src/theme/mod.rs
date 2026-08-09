@@ -424,6 +424,32 @@ mod tests {
             );
         }
     }
+
+    /// `scripts/check-layout.mjs` is the only thing that can see a mark that
+    /// was not drawn or an element left in its entrance state, and it can only
+    /// see them by asking the runtime. Rename either of these and the checker
+    /// goes quiet — passing every deck, catching nothing — so the names are
+    /// part of the contract rather than an implementation detail.
+    #[test]
+    fn the_layout_checker_can_still_ask_what_went_undrawn() {
+        assert!(
+            ANNOT_JS.contains("missing(sec)"),
+            "annot.js no longer reports undrawn marks"
+        );
+        assert!(
+            ANIM_JS.contains("armed(sec, step)"),
+            "anim.js no longer reports elements left in their initial state"
+        );
+        let checker = include_str!("../../../../scripts/check-layout.mjs");
+        assert!(
+            checker.contains("MZAnnot.missing("),
+            "the checker stopped asking"
+        );
+        assert!(
+            checker.contains("MZAnim.armed("),
+            "the checker stopped asking"
+        );
+    }
 }
 
 /// WCAG contrast checks over the actual shipped theme CSS text (not a

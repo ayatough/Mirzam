@@ -39,6 +39,22 @@ jobs:
             cargo run -q --bin mirzam -- build "examples/$deck.md" -o "/tmp/out-$deck"
           done
 
+  msrv:
+    name: minimum supported Rust
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # `rust-version` in the root manifest is a promise to anyone building
+      # from source. Reading it from the manifest rather than pinning it here
+      # means the two can never disagree.
+      - id: msrv
+        run: echo "version=$(grep -m1 '^rust-version' Cargo.toml | cut -d'"' -f2)" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.msrv.outputs.version }}
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --workspace --all-targets
+
   layout:
     name: layout check
     runs-on: ubuntu-latest

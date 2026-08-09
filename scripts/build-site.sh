@@ -236,12 +236,18 @@ cat > "$OUT/index.html" <<'HTML'
     <li><a href="https://github.com/ayatough/Mirzam/blob/main/docs/ja/README.md">日本語</a></li>
   </ul>
 
-  <h2>Try it</h2>
-<pre><code>git clone https://github.com/ayatough/Mirzam
-cd Mirzam &amp;&amp; cargo build --release
+  <h2>Install it</h2>
+  <p>No Rust toolchain needed — every release ships a binary for macOS, Linux
+  and Windows.</p>
+<pre><code>curl -fsSL https://raw.githubusercontent.com/ayatough/Mirzam/main/scripts/install.sh | sh
 
-./target/release/mirzam build examples/pitch.md -o out
-./target/release/mirzam serve examples/pitch.md</code></pre>
+mirzam build deck.md -o out          # one self-contained HTML file
+mirzam serve deck.md                 # live preview, re-rendering as you type
+mirzam export pdf deck.md</code></pre>
+  <p>Windows, or picking a version by hand:
+  <a href="https://github.com/ayatough/Mirzam/releases">the releases page</a>.
+  Prefer to build it yourself? <code>cargo install --path crates/mirzam-cli
+  --bin mirzam</code> from a clone, with Rust 1.91+.</p>
 
   <footer>
     MIT licensed · <a href="https://github.com/ayatough/Mirzam">Source on GitHub</a>

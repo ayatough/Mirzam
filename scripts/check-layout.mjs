@@ -35,6 +35,19 @@ async function checkDeck(page, file) {
   const count = await page.$$eval("section.slide", (s) => s.length);
 
   const problems = [];
+
+  // `--debug-layout` is for screenshotting a broken deck, not for publishing.
+  // Baked on, it tints every pane pink for the audience, and the only way to
+  // notice is to look — so look, once, before measuring anything.
+  if (await page.evaluate(() => document.documentElement.classList.contains("mz-debug"))) {
+    problems.push({
+      slide: 1,
+      kind: "debug",
+      pane: "-",
+      detail: "the layout debug overlay is baked into this build (--debug-layout)",
+    });
+  }
+
   for (let i = 0; i < count; i++) {
     await page.evaluate((n) => window.__mirzamGoto && window.__mirzamGoto(n), i);
     // Measure the slide the audience ends on, not the one it starts as. An
@@ -52,6 +65,14 @@ async function checkDeck(page, file) {
         dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" }));
       }
     });
+    // Measuring while an entrance is still running would read the animation,
+    // not the slide it lands on. Waiting on the animations themselves beats
+    // guessing a duration, since a deck can set its own.
+    await page
+      .waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running"), null, {
+        timeout: 2000,
+      })
+      .catch(() => {});
     await page.waitForTimeout(120);
     const found = await page.evaluate(
       ([index, tol]) => {
@@ -115,6 +136,29 @@ async function checkDeck(page, file) {
               }
             }
           }
+        }
+
+        // An annotation whose anchor has been renamed is dropped just as
+        // quietly, and costs more: the sentence still says "the circled bar".
+        const missing = window.MZAnnot ? window.MZAnnot.missing(sec) : 0;
+        if (missing) {
+          issues.push({
+            kind: "annotation",
+            pane: "-",
+            detail: `${missing} annotation(s) not drawn (unknown id?)`,
+          });
+        }
+
+        // The resting-state rule: once a track has played, its elements hold
+        // the slide's final state. One still holding its entrance state is
+        // invisible to everybody — including the PDF, which never steps.
+        const armed = window.MZAnim ? window.MZAnim.armed(sec, window.MZAnim.steps(sec)) : 0;
+        if (armed) {
+          issues.push({
+            kind: "animation",
+            pane: "-",
+            detail: `${armed} element(s) left in their initial state after the last step`,
+          });
         }
 
         // A connector whose endpoint could not be resolved is silently dropped;

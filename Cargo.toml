@@ -15,10 +15,22 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.1"
+version = "0.1.0"
 edition = "2021"
+# Set by the dependency graph, not by us: `math-core` needs 1.91. CI builds the
+# workspace on exactly this toolchain so the number stays true.
+rust-version = "1.91"
 license = "MIT"
 repository = "https://github.com/ayatough/Mirzam"
+
+# The release profile is what ships: prebuilt binaries are cut from it, and a
+# deck's build time is the number in the README. Whole-program optimisation and
+# a stripped binary are worth the slower link here, since it happens once per
+# tag rather than once per edit.
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
 
 [workspace.dependencies]
 mirzam-syntax = { path = "crates/mirzam-syntax" }

@@ -6,7 +6,9 @@ Where Mirzam is and what comes next. Design rationale lives in
 
 ## Status
 
-The MVP is feature-complete and covered by regression tests in CI.
+`v0.1.0` is the first tagged release: everything below marked Done is in it,
+built by CI and published as a prebuilt binary. It is still `0.x` — the markup
+will keep changing.
 
 | Area | State |
 |---|---|
@@ -27,11 +29,16 @@ The MVP is feature-complete and covered by regression tests in CI.
 | `anim` DSL compiled to a timeline (`mirzam-anim`) | Done |
 | Animation runtime, click-through steps, slide transitions | Done |
 | Named themes (Nord, Solarized, VS Code) and dark mode | Done |
-| Annotations on images and charts, adjusted in the preview | Next |
+| Annotations on images and charts | Done |
+| Marking a phrase and the thing it refers to together | Done |
+| Presentation effects | Done |
+| Presenter window, touch and gesture controls | Done |
+| Per-pane continuation (`<!-- next -->`) | Done |
+| Contents page generated from headings | Done |
+| Browser editor (WebAssembly), prebuilt binaries | Done |
+| Dragging an annotation back into the Markdown | Next |
 | Typst-flavoured math syntax | Next |
-| Presentation effects | Next |
-| Presenter mode | Next |
-| Plugins, PPTX export, mobile editing | Later |
+| Plugins, PPTX export | Later |
 
 ### Measured performance
 
@@ -39,13 +46,20 @@ Release build, from the standing benchmark:
 
 | Deck | Full build | Single-slide edit |
 |---|---:|---:|
-| 20 slides | 4.6 ms | 0.3 ms |
-| 120 slides | 19.5 ms | 0.7 ms |
-| 500 slides | 78.2 ms | 2.3 ms |
-| 100 slides, 800 formulas | 26.4 ms | 0.9 ms |
+| 20 slides | 4.5 ms | 0.4 ms |
+| 120 slides | 18.8 ms | 0.9 ms |
+| 500 slides | 75.6 ms | 3.2 ms |
+| 100 slides, 800 formulas | 24.5 ms | 1.3 ms |
 
 Exactly one slide re-renders per edit. The residual growth is the linear cost of
 re-reading and hashing the source, not rendering.
+
+Measured again at `v0.1.0`, after the deck gained per-pane continuation, a
+contents page and annotations. Edit latency at 500 slides went from 2.3 ms to
+3.2 ms: a build now expands `<!-- next -->`, resolves the contents page against
+the finished deck, and only then hashes — so the whole-document pass got a
+little longer while the per-slide render did not. The shape is what matters and
+it is unchanged: 25× the slides costs about 8× the edit.
 
 ## Next: animation and presenting
 

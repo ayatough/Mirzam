@@ -220,7 +220,9 @@
     const kf = REDUCED ? still(keyframes(t.effect, t.dir, far)) : keyframes(t.effect, t.dir, far);
     if (!kf || kf.out) return;            // exits rest in their visible state
     for (const el of t.els) {
-      save(el);
+      // A `draw` track arms the painted parts, never the element around them.
+      // Saving the element too would leave a snapshot nothing ever restores,
+      // and a later `save` on it would then be a no-op holding stale styles.
       if (kf.draw) {
         for (const p of drawParts(el)) {
           save(p.el);
@@ -231,6 +233,7 @@
           if (p.fill) p.el.style.fillOpacity = '0';
         }
       } else {
+        save(el);
         Object.assign(el.style, kf.from);
       }
     }
@@ -333,6 +336,59 @@
     steps(sec) {
       const tl = timeline(sec);
       return tl && tl.steps ? tl.steps : 0;
+    },
+
+    // Elements whose track has already played but which nobody can see —
+    // still transparent, still drawn to zero length, still off to one side.
+    // That is the failure the resting-state rule exists to prevent, so
+    // `check-layout.mjs` gates on it.
+    //
+    // This asks the page what it looks like rather than reading this file's
+    // own bookkeeping, so a flag left behind by mistake cannot make a visible
+    // slide look broken, and a slide that really is blank cannot hide behind
+    // tidy internal state.
+    //
+    // Out-effects are excluded: an element that fades out during the talk is
+    // *meant* to be gone once it has.
+    armed(sec, step) {
+      const tl = timeline(sec);
+      if (!tl) return 0;
+      const box = sec.getBoundingClientRect();
+      const gone = (el) => {
+        // `chars`/`words` splitting animates spans inside the element the
+        // author named, so an ancestor left transparent hides them without
+        // changing their own computed opacity. `checkVisibility` walks up.
+        if (el.checkVisibility && !el.checkVisibility({
+          opacityProperty: true, visibilityProperty: true, contentVisibilityAuto: true,
+        })) return true;
+        const cs = getComputedStyle(el);
+        if (+cs.opacity < 0.05 || cs.visibility === 'hidden') return true;
+        const r = el.getBoundingClientRect();
+        if (!r.width && !r.height) return false;      // laid out as nothing to begin with
+        return r.right < box.left || r.left > box.right
+            || r.bottom < box.top || r.top > box.bottom;
+      };
+      let n = 0;
+      for (const t of tl.tracks) {
+        const due = t.batch === 'enter'
+          || (typeof t.batch === 'string' && t.batch.startsWith('click:') && +t.batch.slice(6) <= step);
+        if (!due) continue;
+        const kf = keyframes(t.effect, t.dir, farFor(sec, t));
+        if (!kf || kf.out) continue;
+        for (const el of t.els) {
+          if (kf.draw) {
+            // A stroke still offset by its own length has drawn nothing.
+            for (const p of drawParts(el)) {
+              const s = getComputedStyle(p.el);
+              if (p.len && Math.abs(parseFloat(s.strokeDashoffset) || 0) > 1) { n++; break; }
+              if (p.fill && +s.fillOpacity < 0.05) { n++; break; }
+            }
+          } else if (gone(el)) {
+            n++;
+          }
+        }
+      }
+      return n;
     },
 
     // Shows the slide as it stands after `step` click steps: everything up to

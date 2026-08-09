@@ -175,11 +175,20 @@ HTML-level tests cannot see a clipped heading, so layout is checked by rendering
 node scripts/check-layout.mjs --build examples/pitch.md
 ```
 
-It reports, per slide and pane:
+It steps each slide through to its last click before measuring, so it sees the
+slide the audience ends on rather than the one it starts as. It reports, per
+slide and pane:
 
 - **clipped** — content is taller or wider than its pane
 - **overlap** — an overflowing pane runs into its neighbour
 - **connector** — a connector was declared but not drawn, usually a typo in an id
+- **annotation** — a mark could not be drawn, usually because the `#id` it names
+  was renamed or removed. The mark is dropped silently at runtime by design; the
+  sentence that said "the circled bar" is not
+- **animation** — an element is still in its entrance state after that entrance
+  has played, so nobody ever sees it. That includes the PDF, which never steps
+- **debug** — the pane overlay is baked into this build (see below). Fine for a
+  screenshot, wrong for anything published
 
 ```
 ✗ pitch.md: 2 problem(s) across 9 slides
@@ -204,4 +213,5 @@ mirzam build examples/pitch.md --debug-layout -o /tmp/debug
 `--debug-layout` bakes the overlay on at load instead of requiring a keypress,
 for screenshotting a broken deck headlessly (`check-layout.mjs` and CI use the
 same rendered output, without the overlay, since the overlay is a human aid, not
-part of what the checker measures).
+part of what the checker measures — and the checker fails a deck that arrives
+with it baked in, which is the one way it could reach an audience).

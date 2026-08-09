@@ -451,6 +451,21 @@ fn is_slide_break(trimmed: &str) -> bool {
     trimmed.len() >= 3 && trimmed.chars().all(|c| c == '-')
 }
 
+/// Every fenced info string Mirzam gives a meaning to.
+///
+/// The list is here rather than beside each consumer because its whole purpose
+/// is to be complete: `commonmark_compat.rs` walks it and proves that each one
+/// still degrades to an ordinary code block in a plain CommonMark parser, which
+/// is the promise the markup makes. Two of these (`chart`, `toc`) are consumed
+/// by `mirzam-render` rather than here — they reach it through `loose`, exactly
+/// as a plain parser would see them — so a list built from this file's match
+/// arms alone would quietly under-report.
+///
+/// Adding a block form means adding it here, in the same change.
+pub const BLOCK_KINDS: &[&str] = &[
+    "pane", "shape", "connect", "annotate", "effects", "anim", "chart", "toc",
+];
+
 /// Fenced blocks reserved for a later phase.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlockKind {
@@ -1238,5 +1253,37 @@ loose text
         assert!(is_continue_marker("<!--next-->"));
         assert!(!is_continue_marker("<!-- next slide -->"));
         assert!(!is_continue_marker("next"));
+    }
+    /// [`BLOCK_KINDS`] is only worth walking if every name on it is live. A
+    /// block form that no longer exists would make the compatibility test pass
+    /// for a promise nobody is asking about any more.
+    ///
+    /// `chart` and `toc` are the two the renderer consumes: here they must stay
+    /// in `loose`, which is how they reach it.
+    #[test]
+    fn every_listed_block_kind_is_one_something_consumes() {
+        for kind in BLOCK_KINDS {
+            let src = format!("```{kind}\nbody\n```\n");
+            let s = parse_slide(&src);
+            assert!(
+                s.blocks.iter().any(|b| b.info == *kind),
+                "`{kind}` was not recorded as a block"
+            );
+            let claimed = s.layout.is_some()
+                || !s.shapes.is_empty()
+                || !s.connects.is_empty()
+                || !s.annots.is_empty()
+                || !s.effects.is_empty()
+                || !s.reserved.is_empty();
+            if matches!(*kind, "chart" | "toc") {
+                assert!(!claimed, "`{kind}` is the renderer's, not ours");
+                assert!(
+                    s.loose.contains(&format!("```{kind}")),
+                    "`{kind}` must pass through to the renderer intact"
+                );
+            } else {
+                assert!(claimed, "`{kind}` fell through to loose text");
+            }
+        }
     }
 }

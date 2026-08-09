@@ -96,13 +96,22 @@ email.
 
 **No install needed to try it:** the [browser
 editor](https://ayatough.github.io/Mirzam/try/) runs the same Rust core as
-WebAssembly and hands you the finished `.html`. It works on a phone. See the
-[quick start](docs/quickstart.md) for every other way in — CLI, VS Code,
-Obsidian.
+WebAssembly and hands you the finished `.html`. It works on a phone.
 
-For everything else — live preview, PDF export, file splitting, local images —
-you need the CLI, and that needs a Rust toolchain (1.75+). There is no prebuilt
-binary yet.
+For live preview, PDF export, file splitting and local images you want the CLI.
+No Rust toolchain required — the
+[releases page](https://github.com/ayatough/Mirzam/releases) has a binary for
+macOS, Linux and Windows:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ayatough/Mirzam/main/scripts/install.sh | sh
+```
+
+That puts `mirzam` in `~/.local/bin`. On Windows, download the `.zip` from the
+releases page. See the [quick start](docs/quickstart.md) for every other way in
+— VS Code, Obsidian, the browser.
+
+To build it yourself instead, you need Rust 1.91 or newer:
 
 ```bash
 git clone https://github.com/ayatough/Mirzam
@@ -141,7 +150,7 @@ select text.
 
 ```bash
 ./scripts/build-vsix.sh
-code --install-extension editors/vscode/mirzam-preview-0.0.1.vsix
+code --install-extension editors/vscode/mirzam-preview-*.vsix
 ```
 
 Open a `.md` file and press `Ctrl+K V` (`Cmd+K V` on macOS). Editing re-renders only
@@ -180,8 +189,8 @@ Run `./scripts/build-site.sh` to build the same site locally.
 
 ## Status
 
-The MVP is feature-complete and covered by regression tests in CI. It is `0.x`:
-the markup will keep changing, so pin a commit if you depend on it.
+`v0.1.0` is the first tagged release, covered by regression tests in CI. It is
+`0.x`: the markup will keep changing, so pin a version if you depend on it.
 
 - **Working:** build, live-reload server, PDF export, ASCII pane layout, file
   splitting, variables and arithmetic, math, charts, shapes, live connectors,
@@ -190,10 +199,10 @@ the markup will keep changing, so pin a commit if you depend on it.
   breaks, named themes and dark mode, custom themes, speaker notes and a
   presenter window, touch and gesture controls, a table of contents from
   headings, VS Code extension, WebAssembly core and a browser editor
-- **Next:** dragging an annotation back into the Markdown, prebuilt binaries,
-  PowerPoint export
-- **Performance:** a 500-slide deck builds in 78 ms; a single-slide edit
-  re-renders in 2.3 ms
+- **Next:** dragging an annotation back into the Markdown, Typst-flavoured
+  math, PowerPoint export
+- **Performance:** a 500-slide deck builds in 76 ms; a single-slide edit
+  re-renders in 3.2 ms
 
 See the [roadmap](docs/roadmap.md) for the full plan and [development
 guide](docs/development.md) to work on it.

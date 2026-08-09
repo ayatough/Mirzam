@@ -18,14 +18,21 @@
 ## 3 分で試す
 
 インストール不要で試すなら **[ブラウザ版](https://ayatough.github.io/Mirzam/try/)**。
-入口の一覧は[クイックスタート](quickstart.md)にあります。CLI なら:
+入口の一覧は[クイックスタート](quickstart.md)にあります。
+
+CLI は **Rust なしで入ります**（macOS / Linux / Windows のビルド済みバイナリを
+リリースごとに配布しています）:
 
 ```bash
-cargo build --release
-./target/release/mirzam build examples/pitch.md -o out   # 単一 HTML
-./target/release/mirzam serve examples/showcase.md       # ホットリロード付きプレビュー
-./target/release/mirzam export pdf examples/pitch.md
+curl -fsSL https://raw.githubusercontent.com/ayatough/Mirzam/main/scripts/install.sh | sh
+
+mirzam build examples/pitch.md -o out   # 単一 HTML
+mirzam serve examples/showcase.md       # ホットリロード付きプレビュー
+mirzam export pdf examples/pitch.md
 ```
+
+自分でビルドする場合は Rust 1.91 以降が必要で、`cargo build --release` の出力は
+`./target/release/mirzam` に置かれます（`PATH` には入りません）。
 
 ビューア操作: `←` `→` ページ送り / `N` スピーカーノート / `F` 全画面 /
 `P` 発表者ウィンドウ(次スライド・ノート・時計・経過時間) /
@@ -37,7 +44,7 @@ VSCode 拡張:
 
 ```bash
 ./scripts/build-vsix.sh
-code --install-extension editors/vscode/mirzam-preview-0.0.1.vsix
+code --install-extension editors/vscode/mirzam-preview-*.vsix
 ```
 
 `.md` を開いて `Ctrl+K V`(Mac: `Cmd+K V`)。編集すると変更したスライドだけが再描画され、

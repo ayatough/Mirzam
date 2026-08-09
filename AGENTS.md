@@ -15,6 +15,8 @@ the user view, [docs/architecture.md](docs/architecture.md) for the design, and
 1. **Extensions must never break plain Markdown.** Anything new has to degrade to
    a code block, a paragraph, or literal text in a plain CommonMark parser.
    `crates/mirzam-cli/tests/commonmark_compat.rs` enforces this — do not weaken it.
+   A new fenced block goes on `mirzam_syntax::BLOCK_KINDS` in the same change;
+   that test walks the list, so a form missing from it is a form nobody checked.
 2. **The core must not touch the filesystem.** File and asset access go through
    `mirzam-syntax::FileProvider` and `mirzam-render::AssetSource`. A stray
    `std::fs` call in a core crate breaks the WebAssembly build, which is how the

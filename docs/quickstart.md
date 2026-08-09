@@ -5,7 +5,7 @@ Four ways in, depending on what you have. Pick the first row that describes you.
 | You have | Use | Gets you |
 |---|---|---|
 | A browser | **[the browser editor](https://ayatough.github.io/Mirzam/try/)** | A finished `.html` deck, no install, works on a phone |
-| A terminal and Rust | **the `mirzam` CLI** | Everything: live preview, PDF export, includes, local images |
+| A terminal | **the `mirzam` CLI** | Everything: live preview, PDF export, includes, local images |
 | VS Code | **the preview extension** | The deck beside the Markdown, re-rendering as you type |
 | Obsidian | **your vault** | Write there, build with the CLI or the browser editor |
 
@@ -38,9 +38,21 @@ What the browser build cannot do, because it has no filesystem:
 
 ## 2. On the command line — the whole thing
 
-Requires a Rust toolchain (1.75 or newer) from [rustup.rs](https://rustup.rs).
-There is **no prebuilt binary yet**; publishing one is part of the `v0.1.0`
-release work.
+**No Rust required.** Every release ships a binary for macOS, Linux and
+Windows:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ayatough/Mirzam/main/scripts/install.sh | sh
+```
+
+That downloads the right archive for your machine, checks it against the
+published checksum, and puts `mirzam` in `~/.local/bin` (set `MIRZAM_BIN_DIR`
+to change that). On Windows, take the `.zip` from the
+[releases page](https://github.com/ayatough/Mirzam/releases) and put the
+`mirzam.exe` somewhere on your `PATH`.
+
+To build it yourself instead, you need Rust 1.91 or newer from
+[rustup.rs](https://rustup.rs):
 
 ```bash
 git clone https://github.com/ayatough/Mirzam
@@ -65,7 +77,7 @@ while you write.
 
 ```bash
 ./scripts/build-vsix.sh
-code --install-extension editors/vscode/mirzam-preview-0.0.1.vsix
+code --install-extension editors/vscode/mirzam-preview-*.vsix
 ```
 
 Open a `.md` file and press `Ctrl+K V` (`Cmd+K V` on macOS). Editing re-renders

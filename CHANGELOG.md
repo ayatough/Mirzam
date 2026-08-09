@@ -7,7 +7,69 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-09
+
+First tagged release. Prebuilt binaries, a browser editor, and a deck you can
+present from — animation, effects, annotations, a presenter window and a
+contents page that writes itself.
+
 ### Added
+- **Prebuilt binaries.** `.github/workflows/release.yml` builds `mirzam` for
+  x86-64 and arm64 Linux, Intel and Apple-silicon macOS, and x86-64 Windows on
+  every `v*` tag, smoke-tests each native one by building a deck with it, and
+  publishes the archives with checksums and that version's changelog section as
+  the release notes. `scripts/install.sh` picks the right archive, verifies the
+  checksum and drops the binary in `~/.local/bin` — using Mirzam no longer
+  requires a Rust toolchain, which was the largest thing standing in front of
+  anyone who just wanted to make a deck.
+- `LICENSE`: the MIT text the README has always claimed, plus a note that the
+  bundled STIX Two Math font travels under the SIL Open Font License wherever a
+  deck goes.
+- `docs/quickstart.md` and `docs/ja/quickstart.md`: four ways in — browser, CLI,
+  VS Code, Obsidian — with an honest table of what the browser build cannot do
+  and why.
+- **Per-pane continuation.** `<!-- next -->` inside a pane carries that pane on
+  to the next slide while every other pane holds still. The viewer recognises
+  the two slides as one and cuts between them instead of turning the page, so a
+  chart you are still talking about does not move. A build expands the marker
+  into real slides, which means the PDF and a no-JavaScript reader get it too.
+- **A contents page that writes itself.** A `toc` block collects the deck's
+  headings, links each one to its slide, marks the section you are in, and
+  prints page numbers instead of links in the PDF. `from:`, `depth:` and
+  `current:` choose what it covers.
+- **A presenter window.** `P` opens a second window with the next slide, your
+  speaker notes, a clock and a talk timer. The two windows stay in step through
+  `BroadcastChannel`, including dark mode and the layout overlay, so the screen
+  the audience sees never disagrees with the one you are reading.
+- **Viewer chrome.** A page counter and controls, and `/` for a cheat sheet that
+  lists this particular deck's effect keys rather than a generic table. On a
+  phone: swipe to turn the page, swipe up for notes, two-finger tap for the same
+  sheet.
+- **Marking a phrase and the thing it refers to, together.** `highlight`,
+  `underline` and `box` take an `#id` and nothing else, and follow the line
+  boxes that phrase actually occupies — a sentence that wraps gets one mark per
+  line, not one box over both. Paired with a mark on a chart bar under the same
+  `step`, they say "this phrase, that bar" in one colour without drawing
+  anything across the slide. `target:` is now optional, because a block whose
+  items are all anchored measures nothing against a box.
+- **A browser editor**, published at [ayatough.github.io/Mirzam/try](https://ayatough.github.io/Mirzam/try/):
+  open and save `.md`, attach, drop or paste images, and download the finished
+  self-contained deck. The same Rust core as the CLI, compiled to WebAssembly;
+  nothing is uploaded. It works on a phone.
+- `mirzam_syntax::BLOCK_KINDS`, the canonical list of fenced forms the language
+  claims. `commonmark_compat.rs` walks it, so a new block form is checked
+  against a plain CommonMark parser the moment it is added — the promise that a
+  deck still reads on GitHub is now kept by construction rather than by memory.
+- `scripts/check-layout.mjs` learned three failure modes that HTML snapshots and
+  the eye both miss: an annotation that could not be drawn (its anchor was
+  renamed), an element still holding its entrance state after that entrance has
+  played, and a `--debug-layout` overlay baked into a published build. The
+  runtime answers for the first two through `MZAnnot.missing` and `MZAnim.armed`,
+  and a test keeps those two names from drifting out from under the checker.
+- `rust-version = "1.91"` in the root manifest, with a CI job that builds the
+  workspace on exactly that toolchain. The README had claimed 1.75, which had
+  not been true since `math-core` landed.
+
 - `docs/brand/`: the mark, palette and type used to present Mirzam — wordmark and
   icon in light and dark, hero backgrounds, the pipeline diagram, a 1200×630
   social card, and `mirzam-theme.css` carrying the Mirzam Light / Mirzam Dark
@@ -131,6 +193,23 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   still resolves its links to other documents.
 
 ### Changed
+- The release profile enables thin LTO and strips symbols: the binary went from
+  6.5 MB to 4.5 MB, at a link cost paid once per tag rather than once per edit.
+- Documentation no longer recommends an arrow from a sentence to a figure. An
+  arrow has to leave the prose, cross the slide and land somewhere meaningful,
+  and none of that was ever what the audience asked for; `connect` is now
+  presented as the tool for two boxes *inside* a diagram, and text-to-figure
+  goes to the paired annotation above.
+- The viewer chrome takes its colours from the deck's own paper tokens instead
+  of a fixed dark palette, so it is legible whatever the theme does. This is
+  what made the presenter window wrong in light mode, and it was never only the
+  presenter window.
+- Benchmark re-measured at this release: a 500-slide deck builds in 76 ms and a
+  single-slide edit re-renders in 3.2 ms, up from 2.3 ms. A build now expands
+  `<!-- next -->`, resolves the contents page against the finished deck and only
+  then hashes, so the whole-document pass grew while the per-slide render did
+  not.
+
 - A warning raised on a slide that came from an included file now names that
   file: `mirzam-syntax` keeps a source map from the expanded document back to
   the files it was assembled from, through nested includes, a file included
@@ -151,7 +230,29 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   placement; decks containing math now bundle STIX Two Math.
 - Upgraded comrak to 0.54 and enabled CJK-friendly emphasis.
 
+- The published landing page and the browser editor now use the Mirzam palette
+  and type — Space Grotesk for headings, Inter for text, IBM Plex Mono for code
+  — and follow the reader's `prefers-color-scheme` instead of being dark only.
+  The page carries a favicon and a social card, so a link to it unfurls.
+
 ### Fixed
+- **Text selection on a phone.** The cheat sheet was bound to a long press, and
+  a long press is how you select text — so a deck on a phone could not be quoted
+  from. The binding is gone (two-finger tap and the `?` button open the sheet),
+  and a selection drag is no longer read as a page swipe.
+- Swiping right walked out of the deck: Chrome reads horizontal overscroll as
+  browser-back. The deck now claims vertical panning only.
+- Dark mode and the layout overlay were independent between the presenter and
+  audience windows, so the two could disagree about what the audience was
+  looking at. Both now travel over the same link as the slide and step.
+- `--mz-muted` on `default/light` and `solarized/light` sat at 4.19:1 and 4.39:1
+  against a surface — below the 4.5:1 the contrast guard requires. Caught by
+  extending that guard to the muted-on-surface pair, which the chrome change
+  above made load-bearing.
+- A `draw` animation left a saved style snapshot on the element around the
+  painted parts, which nothing ever restored; a later arming of that element
+  would then quietly keep the stale one.
+
 - `D` appeared to do nothing on the sample decks. It was working — `data-mode`
   flipped — but all four decks share `examples/themes/pitch.css`, which set its
   palette once, on a plain `:root` that outranks the built-in tokens for both
@@ -240,13 +341,7 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   of whitespace in `<text>` unless told otherwise, which flattened the one part
   of the illustration whose point was its alignment.
 
-### Changed
-- The published landing page and the browser editor now use the Mirzam palette
-  and type — Space Grotesk for headings, Inter for text, IBM Plex Mono for code
-  — and follow the reader's `prefers-color-scheme` instead of being dark only.
-  The page carries a favicon and a social card, so a link to it unfurls.
-
-## [0.0.1] - unreleased
+## [0.0.1] - never tagged
 
 Initial spike: CLI (`build`, `serve`, `export pdf`), ASCII pane layout, file
 transclusion, variables, math, shapes and live-routed connectors.

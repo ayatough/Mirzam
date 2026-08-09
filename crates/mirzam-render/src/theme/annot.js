@@ -156,7 +156,12 @@
     return { x: c.x - dx * t, y: c.y - dy * t };
   }
 
+  // Returns the number of items that were due by `step` but could not be
+  // placed — an anchor that is not on the slide, a phrase with no line boxes.
+  // A dropped mark is silent by design (a stale annotation must never take a
+  // deck down), so something has to count them for `check-layout.mjs`.
   function draw(overlay, items, box, sec, m, step) {
+    let missed = 0;
     const svg = overlay.firstChild;
     svg.setAttribute('viewBox', `0 0 ${sec.offsetWidth} ${sec.offsetHeight}`);
     while (svg.firstChild) svg.removeChild(svg.firstChild);
@@ -165,7 +170,7 @@
     for (const item of items) {
       if ((item.step || 0) > step) continue;
       const a = place(item, 'from', box, sec, m);
-      if (!a) continue;
+      if (!a) { missed++; continue; }
       const color = item.color || 'var(--mz-accent1)';
       const dash = item.dashed ? '7 6' : null;
       const common = { stroke: color, fill: 'none', 'stroke-width': 3,
@@ -179,10 +184,10 @@
 
       if (item.kind === 'highlight' || item.kind === 'underline' || item.kind === 'box') {
         const el = item.anchor && sec.querySelector('#' + CSS.escape(item.anchor));
-        if (!el) continue;
+        if (!el) { missed++; continue; }
         const pad = item.pad || 0;
         const rows = lineRects(el, m);
-        if (!rows.length) continue;
+        if (!rows.length) { missed++; continue; }
         for (const r of rows) {
           if (item.kind === 'highlight') {
             // A wash rather than an outline: the words stay the thing being
@@ -225,7 +230,7 @@
         svg.appendChild(svgEl('ellipse', { ...common, cx: c.x, cy: c.y, rx: a.w / 2, ry: a.h / 2 }));
       } else if (item.kind === 'arrow') {
         const bBox = place(item, 'to', box, sec, m);
-        if (!bBox) continue;
+        if (!bBox) { missed++; continue; }
         const from = mid(a);
         const to = edgeOf(bBox, from);
         svg.appendChild(svgEl('line', { ...common, x1: from.x, y1: from.y, x2: to.x, y2: to.y }));
@@ -255,6 +260,7 @@
         overlay.appendChild(tag);
       }
     }
+    return missed;
   }
 
   function mount(script) {
@@ -291,7 +297,7 @@
     for (const l of layers) {
       if (only && l.sec !== only) continue;
       const m = metrics(l.sec);
-      draw(l.overlay, l.items, paintedBox(l.target, m), l.sec, m, stepOn(l.sec));
+      l.missed = draw(l.overlay, l.items, paintedBox(l.target, m), l.sec, m, stepOn(l.sec));
     }
     // A connector may point at a mark drawn here, and the marks are only laid
     // out now — so the connectors have to be re-routed after, not before.
@@ -338,6 +344,15 @@
       if (steps.get(sec) === step) return;
       steps.set(sec, step);
       refresh(sec);
+    },
+
+    // How many of this slide's marks were due but could not be drawn.
+    // `check-layout.mjs` gates on it, so a renamed id fails a build rather
+    // than quietly removing the circle the sentence refers to.
+    missing(sec) {
+      let n = 0;
+      for (const l of layers) if (l.sec === sec) n += l.missed || 0;
+      return n;
     },
   };
 

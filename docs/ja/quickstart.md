@@ -5,7 +5,7 @@
 | 手元にあるもの | 使うもの | 得られるもの |
 |---|---|---|
 | ブラウザ | **[ブラウザ版エディタ](https://ayatough.github.io/Mirzam/try/)** | 完成した `.html` デッキ。インストール不要、スマホでも動く |
-| ターミナルと Rust | **`mirzam` CLI** | 全機能。ライブプレビュー、PDF 出力、ファイル分割、ローカル画像 |
+| ターミナル | **`mirzam` CLI** | 全機能。ライブプレビュー、PDF 出力、ファイル分割、ローカル画像 |
 | VS Code | **プレビュー拡張** | Markdown の横でデッキが即時再描画される |
 | Obsidian | **手持ちの vault** | vault で執筆し、CLI かブラウザ版でビルド |
 
@@ -38,9 +38,19 @@ CLI と同じ Rust コアを WebAssembly にしたものです。左に Markdown
 
 ## 2. コマンドライン — 全機能
 
-Rust ツールチェイン（1.75 以降、[rustup.rs](https://rustup.rs)）が必要です。
-**ビルド済みバイナリはまだ配布していません**——配布は `v0.1.0` のリリース作業に
-含まれています。
+**Rust は不要です。** リリースごとに macOS / Linux / Windows 向けのビルド済み
+バイナリを配布しています。
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ayatough/Mirzam/main/scripts/install.sh | sh
+```
+
+環境に合ったアーカイブを取得し、公開されているチェックサムと照合してから
+`~/.local/bin` に `mirzam` を置きます（`MIRZAM_BIN_DIR` で変更可）。Windows は
+[リリースページ](https://github.com/ayatough/Mirzam/releases)から `.zip` を
+取得し、`mirzam.exe` を `PATH` の通った場所に置いてください。
+
+自分でビルドする場合は Rust 1.91 以降（[rustup.rs](https://rustup.rs)）が必要です。
 
 ```bash
 git clone https://github.com/ayatough/Mirzam
@@ -65,7 +75,7 @@ mirzam build notes.md --split h2     # 普通の文書をそのままデッキ�
 
 ```bash
 ./scripts/build-vsix.sh
-code --install-extension editors/vscode/mirzam-preview-0.0.1.vsix
+code --install-extension editors/vscode/mirzam-preview-*.vsix
 ```
 
 `.md` を開いて `Ctrl+K V`（macOS は `Cmd+K V`）。編集したスライドだけが再描画され、

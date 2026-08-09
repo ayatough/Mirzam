@@ -38,7 +38,7 @@ from a deck someone was actually trying to give.
 | 1 | W10, W11 | Independent; the viewer's own chrome and the authoring layer |
 | 2 | W12, W13 | W12 needs the chrome from W10; W13 needs nothing |
 | 3 | W14 | Retires an authoring pattern the other streams now cover |
-| 4 | W9 | Integration, benchmark, `v0.1.0` |
+| 4 | W9 | Integration, benchmark, `v0.1.0` — done; the release is tagged |
 
 ## Assignment
 
@@ -65,8 +65,8 @@ there is. The model column follows from that:
 | W12 | Presenter window | B | Sonnet | W11 | ✅ |
 | W13 | Table of contents from headings | B | Sonnet | — | ✅ |
 | W14 | Linking by annotation, not by arrow | C | Sonnet | W6 | ✅ |
-| W15 | Brand and visual identity | B | — | — | |
-| W9 | Release hardening and `v0.1.0` | A | Opus | all | |
+| W15 | Brand and visual identity | B | — | — | ✅ |
+| W9 | Release hardening and `v0.1.0` | A | Opus | all | ✅ |
 | W5 | Typst-flavoured math | A | Sonnet | — | deferred |
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
 
@@ -601,7 +601,7 @@ entry and the screen simply hides it.
 `examples/seminar.md` traded its hand-maintained agenda for this, which is the
 honest demonstration — that list had to be edited every time a section moved.
 
-## W15 — Brand and visual identity
+## W15 — Brand and visual identity ✅
 
 **Difficulty B · runs beside everything else**
 
@@ -644,6 +644,19 @@ allows it.
 **Definition of done** is the same as every other stream: `cargo test
 --workspace`, `cargo clippy --workspace --all-targets`, `cargo fmt --all --
 --check`, and `./scripts/build-site.sh` completing with its link check green.
+
+
+**Landed.** The mark, wordmark, icon, hero images, palette and pipeline diagram
+are in `docs/brand/`; `examples/themes/mirzam.css` carries the identity as a
+deck theme, and `pitch.css` was redrawn in the same palette, so every published
+sample deck now looks like Mirzam. `assets.rs` gained `srcset` inlining, needed
+so a `<picture>` offering a light and a dark wordmark still makes a
+self-contained deck.
+
+One boundary was crossed afterwards, by W9 rather than by this stream: the
+landing page's "Try it" section in `scripts/build-site.sh` became "Install it",
+pointing at the prebuilt binaries. That is content, not design — the page's look
+is untouched.
 
 ## W14 — Linking by annotation, not by arrow
 
@@ -841,7 +854,7 @@ editing; undo (the editor's own undo, on the Markdown file, is the story).
 
 **Owns:** `crates/mirzam-cli/src/serve.rs`, `theme/annot-edit.js`.
 
-## W9 — Release hardening and `v0.1.0`
+## W9 — Release hardening and `v0.1.0` ✅
 
 **Difficulty A · Opus · last**
 
@@ -859,3 +872,36 @@ finished.
   in [roadmap.md](roadmap.md), and update them.
 - `docs/syntax.md`, `docs/layout.md`, `docs/ja/README.md`, `CHANGELOG.md`.
 - Then tag `v0.1.0` — deliberately deferred until now.
+
+**Landed, with one thing added and one reinterpreted.**
+
+- **Prebuilt binaries were pulled into this stream.** They were not in the brief,
+  and they were the largest thing standing between the project and anyone who
+  wanted to use it: the honest answer to "how do I make a deck?" began with
+  "install Rust". `.github/workflows/release.yml` builds five targets on a `v*`
+  tag, smoke-tests each native one by building a deck with it, and publishes
+  archives with checksums and the tag's changelog section as the notes.
+  `scripts/install.sh` is the one-liner on the other end. The tag must equal `v`
+  plus the workspace version, and the build fails if it does not — the install
+  script derives its URL from the tag, so a mismatch would publish archives
+  nobody could fetch.
+- **`commonmark_compat.rs` now walks a list rather than repeating one.**
+  `mirzam_syntax::BLOCK_KINDS` is the canonical set of fenced forms, and a test
+  in `mirzam-syntax` proves every name on it is live. Adding a block form
+  without a compatibility story now fails a test instead of passing silently,
+  which is the difference between a promise and a habit.
+- **"An annotation drawn outside its target" was the wrong check to write.**
+  W14 made anchored marks legitimately land anywhere on the slide — that is what
+  pairing a phrase with a bar *is* — so containment within a target would have
+  failed correct decks. What the checker gates on instead is a mark that could
+  not be drawn at all: the runtime counts them (`MZAnnot.missing`), because a
+  dropped mark is silent by design and a sentence that says "the circled bar"
+  outlives the circle. The other two landed as written, via `MZAnim.armed` and a
+  look at `<html class="mz-debug">` before anything else is measured.
+- **Two things the release found.** The repository had no `LICENSE` file despite
+  the README claiming MIT, and the declared Rust floor (1.75) had been wrong
+  since `math-core` landed. Both are fixed, and a CI job now builds on exactly
+  the declared toolchain so the second cannot drift again.
+- Benchmark re-measured: edit latency at 500 slides went 2.3 ms → 3.2 ms, from
+  the whole-document passes W10 and W13 added, not from rendering. The shape is
+  unchanged and the numbers in [roadmap.md](roadmap.md) now match.

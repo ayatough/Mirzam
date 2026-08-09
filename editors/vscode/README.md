@@ -37,7 +37,7 @@ reference](https://github.com/ayatough/Mirzam/blob/main/docs/syntax.md).
 ```bash
 # from the repository root
 ./scripts/build-vsix.sh
-code --install-extension editors/vscode/mirzam-preview-0.0.1.vsix
+code --install-extension editors/vscode/mirzam-preview-*.vsix
 ```
 
 ## Limitations
