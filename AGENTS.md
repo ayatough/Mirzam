@@ -56,6 +56,13 @@ plus, when the change is user-visible:
 - golden snapshots updated **deliberately**, with the diff reviewed:
   `MIRZAM_UPDATE_SNAPSHOTS=1 cargo test -p mirzam-cli --test golden`
 
+**Then push it to `main`.** There is no second reader waiting on a branch, and
+`main` is the only ref the site publishes from, so a change parked on a branch
+cannot be looked at where it matters. This makes the gate above the whole of the
+review: run it before you push, not after. If something does land broken,
+`git revert` it — reverting a small commit costs less than the branch dance
+would have cost every commit that was fine.
+
 ## Verify by rendering, not by reading
 
 Rendering bugs are invisible in HTML diffs. Several real bugs in this repository

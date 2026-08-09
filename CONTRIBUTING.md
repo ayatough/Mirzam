@@ -40,6 +40,14 @@ An issue costs you far less than a rejected pull request does, and the answer
 may be "yes, and here is the shape it should take", which is worth having before
 you write anything.
 
+**Branch from `main`, but expect it to move.** The author commits to `main`
+directly — see [How this repository is
+developed](README.md#how-this-repository-is-developed) — so it is the working
+branch rather than a stable one. Rebase before you open a pull request, and do
+not be surprised if the file you touched looks different by then. Your changes
+still come in as pull requests; the direct-push policy covers the author's own
+commits only.
+
 ## The bar
 
 Everything below runs in CI on every push, and a pull request is expected to

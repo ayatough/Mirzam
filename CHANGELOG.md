@@ -24,6 +24,11 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   key, which also makes that toggle stick from one deck to the next.
 
 ### Changed
+- `main` is documented as the working branch rather than a stable one, in the
+  README, its Japanese translation, `CONTRIBUTING.md` and `AGENTS.md`. It is
+  where development lands directly: the site publishes from `main` and nowhere
+  else, so a change held on a branch cannot be reviewed where it counts. Depend
+  on a release, not on `main`.
 - The pitch deck's title slide carries Mirzam's own hero art, one image per
   mode, in place of the stock city photograph.
 - The README deck on the site is built with Mirzam's theme rather than

@@ -209,6 +209,31 @@ Run `./scripts/build-site.sh` to build the same site locally.
 See the [roadmap](docs/roadmap.md) for the full plan and [development
 guide](docs/development.md) to work on it.
 
+## How this repository is developed
+
+**`main` is the working branch, not a stable one.** Development happens on it
+directly: this is a single author working with an AI assistant, so a pull
+request has no second reader to wait for, and holding changes on a branch only
+delays the one review that does happen — looking at the deployed site, which
+[publishes from `main`](.github/workflows/pages.yml) and nowhere else.
+
+What that means if you are using Mirzam:
+
+- **Depend on a [release](https://github.com/ayatough/Mirzam/releases), not on
+  `main`.** Tags are the stable points. `main` can carry a half-finished
+  feature, markup that is about to change again, or a fix that has not been
+  looked at on a real screen yet.
+- **The gate still runs on every push**: tests, clippy, formatting, the layout
+  check and the WASM build, on `main` as well as on pull requests. `main` being
+  the working branch does not mean it is allowed to be broken — it means it is
+  allowed to change under you.
+- **Bug reports against `main` are welcome**; say which commit, since there may
+  not be a version number to name.
+
+Contributions still go through pull requests — see
+[CONTRIBUTING.md](CONTRIBUTING.md). The direct-push policy is about the author's
+own commits, not a closed door.
+
 ## Contributing
 
 **Bug reports and feature requests are very welcome** — a deck is a text file, so
