@@ -7,6 +7,12 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-09
+
+First tagged release. Prebuilt binaries, a browser editor, and a deck you can
+present from — animation, effects, annotations, a presenter window and a
+contents page that writes itself.
+
 ### Added
 - `scripts/record-demo.mjs`: records a deck being presented, by driving it in a
   browser rather than by anyone operating one. Writes a `.webm` with no extra
@@ -18,14 +24,6 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   token half of `examples/themes/mirzam.css`; the typography stays in that file,
   because a built-in theme is loaded before the layout stylesheet and can only
   set tokens. `css: themes/mirzam.css` is still how you get the whole thing.
-
-## [0.1.0] - 2026-08-09
-
-First tagged release. Prebuilt binaries, a browser editor, and a deck you can
-present from — animation, effects, annotations, a presenter window and a
-contents page that writes itself.
-
-### Added
 - **Prebuilt binaries.** `.github/workflows/release.yml` builds `mirzam` for
   x86-64 and arm64 Linux, Intel and Apple-silicon macOS, and x86-64 Windows on
   every `v*` tag, smoke-tests each native one by building a deck with it, and

@@ -11,7 +11,7 @@ single HTML file or a PDF.
 
 **[See the decks running →](https://ayatough.github.io/Mirzam/)**
 
-[Quick start](docs/quickstart.md) · [Syntax](docs/syntax.md) · [Layout guide](docs/layout.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](docs/development.md) · [Brand](docs/brand/README.md) · [Agents](AGENTS.md) · [日本語](docs/ja/README.md)
+[Quick start](docs/quickstart.md) · [Syntax](docs/syntax.md) · [Layout guide](docs/layout.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](CONTRIBUTING.md) · [Development](docs/development.md) · [Brand](docs/brand/README.md) · [Agents](AGENTS.md) · [日本語](docs/ja/README.md)
 
 ---
 
@@ -206,6 +206,14 @@ Run `./scripts/build-site.sh` to build the same site locally.
 
 See the [roadmap](docs/roadmap.md) for the full plan and [development
 guide](docs/development.md) to work on it.
+
+## Contributing
+
+**Bug reports and feature requests are very welcome** — a deck is a text file, so
+a bug report can usually be the deck. For code, please read
+[CONTRIBUTING.md](CONTRIBUTING.md) first: small fixes are fine to send straight
+in, but anything with a design decision in it wants an issue first, because the
+syntax is the expensive part to get wrong.
 
 ## License
 
