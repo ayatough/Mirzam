@@ -8,7 +8,7 @@ single HTML file or a PDF.
 
 **[See the decks running →](https://ayatough.github.io/Mirzam/)**
 
-[Syntax](docs/syntax.md) · [Layout guide](docs/layout.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](docs/development.md) · [Agents](AGENTS.md) · [日本語](docs/ja/README.md)
+[Quick start](docs/quickstart.md) · [Syntax](docs/syntax.md) · [Layout guide](docs/layout.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](docs/development.md) · [Agents](AGENTS.md) · [日本語](docs/ja/README.md)
 
 ---
 
@@ -81,7 +81,15 @@ whenever the layout changes.
 
 ## Install
 
-Requires a Rust toolchain (1.75+).
+**No install needed to try it:** the [browser
+editor](https://ayatough.github.io/Mirzam/try/) runs the same Rust core as
+WebAssembly and hands you the finished `.html`. It works on a phone. See the
+[quick start](docs/quickstart.md) for every other way in — CLI, VS Code,
+Obsidian.
+
+For everything else — live preview, PDF export, file splitting, local images —
+you need the CLI, and that needs a Rust toolchain (1.75+). There is no prebuilt
+binary yet.
 
 ```bash
 git clone https://github.com/ayatough/Mirzam
@@ -112,8 +120,9 @@ In the viewer: `←` `→` to navigate (and to step through a slide's animation)
 `N` for speaker notes, `F` for fullscreen, `D` for dark mode, `L` to outline the
 layout, `P` for a presenter window with the next slide, your notes and a timer.
 Press `/` for the full list, including the effect keys this particular deck
-binds. On a phone, swipe to turn the page, swipe up for notes, and long press
-for the same sheet.
+binds. On a phone, swipe to turn the page, swipe up for notes, and two-finger
+tap for the same sheet — the long press is left alone, because that is how you
+select text.
 
 ### In your editor
 
@@ -126,6 +135,11 @@ Open a `.md` file and press `Ctrl+K V` (`Cmd+K V` on macOS). Editing re-renders 
 the slide you touched, and moving the cursor scrolls the preview to match.
 
 ### In a browser
+
+The published editor is at
+**[ayatough.github.io/Mirzam/try](https://ayatough.github.io/Mirzam/try/)** —
+write, preview, and download the finished deck, with no toolchain at all. To run
+that same page against your working copy:
 
 ```bash
 ./scripts/serve-wasm-demo.sh    # http://localhost:8080

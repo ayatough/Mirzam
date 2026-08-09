@@ -26,6 +26,20 @@ done
 ./target/release/mirzam build README.md -o "$OUT/decks/readme" --split h2 \
   --base-url "$REPO_BLOB/"
 
+# The browser editor: the same Rust core compiled to WebAssembly, so someone
+# with no toolchain - or no laptop - can still write a deck and download it.
+# Skipped when the WASM toolchain is not available, and the landing page then
+# simply does not offer the card, so a site built without it has no dead link.
+TRY_CARD=""
+echo "==> building the browser editor"
+if [ "${MIRZAM_SKIP_WASM:-}" != "1" ] && ./scripts/build-wasm.sh web/wasm-demo/pkg; then
+  mkdir -p "$OUT/try"
+  cp -R web/wasm-demo/. "$OUT/try/"
+  TRY_CARD='<a class="card" href="try/"><b>Write one in the browser</b><span>The Rust core as WebAssembly: no install, and it runs on a phone</span></a>'
+else
+  echo "  (skipped; the landing page will not link to it)"
+fi
+
 # The prose stays on GitHub, linked absolutely from the landing page below.
 # `actions/deploy-pages` serves this directory verbatim - no Jekyll runs, so a
 # copied `syntax.md` would never become the `syntax.html` the page linked to,
@@ -85,6 +99,14 @@ cat > "$OUT/index.html" <<'HTML'
     <a class="card" href="decks/readme/"><b>This README, as a deck</b><span>No Mirzam syntax: <code>--split h2</code> on an ordinary document</span></a>
   </div>
 
+  <h2>Write one</h2>
+  <p>Nothing to install: the editor below runs the same Rust core in your browser
+  and hands you the finished <code>.html</code>. It works on a phone.</p>
+  <div class="cards">
+    <!--TRY-->
+    <a class="card" href="https://github.com/ayatough/Mirzam/blob/main/docs/quickstart.md"><b>Quick start</b><span>Browser, command line, VS Code, Obsidian, phone</span></a>
+  </div>
+
   <h2>Read</h2>
   <ul>
     <li><a href="https://github.com/ayatough/Mirzam/blob/main/docs/syntax.md">Syntax reference</a> — every block and inline form</li>
@@ -112,6 +134,8 @@ HTML
 
 # Every local link on the landing page must resolve in the artifact, since
 # nothing rewrites paths after this point.
+sed -i.bak "s|<!--TRY-->|$TRY_CARD|" "$OUT/index.html" && rm -f "$OUT/index.html.bak"
+
 echo "==> checking links"
 missing=0
 for href in $(grep -o 'href="[^"h][^"]*"' "$OUT/index.html" | sed 's/href="//;s/"$//'); do

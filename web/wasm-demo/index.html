@@ -3,15 +3,28 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mirzam WASM demo</title>
+<title>Write a Mirzam deck in your browser</title>
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; font-family: system-ui, 'Hiragino Sans', 'Noto Sans CJK JP', sans-serif; }
   body { display: flex; flex-direction: column; background: #14161d; color: #dde1ee; }
-  header { padding: 8px 14px; display: flex; gap: 14px; align-items: center; border-bottom: 1px solid #2a2e3d; }
-  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
-  header .stat { font-size: 12px; color: #9aa1b8; font-variant-numeric: tabular-nums; }
-  header .stat b { color: #12b8a6; font-weight: 600; }
+  header {
+    padding: 8px 12px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    border-bottom: 1px solid #2a2e3d;
+  }
+  header h1 { font-size: 15px; margin: 0 6px 0 0; font-weight: 600; white-space: nowrap; }
+  .stat { font-size: 12px; color: #9aa1b8; font-variant-numeric: tabular-nums; }
+  .stat b { color: #12b8a6; font-weight: 600; }
+  .spacer { flex: 1; }
+  button, label.btn {
+    font: inherit; font-size: 13px; padding: 5px 11px; border-radius: 8px; cursor: pointer;
+    color: #dde1ee; background: #232838; border: 1px solid #39405a; white-space: nowrap;
+  }
+  button:hover, label.btn:hover { background: #2d3348; }
+  button.primary { background: #1f6f66; border-color: #2aa294; color: #fff; }
+  button.primary:hover { background: #24857a; }
+  button[aria-pressed="true"] { background: #2d3348; border-color: #5b8cff; }
+  input[type=file] { display: none; }
   main { flex: 1; display: flex; min-height: 0; }
   textarea {
     width: 42%; resize: horizontal; border: 0; border-right: 1px solid #2a2e3d;
@@ -25,13 +38,32 @@
     color: #ffb4b4; background: #2a1e22; border-top: 1px solid #4a2a2a;
   }
   #warnings:empty { display: none; }
+  #tabs { display: none; gap: 6px; }
+
+  /* On a phone there is no room for two columns, so the two halves take turns.
+     Everything else - the build, the download - is identical. */
+  @media (max-width: 820px) {
+    #tabs { display: flex; }
+    main { flex-direction: column; }
+    textarea { width: 100%; height: 100%; resize: none; border-right: 0; }
+    body[data-pane="preview"] textarea { display: none; }
+    body[data-pane="edit"] #preview { display: none; }
+  }
 </style>
 </head>
-<body>
+<body data-pane="preview">
 <header>
-  <h1>Mirzam WASM demo</h1>
+  <h1>Mirzam</h1>
+  <span id="tabs">
+    <button type="button" id="tab-edit" aria-pressed="false">Edit</button>
+    <button type="button" id="tab-preview" aria-pressed="true">Preview</button>
+  </span>
   <span class="stat" id="stat">Loading…</span>
-  <span class="stat">Edit on the left; only changed slides re-render</span>
+  <span class="spacer"></span>
+  <label class="btn">Open .md<input type="file" id="open" accept=".md,.markdown,text/markdown,text/plain"></label>
+  <label class="btn">Add image<input type="file" id="add-img" accept="image/*" multiple></label>
+  <button type="button" id="save-md">Save .md</button>
+  <button type="button" id="save-html" class="primary">Download deck</button>
 </header>
 <main>
   <textarea id="src" spellcheck="false"></textarea>
@@ -43,7 +75,7 @@
 import init, { Renderer } from './pkg/mirzam_wasm.js';
 
 const SAMPLE = `---
-title: WASM demo
+title: My deck
 aspect: "16:9"
 vars:
   product: Mirzam
@@ -104,6 +136,50 @@ await init();
 const renderer = new Renderer();
 srcEl.value = localStorage.getItem('mirzam-src') || SAMPLE;
 
+// ---- Images ----
+// The core has no filesystem here, so the host supplies assets by name. Adding
+// a picture reads it as a data URI and hands it over: from then on the deck
+// refers to it exactly as a deck on disk would, `![alt](shot.png)`, and the
+// downloaded file carries the bytes inside it like any other Mirzam build.
+const assets = JSON.parse(localStorage.getItem('mirzam-assets') || '{}');
+function publishAssets() {
+  renderer.set_assets(JSON.stringify(assets));
+  try {
+    localStorage.setItem('mirzam-assets', JSON.stringify(assets));
+  } catch (e) {
+    // A few screenshots overflow the ~5 MB quota. The pictures still work for
+    // this session and still reach the download; only the draft is not kept.
+    warnEl.textContent = 'Images are too large to save as a draft — download the deck before closing.';
+  }
+}
+publishAssets();
+
+const readAsDataUrl = (file) => new Promise((res, rej) => {
+  const r = new FileReader();
+  r.onload = () => res(r.result);
+  r.onerror = rej;
+  r.readAsDataURL(file);
+});
+
+async function addImages(files) {
+  const names = [];
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) continue;
+    const name = file.name.replace(/[^\w.-]/g, '_');
+    assets[name] = await readAsDataUrl(file);
+    names.push(name);
+  }
+  if (!names.length) return;
+  publishAssets();
+  // Insert at the cursor, so a picture lands where the author was typing.
+  const md = names.map((n) => `![](${n})`).join('\n') + '\n';
+  const at = srcEl.selectionStart;
+  srcEl.value = srcEl.value.slice(0, at) + md + srcEl.value.slice(srcEl.selectionEnd);
+  srcEl.selectionStart = srcEl.selectionEnd = at + md.length;
+  localStorage.setItem('mirzam-src', srcEl.value);
+  fullRender(srcEl.value);
+}
+
 function fullRender(text) {
   const t0 = performance.now();
   const out = renderer.render_page(text);
@@ -144,6 +220,71 @@ srcEl.addEventListener('input', () => {
   clearTimeout(timer);
   timer = setTimeout(() => update(srcEl.value), 120);
 });
+
+// ---- Getting work in and out ----
+// The whole point of the browser build: what comes out is the same
+// self-contained file the CLI writes, so a deck written on a phone is a deck.
+function download(name, text, type) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// Frontmatter `title:` names the file, so a deck arrives called what it is.
+function deckName(text) {
+  const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
+  const t = m && /^title:\s*(.+)$/m.exec(m[1]);
+  const name = t ? t[1].trim().replace(/^["']|["']$/g, '') : 'deck';
+  return (name.replace(/[^\p{L}\p{N} ._-]/gu, '').trim() || 'deck').replace(/\s+/g, '-');
+}
+
+document.getElementById('save-html').addEventListener('click', () => {
+  download(deckName(srcEl.value) + '.html', renderer.render_page(srcEl.value).html, 'text/html');
+});
+document.getElementById('save-md').addEventListener('click', () => {
+  download(deckName(srcEl.value) + '.md', srcEl.value, 'text/markdown');
+});
+document.getElementById('add-img').addEventListener('change', async (e) => {
+  await addImages(e.target.files);
+  e.target.value = '';
+});
+// Dropping a screenshot on the source is the same thing, one step shorter.
+srcEl.addEventListener('dragover', (e) => e.preventDefault());
+srcEl.addEventListener('drop', async (e) => {
+  if (!e.dataTransfer?.files?.length) return;
+  e.preventDefault();
+  await addImages(e.dataTransfer.files);
+});
+// And so is pasting one, which is how a screenshot usually arrives.
+srcEl.addEventListener('paste', async (e) => {
+  const files = [...(e.clipboardData?.files || [])];
+  if (!files.length) return;
+  e.preventDefault();
+  await addImages(files);
+});
+
+document.getElementById('open').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  srcEl.value = await file.text();
+  localStorage.setItem('mirzam-src', srcEl.value);
+  fullRender(srcEl.value);
+  e.target.value = '';
+});
+
+// Nothing is uploaded anywhere, so the draft in localStorage is the only copy.
+addEventListener('beforeunload', () => localStorage.setItem('mirzam-src', srcEl.value));
+
+const setPane = (which) => {
+  document.body.dataset.pane = which;
+  document.getElementById('tab-edit').setAttribute('aria-pressed', String(which === 'edit'));
+  document.getElementById('tab-preview').setAttribute('aria-pressed', String(which === 'preview'));
+};
+document.getElementById('tab-edit').addEventListener('click', () => setPane('edit'));
+document.getElementById('tab-preview').addEventListener('click', () => setPane('preview'));
 
 fullRender(srcEl.value);
 </script>
