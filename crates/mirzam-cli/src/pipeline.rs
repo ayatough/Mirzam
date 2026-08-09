@@ -199,7 +199,6 @@ pub fn build_deck_with(
     }
 
     let mut sections = Vec::with_capacity(parts.len());
-    let mut hashes: Vec<u64> = Vec::with_capacity(parts.len());
     let mut rendered = 0usize;
 
     for (i, part) in parts.iter().enumerate() {
@@ -237,9 +236,14 @@ pub fn build_deck_with(
         if let Some(g) = part.group {
             html = mirzam_render::mark_continuation(&html, g);
         }
-        hashes.push(str_hash(&html));
         sections.push(html);
     }
+
+    // `toc` needs to know about slides other than its own, so it resolves here,
+    // once every slide has rendered. Each slide left a self-describing marker,
+    // which is what lets a cached slide take part without being re-rendered.
+    mirzam_render::resolve_deck(&mut sections);
+    let mut hashes: Vec<u64> = sections.iter().map(|s| str_hash(s)).collect();
 
     // Applied outside the cache: the base URL is a property of this build, not
     // of a slide, so a cached slide must not carry one build's URLs into the next.

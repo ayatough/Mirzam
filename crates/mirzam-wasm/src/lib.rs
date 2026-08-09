@@ -214,7 +214,7 @@ impl Renderer {
         let body = substitute_outside_fences(&body, &vars);
 
         let assets = MapAssets(&self.assets);
-        let sections = mirzam_syntax::split_slides(&body)
+        let mut sections: Vec<String> = mirzam_syntax::split_slides(&body)
             .iter()
             .enumerate()
             .map(|(i, src)| {
@@ -224,6 +224,10 @@ impl Renderer {
                 out.html
             })
             .collect();
+        // A `toc` block needs the whole deck, so it resolves once every slide
+        // has rendered - here as in the CLI pipeline. Without this the browser
+        // build would silently drop a table of contents the CLI produces.
+        mirzam_render::resolve_deck(&mut sections);
         Built {
             meta,
             sections,

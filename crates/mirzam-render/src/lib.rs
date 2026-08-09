@@ -8,11 +8,13 @@ mod charts;
 mod effects;
 mod inline;
 mod theme;
+mod toc;
 
 pub use assets::{AssetSource, FsAssets};
 pub use charts::render_charts_in;
 pub use inline::{parse_attrs, preprocess, render_markdown};
 pub use theme::{contrast_ratio, mode_warning, theme_warning, THEME_NAMES};
+pub use toc::resolve_deck;
 
 use mirzam_core::DeckMeta;
 use mirzam_layout::{parse_grid, GridSpec};
@@ -598,6 +600,7 @@ fn render_grid_slide(
         if attrs.kv.get("fit").map(String::as_str) == Some("shrink") {
             extra_cls.push_str(" mz-fit");
         }
+        let content = toc::extract(&content, errors);
         let (content, chart_blocks) = charts::extract(&content);
         let mut body = render_markdown(&preprocess(&content));
         if !chart_blocks.is_empty() {
@@ -754,6 +757,7 @@ fn render_single_pane_slide(
         content.push('\n');
         content.push_str(&pb.body);
     }
+    let content = toc::extract(&content, errors);
     let (content, chart_blocks) = charts::extract(&content);
     let mut body = render_markdown(&preprocess(&content));
     if !chart_blocks.is_empty() {

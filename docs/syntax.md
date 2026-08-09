@@ -346,6 +346,40 @@ Two rules follow from what this is:
 - **`<!-- next -->` outside every pane** breaks the slide body itself, which is
   what you want on a slide with no `pane` layout at all.
 
+## Table of contents
+
+````markdown
+```toc
+from: 2        # skip the deck's `#` title
+depth: 2       # deepest heading listed
+current: true  # mark the section being presented
+```
+````
+
+Collects every heading in the deck, links each entry to the slide it is on, and
+draws a leader out to the page number. Clicking an entry goes there; the address
+is the slide number the viewer already keeps in the URL, so an entry works with
+JavaScript switched off.
+
+- **`from`** (default `1`) is the shallowest level listed, **`depth`** (default
+  `2`) the deepest. `from: 2` is the usual setting: the title of the talk is not
+  an item on its own agenda.
+- **`current: true`** marks the last entry at or before the slide on screen —
+  the section you are *inside*, not the heading you last passed. That is what
+  turns an agenda slide into a progress indicator you can return to.
+- A heading appears once, at the first slide that carries it, so a slide broken
+  by `<!-- next -->` contributes one entry rather than three.
+- Headings written inside speaker notes stay out: a note is what you say, not
+  part of the structure.
+- The slide carrying the list is not in it.
+- **In the PDF** each entry shows its page number instead of a link, since a
+  link to slide 7 means nothing on paper.
+
+This is the first block that needs to know about slides other than its own. It
+resolves in a second pass once the whole deck has rendered, which is why a
+`toc` block previewed on a single slide renders as nothing rather than as a
+guess.
+
 ## Citations
 
 `[^key]` marks a claim and the note lands at the foot of **that slide** — a

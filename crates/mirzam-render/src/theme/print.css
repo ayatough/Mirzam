@@ -24,3 +24,8 @@ section.slide {
 html.mz-debug .grid { background: none; }
 html.mz-debug .pane { outline: none; background: none; }
 html.mz-debug .pane::before { display: none; }
+
+/* A link to slide 7 means nothing on paper, so the printed table of contents
+   shows the page number the entry is on instead. */
+nav.mz-toc .mz-toc-page { display: inline; }
+nav.mz-toc a { text-decoration: none; }
