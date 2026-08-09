@@ -358,7 +358,56 @@ html.mz-awake #controls { opacity: 1; pointer-events: auto; }
 #keys .mz-keys-close { margin: 16px 0 0; color: var(--mz-ui-faint); font-size: 13px; }
 
 /* Chrome is the viewer, never the document. */
-@media print { #chrome, #keys, #notes-panel { display: none !important; } }
+@media print { #chrome, #keys, #notes-panel, #presenter { display: none !important; } }
+
+/* The presenter window: the same file with `?presenter=1`. Only this window
+   gets the extra furniture — the audience window is untouched. */
+html[data-presenter] #chrome, html[data-presenter] #notes-panel { display: none; }
+#presenter {
+  position: fixed; inset: 0; z-index: 5;
+  display: grid; grid-template-rows: 1fr auto; gap: 14px; padding: 14px;
+  color: var(--mz-ui-fg); font-size: 15px;
+}
+/* `min-width: 0` throughout: the preview is laid out at the deck's full width
+   and scaled down, and a grid item's automatic minimum size would let that
+   width push the column open instead. */
+#pv-top {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 28%);
+  gap: 14px; min-height: 0; min-width: 0;
+}
+#pv-side { display: grid; grid-template-rows: auto auto; align-content: start; gap: 14px; min-height: 0; min-width: 0; }
+.pv-box {
+  position: relative; min-height: 0; min-width: 0;
+  background: var(--mz-ui-panel); border: 1px solid var(--mz-ui-line);
+  border-radius: 12px; padding: 26px 12px 12px;
+}
+.pv-box h5 {
+  position: absolute; top: 8px; left: 14px; margin: 0;
+  color: var(--mz-ui-faint); font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+}
+#pv-pos { margin-left: 14px; color: var(--mz-ui-dim); letter-spacing: .06em; }
+/* The deck is moved in here; it centres itself against this box. */
+#pv-now { position: relative; height: 100%; overflow: hidden; border-radius: 8px; }
+#pv-next { position: relative; overflow: hidden; border-radius: 8px; }
+/* The preview is laid out at the deck's own size and scaled down, so it is the
+   real layout rather than a reflow of it at another width. */
+.pv-stage { transform-origin: top left; }
+.pv-slide { position: absolute; inset: 0; display: block; color: var(--mz-fg); background: var(--mz-slide-bg); }
+.pv-end { padding: 2em; color: var(--mz-ui-faint); text-align: center; }
+#pv-time {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 12px 14px;
+}
+#pv-clock { font-size: 34px; font-variant-numeric: tabular-nums; }
+#pv-timer {
+  font: inherit; font-size: 34px; font-variant-numeric: tabular-nums;
+  padding: 2px 12px; cursor: pointer; border-radius: 8px;
+  color: var(--mz-ui-fg); background: var(--mz-ui-chip); border: 1px solid var(--mz-ui-line);
+}
+#pv-timer:hover { background: var(--mz-ui-chip-on); }
+#pv-notes { max-height: 34vh; overflow: auto; }
+#pv-notes-body { font-size: 17px; line-height: 1.65; }
+#pv-notes-body em { color: var(--mz-ui-faint); }
 #notes-panel {
   position: fixed; left: 0; right: 0; bottom: 0;
   /* theme-independent: an overlay panel, deliberately the same in every theme */

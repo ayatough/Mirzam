@@ -110,9 +110,10 @@ mirzam export pdf deck.md -o deck.pdf
 
 In the viewer: `←` `→` to navigate (and to step through a slide's animation),
 `N` for speaker notes, `F` for fullscreen, `D` for dark mode, `L` to outline the
-layout. Press `/` for the full list, including the effect keys this particular
-deck binds. On a phone, swipe to turn the page, swipe up for notes, and long
-press for the same sheet.
+layout, `P` for a presenter window with the next slide, your notes and a timer.
+Press `/` for the full list, including the effect keys this particular deck
+binds. On a phone, swipe to turn the page, swipe up for notes, and long press
+for the same sheet.
 
 ### In your editor
 
@@ -157,11 +158,13 @@ the markup will keep changing, so pin a commit if you depend on it.
 
 - **Working:** build, live-reload server, PDF export, ASCII pane layout, file
   splitting, variables and arithmetic, math, charts, shapes, live connectors,
-  video, background images, animation and slide transitions, annotations, named
-  themes and dark mode, custom themes, speaker notes, VS Code extension,
-  WebAssembly core
-- **Next:** presenter mode, dragging an annotation back into the Markdown,
-  PowerPoint export
+  video, audio and embeds, citations, background images, animation and slide
+  transitions, annotations, effects, shrink-to-fit and author-chosen pane
+  breaks, named themes and dark mode, custom themes, speaker notes and a
+  presenter window, touch and gesture controls, VS Code extension, WebAssembly
+  core
+- **Next:** a table of contents from headings, dragging an annotation back into
+  the Markdown, PowerPoint export
 - **Performance:** a 500-slide deck builds in 78 ms; a single-slide edit
   re-renders in 2.3 ms
 

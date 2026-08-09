@@ -62,7 +62,7 @@ there is. The model column follows from that:
 | W7 | Source map through transclusion | A | Sonnet | — | ✅ |
 | W10 | Continuation: one pane carries on, the rest hold | B | Opus | — | ✅ |
 | W11 | Viewer chrome: cheat sheet, touch controls, gestures | C | Fable | — | ✅ |
-| W12 | Presenter window | B | Sonnet | W11 | |
+| W12 | Presenter window | B | Sonnet | W11 | ✅ |
 | W13 | Table of contents from headings | B | Sonnet | — | |
 | W14 | Linking by annotation, not by arrow | C | Sonnet | W6 | |
 | W9 | Release hardening and `v0.1.0` | A | Opus | all | |
@@ -514,6 +514,26 @@ opened with a flag, so nothing needs a server and the deck stays one file.
 - The notes panel (`N`) stays, for a talk given on one screen.
 
 **Owns:** `theme/presenter.js`, the `P` binding in `theme/viewer.js`.
+
+**Landed as specified,** with one deliberate change of mechanism. The link
+carries **absolute state** (`{slide, step}`), not commands. Forwarding
+keystrokes would drift the moment a window missed one; forwarding position is
+self-healing, and a window opened halfway through a talk adopts the slide
+already on screen. Verified: a third viewer tab opened late landed on slide 8
+of 8 without being told how it got there.
+
+`BroadcastChannel` covers two tabs of a served deck, as planned. It does *not*
+cover two `file://` windows — they have opaque origins and never meet on a
+channel — so the opener/child window handles carry the same message alongside
+it. Sending on both and ignoring our own id makes the duplicate free. This
+replaces the planned `localStorage` fallback, which fails on `file://` for the
+same reason the channel does.
+
+`MZDeck` on the viewer is the seam between the two files, and a test holds both
+sides to it. The next-slide preview is built from each slide's markup captured
+before anything ran: the animation runtime arms elements by writing inline
+styles, and a preview cloned from the live DOM would show a slide with holes in
+it.
 
 ## W13 — Table of contents from headings
 

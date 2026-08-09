@@ -559,6 +559,7 @@ nobody can guess. `Esc` or `/` closes it.
 | `←` `PageUp` | Back a step, then the previous slide |
 | `Home` `End` | First / last slide |
 | `N` | Speaker notes |
+| `P` | Presenter window |
 | `F` | Fullscreen |
 | `D` | Dark / light |
 | `L` | Outline the layout |
@@ -573,6 +574,31 @@ A quiet control cluster sits below the bottom-right corner — previous, next an
 the cheat sheet — and fades in when you move the pointer or touch the screen.
 It is outside the deck, so it never covers slide content, and it is never
 printed.
+
+### The presenter window
+
+`P` opens a second window showing the current slide, the next one, that slide's
+speaker notes, the time and an elapsed timer — click the timer to restart it.
+Put it on your laptop and the audience window on the projector.
+
+It is **the same file**, opened again with `?presenter=1`. There is no second
+document, no server and no export step: a deck is one file, and this is that
+file rendered differently.
+
+The two windows stay in step over a `BroadcastChannel`, falling back to the
+window handles when the deck is opened from `file://`, where two windows have no
+shared origin to meet on. Neither window is privileged — turn the page in either
+and both move. What crosses the link is the *position*, not a keystroke, so a
+window opened halfway through a talk adopts the slide already on screen instead
+of starting from the beginning, and closing or reloading either one strands
+nothing.
+
+The audience window is unchanged: no extra chrome appears on it. `N` still
+opens the notes panel there, for a talk given on one screen.
+
+The next-slide preview is a still: it is built from the slide as authored, so
+it never inherits the current window's animation state, and it does not run
+animations, annotations or connectors of its own.
 
 ### On a phone
 

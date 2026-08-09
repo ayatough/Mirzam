@@ -12,6 +12,7 @@
 //! - `print.css` — overrides applied for PDF export
 //! - `viewer.js` — the runtime shipped inside every deck
 //! - `anim.js` — the animation runtime, shipped only when a deck animates
+//! - `presenter.js` — the presenter window, and the link between two windows
 //!
 //! [C3]: ../../../docs/workstreams.md#c3-theme-tokens
 
@@ -37,6 +38,10 @@ pub const ANNOT_JS: &str = concat!("\n", include_str!("annot.js"));
 /// it only ever makes content smaller than a box it is already overflowing, so
 /// a page that runs it shows strictly more than one that does not.
 pub const FIT_JS: &str = concat!("\n", include_str!("fit.js"));
+
+/// The presenter window and the link between two windows. Viewer-only: the
+/// print page has no second window and no keys to press.
+pub const PRESENTER_JS: &str = concat!("\n", include_str!("presenter.js"));
 
 /// Print overrides applied after a theme's CSS.
 /// Slide dimensions and the `@page` size are appended by `assemble_print_page`.
@@ -280,6 +285,28 @@ mod tests {
         assert!(VIEWER_JS.contains("script.mz-fx"));
         assert!(EFFECTS_JS.contains("script.mz-fx"));
         assert!(VIEWER_JS.contains("'/'"));
+    }
+
+    /// The presenter window is another viewer, not a privileged one, and the
+    /// two halves of that arrangement live in two files. `MZDeck` is the seam;
+    /// this is what stops one side from being renamed without the other.
+    #[test]
+    fn the_presenter_window_and_the_viewer_agree_on_one_interface() {
+        for member in ["presenting", "state", "html", "onChange", "refit", "sync"] {
+            assert!(
+                VIEWER_JS.contains(member),
+                "viewer.js drops MZDeck.{member}"
+            );
+            assert!(
+                PRESENTER_JS.contains(member),
+                "presenter.js drops MZDeck.{member}"
+            );
+        }
+        assert!(VIEWER_JS.contains("window.MZDeck"));
+        assert!(PRESENTER_JS.contains("window.MZDeck"));
+        // Absolute state, not commands: a window that opened late still lands
+        // in the right place.
+        assert!(PRESENTER_JS.contains("deck.sync(msg.slide, msg.step)"));
     }
 
     /// A phone has no keyboard, so every way of driving the deck has a touch

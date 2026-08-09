@@ -2,8 +2,13 @@
   const html = document.documentElement;
   // ?mode=dark|light overrides frontmatter's baked mode for this view only,
   // applied before anything else so there is no flash of the wrong palette.
-  const qMode = new URLSearchParams(location.search).get('mode');
+  const query = new URLSearchParams(location.search);
+  const qMode = query.get('mode');
   if (qMode === 'dark' || qMode === 'light') html.dataset.mode = qMode;
+  // ?presenter=1 is the same file, opened a second time with a flag. Set here
+  // rather than in presenter.js so the layout is right on the first paint.
+  const PRESENTING = query.get('presenter') === '1';
+  if (PRESENTING) html.dataset.presenter = '1';
 
   const deck = document.getElementById('deck');
   const hud = document.getElementById('hud');
@@ -36,8 +41,19 @@
     if (n && sec) n.show(sec, step);
   };
 
+  // Every slide's markup as it was before anything ran. The presenter window's
+  // next-slide preview is built from this rather than from the live DOM: the
+  // animation runtime writes inline styles onto elements to arm them, and a
+  // preview built from an armed slide would show a slide with holes in it.
+  let pristine = slides().map((s) => s.outerHTML);
+
   function fit() {
-    const s = Math.min(innerWidth / (W + 40), innerHeight / (H + 40));
+    // In the presenter window the deck lives inside a box, not the viewport.
+    const host = deck.parentElement === document.body ? null : deck.parentElement;
+    const box = host
+      ? host.getBoundingClientRect()
+      : { width: innerWidth, height: innerHeight };
+    const s = Math.min(box.width / (W + 40), box.height / (H + 40));
     deck.style.width = W + 'px';
     deck.style.height = H + 'px';
     deck.style.transform = `translate(-50%, -50%) scale(${s})`;
@@ -86,10 +102,14 @@
     requestAnimationFrame(() => drawConnectors(sec));
   }
 
+  // Everything that moves the deck ends here, which makes it the one place a
+  // second window has to be told about.
   function updateHud(total, sec) {
     const n = stepsOn(sec);
     hud.textContent = `${cur + 1} / ${total}` + (n ? ` · ${step}/${n}` : '');
+    for (const fn of watchers) fn(cur, step, total);
   }
+  const watchers = [];
 
   // The slide being left has to stay painted for as long as its exit takes,
   // so it animates out over the slide arriving rather than vanishing first.
@@ -223,9 +243,40 @@
   // not exist until the overlay has laid it out.
   window.__mirzamConnectors = () => drawConnectors(slides()[cur]);
 
+  // What a second window needs to follow this one and to drive it. Deliberately
+  // small: the presenter window is not privileged, it is another viewer.
+  window.MZDeck = {
+    presenting: PRESENTING,
+    state: () => ({ slide: cur, step, total: slides().length }),
+    // The slide as it was authored, for a preview that must not inherit this
+    // window's animation state.
+    html: (i) => pristine[i] || '',
+    onChange: (fn) => watchers.push(fn),
+    refit: () => { fit(); show(cur, { play: false }); },
+    advance,
+    retreat,
+
+    // Absolute rather than incremental: a window that opened late, or missed a
+    // message, lands on the right slide anyway. A different slide still turns
+    // the page properly - the audience is watching this one too.
+    sync(i, n) {
+      const ss = slides();
+      if (i !== cur) show(Math.max(0, Math.min(i, ss.length - 1)));
+      const sec = ss[cur];
+      const want = Math.max(0, Math.min(n, stepsOn(sec)));
+      while (step < want) { step += 1; if (anim) anim.step(sec, step); }
+      while (step > want) { if (anim) anim.unstep(sec, step); step -= 1; }
+      showStep(sec);
+      updateHud(ss.length, sec);
+    },
+  };
+
   // Restore the current page after a live update. An edit must not replay the
   // slide's entrance: the presenter is looking at a step, not at slide one.
-  window.__mirzamRefresh = () => show(cur, { play: false });
+  window.__mirzamRefresh = () => {
+    pristine = slides().map((s) => s.outerHTML);
+    show(cur, { play: false });
+  };
   // Let a host (editor extension) jump to a specific slide. Cursor sync fires
   // on every keystroke, so this follows the cursor without animating.
   window.__mirzamGoto = (i) => show(i, { play: false });
@@ -248,6 +299,7 @@
     ]],
     ['Display', [
       [['N'], 'Speaker notes'],
+      [['P'], 'Presenter window'],
       [['F'], 'Fullscreen'],
       [['D'], 'Dark / light'],
       [['L'], 'Outline the layout'],
@@ -327,6 +379,9 @@
     else if (e.key === 'Home') show(0);
     else if (e.key === 'End') show(slides().length - 1);
     else if (e.key === 'n' || e.key === 'N') notesPanel.hidden = !notesPanel.hidden;
+    // Absent in a deck built without the presenter script; the key then does
+    // nothing rather than throwing and taking navigation down with it.
+    else if (e.key === 'p' || e.key === 'P') { if (window.MZPresenter) window.MZPresenter.open(); }
     else if (e.key === 'f' || e.key === 'F') {
       document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
     }

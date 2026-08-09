@@ -207,6 +207,7 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <div id="keys" hidden></div>
 <div id="notes-panel" hidden></div>
 {fit_js}{anim_js}{annot_js}<script>{js}</script>
+<script>{presenter_js}</script>
 {effects_js}{live_js}</body>
 </html>
 "#,
@@ -214,6 +215,7 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
         css = theme::theme_css(theme_name),
         custom_css = opts.custom_css.as_deref().unwrap_or(""),
         js = theme::VIEWER_JS,
+        presenter_js = theme::PRESENTER_JS,
         fit = deck_fit_attr(meta),
         sections = sections.concat(),
     )
@@ -976,6 +978,17 @@ mod tests {
         let html = assemble_print_page(&meta, &sections, None);
         assert!(!html.contains("window.MZAnim = {"));
         assert!(!html.contains("data-transition"));
+        // A printed page has no second window and no key to press.
+        assert!(!html.contains("window.MZPresenter"));
+    }
+
+    /// The presenter window is the same file opened with a flag, so the viewer
+    /// always carries the script that reads that flag.
+    #[test]
+    fn the_viewer_carries_the_presenter_window() {
+        let html = assemble_page(&DeckMeta::default(), &[], &PageOptions::default());
+        assert!(html.contains("window.MZPresenter"));
+        assert!(html.contains("presenter=1") || html.contains("'presenter'"));
     }
 
     fn annotated_section() -> Vec<String> {
