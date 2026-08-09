@@ -72,6 +72,7 @@ whenever the layout changes.
 | **Animation** | `anim` blocks compile to a timeline: entrances, click-through builds, page turns — and the PDF still shows every slide revealed |
 | **Video, audio and embeds** | Files inlined; YouTube and Vimeo embedded, with a link in the PDF |
 | **Citations** | `[^key]` footnotes land at the foot of the slide that cites them |
+| **A contents page that writes itself** | `toc` collects the deck's headings, links each to its slide, and marks the section you are in |
 | **Nothing silently lost** | `fit: shrink` scales an overfull pane down instead of clipping it |
 | **Your break, not the box's** | `<!-- next -->` carries one pane on to the next slide while the rest hold still |
 | **Backgrounds that stay readable** | A photo behind a pane, with `dim`, `blur` and gradient `scrim` so the text still wins |
@@ -175,10 +176,10 @@ the markup will keep changing, so pin a commit if you depend on it.
   video, audio and embeds, citations, background images, animation and slide
   transitions, annotations, effects, shrink-to-fit and author-chosen pane
   breaks, named themes and dark mode, custom themes, speaker notes and a
-  presenter window, touch and gesture controls, VS Code extension, WebAssembly
-  core
-- **Next:** a table of contents from headings, dragging an annotation back into
-  the Markdown, PowerPoint export
+  presenter window, touch and gesture controls, a table of contents from
+  headings, VS Code extension, WebAssembly core and a browser editor
+- **Next:** dragging an annotation back into the Markdown, prebuilt binaries,
+  PowerPoint export
 - **Performance:** a 500-slide deck builds in 78 ms; a single-slide edit
   re-renders in 2.3 ms
 

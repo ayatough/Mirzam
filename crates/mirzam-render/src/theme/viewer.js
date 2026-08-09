@@ -233,6 +233,30 @@
     svg.innerHTML = out;
   }
 
+  // ---- Table of contents ----
+  // An entry is an ordinary link to the slide number, so it works with no
+  // JavaScript at all; all the runtime does is notice the address changed.
+  addEventListener('hashchange', () => {
+    const n = parseInt((location.hash || '').slice(1));
+    if (n >= 1 && n <= slides().length) show(n - 1);
+  });
+
+  // `current: true` asks the list to say where the talk has got to: the entry
+  // marked is the last one at or before the slide on screen, which is the
+  // section the presenter is inside rather than the heading they last passed.
+  function markCurrent() {
+    const lists = document.querySelectorAll('nav.mz-toc[data-current]');
+    for (const nav of lists) {
+      let here = null;
+      for (const li of nav.querySelectorAll('li[data-slide]')) {
+        li.classList.remove('mz-toc-here');
+        if (+li.dataset.slide <= cur) here = li;
+      }
+      if (here) here.classList.add('mz-toc-here');
+    }
+  }
+  watchers.push(markCurrent);
+
   function renderNotes() {
     const notes = slides()[cur]?.querySelector('aside.notes');
     notesPanel.innerHTML = '<h4>SPEAKER NOTES</h4>' +
