@@ -65,6 +65,7 @@ there is. The model column follows from that:
 | W12 | Presenter window | B | Sonnet | W11 | ✅ |
 | W13 | Table of contents from headings | B | Sonnet | — | ✅ |
 | W14 | Linking by annotation, not by arrow | C | Sonnet | W6 | |
+| W15 | Brand and visual identity | B | — | — | |
 | W9 | Release hardening and `v0.1.0` | A | Opus | all | |
 | W5 | Typst-flavoured math | A | Sonnet | — | deferred |
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
@@ -599,6 +600,50 @@ entry and the screen simply hides it.
 
 `examples/seminar.md` traded its hand-maintained agenda for this, which is the
 honest demonstration — that list had to be edited every time a section moved.
+
+## W15 — Brand and visual identity
+
+**Difficulty B · runs beside everything else**
+
+Icon, teaser images, and a palette of Mirzam's own. Deliberately written as a
+separate stream because it touches almost nothing the feature streams touch, so
+it can run in parallel on its own branch and merge whenever it is ready.
+
+**Owns, exclusively:**
+
+| Path | What |
+|---|---|
+| `docs/brand/` (new) | Icon, wordmark, teaser images. SVG where possible |
+| `examples/themes/*.css` | Sample themes, including any new palette |
+| `examples/brand.md` (new) | A deck that shows the identity off, if one is wanted |
+| `scripts/build-site.sh` | The landing page: favicon, hero, wording |
+| `README.md` — the header block above `## Why` | Logo, badges, tagline |
+
+**Must not touch** (the feature streams are in them): `crates/**`,
+`docs/syntax.md`, `docs/layout.md`, `docs/quickstart.md`, `docs/workstreams.md`,
+`examples/*.md` other than a new one, `crates/mirzam-cli/tests/snapshots/`.
+
+A palette that should become a *built-in* theme rather than a sample lands as
+`examples/themes/<name>.css` first and is promoted in one line later — that
+keeps `theme/mod.rs`, which the feature streams edit, out of two hands at once.
+
+**Two rules a palette must satisfy**, both enforced by
+`cargo test -p mirzam-cli --test sample_themes`, and both learned the hard way:
+
+1. **Define every token in both modes.** A one-palette theme pins the deck to
+   one mode, and `D` then appears broken rather than absent. The bare `:root`
+   block is light; `:root[data-mode="dark"]` is dark.
+2. **Meet the contrast floors.** Body text 4.5:1 on `--mz-slide-bg` and on
+   `--mz-surface`, chart marks 3:1. Dark mode made by inverting light mode fails
+   this, which is exactly what the test exists to catch.
+
+Images are inlined into every deck that uses them, so a 4000px original becomes
+megabytes in every build. Downscale before committing; SVG where the artwork
+allows it.
+
+**Definition of done** is the same as every other stream: `cargo test
+--workspace`, `cargo clippy --workspace --all-targets`, `cargo fmt --all --
+--check`, and `./scripts/build-site.sh` completing with its link check green.
 
 ## W14 — Linking by annotation, not by arrow
 
