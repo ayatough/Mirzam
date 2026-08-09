@@ -31,10 +31,17 @@ jobs:
             target: aarch64-unknown-linux-gnu
             linker: aarch64-linux-gnu-gcc
             apt: gcc-aarch64-linux-gnu
+            cross: true
           - os: macos-latest
             target: aarch64-apple-darwin
-          - os: macos-13
+          # Intel macOS is cross-compiled from the arm64 runner rather than
+          # built on `macos-13`: that image is retired, and a job requesting it
+          # queues forever without ever failing, which would hold up every
+          # release behind a runner that is not coming. Apple's SDK carries
+          # both architectures, so the native linker handles this.
+          - os: macos-latest
             target: x86_64-apple-darwin
+            cross: true
           - os: windows-latest
             target: x86_64-pc-windows-msvc
     steps:
@@ -107,7 +114,7 @@ jobs:
       - name: smoke test
         # A binary that cannot build a deck is not a release. Skipped when
         # cross-compiled, where the artifact does not run on this machine.
-        if: matrix.target != 'aarch64-unknown-linux-gnu'
+        if: ${{ !matrix.cross }}
         shell: bash
         run: |
           set -euo pipefail
