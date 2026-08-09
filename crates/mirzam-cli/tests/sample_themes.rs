@@ -109,6 +109,9 @@ fn a_sample_theme_is_legible_in_both_modes() {
         ("--mz-chart5", "--mz-slide-bg", 3.0),
         ("--mz-chart6", "--mz-slide-bg", 3.0),
         ("--mz-fg", "--mz-surface", 4.5),
+        // The viewer chrome is a piece of the deck's own paper: the page
+        // counter is `--mz-muted` on a `--mz-surface` pill.
+        ("--mz-muted", "--mz-surface", 4.5),
         ("--mz-danger-fg", "--mz-danger-bg", 4.5),
     ];
 

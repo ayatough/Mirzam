@@ -498,6 +498,20 @@ Two smaller things worth writing down:
 - On `pointer: coarse` the sheet leads with the gestures. A cheat sheet full of
   keys is no use on a device with no keyboard.
 
+**Corrected after use on a phone.** Binding the long press to the cheat sheet
+took away the gesture a reader uses to *select text*, so a slide could no longer
+be quoted from. The long press is now bound to nothing, the two-finger tap and
+the `?` button carry the sheet, and a drag that starts or ends with a selection
+on screen is never read as a page turn.
+
+**The chrome no longer uses fixed colours.** It sits on `--mz-bg`, which a theme
+may make light or dark, and CSS cannot ask which — so a fixed palette was
+readable on one and not the other. It now borrows the deck's own paper
+(`--mz-slide-bg`, `--mz-surface`, `--mz-fg`, `--mz-muted`), which the WCAG test
+holds to a ratio in every theme and both modes. That guarantee is something a
+literal cannot have. `--mz-muted` on `--mz-surface` joined the checked pairs,
+and two light palettes needed a shade darker to pass it.
+
 ## W12 — Presenter window
 
 **Difficulty B · Sonnet · after W11**
@@ -530,7 +544,9 @@ replaces the planned `localStorage` fallback, which fails on `file://` for the
 same reason the channel does.
 
 `MZDeck` on the viewer is the seam between the two files, and a test holds both
-sides to it. The next-slide preview is built from each slide's markup captured
+sides to it. `D` and `L` travel over the link alongside the position: dark mode
+and the layout outline are properties of the deck, not of one window, and a
+presenter switching to light mode means the projector too. The next-slide preview is built from each slide's markup captured
 before anything ran: the animation runtime arms elements by writing inline
 styles, and a preview cloned from the live DOM would show a slide with holes in
 it.

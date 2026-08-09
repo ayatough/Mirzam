@@ -107,9 +107,10 @@
   function updateHud(total, sec) {
     const n = stepsOn(sec);
     hud.textContent = `${cur + 1} / ${total}` + (n ? ` · ${step}/${n}` : '');
-    for (const fn of watchers) fn(cur, step, total);
+    notify();
   }
   const watchers = [];
+  const notify = () => { for (const fn of watchers) fn(); };
 
   // The slide being left has to stay painted for as long as its exit takes,
   // so it animates out over the slide arriving rather than vanishing first.
@@ -248,6 +249,14 @@
   window.MZDeck = {
     presenting: PRESENTING,
     state: () => ({ slide: cur, step, total: slides().length }),
+    // How the deck is being *looked at*, as opposed to where it is. Dark mode
+    // and the layout outline are properties of the deck, not of one window:
+    // a presenter who turns the lights down means both screens.
+    view: () => ({ mode: html.dataset.mode || '', debug: html.classList.contains('mz-debug') }),
+    setView(v) {
+      if (v.mode) html.dataset.mode = v.mode; else delete html.dataset.mode;
+      html.classList.toggle('mz-debug', !!v.debug);
+    },
     // The slide as it was authored, for a preview that must not inherit this
     // window's animation state.
     html: (i) => pristine[i] || '',
@@ -312,8 +321,9 @@
   const TOUCH = ['Touch', [
     [['Swipe ←', 'Swipe →'], 'Next / previous'],
     [['Swipe ↑', 'Swipe ↓'], 'Show / hide notes'],
-    [['Long press'], 'This sheet'],
+    [['Two-finger tap'], 'This sheet'],
     [['Tap left', 'Tap right'], 'Back / forward'],
+    [['Long press'], 'Select text, as anywhere else'],
   ]];
   const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
   const row = (keys, what) =>
@@ -386,7 +396,8 @@
       document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
     }
     else if (e.key === 'l' || e.key === 'L') {
-      document.documentElement.classList.toggle('mz-debug');
+      html.classList.toggle('mz-debug');
+      notify();
     }
     else if (e.key === 'd' || e.key === 'D') {
       // No data-mode attribute yet means the OS preference is in effect;
@@ -395,44 +406,46 @@
         ? html.dataset.mode === 'dark'
         : matchMedia('(prefers-color-scheme: dark)').matches;
       html.dataset.mode = isDark ? 'light' : 'dark';
+      notify();
     }
   });
 
   // ---- Touch: a phone has no keyboard ----
-  // Swipe to turn the page, swipe up for notes, long press or a two-finger tap
-  // for the cheat sheet. The click zones stay, because that is what a presenter
-  // with a clicker or a trackpad is using.
+  // Swipe to turn the page, swipe up for notes, a two-finger tap for the cheat
+  // sheet. The click zones stay, because that is what a presenter with a
+  // clicker or a trackpad is using.
+  //
+  // There is deliberately no long-press binding. On a phone the long press is
+  // how you select text, and taking it for the cheat sheet took the reader's
+  // ability to copy a line off a slide with it. The two-finger tap and the `?`
+  // button — which touch wakes like a pointer does — cover the same ground and
+  // collide with nothing.
   const SWIPE = 45;      // px before a drag counts as a swipe rather than a tap
-  const HOLD = 550;      // ms before a still finger counts as a long press
-  let touch = null, holdTimer = null;
+  let touch = null;
+  const selecting = () => (getSelection()?.toString() || '').trim() !== '';
 
   addEventListener('touchstart', (e) => {
     wake();
-    clearTimeout(holdTimer);
     if (e.touches.length > 1) { touch = null; handled = true; toggleKeys(); return; }
     const t = e.touches[0];
-    touch = { x: t.clientX, y: t.clientY };
+    touch = { x: t.clientX, y: t.clientY, held: selecting() };
     handled = false;
-    holdTimer = setTimeout(() => { handled = true; touch = null; toggleKeys(true); }, HOLD);
-  }, { passive: true });
-
-  addEventListener('touchmove', (e) => {
-    if (!touch) return;
-    const t = e.touches[0];
-    if (Math.hypot(t.clientX - touch.x, t.clientY - touch.y) > 10) clearTimeout(holdTimer);
   }, { passive: true });
 
   addEventListener('touchend', (e) => {
-    clearTimeout(holdTimer);
     if (!touch) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - touch.x, dy = t.clientY - touch.y;
+    const wasSelecting = touch.held;
     touch = null;
     if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE) return;   // a tap, or a scroll
+    // Dragging a selection handle travels exactly as far as a swipe does.
+    // Whichever way it is read, a reader adjusting a selection is not asking
+    // for the next slide.
+    if (wasSelecting || selecting()) return;
     handled = true;
     if (Math.abs(dx) > Math.abs(dy)) dx < 0 ? advance() : retreat();
-    else if (dy < 0) notesPanel.hidden = false;
-    else notesPanel.hidden = true;
+    else notesPanel.hidden = dy >= 0;
   }, { passive: true });
 
   // Click to advance, but never while the reader is selecting text or using a

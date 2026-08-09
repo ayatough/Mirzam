@@ -276,27 +276,31 @@ svg.mz-shapes, svg.mz-connect {
 
 aside.notes { display: none; }
 
-/* The viewer chrome's own palette. These are literals on purpose: the chrome
-   is the viewer, not the document. It sits on --mz-bg outside the deck, it is
-   never printed, and it must not shift under the presenter every time the
-   deck's theme changes. Named here so the rules below read as one surface. */
+/* The viewer chrome's palette.
+   The chrome sits *outside* the deck, on --mz-bg, and a theme may make that
+   light or dark — CSS cannot ask which, so no fixed colour is readable on
+   both. It therefore borrows the deck's own paper: --mz-slide-bg, --mz-surface
+   and --mz-fg are held to a WCAG ratio by a test, in every theme and in both
+   modes, which is a guarantee a literal cannot have. A control now reads as a
+   small piece of the deck floating on the surround, and it follows `D`. */
 :root {
-  --mz-ui-fg: #dde1ee; /* theme-independent: viewer chrome */
-  --mz-ui-dim: #9aa1b8; /* theme-independent: viewer chrome */
-  --mz-ui-faint: #7a8199; /* theme-independent: viewer chrome */
-  --mz-ui-panel: #171a22; /* theme-independent: viewer chrome */
-  --mz-ui-veil: rgba(10, 12, 18, .72); /* theme-independent: viewer chrome */
-  --mz-ui-chip: rgba(120, 130, 160, .18); /* theme-independent: viewer chrome */
-  --mz-ui-chip-on: rgba(120, 130, 160, .32); /* theme-independent: viewer chrome */
-  --mz-ui-line: rgba(150, 160, 190, .3); /* theme-independent: viewer chrome */
-  --mz-ui-shadow: rgba(0, 0, 0, .5); /* theme-independent: viewer chrome */
+  --mz-ui-bg: var(--mz-slide-bg);
+  --mz-ui-chip: var(--mz-surface);
+  --mz-ui-fg: var(--mz-fg);
+  --mz-ui-dim: var(--mz-muted);
+  --mz-ui-line: var(--mz-border);
+  --mz-ui-veil: rgba(10, 12, 18, .72); /* theme-independent: a scrim over the deck, like .mz-scrim */
+  --mz-ui-shadow: rgba(0, 0, 0, .35); /* theme-independent: a shadow, not a surface */
 }
 
 /* Viewer chrome: the page counter and the control cluster, in one row outside
    the deck so neither can ever sit over slide content. */
 #chrome {
   position: fixed; right: 18px; bottom: 12px;
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 5px 6px 5px 12px;
+  background: var(--mz-ui-chip); color: var(--mz-ui-fg);
+  border: 1px solid var(--mz-ui-line); border-radius: 12px;
   user-select: none;
 }
 #hud { color: var(--mz-ui-dim); font-size: 14px; }
@@ -311,10 +315,10 @@ html.mz-awake #controls { opacity: 1; pointer-events: auto; }
 #controls button {
   width: 30px; height: 30px; padding: 0; line-height: 1;
   font: inherit; font-size: 16px; cursor: pointer;
-  color: var(--mz-ui-fg); background: var(--mz-ui-chip);
+  color: var(--mz-ui-fg); background: transparent;
   border: 1px solid var(--mz-ui-line); border-radius: 8px;
 }
-#controls button:hover { background: var(--mz-ui-chip-on); }
+#controls button:hover { background: var(--mz-ui-bg); }
 #controls button:active { transform: translateY(1px); }
 
 /* The cheat sheet: `/` or the `?` button. An overlay, so it covers the deck
@@ -328,7 +332,8 @@ html.mz-awake #controls { opacity: 1; pointer-events: auto; }
 }
 #keys[hidden] { display: none; }
 #keys .mz-keys-card {
-  background: var(--mz-ui-panel); border: 1px solid var(--mz-ui-line);
+  background: var(--mz-ui-bg); color: var(--mz-ui-fg);
+  border: 1px solid var(--mz-ui-line);
   border-radius: 14px; padding: 22px 26px;
   max-width: min(760px, 88vw); max-height: 84vh; overflow: auto;
   box-shadow: 0 24px 60px var(--mz-ui-shadow);
@@ -354,8 +359,9 @@ html.mz-awake #controls { opacity: 1; pointer-events: auto; }
   font-family: 'SF Mono', Consolas, Menlo, monospace; font-size: 13px;
   color: var(--mz-ui-fg); background: var(--mz-ui-chip);
   border: 1px solid var(--mz-ui-line); border-radius: 6px;
+  font-weight: 600;
 }
-#keys .mz-keys-close { margin: 16px 0 0; color: var(--mz-ui-faint); font-size: 13px; }
+#keys .mz-keys-close { margin: 16px 0 0; color: var(--mz-ui-dim); font-size: 13px; }
 
 /* Chrome is the viewer, never the document. */
 @media print { #chrome, #keys, #notes-panel, #presenter { display: none !important; } }
@@ -378,12 +384,13 @@ html[data-presenter] #chrome, html[data-presenter] #notes-panel { display: none;
 #pv-side { display: grid; grid-template-rows: auto auto; align-content: start; gap: 14px; min-height: 0; min-width: 0; }
 .pv-box {
   position: relative; min-height: 0; min-width: 0;
-  background: var(--mz-ui-panel); border: 1px solid var(--mz-ui-line);
+  background: var(--mz-ui-bg); color: var(--mz-ui-fg);
+  border: 1px solid var(--mz-ui-line);
   border-radius: 12px; padding: 26px 12px 12px;
 }
 .pv-box h5 {
   position: absolute; top: 8px; left: 14px; margin: 0;
-  color: var(--mz-ui-faint); font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--mz-ui-dim); font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
 }
 #pv-pos { margin-left: 14px; color: var(--mz-ui-dim); letter-spacing: .06em; }
 /* The deck is moved in here; it centres itself against this box. */
@@ -393,7 +400,7 @@ html[data-presenter] #chrome, html[data-presenter] #notes-panel { display: none;
    real layout rather than a reflow of it at another width. */
 .pv-stage { transform-origin: top left; }
 .pv-slide { position: absolute; inset: 0; display: block; color: var(--mz-fg); background: var(--mz-slide-bg); }
-.pv-end { padding: 2em; color: var(--mz-ui-faint); text-align: center; }
+.pv-end { padding: 2em; color: var(--mz-ui-dim); text-align: center; }
 #pv-time {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 12px 14px;
@@ -404,10 +411,10 @@ html[data-presenter] #chrome, html[data-presenter] #notes-panel { display: none;
   padding: 2px 12px; cursor: pointer; border-radius: 8px;
   color: var(--mz-ui-fg); background: var(--mz-ui-chip); border: 1px solid var(--mz-ui-line);
 }
-#pv-timer:hover { background: var(--mz-ui-chip-on); }
+#pv-timer:hover { background: var(--mz-ui-bg); }
 #pv-notes { max-height: 34vh; overflow: auto; }
 #pv-notes-body { font-size: 17px; line-height: 1.65; }
-#pv-notes-body em { color: var(--mz-ui-faint); }
+#pv-notes-body em { color: var(--mz-ui-dim); }
 #notes-panel {
   position: fixed; left: 0; right: 0; bottom: 0;
   /* theme-independent: an overlay panel, deliberately the same in every theme */

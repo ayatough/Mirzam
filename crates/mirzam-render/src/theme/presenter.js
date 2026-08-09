@@ -36,16 +36,24 @@
     for (const w of peers()) { try { w.postMessage(msg, '*'); } catch (e) {} }
   }
 
+  // Where the deck is, and how it is being looked at. Dark mode and the layout
+  // outline travel too: they are properties of the deck, and a presenter who
+  // switches to light mode means both screens.
+  const snapshot = () => {
+    const s = deck.state(), v = deck.view();
+    return { slide: s.slide, step: s.step, mode: v.mode, debug: v.debug };
+  };
+  const keyOf = (m) => [m.slide, m.step, m.mode, m.debug].join('');
+
   function tell(force) {
     if (muted) return;
-    const s = deck.state();
-    const key = s.slide + ':' + s.step;
+    const msg = snapshot();
     // Without this, two windows holding identical state would answer each
     // other forever: every message provokes an update, and every update a
     // message.
-    if (!force && key === last) return;
-    last = key;
-    post({ slide: s.slide, step: s.step });
+    if (!force && keyOf(msg) === last) return;
+    last = keyOf(msg);
+    post(msg);
   }
 
   function receive(msg) {
@@ -54,8 +62,9 @@
     if (typeof msg.slide !== 'number') return;
     muted = true;
     try {
+      deck.setView({ mode: msg.mode, debug: msg.debug });
       deck.sync(msg.slide, msg.step);
-      last = msg.slide + ':' + msg.step;
+      last = keyOf(msg);
     } finally { muted = false; }
   }
 

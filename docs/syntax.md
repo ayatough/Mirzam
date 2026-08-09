@@ -596,6 +596,10 @@ nothing.
 The audience window is unchanged: no extra chrome appears on it. `N` still
 opens the notes panel there, for a talk given on one screen.
 
+`D` and `L` travel across the link too. Dark mode and the layout outline are
+properties of the deck rather than of one window — a presenter who switches to
+light mode means the projector as well.
+
 The next-slide preview is a still: it is built from the slide as authored, so
 it never inherits the current window's animation state, and it does not run
 animations, annotations or connectors of its own.
@@ -608,12 +612,18 @@ There is no keyboard, so every control has a gesture:
 |---|---|
 | Swipe left / right | Next / previous |
 | Swipe up / down | Show / hide speaker notes |
-| Long press, or a two-finger tap | The cheat sheet |
+| Two-finger tap | The cheat sheet |
 | Tap left third / elsewhere | Back / forward |
+| Long press | Select text, as anywhere else |
 
 The deck claims horizontal swipes from the browser, so swiping right turns the
 page instead of navigating away from the deck. On a touch device the cheat
 sheet leads with these gestures rather than with the keys.
+
+**The long press is not bound to anything**, because on a phone that gesture is
+how you select text, and a deck a reader cannot quote from is a worse deck. For
+the same reason, a drag that starts or ends with a selection on screen is
+treated as adjusting the selection, never as a page turn.
 
 ## Theming
 

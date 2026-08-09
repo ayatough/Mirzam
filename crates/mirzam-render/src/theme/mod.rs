@@ -292,7 +292,16 @@ mod tests {
     /// this is what stops one side from being renamed without the other.
     #[test]
     fn the_presenter_window_and_the_viewer_agree_on_one_interface() {
-        for member in ["presenting", "state", "html", "onChange", "refit", "sync"] {
+        for member in [
+            "presenting",
+            "state",
+            "html",
+            "onChange",
+            "refit",
+            "sync",
+            "view",
+            "setView",
+        ] {
             assert!(
                 VIEWER_JS.contains(member),
                 "viewer.js drops MZDeck.{member}"
@@ -309,11 +318,24 @@ mod tests {
         assert!(PRESENTER_JS.contains("deck.sync(msg.slide, msg.step)"));
     }
 
+    /// The long press is how a reader selects text on a phone. Binding it to
+    /// the cheat sheet took that away, and a reader could no longer copy a
+    /// line off a slide - so the deck must not hold that gesture, and must not
+    /// read a selection drag as a page turn either.
+    #[test]
+    fn a_touch_deck_leaves_text_selection_alone() {
+        assert!(
+            !VIEWER_JS.contains("HOLD"),
+            "viewer.js has taken the long press back"
+        );
+        assert!(VIEWER_JS.contains("getSelection()"));
+    }
+
     /// A phone has no keyboard, so every way of driving the deck has a touch
     /// equivalent - and the sheet says so on the devices that need it.
     #[test]
     fn every_control_has_a_touch_equivalent() {
-        for gesture in ["touchstart", "touchmove", "touchend", "pointer: coarse"] {
+        for gesture in ["touchstart", "touchend", "pointer: coarse"] {
             assert!(
                 VIEWER_JS.contains(gesture),
                 "viewer.js is missing {gesture}"
@@ -508,7 +530,15 @@ mod contrast_tests {
     /// `--mz-danger-bg`. Checking every token against the slide background
     /// alone missed exactly this, and shipped a dark mode where inline code
     /// was light-on-light and unreadable.
-    const SURFACE_TEXT_PAIRS: &[(&str, &str)] = &[("fg", "surface"), ("danger-fg", "danger-bg")];
+    /// `muted` on `surface` joined the list when the viewer chrome stopped
+    /// using fixed colours: the page counter is `--mz-muted` on a
+    /// `--mz-surface` pill, so a theme that never intended those two to meet
+    /// would ship an unreadable counter.
+    const SURFACE_TEXT_PAIRS: &[(&str, &str)] = &[
+        ("fg", "surface"),
+        ("muted", "surface"),
+        ("danger-fg", "danger-bg"),
+    ];
 
     /// Collects every failing pair rather than stopping at the first, so a
     /// single run shows the whole picture when tuning a palette.
