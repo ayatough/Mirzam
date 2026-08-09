@@ -49,10 +49,14 @@ pub fn extract(
             }
             continue;
         }
-        let Some(sel) = sel.as_deref() else { continue }; // empty block: nothing to draw
         if doc.items.is_empty() {
             continue;
         }
+        // A block whose items are all anchored measures nothing against a box,
+        // so it names no target. The overlay still needs *somewhere* to hang,
+        // and the slide itself is the honest answer: an anchored mark is
+        // resolved from the element it names, wherever on the slide that is.
+        let sel = sel.as_deref().unwrap_or(":scope");
         out.push_str(&format!(
             "<script type=\"application/json\" class=\"mz-annot\" data-target=\"{}\">{}</script>\n",
             inline::html_escape(sel),
@@ -146,6 +150,19 @@ mod tests {
         let out = extract(0, &blocks, haystack, &mut w);
         assert!(w.is_empty(), "{w:?}");
         assert!(out.contains("\"anchor\":\"rev-0-1\""));
+    }
+
+    /// Pairing a phrase with a chart mark measures nothing against a box, so
+    /// the block names no target and the overlay hangs on the slide.
+    #[test]
+    fn an_all_anchored_block_targets_the_slide() {
+        let mut w = Vec::new();
+        let blocks = vec!["highlight #t-ap : step=1\nrect #lat-0-2 : step=1 pad=8\n".to_string()];
+        let haystack = "<span id=\"t-ap\">ap-ne</span><g id=\"lat-0-2\"></g>";
+        let out = extract(0, &blocks, haystack, &mut w);
+        assert!(w.is_empty(), "{w:?}");
+        assert!(out.contains("data-target=\":scope\""), "{out}");
+        assert!(out.contains("\"kind\":\"highlight\""), "{out}");
     }
 
     #[test]

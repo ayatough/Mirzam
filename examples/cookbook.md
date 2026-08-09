@@ -164,11 +164,14 @@ the cleanest way to add breathing room.
 :::
 
 ::: pane note {valign=middle}
-A connector from a phrase leaves through the top or
-bottom of its underline, never sideways.
+Between two boxes a connector is the right tool. From
+a sentence it is usually not — see Rule 5. When you
+do use one, give it a clear path.
 
-Put the anchored phrase at the end of a line, or on
-a line of its own, and the arrow has a clear path:
+A connector from a phrase leaves through the top or
+bottom of its underline, never sideways. Put the
+anchored phrase at the end of a line, or on a line of
+its own:
 
 the request first hits the [cache]{#c-cache .u}
 
@@ -225,14 +228,16 @@ data: |
 Every mark has an id: `#cook-<series>-<row>`.
 
 Origin traffic keeps falling even as volume grows —
-[by Q3 it is the smaller half]{#c-q3 .u}
+[by Q3 it is the smaller half]{#c-q3}
 
-Give a chart at least three lines of band, or the
-axis labels crowd.
+Press `→`: the phrase and the bar light up together,
+in one colour. No arrow crosses the slide, and
+nothing has to be routed around the text.
 :::
 
-```connect
-#c-q3 -> #cook-1-2 : color=@accent2
+```annotate
+highlight #c-q3     : color=@accent2 step=1
+rect      #cook-1-2 : color=@accent2 step=1 pad=6
 ```
 
 ---

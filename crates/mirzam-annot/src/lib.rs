@@ -10,6 +10,18 @@
 //! text   10,80 "throughput doubles here"
 //! ```
 //!
+//! An annotation may also mark **words**, which is how a phrase in a sentence
+//! is tied to a mark on a chart without an arrow crossing the slide:
+//!
+//! ```text
+//! highlight #t-ap    : color=@accent2 step=1
+//! rect      #lat-0-2 : color=@accent2 step=1 pad=8
+//! ```
+//!
+//! Both are annotation items with the same `step`, so they arrive together and
+//! in the same colour — which a room reads as a pairing instantly, with
+//! nothing travelling between them.
+//!
 //! Coordinates are **percentages of the target's painted box** — the picture
 //! itself for an image, the drawn chart for a chart, the border box for
 //! anything else — so an annotation follows its target when the layout
@@ -28,6 +40,19 @@ pub enum Kind {
     Circle,
     Arrow,
     Text,
+    /// The three below mark *words* rather than a region of a picture, and
+    /// follow the lines the words are laid out on rather than one union box.
+    Highlight,
+    Underline,
+    Box,
+}
+
+impl Kind {
+    /// Whether the mark follows text. A phrase that wraps is two line boxes,
+    /// not one rectangle with a hole in the middle of the sentence.
+    pub fn marks_text(self) -> bool {
+        matches!(self, Kind::Highlight | Kind::Underline | Kind::Box)
+    }
 }
 
 impl Kind {
@@ -37,6 +62,9 @@ impl Kind {
             Kind::Circle => "circle",
             Kind::Arrow => "arrow",
             Kind::Text => "text",
+            Kind::Highlight => "highlight",
+            Kind::Underline => "underline",
+            Kind::Box => "box",
         }
     }
 }
@@ -103,9 +131,20 @@ pub fn parse(src: &str) -> AnnotDoc {
             Err(e) => doc.errors.push(format!("annotate line {}: {e}", ln + 1)),
         }
     }
-    if doc.target.is_none() && !doc.items.is_empty() {
-        doc.errors
-            .push("annotate block has no `target:` line".to_string());
+    // `target:` says which box percentages are measured against. A block whose
+    // items are all anchored measures nothing, so requiring one would mean
+    // naming a box the author never refers to - which is exactly the shape of a
+    // block that pairs a phrase with a chart mark.
+    let all_anchored = doc
+        .items
+        .iter()
+        .all(|i| matches!(i.place, Place::Anchor(_)) && !matches!(i.to, Some(Place::At(..))));
+    if doc.target.is_none() && !doc.items.is_empty() && !all_anchored {
+        doc.errors.push(
+            "annotate block has no `target:` line, and an item is placed by coordinates \
+             (which are percentages of the target)"
+                .to_string(),
+        );
     }
     doc
 }
@@ -125,6 +164,9 @@ fn parse_item(line: &str) -> Result<Item, String> {
         Some("circle") => Kind::Circle,
         Some("arrow") => Kind::Arrow,
         Some("text") => Kind::Text,
+        Some("highlight") => Kind::Highlight,
+        Some("underline") => Kind::Underline,
+        Some("box") => Kind::Box,
         Some(other) => return Err(format!("unknown annotation `{other}`")),
         None => unreachable!("blank lines are skipped"),
     };
@@ -145,6 +187,26 @@ fn parse_item(line: &str) -> Result<Item, String> {
     };
 
     match kind {
+        // A text mark names the phrase and nothing else: where the words are is
+        // the browser's business, and a percentage would be a guess that goes
+        // stale the moment the sentence is edited.
+        Kind::Highlight | Kind::Underline | Kind::Box => {
+            let mut parts = rest.split_whitespace();
+            let first = parts.next().ok_or_else(|| {
+                format!("`{}` marks a phrase, so it needs an `#id`", kind.as_str())
+            })?;
+            item.place = parse_place(first)?;
+            if !matches!(item.place, Place::Anchor(_)) {
+                return Err(format!(
+                    "`{}` marks a phrase written `[like this]{{#id}}`, so it takes an `#id` \
+                     rather than coordinates",
+                    kind.as_str()
+                ));
+            }
+            if parts.next().is_some() {
+                return Err("too many fields before `:`".into());
+            }
+        }
         Kind::Rect | Kind::Circle => {
             let mut parts = rest.split_whitespace();
             let first = parts.next().ok_or("missing position")?;
@@ -504,5 +566,67 @@ mod tests {
         let doc = parse("target: x\ntext 5,5 \"p95: down 40%\"\n");
         assert!(doc.errors.is_empty(), "{:?}", doc.errors);
         assert_eq!(doc.items[0].label.as_deref(), Some("p95: down 40%"));
+    }
+    // ---- Marking words rather than a region of a picture ----
+
+    #[test]
+    fn a_text_mark_takes_an_id() {
+        let doc = parse("highlight #t-ap : color=@accent2 step=1\n");
+        assert!(doc.errors.is_empty(), "{:?}", doc.errors);
+        assert_eq!(doc.items.len(), 1);
+        assert_eq!(doc.items[0].kind, Kind::Highlight);
+        assert!(doc.items[0].kind.marks_text());
+        assert_eq!(doc.items[0].place, Place::Anchor("t-ap".into()));
+        assert_eq!(doc.items[0].step, 1);
+    }
+
+    #[test]
+    fn underline_and_box_are_text_marks_too() {
+        let doc = parse("underline #a\nbox #b : pad=6\n");
+        assert!(doc.errors.is_empty(), "{:?}", doc.errors);
+        assert_eq!(doc.items[0].kind, Kind::Underline);
+        assert_eq!(doc.items[1].kind, Kind::Box);
+        assert_eq!(doc.items[1].pad, Some(6.0));
+    }
+
+    /// Where the words are is the browser's business; a percentage would be a
+    /// guess that goes stale as soon as the sentence is edited.
+    #[test]
+    fn a_text_mark_refuses_coordinates() {
+        let doc = parse("highlight 10,20 30x5\n");
+        assert_eq!(doc.items.len(), 0);
+        assert!(doc.errors[0].contains("#id"), "{:?}", doc.errors);
+    }
+
+    /// A block that pairs a phrase with a chart mark measures nothing against a
+    /// box, so making it name one would be ceremony.
+    #[test]
+    fn an_all_anchored_block_needs_no_target() {
+        let doc = parse("highlight #t-ap : step=1\nrect #lat-0-2 : step=1 pad=8\n");
+        assert!(doc.errors.is_empty(), "{:?}", doc.errors);
+        assert_eq!(doc.items.len(), 2);
+        assert!(doc.target.is_none());
+    }
+
+    /// But a coordinate is a percentage *of something*, and that something has
+    /// to be named.
+    #[test]
+    fn coordinates_still_need_a_target() {
+        let doc = parse("circle 40,30 20x20\n");
+        assert!(
+            doc.errors.iter().any(|e| e.contains("target")),
+            "{:?}",
+            doc.errors
+        );
+    }
+
+    #[test]
+    fn a_text_mark_reaches_the_json() {
+        let doc = parse("highlight #t-ap : color=@accent2 step=2\n");
+        let json = to_json(&doc);
+        assert!(json.contains("\"kind\":\"highlight\""), "{json}");
+        assert!(json.contains("\"anchor\":\"t-ap\""), "{json}");
+        assert!(json.contains("var(--mz-accent2)"), "{json}");
+        assert!(json.contains("\"step\":2"), "{json}");
     }
 }

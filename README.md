@@ -79,6 +79,7 @@ email.
 | **Diagrams that stay linked** | `shape` blocks draw boxes; `connect` blocks point from text to any element, resolved live |
 | **Math** | LaTeX converted to MathML at build time — no client-side JavaScript |
 | **Annotations** | Circle, box, label and point at part of a photo or a single chart bar; the marks reach the PDF |
+| **Pairing, not arrows** | Mark a phrase and the bar it refers to on the same click, in one colour — nothing crosses the slide |
 | **Effects on a key** | Flash, shake, 集中線, confetti, danmaku — fired while presenting, never in the export |
 | **Animation** | `anim` blocks compile to a timeline: entrances, click-through builds, page turns — and the PDF still shows every slide revealed |
 | **Video, audio and embeds** | Files inlined; YouTube and Vimeo embedded, with a link in the PDF |

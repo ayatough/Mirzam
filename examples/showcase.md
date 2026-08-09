@@ -560,4 +560,61 @@ rect #load-0-2 : pad=10 color=@accent2 label="#load-0-2" step=1
 ```
 
 <!-- note: A hand-measured rectangle would now be pointing at empty air. -->
+---
 
+```pane
++----------------------------------------+
+|                                        |
+|  head                                  |
+|                                        |
++------------------+---------------------+
+|                  |                     |
+|                  |                     |
+|  prose           |  src                |
+|                  |                     |
+|                  |                     |
++------------------+---------------------+
+```
+
+::: pane head
+[Annotations]{.eyebrow}
+## Point at a phrase, not across the slide
+:::
+
+::: pane prose {valign=middle}
+An arrow from a sentence to a figure has to leave the text, cross the slide,
+and arrive somewhere meaningful.
+
+Marking both ends [at the same moment]{#s-moment}, [in the same colour]{#s-colour},
+says it with nothing travelling between them — and it
+[survives an edit]{#s-edit} to the sentence.
+
+A phrase that wraps is marked line by line.
+:::
+
+::: pane src {.card valign=middle}
+````markdown
+Marking both ends [at the same moment]{#s-moment}
+
+```annotate
+highlight #s-moment : step=1
+underline #s-colour : step=2
+box       #s-edit   : step=3 pad=4
+```
+````
+
+`highlight`, `underline` and `box` take an `#id`
+and nothing else: where the words are is the
+browser's business.
+
+No `target:` line — every item is anchored, so
+there are no percentages to measure.
+:::
+
+```annotate
+highlight #s-moment : color=@accent2 step=1
+underline #s-colour : color=@accent1 step=2
+box       #s-edit   : color=@accent2 step=3 pad=4
+```
+
+<!-- note: Three clicks. The underlined phrase wraps, so watch it marked line by line rather than as one box swallowing the gap. -->

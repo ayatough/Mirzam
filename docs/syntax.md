@@ -269,6 +269,23 @@ Connector endpoints are resolved in the browser *after* layout, on every show,
 resize and hot reload. That is why arrows keep pointing at the right thing when
 the window changes size or the theme changes metrics.
 
+### When to reach for one, and when not to
+
+**A connector is at its best between two boxes in a diagram**: both ends are
+shapes, the route is short, and the line is part of the picture rather than
+something laid over it.
+
+**From a sentence to a figure, prefer a [paired
+annotation](#tying-a-phrase-to-a-figure).** An arrow from prose has to leave the
+text without striking through it, cross the slide without colliding with
+anything, and arrive somewhere meaningful — three problems, none of which the
+audience asked for. Marking the phrase and the target *at the same moment, in
+the same colour* says the same thing with nothing travelling between them, and
+it survives an edit to the sentence.
+
+The connector syntax is not going anywhere; it is simply the wrong tool for
+that particular job.
+
 ## Audio, and video that lives somewhere else
 
 ```markdown
@@ -485,6 +502,40 @@ text   6,90 "coordinates are percentages of the picture"
   depend on one.
 - Either end of an `arrow` may be an anchor: `arrow 12,70 -> #latency-1-2`
   stops at the edge of the mark rather than in the middle of it.
+
+### Tying a phrase to a figure
+
+An annotation may mark **words** as well as part of a picture, and that is what
+replaces an arrow running from a sentence across the slide:
+
+````markdown
+::: pane note
+Origin traffic keeps falling — [by Q3 it is the smaller half]{#c-q3}
+:::
+
+```annotate
+highlight #c-q3     : color=@accent2 step=1
+rect      #cook-1-2 : color=@accent2 step=1 pad=6
+```
+````
+
+Both halves are ordinary annotation items with the **same `step`**, so they
+arrive together and in one colour. A room reads that as a pairing instantly,
+and nothing crosses the slide to say it.
+
+| Mark | What it does |
+|---|---|
+| `highlight #id` | A wash behind the words, like a marker pen |
+| `underline #id` | A rule under them |
+| `box #id` | A rounded outline around them; `pad=` gives it room |
+
+- These three take an **`#id` and nothing else**. Where the words are is the
+  browser's business; a percentage would be a guess that goes stale the moment
+  the sentence is edited.
+- **They follow the lines the words are on.** A phrase that wraps is two line
+  boxes, not one rectangle with the middle of the sentence inside it.
+- A block whose items are *all* anchored needs no `target:` line — there are no
+  percentages to measure against anything.
 
 A block whose `target:` or anchor matches nothing on the slide is a warning,
 not a build failure: the slide renders unannotated and the warning names it.

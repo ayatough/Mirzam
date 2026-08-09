@@ -83,6 +83,31 @@
     return { x: (r.left - m.left) / m.k + dx, y: (r.top - m.top) / m.k + dy, w, h };
   }
 
+  // The line boxes a phrase occupies, in slide pixels. A sentence that wraps
+  // gives an element *two* rectangles, and `getBoundingClientRect` returns the
+  // union of them - a box that also covers the end of one line and the start of
+  // the next, which is not where the words are. Rows within half a pixel of
+  // each other are merged, since a phrase carrying `<strong>` reports one
+  // rectangle per run rather than per line.
+  function lineRects(el, m) {
+    const raw = Array.from(el.getClientRects()).filter((r) => r.width || r.height);
+    const rects = raw.length ? raw : [el.getBoundingClientRect()];
+    const rows = [];
+    for (const r of rects) {
+      const row = rows.find((o) => Math.abs(o.top - r.top) < 0.5 && Math.abs(o.bottom - r.bottom) < 0.5);
+      if (row) {
+        row.left = Math.min(row.left, r.left);
+        row.right = Math.max(row.right, r.right);
+      } else {
+        rows.push({ top: r.top, bottom: r.bottom, left: r.left, right: r.right });
+      }
+    }
+    return rows.map((r) => ({
+      x: (r.left - m.left) / m.k, y: (r.top - m.top) / m.k,
+      w: (r.right - r.left) / m.k, h: (r.bottom - r.top) / m.k,
+    }));
+  }
+
   const rectIn = (el, m) => {
     const r = el.getBoundingClientRect();
     return {
@@ -152,6 +177,47 @@
       if (item.id) common.id = item.id;
       let labelAt = { x: a.x + a.w / 2, y: a.y };
 
+      if (item.kind === 'highlight' || item.kind === 'underline' || item.kind === 'box') {
+        const el = item.anchor && sec.querySelector('#' + CSS.escape(item.anchor));
+        if (!el) continue;
+        const pad = item.pad || 0;
+        const rows = lineRects(el, m);
+        if (!rows.length) continue;
+        for (const r of rows) {
+          if (item.kind === 'highlight') {
+            // A wash rather than an outline: the words stay the thing being
+            // read, and the colour only says which words.
+            svg.appendChild(svgEl('rect', {
+              x: r.x - 2, y: r.y - 1, width: r.w + 4, height: r.h + 2, rx: 3,
+              fill: color, 'fill-opacity': 0.24, stroke: 'none',
+              ...(item.id && rows.length === 1 ? { id: item.id } : {}),
+            }));
+          } else if (item.kind === 'underline') {
+            const yy = r.y + r.h - 1;
+            svg.appendChild(svgEl('line', {
+              ...common, x1: r.x, y1: yy, x2: r.x + r.w, y2: yy, 'stroke-linecap': 'round',
+            }));
+          } else {
+            svg.appendChild(svgEl('rect', {
+              ...common, x: r.x - pad, y: r.y - pad,
+              width: r.w + pad * 2, height: r.h + pad * 2, rx: 5,
+            }));
+          }
+        }
+        // A label belongs over the first line, not over the union of them.
+        labelAt = { x: rows[0].x + rows[0].w / 2, y: rows[0].y - (item.pad || 0) };
+        if (item.label) {
+          const tag = document.createElement('span');
+          tag.className = 'mz-annot-label mz-annot-above';
+          tag.textContent = item.label;
+          if (item.color) tag.style.color = item.color;
+          tag.style.left = labelAt.x + 'px';
+          tag.style.top = labelAt.y + 'px';
+          overlay.appendChild(tag);
+        }
+        continue;
+      }
+
       if (item.kind === 'rect') {
         svg.appendChild(svgEl('rect', { ...common, x: a.x, y: a.y, width: a.w, height: a.h, rx: 6 }));
       } else if (item.kind === 'circle') {
@@ -197,9 +263,14 @@
     let items;
     try { items = JSON.parse(script.textContent).items; } catch (e) { return null; }
     if (!items || !items.length) return null;
-    const named = sec.querySelector(script.dataset.target);
+    // `:scope` is what the renderer writes for a block that names no target,
+    // because every one of its items is anchored to an element it finds for
+    // itself. The overlay then covers the slide, and `paintTarget` must not
+    // narrow it to a picture that happens to be the only one there.
+    const scoped = script.dataset.target === ':scope';
+    const named = scoped ? sec : sec.querySelector(script.dataset.target);
     if (!named) return null;
-    const target = paintTarget(named);
+    const target = scoped ? sec : paintTarget(named);
 
     const overlay = document.createElement('div');
     overlay.className = 'mz-annot-layer';

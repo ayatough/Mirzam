@@ -64,7 +64,7 @@ there is. The model column follows from that:
 | W11 | Viewer chrome: cheat sheet, touch controls, gestures | C | Fable | — | ✅ |
 | W12 | Presenter window | B | Sonnet | W11 | ✅ |
 | W13 | Table of contents from headings | B | Sonnet | — | ✅ |
-| W14 | Linking by annotation, not by arrow | C | Sonnet | W6 | |
+| W14 | Linking by annotation, not by arrow | C | Sonnet | W6 | ✅ |
 | W15 | Brand and visual identity | B | — | — | |
 | W9 | Release hardening and `v0.1.0` | A | Opus | all | |
 | W5 | Typst-flavoured math | A | Sonnet | — | deferred |
@@ -678,6 +678,28 @@ stop recommending text-to-picture arrows.
 
 **Owns:** `crates/mirzam-annot`, `theme/annot.js`, the connector section of
 `docs/syntax.md`.
+
+**Landed as specified.** `highlight`, `underline` and `box` take an `#id` and
+nothing else — where the words are is the browser's business, and a percentage
+would be a guess that goes stale as soon as the sentence is edited.
+
+Two things fell out of building it:
+
+- **A phrase that wraps is two line boxes, not one rectangle.**
+  `getBoundingClientRect` returns their union, which also covers the end of one
+  line and the start of the next — words the author did not mark. The marks are
+  drawn from `getClientRects`, one per row, with runs on the same row merged
+  (a phrase carrying `<strong>` reports a rectangle per run). Measured on the
+  cookbook: the union would have been 519px wide, the widest line mark is 224px.
+- **`target:` is now optional** when every item is anchored. Requiring one would
+  mean naming a box the author never refers to, which is exactly the shape of a
+  block pairing a phrase with a chart mark. Such a block hangs on the slide
+  itself (`:scope`), since an anchored mark finds its own element.
+
+The docs no longer recommend an arrow from prose to a figure: `connect` is
+presented as the tool for two boxes in a diagram, and the syntax reference sends
+text-to-figure to the paired annotation. Cookbook rule 5 was rewritten to the new
+way, and the connector rule beside it now points at it.
 
 ## W5 — Typst-flavoured math (deferred)
 
