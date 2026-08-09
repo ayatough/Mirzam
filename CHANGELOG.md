@@ -119,6 +119,14 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - Upgraded comrak to 0.54 and enabled CJK-friendly emphasis.
 
 ### Fixed
+- `D` appeared to do nothing on the sample decks. It was working — `data-mode`
+  flipped — but all four decks share `examples/themes/pitch.css`, which set its
+  palette once, on a plain `:root` that outranks the built-in tokens for both
+  modes. The theme now defines light and dark, and names its own shades as
+  tokens instead of burying literals in rules (a literal cannot have a second
+  mode). Two tests hold every theme under `examples/themes/` to the rule: each
+  token set for one mode must be set for the other, and both modes must meet
+  the same WCAG ratios the built-in themes do.
 - Slides were transparent, so a page turn showed the departing slide through
   the arriving one and the previous layout appeared to linger. A stray `*/` had
   closed a comment early in `base.css`; the prose after it became CSS, and the

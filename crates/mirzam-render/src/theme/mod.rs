@@ -116,6 +116,34 @@ pub fn math_font_css() -> &'static str {
     })
 }
 
+/// WCAG 2.1 contrast ratio between two `#rrggbb` colours, from 1.0 (identical)
+/// to 21.0 (black on white). `None` for anything that is not a six-digit hex
+/// colour — a token holding `var(...)` or a named colour cannot be checked.
+///
+/// Public because the sample themes under `examples/themes/` are held to the
+/// same standard as the built-in ones, and the test that does so lives in
+/// another crate. A theme whose dark mode was made by inverting its light mode
+/// is the failure this exists to catch.
+pub fn contrast_ratio(a: &str, b: &str) -> Option<f64> {
+    fn luminance(hex: &str) -> Option<f64> {
+        let hex = hex.trim().strip_prefix('#')?;
+        if hex.len() != 6 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+            return None;
+        }
+        let chan = |i: usize| {
+            let v = f64::from(u8::from_str_radix(&hex[i..i + 2], 16).ok()?) / 255.0;
+            Some(if v <= 0.03928 {
+                v / 12.92
+            } else {
+                ((v + 0.055) / 1.055).powf(2.4)
+            })
+        };
+        Some(0.2126 * chan(0)? + 0.7152 * chan(2)? + 0.0722 * chan(4)?)
+    }
+    let (la, lb) = (luminance(a)? + 0.05, luminance(b)? + 0.05);
+    Some(if la > lb { la / lb } else { lb / la })
+}
+
 /// Hot-reload client injected in `serve` mode.
 /// Long-polls for changed `<section>` HTML and patches the DOM.
 pub const LIVE_JS: &str = r#"
@@ -318,41 +346,28 @@ mod contrast_tests {
     use super::THEMES;
     use std::collections::BTreeMap;
 
-    fn hex_to_rgb(hex: &str) -> (f64, f64, f64) {
-        let hex = hex.trim().trim_start_matches('#');
-        assert_eq!(hex.len(), 6, "expected a 6-digit hex color, got `#{hex}`");
-        let r = u8::from_str_radix(&hex[0..2], 16).unwrap();
-        let g = u8::from_str_radix(&hex[2..4], 16).unwrap();
-        let b = u8::from_str_radix(&hex[4..6], 16).unwrap();
-        (
-            f64::from(r) / 255.0,
-            f64::from(g) / 255.0,
-            f64::from(b) / 255.0,
-        )
-    }
-
-    fn channel_lin(c: f64) -> f64 {
-        if c <= 0.03928 {
-            c / 12.92
-        } else {
-            ((c + 0.055) / 1.055).powf(2.4)
-        }
-    }
-
-    fn relative_luminance(hex: &str) -> f64 {
-        let (r, g, b) = hex_to_rgb(hex);
-        0.2126 * channel_lin(r) + 0.7152 * channel_lin(g) + 0.0722 * channel_lin(b)
-    }
-
-    /// WCAG contrast ratio between two colors; always >= 1.0.
+    /// The shared implementation, so this test and the one guarding the sample
+    /// themes in `examples/themes/` measure the same thing.
     fn contrast_ratio(a: &str, b: &str) -> f64 {
-        let la = relative_luminance(a) + 0.05;
-        let lb = relative_luminance(b) + 0.05;
-        if la > lb {
-            la / lb
-        } else {
-            lb / la
+        super::contrast_ratio(a, b)
+            .unwrap_or_else(|| panic!("expected six-digit hex colors, got `{a}` and `{b}`"))
+    }
+
+    /// Comments removed, so a `:` inside one is not mistaken for a
+    /// declaration's separator — which would silently drop the token after it
+    /// and quietly shrink what this test covers.
+    fn strip_comments(css: &str) -> String {
+        let mut out = String::with_capacity(css.len());
+        let mut rest = css;
+        while let Some(open) = rest.find("/*") {
+            out.push_str(&rest[..open]);
+            match rest[open + 2..].find("*/") {
+                Some(close) => rest = &rest[open + 2 + close + 2..],
+                None => return out,
+            }
         }
+        out.push_str(rest);
+        out
     }
 
     /// Extracts `--mz-token: value;` pairs from the first `{ ... }` block
@@ -360,6 +375,8 @@ mod contrast_tests {
     /// found as an exact substring so it can't match a longer selector that
     /// merely starts the same way (`:not(...)`, `[data-mode="dark"]`, ...).
     fn parse_tokens(css: &str, selector: &str) -> BTreeMap<String, String> {
+        let css = strip_comments(css);
+        let css = css.as_str();
         let start = css
             .find(selector)
             .unwrap_or_else(|| panic!("selector `{selector}` not found in theme CSS"));

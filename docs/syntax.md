@@ -503,3 +503,30 @@ of whichever `theme:` is selected, built-in or default:
 See [`examples/themes/pitch.css`](../examples/themes/pitch.css) for a complete
 theme, including utility classes such as `.card`, `.metric` and `.eyebrow` that
 the sample decks use.
+
+#### A custom theme needs both modes, or it has none
+
+The built-in tokens are wrapped in `:where()` and carry no specificity, which
+is what lets a plain `:root` in your stylesheet override them. The same thing
+makes a one-palette custom theme **pin the deck to one mode**: your `:root`
+beats the built-in light *and* dark tokens, so `D` changes `data-mode` and
+nothing on screen moves. Give the second mode a selector that outranks your own
+`:root`:
+
+```css
+:root                     { --mz-slide-bg: #0d1117; --mz-fg: #e9edf5; }
+:root[data-mode="light"]  { --mz-slide-bg: #ffffff; --mz-fg: #10151f; }
+```
+
+Two rules follow from that, and both are checked for the sample themes by
+`cargo test -p mirzam-cli --test sample_themes`:
+
+- **Every token set in one mode must be set in the other.** A token you set
+  once keeps its other-mode value — which is how a dark panel ends up on a
+  white slide.
+- **Name a colour once.** A literal buried in a rule (`p { color: #c7cede }`)
+  cannot have a second mode. Put it in a token of your own — `--aurora-body`
+  in the sample — and set that token twice.
+
+A theme that deliberately only ever appears one way is fine; write `mode:` in
+the deck's frontmatter and say so.

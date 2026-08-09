@@ -1,8 +1,21 @@
 /* "Aurora" - a bold pitch-deck theme.
    Overrides only the theme tokens plus a few utility classes; everything else
-   comes from the built-in stylesheet. */
+   comes from the built-in stylesheet.
+
+   The theme defines both modes. A custom stylesheet's plain `:root` outranks
+   the built-in tokens (which are wrapped in `:where()` and carry no
+   specificity), so a theme that sets colours only once pins the deck to one
+   mode and `D` in the viewer appears to do nothing. `[data-mode="light"]`
+   adds specificity over this file's own `:root`, which is what makes the
+   toggle work.
+
+   Aurora is a dark theme by intent, so `:root` is the dark palette and the
+   deck stays dark unless a reader asks for light. A deck that would rather
+   follow the reader's system setting writes `mode:` in its frontmatter, or
+   mirrors the built-in themes' `prefers-color-scheme` block. */
 
 :root {
+  --mz-bg: #05070b;
   --mz-slide-bg: #0d1117;
   --mz-fg: #e9edf5;
   --mz-muted: #8b93ad;
@@ -22,6 +35,39 @@
   --mz-danger-bg: #3a2226;
   --mz-danger-fg: #ff9b9b;
   --mz-danger-border: #e5484d;
+  /* Aurora's own shades, so the rules below name a token rather than a
+     literal - a literal is a colour that cannot have a second mode. */
+  --aurora-body: #c7cede;
+  --aurora-strong: #ffffff;
+  --aurora-card: #131a27;
+  --aurora-quiet: #7b839c;
+  --aurora-pre: #0b0f16;
+  --aurora-code: #1a2231;
+}
+
+:root[data-mode="light"] {
+  --mz-bg: #e8ecf3;
+  --mz-slide-bg: #ffffff;
+  --mz-fg: #10151f;
+  --mz-muted: #576076;
+  --mz-accent1: #2450c8;
+  --mz-accent2: #0a6558;
+  --mz-border: #d5dbe6;
+  --mz-shape-fill: #f1f4fa;
+  --mz-chart3: #9a6410;
+  --mz-chart4: #6d4bab;
+  --mz-chart5: #bc3060;
+  --mz-chart6: #2b6f7d;
+  --mz-surface: #f1f4fa;
+  --mz-danger-bg: #fdecec;
+  --mz-danger-fg: #97181c;
+  --mz-danger-border: #e5484d;
+  --aurora-body: #293143;
+  --aurora-strong: #05070b;
+  --aurora-card: #f6f8fc;
+  --aurora-quiet: #626b80;
+  --aurora-pre: #f3f6fb;
+  --aurora-code: #e9eefb;
 }
 
 .grid { padding: 52px 68px; gap: 26px; }
@@ -44,18 +90,18 @@ h2 {
   background: linear-gradient(90deg, var(--mz-accent1), var(--mz-accent2));
 }
 h3 { color: var(--mz-accent2); letter-spacing: .02em; }
-p, li { color: #c7cede; }
-strong { color: #ffffff; }
+p, li { color: var(--aurora-body); }
+strong { color: var(--aurora-strong); }
 blockquote { border-left-color: var(--mz-accent2); color: var(--mz-fg); font-size: 1.05em; }
 
 /* Oversized figure used for headline metrics */
-.metric { font-size: 4.4em; font-weight: 700; line-height: 1; color: #fff; letter-spacing: -0.03em; }
+.metric { font-size: 4.4em; font-weight: 700; line-height: 1; color: var(--aurora-strong); letter-spacing: -0.03em; }
 .metric-up { color: var(--mz-accent2); }
 .metric-label { font-size: 1.05em; color: var(--mz-muted); margin-top: .35em; }
 
 /* Card-like panes */
 .card {
-  background: #131a27;
+  background: var(--aurora-card);
   border: 1px solid var(--mz-border);
   border-radius: 14px;
   padding: 28px 30px;
@@ -69,14 +115,14 @@ blockquote { border-left-color: var(--mz-accent2); color: var(--mz-fg); font-siz
 }
 
 /* Quiet footer line */
-.foot { color: #5c6378; font-size: .85em; }
+.foot { color: var(--aurora-quiet); font-size: .85em; }
 
 table { font-size: 1.05em; }
-th { background: #161d2c; color: var(--mz-fg); }
+th { background: var(--mz-surface); color: var(--mz-fg); }
 th, td { border-color: var(--mz-border); }
 
-pre { background: #0b0f16; border-color: var(--mz-border); }
-p code, li code { background: #1a2231; color: var(--mz-accent2); }
+pre { background: var(--aurora-pre); border-color: var(--mz-border); }
+p code, li code { background: var(--aurora-code); color: var(--mz-accent2); }
 
 .title-slide { font-size: 3.6em; }
 section.slide:has(.title-slide) p { color: var(--mz-muted); }

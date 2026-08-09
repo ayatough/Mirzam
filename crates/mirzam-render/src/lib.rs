@@ -12,7 +12,7 @@ mod theme;
 pub use assets::{AssetSource, FsAssets};
 pub use charts::render_charts_in;
 pub use inline::{parse_attrs, preprocess, render_markdown};
-pub use theme::{mode_warning, theme_warning, THEME_NAMES};
+pub use theme::{contrast_ratio, mode_warning, theme_warning, THEME_NAMES};
 
 use mirzam_core::DeckMeta;
 use mirzam_layout::{parse_grid, GridSpec};
