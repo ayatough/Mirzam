@@ -4,7 +4,20 @@
   // applied before anything else so there is no flash of the wrong palette.
   const query = new URLSearchParams(location.search);
   const qMode = query.get('mode');
+  // The reader's own choice, remembered across decks under one origin: press
+  // `D` in one deck and the next one opens the same way, and a site that
+  // publishes decks can write the same key so a light page opens a light deck.
+  // It outranks frontmatter for the same reason `D` does - the author chose
+  // how the deck is meant to look, the reader chose how to read it - and is
+  // outranked in turn by ?mode=, which is about one view rather than a habit.
+  // Storage throws on some file:// origins, so every touch of it is guarded: a
+  // deck that cannot remember still runs, it just forgets.
+  const MODE_KEY = 'mirzam-mode';
+  const readMode = () => { try { return localStorage.getItem(MODE_KEY); } catch (e) { return null; } };
+  const rememberMode = (m) => { try { localStorage.setItem(MODE_KEY, m); } catch (e) {} };
+  const stored = readMode();
   if (qMode === 'dark' || qMode === 'light') html.dataset.mode = qMode;
+  else if (stored === 'dark' || stored === 'light') html.dataset.mode = stored;
   // ?presenter=1 is the same file, opened a second time with a flag. Set here
   // rather than in presenter.js so the layout is right on the first paint.
   const PRESENTING = query.get('presenter') === '1';
@@ -430,6 +443,7 @@
         ? html.dataset.mode === 'dark'
         : matchMedia('(prefers-color-scheme: dark)').matches;
       html.dataset.mode = isDark ? 'light' : 'dark';
+      rememberMode(html.dataset.mode);
       notify();
     }
   });

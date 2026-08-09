@@ -3,6 +3,7 @@ title: Mirzam Component Gallery
 author: Mirzam
 aspect: "16:9"
 css: themes/pitch.css
+mode: dark
 transition: fade 240ms
 vars:
   uptime: 99.95
@@ -298,6 +299,43 @@ $$
 ### Ship the story, not the slide
 
 The photo is inlined with everything else, so the deck is still one file.
+:::
+
+---
+
+```pane
++------------------+-----------------+
+|  head            |  head           |
++------------------+-----------------+
+|                  |                 |
+|  src             |  hero           |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Backgrounds]{.eyebrow}
+## One photo per colour mode
+:::
+
+::: pane src {.card valign=middle}
+```markdown
+::: pane hero {bg-light=art/dawn.webp
+               bg-dark=art/night.webp
+               text=dark}
+### Both are inlined
+:::
+```
+
+- Both images ship; the deck shows the one that matches
+- It follows `D` too — a `<picture>` could only follow the machine
+- `text=dark` takes the theme's own ink, which flips with it
+:::
+
+::: pane hero {bg-light=../docs/brand/mirzam-hero-light.webp bg-dark=../docs/brand/mirzam-hero-dark.webp text=dark valign=middle}
+### Press `D`
+
+The art changes with the deck, not with the laptop.
 :::
 
 ---

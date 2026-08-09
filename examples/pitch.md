@@ -3,6 +3,7 @@ title: Mirzam - Slides that live in your repo
 author: Mirzam
 aspect: "16:9"
 css: themes/pitch.css
+mode: dark
 transition: slide-left 320ms
 vars:
   decks_built: 1240
@@ -11,7 +12,7 @@ vars:
   price_per_seat: 12
 ---
 
-::: pane hero {.bleed bg=media/bg/city-night.jpg dim=0.35 scrim=bottom}
+::: pane hero {.bleed bg-light=../docs/brand/mirzam-hero-light.webp bg-dark=../docs/brand/mirzam-hero-dark.webp text=dark}
 # Slides that live in<br>your repository {.title-slide}
 
 Plain Markdown in. Presentation-grade decks out.

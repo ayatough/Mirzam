@@ -22,8 +22,13 @@ for deck in "${DECKS[@]}"; do
   ./target/release/mirzam build "examples/$deck.md" -o "$OUT/decks/$deck" \
     --base-url "$REPO_BLOB/examples/"
 done
-# The README with no Mirzam syntax at all, split at its own headings.
+# The README with no Mirzam syntax at all, split at its own headings. The theme
+# comes from the command line for the same reason: frontmatter would show up as
+# a stray table at the top of the README on GitHub, so the one thing this deck
+# cannot do is carry its own identity. Without these it renders in `default`,
+# which is the one deck on the site that looked like someone else's.
 ./target/release/mirzam build README.md -o "$OUT/decks/readme" --split h2 \
+  --theme mirzam --css examples/themes/mirzam.css \
   --base-url "$REPO_BLOB/"
 
 # The browser editor: the same Rust core compiled to WebAssembly, so someone
@@ -73,33 +78,85 @@ cat > "$OUT/index.html" <<'HTML'
 <meta property="og:image" content="https://ayatough.github.io/Mirzam/brand/mirzam-social-card.png">
 <meta name="twitter:card" content="summary_large_image">
 
+<script>
+// The stored colour mode, applied before the first paint. Reading it after the
+// body has parsed would show the system's palette and swap it a frame later.
+try {
+  var m = localStorage.getItem('mirzam-mode');
+  if (m === 'light' || m === 'dark') document.documentElement.dataset.theme = m;
+} catch (e) {}
+</script>
+
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500&family=Inter:wght@300;400&family=IBM+Plex+Mono:wght@400&display=swap">
 <style>
-  /* Mirzam Light and Mirzam Dark, straight from docs/brand/mirzam-theme.css. The
-     page has no theme switch: it follows the reader's, and both are drawn. */
+  /* Mirzam Light and Mirzam Dark, straight from docs/brand/mirzam-theme.css.
+     Both palettes are written once, as `--l-*` and `--d-*`; what follows only
+     decides which set is in force. The page starts on the reader's system
+     preference and the switch in the corner overrides it - and stores the
+     choice under the key the decks read, so a light page opens a light deck. */
   :root {
-    --bg:#F7F8FC; --surface:#EEF0F7; --fg:#17203A; --muted:#68708A; --line:#D9DDEB;
-    --accent:#6557D9; --accent-2:#8B7CFF; --cyan:#4F8CC9;
+    color-scheme: light dark;
+
+    --l-bg:#F7F8FC; --l-surface:#EEF0F7; --l-fg:#17203A; --l-muted:#68708A; --l-line:#D9DDEB;
+    --l-accent:#6557D9; --l-accent-2:#8B7CFF; --l-cyan:#4F8CC9;
     /* A button's label has to clear AA on the violet it sits on, and white
        does not clear it on the light violet - so the ink flips with the theme
        and the hover shade moves away from the label, not towards it. */
-    --btn-bg:#6557D9; --btn-bg-hover:#5347B8; --btn-ink:#FFFFFF;
-    --hero: url("brand/mirzam-hero-light.webp");
-    --code-bg:#EEF0F7; --shadow: 0 1px 2px rgba(23,32,58,.06), 0 8px 24px rgba(23,32,58,.06);
-    --lead-weight: 300;
+    --l-btn-bg:#6557D9; --l-btn-bg-hover:#5347B8; --l-btn-ink:#FFFFFF;
+    --l-hero: url("brand/mirzam-hero-light.webp");
+    --l-wordmark: url("brand/mirzam-wordmark-light.svg");
+    --l-code-bg:#EEF0F7; --l-shadow: 0 1px 2px rgba(23,32,58,.06), 0 8px 24px rgba(23,32,58,.06);
+    --l-lead-weight: 300;
+    /* The switch shows where it takes you, not where you are, so the glyph and
+       the label it carries say the same thing. */
+    --l-switch: "\263D\FE0E";  /* a moon on the light page: click for dark */
+
+    --d-bg:#080C18; --d-surface:#0E1425; --d-fg:#F4F6FF; --d-muted:#8F9AB8; --d-line:#252E47;
+    --d-accent:#9B8CFF; --d-accent-2:#C0B7FF; --d-cyan:#72B5E8;
+    --d-btn-bg:#9B8CFF; --d-btn-bg-hover:#C0B7FF; --d-btn-ink:#080C18;
+    --d-hero: url("brand/mirzam-hero-dark.webp");
+    --d-wordmark: url("brand/mirzam-wordmark-dark.svg");
+    --d-code-bg:#11192D; --d-shadow: none;
+    /* Light type on a dark ground reads a step thinner than it measures. */
+    --d-lead-weight: 400;
+    --d-switch: "\2600\FE0E";  /* a sun on the dark page: click for light */
+
+    --bg:var(--l-bg); --surface:var(--l-surface); --fg:var(--l-fg);
+    --muted:var(--l-muted); --line:var(--l-line);
+    --accent:var(--l-accent); --accent-2:var(--l-accent-2); --cyan:var(--l-cyan);
+    --btn-bg:var(--l-btn-bg); --btn-bg-hover:var(--l-btn-bg-hover); --btn-ink:var(--l-btn-ink);
+    --hero:var(--l-hero); --wordmark:var(--l-wordmark);
+    --code-bg:var(--l-code-bg); --shadow:var(--l-shadow);
+    --lead-weight:var(--l-lead-weight); --switch:var(--l-switch);
   }
+  /* Dark, reached two ways: the system asks for it and the reader has not said
+     otherwise, or the reader picked it. Only the mapping repeats - the colours
+     above are written once - so the two blocks can disagree about which set is
+     in force, never about what a colour is. Keeping the system route in CSS is
+     what lets the page open in the right palette before any script runs. */
   @media (prefers-color-scheme: dark) {
-    :root {
-      --bg:#080C18; --surface:#0E1425; --fg:#F4F6FF; --muted:#8F9AB8; --line:#252E47;
-      --accent:#9B8CFF; --accent-2:#C0B7FF; --cyan:#72B5E8;
-      --btn-bg:#9B8CFF; --btn-bg-hover:#C0B7FF; --btn-ink:#080C18;
-      --hero: url("brand/mirzam-hero-dark.webp");
-      --code-bg:#11192D; --shadow: none;
-      /* Light type on a dark ground reads a step thinner than it measures. */
-      --lead-weight: 400;
+    :root:not([data-theme="light"]) {
+      --bg:var(--d-bg); --surface:var(--d-surface); --fg:var(--d-fg);
+      --muted:var(--d-muted); --line:var(--d-line);
+      --accent:var(--d-accent); --accent-2:var(--d-accent-2); --cyan:var(--d-cyan);
+      --btn-bg:var(--d-btn-bg); --btn-bg-hover:var(--d-btn-bg-hover); --btn-ink:var(--d-btn-ink);
+      --hero:var(--d-hero); --wordmark:var(--d-wordmark);
+      --code-bg:var(--d-code-bg); --shadow:var(--d-shadow);
+      --lead-weight:var(--d-lead-weight); --switch:var(--d-switch);
     }
   }
+  :root[data-theme="dark"] {
+    --bg:var(--d-bg); --surface:var(--d-surface); --fg:var(--d-fg);
+    --muted:var(--d-muted); --line:var(--d-line);
+    --accent:var(--d-accent); --accent-2:var(--d-accent-2); --cyan:var(--d-cyan);
+    --btn-bg:var(--d-btn-bg); --btn-bg-hover:var(--d-btn-bg-hover); --btn-ink:var(--d-btn-ink);
+    --hero:var(--d-hero); --wordmark:var(--d-wordmark);
+    --code-bg:var(--d-code-bg); --shadow:var(--d-shadow);
+    --lead-weight:var(--d-lead-weight); --switch:var(--d-switch);
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+  :root[data-theme="dark"] { color-scheme: dark; }
   * { box-sizing: border-box; }
   body {
     margin: 0; background: var(--bg); color: var(--fg);
@@ -111,6 +168,13 @@ cat > "$OUT/index.html" <<'HTML'
   /* The hero art is the horizon the mark rises over, so the lockup sits above
      the limb rather than on it, and the scrim keeps the tagline off the flare. */
   .hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
+  /* Both layers are decoration painted behind the lockup. They are positioned
+     siblings of `.wrap` and come after it in the box tree, so without the
+     stacking order below the scrim covers the content - and, being a real box,
+     swallows every click aimed at the buttons underneath it. `pointer-events`
+     alone would restore the links but leave the labels washed out by the fade;
+     `z-index` alone would fix both, and the pair says why. */
+  .hero::before, .hero::after { pointer-events: none; }
   .hero::before {
     content: ""; position: absolute; inset: 0;
     background: var(--hero) 20% 100% / cover no-repeat;
@@ -119,8 +183,25 @@ cat > "$OUT/index.html" <<'HTML'
     content: ""; position: absolute; inset: 0;
     background: linear-gradient(180deg, var(--bg) 0%, transparent 34%, transparent 62%, var(--bg) 100%);
   }
-  .hero .wrap { position: relative; padding-top: 88px; padding-bottom: 104px; }
-  .hero img { display: block; width: min(340px, 78vw); height: auto; }
+  .hero .wrap { position: relative; z-index: 1; padding-top: 88px; padding-bottom: 104px; }
+  /* The wordmark is a background rather than an <img> so it rides the same
+     token as everything else and flips with the switch, not only with the
+     operating system. It carries its name for anyone who cannot see it. */
+  .wordmark {
+    width: min(340px, 78vw); aspect-ratio: 340 / 135;
+    background: var(--wordmark) left center / contain no-repeat;
+  }
+
+  /* The switch, in the corner the eye reaches last. */
+  .switch {
+    position: absolute; top: 18px; right: 22px; z-index: 2;
+    width: 38px; height: 38px; border-radius: 10px; cursor: pointer;
+    display: grid; place-items: center; font-size: 1.05rem; line-height: 1;
+    background: var(--surface); color: var(--fg); border: 1px solid var(--line);
+  }
+  .switch::before { content: var(--switch); }
+  .switch:hover { border-color: var(--accent); color: var(--accent); }
+  .switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .tag {
     font-size: 1.22rem; font-weight: var(--lead-weight); line-height: 1.55;
     max-width: 30em; margin: 28px 0 32px;
@@ -183,11 +264,9 @@ cat > "$OUT/index.html" <<'HTML'
 <body>
 
 <header class="hero">
+  <button class="switch" id="switch" type="button" aria-label="Switch colour mode"></button>
   <div class="wrap">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="brand/mirzam-wordmark-dark.svg">
-      <img src="brand/mirzam-wordmark-light.svg" alt="Mirzam" width="340" height="135">
-    </picture>
+    <div class="wordmark" role="img" aria-label="Mirzam"></div>
     <p class="tag">Presentation decks that live in your repository. Plain Markdown in,
     charts, diagrams, video and math out — as one HTML file or a PDF.</p>
     <p class="cta">
@@ -203,7 +282,7 @@ cat > "$OUT/index.html" <<'HTML'
   <span class="kbd">←</span> <span class="kbd">→</span> to navigate,
   <span class="kbd">N</span> for speaker notes, <span class="kbd">/</span> for the rest.</p>
   <div class="cards">
-    <a class="card" href="decks/pitch/"><b>Pitch deck</b><span>Metric tiles, charts from CSV, a dark theme</span></a>
+    <a class="card" href="decks/pitch/"><b>Pitch deck</b><span>Metric tiles, charts from CSV, one hero image per colour mode</span></a>
     <a class="card" href="decks/showcase/"><b>Component gallery</b><span>Every feature beside its source</span></a>
     <a class="card" href="decks/cookbook/"><b>Layout cookbook</b><span>One layout rule per slide</span></a>
     <a class="card" href="decks/seminar/"><b>Research talk</b><span>Math, tables, Japanese typography</span></a>
@@ -253,6 +332,47 @@ mirzam export pdf deck.md</code></pre>
     MIT licensed · <a href="https://github.com/ayatough/Mirzam">Source on GitHub</a>
   </footer>
 </main>
+
+<script>
+// The colour mode. Three states: unset, which follows the machine, and the two
+// the switch picks. The choice is stored under the key a deck's viewer reads,
+// so a deck opened from a light page opens light - and it is put on the deck
+// links as ?mode= too, which covers the reader whose browser refuses storage.
+// Everything here degrades to "the page follows the system", which is what a
+// reader with no JavaScript at all gets, because the CSS above says so.
+(() => {
+  const KEY = 'mirzam-mode';
+  const root = document.documentElement;
+  const read = () => { try { return localStorage.getItem(KEY); } catch (e) { return null; } };
+  const write = (m) => { try { localStorage.setItem(KEY, m); } catch (e) {} };
+
+  const apply = (mode) => {
+    if (mode) root.dataset.theme = mode; else delete root.dataset.theme;
+    const dark = mode ? mode === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    const btn = document.getElementById('switch');
+    if (btn) {
+      // The glyph is the destination, so the label has to be too.
+      btn.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+      btn.title = btn.getAttribute('aria-label');
+    }
+    for (const a of document.querySelectorAll('a[href^="decks/"], a[href^="try/"]')) {
+      const base = a.getAttribute('href').split('?')[0];
+      a.setAttribute('href', mode ? base + '?mode=' + mode : base);
+    }
+  };
+
+  let mode = read();
+  if (mode !== 'light' && mode !== 'dark') mode = null;
+  apply(mode);
+
+  document.getElementById('switch').addEventListener('click', () => {
+    const dark = mode ? mode === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    mode = dark ? 'light' : 'dark';
+    write(mode);
+    apply(mode);
+  });
+})();
+</script>
 </body>
 </html>
 HTML
@@ -264,8 +384,14 @@ sed -i.bak "s|<!--TRY-->|$TRY_CARD|" "$OUT/index.html" && rm -f "$OUT/index.html
 echo "==> checking links"
 # Images count: a missing wordmark or social card is as broken as a dead link,
 # and the one that fails silently - the link preview - is the one nobody sees.
+# `url("...")` counts for the same reason: the hero art and the wordmark are
+# stylesheet backgrounds, so an attribute-only sweep would never look at them.
 missing=0
-for ref in $(grep -oE '(href|src|srcset)="[^"]*"' "$OUT/index.html" | sed 's/^[a-z]*="//;s/"$//'); do
+refs=$(
+  grep -oE '(href|src|srcset)="[^"]*"' "$OUT/index.html" | sed 's/^[a-z]*="//;s/"$//'
+  grep -oE 'url\("[^"]*"\)' "$OUT/index.html" | sed 's/^url("//;s/")$//'
+)
+for ref in $refs; do
   case "$ref" in
     *://* | '#'* | data:*) continue ;;
   esac

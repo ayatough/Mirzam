@@ -7,6 +7,33 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+### Added
+- `bg-light=` and `bg-dark=` on a pane: one photograph per colour mode. Both
+  are inlined and the deck shows the one that matches — including after the
+  reader presses `D`, which a `<picture>` element cannot follow, since its
+  `media` query can only ask the operating system. Naming one leaves `bg=` as
+  the other mode's image; naming one *without* a partner warns, because the
+  other mode would show a bare pane with photo-coloured text on it.
+- `mirzam build --theme <name>` and `--css <file>`: the frontmatter's theme and
+  stylesheet, chosen from the command line. This is what lets a document that
+  cannot carry frontmatter — a README, where it would surface as a stray table
+  on GitHub — still be published as a deck with an identity.
+- The landing page has a light/dark switch instead of only following the
+  machine, and stores the choice where a deck's viewer reads it, so a deck
+  opened from a light page opens light. The viewer's own `D` writes the same
+  key, which also makes that toggle stick from one deck to the next.
+
+### Changed
+- The pitch deck's title slide carries Mirzam's own hero art, one image per
+  mode, in place of the stock city photograph.
+- The README deck on the site is built with Mirzam's theme rather than
+  `default`, which is the one deck there that looked like someone else's.
+
+### Fixed
+- The landing page's "See a deck running" and "Source on GitHub" buttons were
+  unclickable: the hero's scrim is a positioned sibling that came after the
+  content, so it painted over both and swallowed every click aimed at them.
+
 ## [0.1.0] - 2026-08-09
 
 First tagged release. Prebuilt binaries, a browser editor, and a deck you can
