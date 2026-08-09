@@ -201,5 +201,14 @@ workspace version.
 4. `./scripts/build-wasm.sh` and `./scripts/build-vsix.sh` succeed
 5. `CHANGELOG.md` updated, version bumped in the root `Cargo.toml` and in
    `editors/vscode/package.json`
-6. Tag `vX.Y.Z` and push it. Watch the release workflow: it publishes the
-   binaries, and until it is green there is nothing for `install.sh` to fetch.
+6. Cut the release, either way round:
+   - `git tag vX.Y.Z && git push origin vX.Y.Z`, or
+   - run the **Release** workflow with `publish` checked, which makes the tag
+     from the manifest version and needs no local git at all. Use this when the
+     credentials to hand are scoped to branches — a CI job, an agent, a machine
+     that is not yours.
+
+   Either way the workflow publishes the binaries, and until it is green there
+   is nothing for `install.sh` to fetch. Running the workflow with `publish`
+   unchecked builds the whole matrix and cuts nothing, which is how to find out
+   that a runner image has been retired *before* a tag is waiting on it.
