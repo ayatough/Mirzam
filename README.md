@@ -13,6 +13,8 @@ single HTML file or a PDF.
 
 [Quick start](docs/quickstart.md) · [Syntax](docs/syntax.md) · [Layout guide](docs/layout.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](docs/development.md) · [Brand](docs/brand/README.md) · [Agents](AGENTS.md) · [日本語](docs/ja/README.md)
 
+[![Buy Me A Coffee](https://img.shields.io/badge/-Buy%20Me%20A%20Coffee-ffdd00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/qython)
+
 ---
 
 ## Why
