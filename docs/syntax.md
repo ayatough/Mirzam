@@ -126,6 +126,7 @@ Plain Markdown in. Presentation-grade decks out.
 | Attribute | Values | Effect |
 |---|---|---|
 | `bg=` | a path | The image. Local files are inlined like any other asset. |
+| `bg-light=`, `bg-dark=` | a path | A different image for that colour mode, overriding `bg=` there. Naming one leaves `bg=` as the other mode's image. |
 | `bg-fit=` | `cover` (default), `contain` | How the image fills the pane. |
 | `bg-pos=` | a CSS position, e.g. `top`, `20% 40%` | Which part survives the crop. |
 | `dim=` | `0`–`1` | Darkens the whole image. `0.4` is a good starting point. |
@@ -136,6 +137,23 @@ Plain Markdown in. Presentation-grade decks out.
 
 `dim` and `scrim` combine: `dim` sets the floor, `scrim` adds the gradient on top
 of it. If you set only `scrim`, the gradient runs from 0.75 to transparent.
+
+A deck that is read in both colour modes can name a photograph for each:
+
+```markdown
+::: pane hero {.bleed bg-light=media/bg/dawn.jpg bg-dark=media/bg/night.jpg dim=0.35}
+```
+
+Both images are inlined, and the deck shows whichever matches the mode it is in
+— including after the reader presses `D`, which a `<picture>` element could not
+follow: its `media` query can only ask the operating system. The treatments
+(`dim`, `blur`, `scrim`, `text`) apply to both, so pick a pair that wants the
+same handling. `text=dark` is often the right one here: it takes the theme's own
+foreground colour, which flips with the mode the way the photo does.
+
+A PDF has no reader to ask, so the export follows the deck's `mode:` and prints
+the light image when there is none. A deck whose stylesheet is dark by default
+should say `mode: dark`, or its PDF will pair the light photo with light text.
 
 Photographs are the one asset that can dominate a deck's file size. A
 1600px-wide JPEG at quality 70 is around 100 KB; a 4000px original is several

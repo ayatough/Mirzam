@@ -15,37 +15,59 @@ fn main() -> ExitCode {
     match args.first().map(String::as_str) {
         Some("build") => {
             let mut input: Option<PathBuf> = None;
-            let mut out_dir = PathBuf::from("out");
-            let mut split: Option<u8> = None;
-            let mut debug_layout = false;
-            let mut base_url: Option<String> = None;
+            let mut opts = BuildArgs::default();
             let mut i = 1;
             while i < args.len() {
                 match args[i].as_str() {
                     "-o" | "--out" => {
                         i += 1;
                         match args.get(i) {
-                            Some(dir) => out_dir = PathBuf::from(dir),
+                            Some(dir) => opts.out_dir = PathBuf::from(dir),
                             None => return usage("-o requires an output path"),
                         }
                     }
                     "--base-url" => {
                         i += 1;
                         match args.get(i) {
-                            Some(u) => base_url = Some(u.clone()),
+                            Some(u) => opts.base_url = Some(u.clone()),
                             None => return usage("--base-url requires a URL"),
+                        }
+                    }
+                    "--theme" => {
+                        i += 1;
+                        // A flag is typed, not authored, so an unknown name is
+                        // a typo to report rather than something to fall back
+                        // from: silently rendering in `default` is exactly what
+                        // the flag was reached for to avoid.
+                        match args.get(i) {
+                            Some(name) if mirzam_render::THEME_NAMES.contains(&name.as_str()) => {
+                                opts.theme = Some(name.clone());
+                            }
+                            _ => {
+                                return usage(&format!(
+                                    "--theme takes one of: {}",
+                                    mirzam_render::THEME_NAMES.join(", ")
+                                ));
+                            }
+                        }
+                    }
+                    "--css" => {
+                        i += 1;
+                        match args.get(i) {
+                            Some(p) => opts.css = Some(PathBuf::from(p)),
+                            None => return usage("--css requires a stylesheet path"),
                         }
                     }
                     "--split" => {
                         i += 1;
                         match args.get(i).map(String::as_str) {
-                            Some("h1") => split = Some(1),
-                            Some("h2") => split = Some(2),
-                            Some("h3") => split = Some(3),
+                            Some("h1") => opts.split = Some(1),
+                            Some("h2") => opts.split = Some(2),
+                            Some("h3") => opts.split = Some(3),
                             _ => return usage("--split takes h1, h2 or h3"),
                         }
                     }
-                    "--debug-layout" => debug_layout = true,
+                    "--debug-layout" => opts.debug_layout = true,
                     other if input.is_none() => input = Some(PathBuf::from(other)),
                     other => return usage(&format!("unknown argument: {other}")),
                 }
@@ -54,13 +76,7 @@ fn main() -> ExitCode {
             let Some(input) = input else {
                 return usage("an input file is required");
             };
-            run(build(
-                &input,
-                &out_dir,
-                split,
-                debug_layout,
-                base_url.as_deref(),
-            ))
+            run(build(&input, &opts))
         }
         Some("serve") => {
             let mut input: Option<PathBuf> = None;
@@ -198,13 +214,17 @@ fn help_text() -> String {
         env!("CARGO_PKG_VERSION"),
         r#"
 Usage:
-  mirzam build <input.md> [-o <out_dir>] [--split h1|h2|h3] [--base-url <url>] [--debug-layout]
+  mirzam build <input.md> [-o <out_dir>] [--split h1|h2|h3] [--theme <name>]
+               [--css <file>] [--base-url <url>] [--debug-layout]
   mirzam serve <input.md> [-p <port>]
   mirzam export pdf <input.md> [-o <out.pdf>] [--chromium <bin>]
 
   build   write <out_dir>/index.html, a single file with the viewer embedded
           --split starts a new slide at every heading of that level, which
           turns an ordinary document into a deck without editing it
+          --theme and --css override the deck's frontmatter, so a document
+          that carries none still gets an identity: --theme takes a built-in
+          palette, --css a stylesheet with the type and furniture as well
           --base-url is where the input file's directory lives once published,
           so links to other documents still resolve from the deck's own path
           --debug-layout bakes on the pane outline overlay, for screenshotting
@@ -219,26 +239,67 @@ Examples:
     )
 }
 
-fn build(
-    input: &Path,
-    out_dir: &Path,
+/// Everything `mirzam build` was asked for. A struct rather than a row of
+/// positional arguments, so adding a flag cannot silently pass it in the wrong
+/// slot.
+struct BuildArgs {
+    out_dir: PathBuf,
     split: Option<u8>,
     debug_layout: bool,
-    base_url: Option<&str>,
-) -> Result<(), String> {
+    base_url: Option<String>,
+    /// Overrides frontmatter `theme:`.
+    theme: Option<String>,
+    /// Overrides frontmatter `css:`. Resolved against the working directory,
+    /// not the deck's, because it is a path the caller typed.
+    css: Option<PathBuf>,
+}
+
+impl Default for BuildArgs {
+    fn default() -> Self {
+        Self {
+            out_dir: PathBuf::from("out"),
+            split: None,
+            debug_layout: false,
+            base_url: None,
+            theme: None,
+            css: None,
+        }
+    }
+}
+
+fn build(input: &Path, args: &BuildArgs) -> Result<(), String> {
     let t0 = Instant::now();
     let mut cache = HashMap::new();
-    let out = pipeline::build_deck_with(input, &mut cache, split, base_url)?;
+    let mut out =
+        pipeline::build_deck_with(input, &mut cache, args.split, args.base_url.as_deref())?;
+
+    // `--theme` and `--css` override the frontmatter, which is what lets a
+    // document carrying none - a README published as a deck - still be given
+    // an identity without editing the document to get one.
+    if let Some(name) = &args.theme {
+        out.meta.theme = Some(name.clone());
+    }
+    if let Some(path) = &args.css {
+        // Unreadable frontmatter `css:` is a warning, because the deck is still
+        // a deck without it. An unreadable `--css` is an error: it is the whole
+        // reason this invocation exists, and a wrong path would otherwise
+        // publish a deck that looks nothing like the one that was asked for.
+        out.custom_css = Some(
+            std::fs::read_to_string(path)
+                .map_err(|e| format!("cannot read {}: {e}", path.display()))?,
+        );
+    }
+
     let opts = mirzam_render::PageOptions {
         live_version: None,
         custom_css: out.custom_css.clone(),
-        debug_layout,
+        debug_layout: args.debug_layout,
     };
     let html = mirzam_render::assemble_page(&out.meta, &out.sections, &opts);
 
-    std::fs::create_dir_all(out_dir)
-        .map_err(|e| format!("cannot create {}: {e}", out_dir.display()))?;
-    let out_path = out_dir.join("index.html");
+    std::fs::create_dir_all(&args.out_dir)
+        .map_err(|e| format!("cannot create {}: {e}", args.out_dir.display()))?;
+    let out_path = args.out_dir.join("index.html");
     std::fs::write(&out_path, &html)
         .map_err(|e| format!("cannot write {}: {e}", out_path.display()))?;
 

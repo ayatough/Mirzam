@@ -68,6 +68,18 @@ section.slide { background: var(--mz-slide-bg); border-radius: inherit; }
   width: 100%; height: 100%; max-width: none; max-height: none;
   object-fit: cover; object-position: center;
 }
+/* A pane that named `bg-light=` and `bg-dark=` ships both, and shows the one
+   the deck is currently in. The switch is written against `data-mode` as well
+   as the system preference, because the reader can change the deck's mode with
+   `D` without changing the machine's - and a background that ignored that would
+   be the one thing on the slide still in the old mode. */
+.mz-bg-dark { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-mode="light"]) .mz-bg-light { display: none; }
+  :root:not([data-mode="light"]) .mz-bg-dark { display: block; }
+}
+:root[data-mode="dark"] .mz-bg-light { display: none; }
+:root[data-mode="dark"] .mz-bg-dark { display: block; }
 .mz-scrim { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
 /* The wrapper is a flex item when the pane uses valign=, so give it the width. */
 .mz-bg-content { position: relative; z-index: 2; width: 100%; }

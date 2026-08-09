@@ -609,7 +609,7 @@ fn render_grid_slide(
             body = with_charts;
             chart_files.extend(files);
         }
-        let bg = background_layers(&attrs);
+        let bg = background_layers(&attrs, errors);
         panes_html.push_str(&format!(
             "<div class=\"pane pane-{name}{extra_cls}{}\" data-pane=\"{name}\" style=\"{style}\">{}{body}{}</div>\n",
             bg.pane_class, bg.layers, bg.close
@@ -644,13 +644,40 @@ struct Background {
     close: String,
 }
 
+/// The image(s) a pane asks for: one for both modes, or one per mode.
+///
+/// `bg-light=` and `bg-dark=` each override `bg=` for their own mode, so
+/// `bg=` alone still means "this picture, whatever the reader's mode", and
+/// naming only one of the pair keeps `bg=` as the other mode's image.
+fn background_sources(attrs: &inline::Attrs) -> Option<(String, String)> {
+    let base = attrs.kv.get("bg");
+    let light = attrs.kv.get("bg-light").or(base)?;
+    let dark = attrs.kv.get("bg-dark").or(base)?;
+    Some((light.clone(), dark.clone()))
+}
+
 /// Builds the background layers for `bg=` and its treatments.
 ///
 /// The image is a real `<img>` rather than a CSS `background-image` so it goes
 /// through the same asset inlining as any other image, keeping a deck a single
-/// self-contained file.
-fn background_layers(attrs: &inline::Attrs) -> Background {
-    let Some(src) = attrs.kv.get("bg") else {
+/// self-contained file. A `<picture>` would be the obvious way to offer a
+/// second image for dark mode, but its `media` can only ask the operating
+/// system - it cannot see the deck's own `data-mode`, so the picture would
+/// stay behind when the reader pressed `D`. Two `<img>`s and a CSS rule follow
+/// the deck instead.
+fn background_layers(attrs: &inline::Attrs, errors: &mut Vec<String>) -> Background {
+    let Some((light_src, dark_src)) = background_sources(attrs) else {
+        // Half a pair is not a background. The other mode would show a bare
+        // pane - and, since a background flips the text colour for a photo,
+        // one with unreadable text on it. Say so rather than render that.
+        for key in ["bg-light", "bg-dark"] {
+            if attrs.kv.contains_key(key) {
+                errors.push(format!(
+                    "`{key}` needs `bg=` or the other mode's image alongside it; \
+                     the pane is rendered without a background"
+                ));
+            }
+        }
         return Background {
             pane_class: String::new(),
             layers: String::new(),
@@ -718,12 +745,26 @@ fn background_layers(attrs: &inline::Attrs) -> Background {
         _ => "",
     };
 
+    // One image when both modes want the same one: a deck that never asked for
+    // the feature carries exactly the markup - and exactly the bytes - it did
+    // before, rather than the same photo inlined twice.
+    let images = if light_src == dark_src {
+        format!(
+            "<img class=\"mz-bg\" src=\"{src}\" alt=\"\" style=\"{img_style}\">",
+            src = escape_attr(&light_src)
+        )
+    } else {
+        format!(
+            "<img class=\"mz-bg mz-bg-light\" src=\"{light}\" alt=\"\" style=\"{img_style}\">\
+             <img class=\"mz-bg mz-bg-dark\" src=\"{dark}\" alt=\"\" style=\"{img_style}\">",
+            light = escape_attr(&light_src),
+            dark = escape_attr(&dark_src),
+        )
+    };
+
     Background {
         pane_class: format!(" has-bg{text}"),
-        layers: format!(
-            "<img class=\"mz-bg\" src=\"{src}\" alt=\"\" style=\"{img_style}\">{overlays}<div class=\"mz-bg-content\">",
-            src = escape_attr(src)
-        ),
+        layers: format!("{images}{overlays}<div class=\"mz-bg-content\">"),
         close: "</div>".into(),
     }
 }
@@ -775,7 +816,7 @@ fn render_single_pane_slide(
         .collect();
     let attrs = all
         .iter()
-        .find(|a| a.kv.contains_key("bg"))
+        .find(|a| background_sources(a).is_some())
         .or(all.first())
         .cloned()
         .unwrap_or_default();
@@ -784,7 +825,7 @@ fn render_single_pane_slide(
         .iter()
         .map(|c| format!(" {c}"))
         .collect::<String>();
-    let bg = background_layers(&attrs);
+    let bg = background_layers(&attrs, errors);
     format!(
         "<div class=\"grid\" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:\"main\"'>\n<div class=\"pane pane-main{extra_cls}{}\" data-pane=\"main\" style=\"grid-area:main\">{}{body}{}</div>\n</div>\n",
         bg.pane_class, bg.layers, bg.close
@@ -1146,6 +1187,55 @@ mod tests {
         assert!(out.html.contains("linear-gradient(to top"));
         assert!(out.html.contains("has-bg bg-text-light"));
         assert!(out.html.contains("mz-bg-content"));
+    }
+
+    #[test]
+    fn per_mode_backgrounds_ship_both_images() {
+        let slide = parse_slide(
+            "```pane\n+-----+\n|     |\n| hero|\n|     |\n+-----+\n```\n\n::: pane hero {bg-light=day.jpg bg-dark=night.jpg}\nTitle\n:::\n",
+        );
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(out.html.contains("class=\"mz-bg mz-bg-light\""));
+        assert!(out.html.contains("class=\"mz-bg mz-bg-dark\""));
+        assert!(out.html.contains("has-bg"));
+    }
+
+    /// Naming one mode leaves `bg=` as the other's, rather than dropping it.
+    /// Checked on the sources rather than the HTML, where inlining has already
+    /// replaced both paths with data URIs.
+    #[test]
+    fn a_named_mode_falls_back_to_bg_for_the_other() {
+        let sources = |attrs: &str| background_sources(&parse_attrs(attrs));
+        assert_eq!(
+            sources("bg=day.jpg bg-dark=night.jpg"),
+            Some(("day.jpg".into(), "night.jpg".into()))
+        );
+        assert_eq!(
+            sources("bg=day.jpg bg-light=dawn.jpg"),
+            Some(("dawn.jpg".into(), "day.jpg".into()))
+        );
+        assert_eq!(
+            sources("bg-light=dawn.jpg bg-dark=night.jpg"),
+            Some(("dawn.jpg".into(), "night.jpg".into()))
+        );
+        // Half a pair is not a background: with nothing to show in the other
+        // mode, the pane would go blank there.
+        assert_eq!(sources("bg-dark=night.jpg"), None);
+        assert_eq!(sources("align=center"), None);
+    }
+
+    /// One image for both modes stays one `<img>`: naming the same file twice
+    /// would inline the same photo twice and double that slide's weight.
+    #[test]
+    fn one_image_for_both_modes_is_not_duplicated() {
+        let slide = parse_slide(
+            "```pane\n+-----+\n|     |\n| hero|\n|     |\n+-----+\n```\n\n::: pane hero {bg=p.jpg}\nTitle\n:::\n",
+        );
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        // Counted on the markup: the stylesheet in the same page names the
+        // per-mode classes whether or not any slide uses them.
+        assert_eq!(out.html.matches("class=\"mz-bg\"").count(), 1);
+        assert!(!out.html.contains("class=\"mz-bg mz-bg-light\""));
     }
 
     #[test]
