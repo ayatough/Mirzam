@@ -269,6 +269,48 @@ Connector endpoints are resolved in the browser *after* layout, on every show,
 resize and hot reload. That is why arrows keep pointing at the right thing when
 the window changes size or the theme changes metrics.
 
+## Presentation effects
+
+Flourishes the speaker fires with a key, bound per slide:
+
+````markdown
+```effects
+1 : flash
+2 : shake
+3 : lines
+4 : boom
+e : burst 🎉
+c : confetti
+m : danmaku "そこ、大事です"
+```
+````
+
+| Effect | |
+|---|---|
+| `flash` | one bright pulse over the slide |
+| `shake` | the slide shakes |
+| `lines` | 集中線 — lines converging on the middle |
+| `boom` | an explosion out of the centre |
+| `burst <emoji>` | emoji thrown upward |
+| `confetti` | paper instead of emoji |
+| `danmaku "<text>"` | a comment sweeps across, Nico-Nico style |
+
+**This is not animation, and the difference is the point.** An `anim` block
+belongs to the document: ordered, deterministic, and present in the PDF. An
+effect belongs to the *performance* — it happens because someone pressed a key
+in front of an audience, it never reaches the exported file, and a talk where
+none of them fire is the same talk. Nothing here can change what the deck says.
+
+- One key per line, one character. `Esc` clears anything still on screen, and
+  turning the page cancels it.
+- `← → Space PageUp PageDown Home End N F L D Esc` belong to the viewer;
+  binding one is a build warning, not a silent shadowing of navigation.
+- No effect may reflow the slide — they animate transforms and opacity only,
+  in a throwaway layer above the page.
+- Under `prefers-reduced-motion` the movement is dropped and the flash is brief.
+
+[`examples/motion.md`](../examples/motion.md) has a slide bound to all seven.
+
 ## Annotations
 
 Circle the part you are talking about, point at it, label it. An `annotate`

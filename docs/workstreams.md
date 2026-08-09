@@ -53,7 +53,7 @@ there is. The model column follows from that:
 | W1 | `anim` DSL → timeline IR | B | Sonnet | — | ✅ |
 | W2 | Animation runtime and slide transitions | S | Opus | W0, W1 contract | ✅ |
 | W3 | Named themes and dark mode | B | Sonnet | W0 | ✅ |
-| W4 | Presentation effects | C | Fable | W0 | |
+| W4 | Presentation effects | C | Fable | W0 | ✅ |
 | W5 | Typst-flavoured math | A | Sonnet | — | |
 | W6 | Annotations on images and charts | S | Opus | W0 | ✅ |
 | W7 | Source map through transclusion | A | Sonnet | — | |
@@ -332,9 +332,27 @@ only place colors come from.
 
 **Owns:** `theme/themes/*.css`, `themes/CREDITS.md`.
 
-## W4 — Presentation effects
+## W4 — Presentation effects ✅
 
-**Difficulty C · Fable**
+**Difficulty C · Fable · landed**
+
+Seven effects: `flash`, `shake`, `lines` (集中線), `boom`, `burst <emoji>`,
+`confetti`, `danmaku "<text>"`. The key table is validated against the
+viewer's own bindings, so shadowing navigation is a build warning rather than
+a surprise on stage.
+
+The one thing that was not obvious: **the slide-change detector must ignore
+this file's own writes.** Cancelling on any class mutation under `#deck` made
+`shake` — the one effect that sets a class on the slide — cancel itself, and
+left a stray timer that killed whatever effect was running half a second
+later. Cancellation now triggers on the active section actually changing.
+
+Writing the sample also surfaced a real viewer bug, unrelated to effects:
+arriving at a slide whose `exit` transition was still in flight hit the
+`busy()` repaint guard and skipped staging it, stranding the slide off-screen
+under the transform its exit had left behind. Editor cursor sync and live
+reload both land there. Arriving is never a repaint, and no longer takes that
+path.
 
 Ephemeral, presenter-triggered flourishes: a flash over the whole page, a shake,
 an explosion, speed lines, a burst of emoji, a Nico-Nico-style comment sweep.

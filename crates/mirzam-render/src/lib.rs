@@ -5,6 +5,7 @@ mod anim;
 mod annot;
 mod assets;
 mod charts;
+mod effects;
 mod inline;
 mod theme;
 
@@ -154,6 +155,11 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
     } else {
         String::new()
     };
+    let effects_js = if effects::deck_has_effects(sections) {
+        format!("<script>{}</script>\n", theme::EFFECTS_JS)
+    } else {
+        String::new()
+    };
     let transition = transition_attr(meta);
     let (theme_name, mode_attr) = theme_attrs(meta);
     format!(
@@ -175,7 +181,7 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <div id="hint">← → navigate / N notes / F fullscreen / L layout / D mode</div>
 <div id="notes-panel" hidden></div>
 {anim_js}<script>{js}</script>
-{annot_js}{live_js}</body>
+{annot_js}{effects_js}{live_js}</body>
 </html>
 "#,
         title = inline::html_escape(title),
@@ -407,6 +413,10 @@ fn render_slide(
     // nothing is a warning, not a build failure: the slide renders unanimated.
     let anim_html = anim::extract(index, &slide.reserved, &mut body, &shapes_html, warnings);
 
+    // effects bind a key to a flourish. Nothing about the slide changes; the
+    // block only records what the presenter may fire while it is on screen.
+    let effects_html = effects::extract(index, &slide.effects, warnings);
+
     // annotate blocks compile to the C2 model, drawn over the target once the
     // browser has laid the slide out. Same warning rule as anim.
     let annot_html = annot::extract(
@@ -438,7 +448,7 @@ fn render_slide(
     };
 
     format!(
-        "<section class=\"slide\" data-index=\"{index}\"{connect_attr}>\n{error_html}{body}{shapes_html}{anim_html}{annot_html}{notes_html}</section>\n"
+        "<section class=\"slide\" data-index=\"{index}\"{connect_attr}>\n{error_html}{body}{shapes_html}{anim_html}{annot_html}{effects_html}{notes_html}</section>\n"
     )
 }
 
@@ -917,6 +927,67 @@ mod tests {
         let html = assemble_print_page(&DeckMeta::default(), &annotated_section(), None);
         assert!(html.contains(ANNOT_MARKER));
         assert!(!html.contains("window.MZAnim = {"));
+    }
+
+    fn effects_section() -> Vec<String> {
+        vec![
+            "<section class=\"slide\"><script type=\"application/json\" \
+             class=\"mz-fx\">[{\"key\":\"1\",\"effect\":\"flash\"}]</script></section>"
+                .to_string(),
+        ]
+    }
+
+    /// `.mz-fx-layer` is styled in the shared stylesheet whether or not the
+    /// runtime ships, so the marker has to be something only the script has.
+    const FX_MARKER: &str = "function bindingsFor";
+
+    #[test]
+    fn a_deck_without_effects_carries_none_of_the_runtime() {
+        let html = assemble_page(&DeckMeta::default(), &[], &PageOptions::default());
+        assert!(!html.contains(FX_MARKER));
+    }
+
+    #[test]
+    fn an_effects_block_pulls_in_the_runtime() {
+        let html = assemble_page(
+            &DeckMeta::default(),
+            &effects_section(),
+            &PageOptions::default(),
+        );
+        assert!(html.contains(FX_MARKER));
+    }
+
+    /// An effect belongs to the performance, not the document: the export must
+    /// never carry one, however the deck was written.
+    #[test]
+    fn print_pages_never_ship_effects() {
+        let html = assemble_print_page(&DeckMeta::default(), &effects_section(), None);
+        assert!(!html.contains(FX_MARKER));
+    }
+
+    #[test]
+    fn effects_block_binds_a_key() {
+        let slide = parse_slide("Body\n\n```effects\n1 : flash\ne : burst 🎉\n```\n");
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(out.warnings.is_empty(), "{:?}", out.warnings);
+        assert!(out.html.contains("class=\"mz-fx\""));
+        assert!(out
+            .html
+            .contains(r#"{"key":"e","effect":"burst","arg":"🎉"}"#));
+    }
+
+    #[test]
+    fn effects_binding_a_viewer_key_warns_and_drops() {
+        let slide = parse_slide("Body\n\n```effects\nf : flash\n```\n");
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(!out.html.contains("class=\"mz-fx\""));
+        assert!(
+            out.warnings
+                .iter()
+                .any(|w| w.contains("taken by the viewer")),
+            "{:?}",
+            out.warnings
+        );
     }
 
     #[test]

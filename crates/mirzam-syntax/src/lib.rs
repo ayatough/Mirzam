@@ -256,6 +256,8 @@ pub struct SlideSource {
     pub connects: Vec<String>,
     /// ```annotate blocks.
     pub annots: Vec<String>,
+    /// ```effects blocks.
+    pub effects: Vec<String>,
     /// Blocks reserved for a later phase.
     pub reserved: Vec<(BlockKind, String)>,
 }
@@ -296,6 +298,8 @@ pub fn parse_slide(src: &str) -> SlideSource {
                 slide.connects.push(body);
             } else if info == "annotate" {
                 slide.annots.push(body);
+            } else if info == "effects" {
+                slide.effects.push(body);
             } else if let Some(kind) = BlockKind::from_info(info) {
                 slide.reserved.push((kind, body));
             } else {

@@ -281,3 +281,59 @@ of that with an ordinary whole-slide track — this one wipes in and irises out:
 [click 2] .m-p2   : fade-in 400ms
 [enter]   slide   : zoom-in 400ms
 ```
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|  keys            |  stage          |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Effects]{.eyebrow}
+## Things you do, not things the deck does
+:::
+
+::: pane keys {valign=middle}
+An `effects` block binds a key to a flourish. Press one; `Esc` clears it.
+
+| Key | |
+|---|---|
+| `1` | flash |
+| `2` | shake |
+| `3` | 集中線 |
+| `4` | explosion |
+| `e` | emoji |
+| `c` | confetti |
+| `m` | a comment sweeps past |
+:::
+
+::: pane stage {valign=middle align=center}
+[These never reach the PDF.]{.m-fx}
+
+An animation is part of the document — ordered, exported, the same every
+time. An effect is part of the *performance*. Nothing is lost if you never
+press the key.
+:::
+
+```effects
+1 : flash
+2 : shake
+3 : lines
+4 : boom
+e : burst 🎉
+c : confetti
+m : danmaku "そこ、大事です"
+```
+
+```anim
+[enter] .m-fx : fade-in 400ms
+```

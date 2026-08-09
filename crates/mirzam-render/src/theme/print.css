@@ -12,6 +12,12 @@ section.slide {
    scrims and leave text on an undimmed photo — and would leave an annotation
    label unreadable over whatever it sits on. */
 .mz-scrim, .mz-annot-label { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+/* An effect is part of the performance, not the document. The export never
+   inlines `effects.js`, so nothing should ever draw one here — this is the
+   belt to that braces, and it keeps the shake out of a printed page. */
+.mz-fx-layer { display: none; }
+.mz-fx-shake { animation: none; }
+
 /* The debug overlay is a screen/editing aid; the export path never sets
    `--debug-layout`, but this keeps a resting-state guarantee even if the same
    markup were ever printed from a debug build. */

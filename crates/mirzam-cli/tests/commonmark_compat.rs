@@ -46,15 +46,21 @@ data: |
   k, v
   a, 1
 ```
+
+```effects
+1 : flash
+```
 ";
     let html = plain_commonmark(src);
     // Fenced blocks become code blocks whose info string turns into a class.
     assert_eq!(
         html.matches("<pre>").count(),
-        6,
-        "expected six code blocks: {html}"
+        7,
+        "expected seven code blocks: {html}"
     );
-    for kind in ["pane", "shape", "connect", "anim", "annotate", "chart"] {
+    for kind in [
+        "pane", "shape", "connect", "anim", "annotate", "chart", "effects",
+    ] {
         assert!(
             html.contains(&format!("language-{kind}")),
             "`{kind}` did not degrade to a code block: {html}"

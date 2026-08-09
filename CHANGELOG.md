@@ -76,6 +76,12 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - More effects: `wipe-in` / `wipe-out` (an edge uncovers the content instead of
   moving it), `zoom-in` / `zoom-out` and `blur-in`. More transitions:
   `wipe-left|right|up|down` and `zoom`.
+- `effects` blocks: presenter-triggered flourishes bound to a key — `flash`,
+  `shake`, `lines` (集中線), `boom`, `burst 🎉`, `confetti` and a Nico-Nico-style
+  `danmaku`. These are part of the performance rather than the document: they
+  never reach the PDF, `Esc` clears them, a page turn cancels them, and binding
+  a key the viewer already uses is a build warning. Nothing they draw can
+  reflow the slide.
 - `annotate` blocks: circle, box, arrow and label anything on a slide. An item
   is placed either in percentages of what the target *paints* — a pane holding
   one picture means that picture, letterboxing excluded — or by naming another
@@ -104,6 +110,11 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - Upgraded comrak to 0.54 and enabled CJK-friendly emphasis.
 
 ### Fixed
+- Arriving at a slide whose exit transition was still running left it stranded
+  off-screen: the guard that stops a repaint from cancelling an animation in
+  flight also skipped staging the slide being arrived at, so it kept the
+  transform its exit had left behind. Reachable from the editor's cursor sync
+  and from live reload, both of which repaint during a page turn.
 - Advancing past the last slide (or retreating before the first, or pressing
   `End` while already there) replayed the current slide's entrance: the viewer
   clamped the index and treated the result as an arrival. Navigating to the

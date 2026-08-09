@@ -51,7 +51,7 @@
     // Arriving from a later slide means arriving at a slide already fully
     // revealed; arriving forwards means starting from its first step.
     if (changed) step = backwards ? stepsOn(sec) : 0;
-    if (anim) anim.show(sec, step, transition, { play, backwards: backwards && changed });
+    if (anim) anim.show(sec, step, transition, { play, backwards: backwards && changed, arriving: changed });
     updateHud(ss.length, sec);
     // replaceState throws inside srcdoc iframes (editor previews). Recording the
     // page position is optional, so a failure must not abort the rest of the update.

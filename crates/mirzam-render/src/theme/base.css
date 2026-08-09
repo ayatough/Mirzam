@@ -176,6 +176,27 @@ svg.mz-shapes, svg.mz-connect {
 .mz-shape-label { font-size: 22px; fill: var(--mz-fg); font-family: inherit; }
 .mz-shape-label.small, text.small { font-size: 16px; fill: var(--mz-muted); }
 
+/* Presentation effects: fired by a key, drawn into a throwaway layer above the
+   slide, gone when they finish. Never printed (see print.css). The colours are
+   derived from theme tokens rather than being tokens of their own — an effect
+   is a flash of the deck's own accent, not a new part of its palette. */
+.mz-fx-layer {
+  position: absolute; inset: 0; overflow: hidden;
+  pointer-events: none; z-index: 40;
+  --mz-fx-flash: var(--mz-fg);
+  --mz-fx-line: var(--mz-accent1);
+  --mz-fx-spark: var(--mz-accent2);
+  --mz-fx-danmaku: var(--mz-fg);
+}
+@keyframes mz-fx-shake {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  15% { transform: translate3d(-9px, 3px, 0) rotate(-.5deg); }
+  35% { transform: translate3d(8px, -4px, 0) rotate(.5deg); }
+  55% { transform: translate3d(-6px, -2px, 0) rotate(-.3deg); }
+  75% { transform: translate3d(5px, 3px, 0) rotate(.3deg); }
+}
+.mz-fx-shake { animation: mz-fx-shake 520ms cubic-bezier(.36,.07,.19,.97); }
+
 /* Annotations: an overlay drawn over a pane, an image or a chart mark by
    theme/annot.js. It is additive - it never hides content - which is why it
    is also inlined into the print page, so the PDF carries the marks too. */

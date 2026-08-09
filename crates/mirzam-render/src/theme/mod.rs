@@ -22,6 +22,11 @@ pub const VIEWER_JS: &str = concat!("\n", include_str!("viewer.js"));
 /// actually animate something, so an unanimated deck carries none of it.
 pub const ANIM_JS: &str = concat!("\n", include_str!("anim.js"));
 
+/// Presentation effects. Inlined only into decks that bind a key to one, and
+/// never into the print page: an effect is part of the performance rather than
+/// the document.
+pub const EFFECTS_JS: &str = concat!("\n", include_str!("effects.js"));
+
 /// The annotation overlay. Inlined only into decks that annotate something —
 /// and, unlike every other script here, into the print page as well: an
 /// annotation is additive, so drawing it cannot hide content, and the PDF
@@ -224,6 +229,14 @@ mod tests {
         // The viewer must degrade when the runtime is not inlined, so it may
         // only reach for MZAnim through a guarded reference.
         assert!(!VIEWER_JS.contains("MZAnim."));
+    }
+
+    /// An effect is part of the performance, and the print page must never be
+    /// able to draw one even if the script somehow reached it.
+    #[test]
+    fn effects_are_neutralised_in_print() {
+        assert!(EFFECTS_JS.contains("mz-fx-layer"));
+        assert!(PRINT_CSS.contains(".mz-fx-layer { display: none; }"));
     }
 
     /// The overlay ships into the print page, so it may not depend on the

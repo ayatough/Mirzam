@@ -131,3 +131,57 @@ of that with an ordinary whole-slide track — this one wipes in and irises out:
 </div>
 <script type="application/json" class="mz-anim">{"steps":2,"tracks":[{"delay":0,"dur":500,"ease":"linear","effect":"blur-in","stagger":60,"target":{"sel":".m-last","split":"words"},"trigger":{"kind":"enter"}},{"delay":0,"dur":400,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".m-p1","split":null},"trigger":{"kind":"click","n":1}},{"delay":0,"dur":400,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".m-p2","split":null},"trigger":{"kind":"click","n":2}},{"delay":0,"dur":400,"ease":"linear","effect":"zoom-in","stagger":0,"target":{"sel":":scope","split":null},"trigger":{"kind":"enter"}}]}</script>
 </section>
+<section class="slide" data-index="7">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "keys stage"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Effects</span></p>
+<h2>Things you do, not things the deck does</h2>
+</div>
+<div class="pane pane-keys" data-pane="keys" style="grid-area:keys;display:flex;flex-direction:column;justify-content:center"><p>An <code>effects</code> block binds a key to a flourish. Press one; <code>Esc</code> clears it.</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1</code></td>
+<td>flash</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>shake</td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td>集中線</td>
+</tr>
+<tr>
+<td><code>4</code></td>
+<td>explosion</td>
+</tr>
+<tr>
+<td><code>e</code></td>
+<td>emoji</td>
+</tr>
+<tr>
+<td><code>c</code></td>
+<td>confetti</td>
+</tr>
+<tr>
+<td><code>m</code></td>
+<td>a comment sweeps past</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="pane pane-stage" data-pane="stage" style="grid-area:stage;text-align:center;display:flex;flex-direction:column;justify-content:center"><p><span class="m-fx">These never reach the PDF.</span></p>
+<p>An animation is part of the document — ordered, exported, the same every
+time. An effect is part of the <em>performance</em>. Nothing is lost if you never
+press the key.</p>
+</div>
+</div>
+<script type="application/json" class="mz-anim">{"steps":0,"tracks":[{"delay":0,"dur":400,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".m-fx","split":null},"trigger":{"kind":"enter"}}]}</script>
+<script type="application/json" class="mz-fx">[{"key":"1","effect":"flash"},{"key":"2","effect":"shake"},{"key":"3","effect":"lines"},{"key":"4","effect":"boom"},{"key":"e","effect":"burst","arg":"🎉"},{"key":"c","effect":"confetti"},{"key":"m","effect":"danmaku","arg":"そこ、大事です"}]</script>
+</section>

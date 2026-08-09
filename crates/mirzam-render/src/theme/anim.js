@@ -341,10 +341,17 @@
     show(sec, step, spec, opts) {
       const play = opts && opts.play;
       const backwards = !!(opts && opts.backwards);
+      const arriving = !!(opts && opts.arriving);
       // A repaint that lands mid-animation must not become a cancel. The font
       // loader fires one a few frames after load, which is exactly when a
       // slide's entrance is still running.
-      if (!play && busy(sec)) return;
+      //
+      // Arriving at a slide is never that repaint, and must never be skipped:
+      // a slide left mid-`exit` is holding a transform that has carried it off
+      // the screen, and refusing to stage it there strands it there. Editor
+      // cursor sync and live reload both land here while the previous page
+      // turn is still running.
+      if (!play && !arriving && busy(sec)) return;
       const tl = timeline(sec);
       stop(sec);
       if (!tl) {

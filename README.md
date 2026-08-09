@@ -68,6 +68,7 @@ whenever the layout changes.
 | **Diagrams that stay linked** | `shape` blocks draw boxes; `connect` blocks point from text to any element, resolved live |
 | **Math** | LaTeX converted to MathML at build time — no client-side JavaScript |
 | **Annotations** | Circle, box, label and point at part of a photo or a single chart bar; the marks reach the PDF |
+| **Effects on a key** | Flash, shake, 集中線, confetti, danmaku — fired while presenting, never in the export |
 | **Animation** | `anim` blocks compile to a timeline: entrances, click-through builds, page turns — and the PDF still shows every slide revealed |
 | **Video and GIF** | Embedded in the HTML, replaced by a poster frame in PDF |
 | **Backgrounds that stay readable** | A photo behind a pane, with `dim`, `blur` and gradient `scrim` so the text still wins |
