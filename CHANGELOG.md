@@ -7,6 +7,24 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+### Changed
+- **The default theme is Mirzam's own palette.** A deck that names no theme is
+  the common case — a quick note, a README turned into slides, a sample showing
+  one piece of markup — and those came out in a generic blue-and-teal that
+  looked like nobody's. `theme:` is now a choice to look like something *else*
+  rather than a choice to look like anything at all. `theme: mirzam` still
+  works and is the same palette; a test compares the two token sets so they
+  cannot drift into two slightly different Mirzams.
+
+### Added
+- **A colour-mode button in the viewer.** The mode was bound to `D` and nothing
+  else, so on a phone — which has no keyboard, and which is where a deck
+  arriving from a share is read — there was no way to reach it at all, and a
+  deck baked `mode: dark` could not be read in sunlight. The control cluster
+  gains a fourth button showing where it takes you. `every_control_has_a_touch_equivalent`
+  used to check only that the file mentioned touch events, which is how this
+  shipped; it now checks that every button in the cluster is bound.
+
 ### Fixed
 - Publishing a release left the *previous* one on the front page. Cutting a
   release pushes the version bump and then tags it, so the Pages run that CI

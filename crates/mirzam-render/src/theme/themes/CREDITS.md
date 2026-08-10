@@ -11,8 +11,15 @@ bar. See `every_theme_and_mode_meets_wcag_contrast` in `mod.rs`.
 
 ## `default`
 
-Ours; not derived from another project. Dark mode is new in this change (the
-theme previously had no `data-mode="dark"` block).
+Ours: the same palette as [`mirzam`](#mirzam), under the name a deck gets when
+it asks for nothing. A deck that names no theme is the common case — a quick
+note, a README turned into slides, a sample showing one piece of markup — and
+those used to come out in a generic blue-and-teal that looked like nobody's.
+
+The values are written twice because the theme's name is part of every
+selector it emits; `default_is_the_mirzam_palette` in `mod.rs` compares the two
+token sets, so editing one and not the other fails the build rather than
+shipping two slightly different Mirzams.
 
 ## `nord`
 

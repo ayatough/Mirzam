@@ -744,7 +744,7 @@ theme: nord
 
 | Name | Source |
 |---|---|
-| `default` | ours |
+| `default` | ours — Mirzam's own palette, so a deck that chooses nothing is already in the project's colours |
 | `nord` | [Nord](https://www.nordtheme.com/), MIT |
 | `solarized` | [Solarized](https://ethanschoonover.com/solarized/), MIT |
 | `vscode` | VS Code Light+/Dark+, MIT |

@@ -293,6 +293,10 @@
     setView(v) {
       if (v.mode) html.dataset.mode = v.mode; else delete html.dataset.mode;
       html.classList.toggle('mz-debug', !!v.debug);
+      // The other window turning the lights down moves this window's glyph
+      // too; without this the two screens disagree about which way the
+      // button goes.
+      paintModeButton();
     },
     // The slide as it was authored, for a preview that must not inherit this
     // window's animation state.
@@ -414,6 +418,44 @@
   document.getElementById('mz-next').addEventListener('click', advance);
   document.getElementById('mz-help').addEventListener('click', () => toggleKeys());
 
+  // ---- Colour mode ----
+  // A button as well as the `D` key, because a phone has neither a keyboard
+  // nor any other way in: the deck a reader opens from a share is the whole
+  // application, and a deck baked `mode: dark` was unreadable in sunlight with
+  // no way to say so.
+  const modeBtn = document.getElementById('mz-mode');
+
+  /** True when the deck is currently dark, whether that was chosen or inherited. */
+  function isDark() {
+    // No data-mode attribute means the OS preference is still in effect; ask
+    // it, so the first toggle goes the way the reader expects.
+    return html.dataset.mode
+      ? html.dataset.mode === 'dark'
+      : matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+
+  /** The control shows where it takes you, so the glyph and its label agree. */
+  function paintModeButton() {
+    if (!modeBtn) return;
+    const toLight = isDark();
+    modeBtn.textContent = toLight ? '☀︎' : '☽︎';
+    modeBtn.setAttribute('aria-label', toLight ? 'Switch to light mode' : 'Switch to dark mode');
+    modeBtn.title = modeBtn.getAttribute('aria-label');
+  }
+
+  function toggleMode() {
+    html.dataset.mode = isDark() ? 'light' : 'dark';
+    rememberMode(html.dataset.mode);
+    paintModeButton();
+    notify();
+  }
+
+  if (modeBtn) modeBtn.addEventListener('click', toggleMode);
+  paintModeButton();
+  // The system flipping under a deck that never chose a mode has to move the
+  // glyph too, or the button starts lying about where it goes.
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', paintModeButton);
+
   addEventListener('keydown', (e) => {
     // A modified key belongs to the browser: Cmd-R, Ctrl-F, Alt-Tab.
     if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -436,16 +478,7 @@
       html.classList.toggle('mz-debug');
       notify();
     }
-    else if (e.key === 'd' || e.key === 'D') {
-      // No data-mode attribute yet means the OS preference is in effect;
-      // read that to know which way "toggle" should go the first time.
-      const isDark = html.dataset.mode
-        ? html.dataset.mode === 'dark'
-        : matchMedia('(prefers-color-scheme: dark)').matches;
-      html.dataset.mode = isDark ? 'light' : 'dark';
-      rememberMode(html.dataset.mode);
-      notify();
-    }
+    else if (e.key === 'd' || e.key === 'D') toggleMode();
   });
 
   // ---- Touch: a phone has no keyboard ----

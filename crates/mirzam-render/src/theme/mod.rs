@@ -186,11 +186,17 @@ mod tests {
     #[test]
     fn theme_css_is_tokens_then_base() {
         let css = theme_css("default");
-        assert!(css
-            .trim_start()
-            .starts_with(":where(:root[data-theme=\"default\"])"));
+        // Order, not position: a sheet may open with a comment, and asserting
+        // on the first characters made adding one to a theme look like a
+        // regression in how the CSS is assembled.
+        let tokens = css.find(":where(:root[data-theme=\"default\"])");
+        let base = css.find("* { box-sizing: border-box; }");
+        assert!(tokens.is_some() && base.is_some());
+        assert!(
+            tokens < base,
+            "the theme's tokens must come before base.css, or base cannot read them"
+        );
         assert!(css.contains("--mz-accent1"));
-        assert!(css.contains("* { box-sizing: border-box; }"));
     }
 
     /// A deck's own `css:` overrides tokens with a plain `:root { }` block.
@@ -215,6 +221,29 @@ mod tests {
     #[test]
     fn unknown_theme_falls_back_to_default_css() {
         assert_eq!(theme_tokens("nope"), theme_tokens("default"));
+    }
+
+    /// `default` and `mirzam` are the same palette under two names, so that a
+    /// deck naming no theme is already in the project's colours. The values
+    /// have to be written twice, because the theme name is part of the
+    /// selector - which is precisely how they would drift. Editing one palette
+    /// and not the other fails here.
+    #[test]
+    fn default_is_the_mirzam_palette() {
+        /// Every `--mz-*: value` in the sheet, in source order. The selectors
+        /// differ by name and are what this deliberately ignores.
+        fn declarations(css: &str) -> Vec<&str> {
+            css.lines()
+                .map(str::trim)
+                .filter(|l| l.starts_with("--mz-"))
+                .collect()
+        }
+        assert_eq!(
+            declarations(theme_tokens("default")),
+            declarations(theme_tokens("mirzam")),
+            "the default theme has drifted from themes/mirzam.css; the two are \
+             one palette written twice, because the name is in the selector"
+        );
     }
 
     #[test]
@@ -340,6 +369,27 @@ mod tests {
             assert!(
                 VIEWER_JS.contains(gesture),
                 "viewer.js is missing {gesture}"
+            );
+        }
+        // The gestures above were the whole test, which let the colour mode
+        // ship as a `D` binding and nothing else: on a phone there is no
+        // keyboard, so a deck baked `mode: dark` could not be read in
+        // sunlight. Every button in the cluster is checked for a handler now,
+        // so a control reachable only by key fails here rather than on
+        // somebody's phone.
+        let page = crate::assemble_page(
+            &mirzam_core::DeckMeta::default(),
+            &[],
+            &crate::PageOptions::default(),
+        );
+        for id in ["mz-prev", "mz-next", "mz-mode", "mz-help"] {
+            assert!(
+                page.contains(&format!("id=\"{id}\"")),
+                "the control cluster is missing {id}"
+            );
+            assert!(
+                VIEWER_JS.contains(&format!("getElementById('{id}')")),
+                "{id} is in the markup but nothing in viewer.js binds it"
             );
         }
     }

@@ -1,56 +1,76 @@
+/* The default theme is Mirzam's own palette.
+
+   A deck that names no theme is the common case — the quick note, the README
+   turned into slides, the sample that exists to show one piece of markup — and
+   those are exactly the decks that used to come out looking like nobody's.
+   Making the default the project's own palette means a file with no
+   frontmatter at all is already part of the family, and `theme:` becomes a
+   choice to look like something *else* rather than a choice to look like
+   anything at all.
+
+   The values are `themes/mirzam.css`, keyed for `default`. They are duplicated
+   rather than shared because a built-in theme is selected by an attribute
+   carrying its own name, so the name is part of every selector; a test in
+   `theme/mod.rs` compares the two token sets and fails if they drift apart.
+
+   Palette: docs/brand/palette.md, and themes/CREDITS.md for the places a value
+   differs from the brand sheet to clear a deck's contrast floor. Light lives in
+   the bare selector because that is what a reader whose system prefers light
+   gets; a deck that wants dark everywhere writes `mode: dark`. */
+
 :where(:root[data-theme="default"]) {
-  --mz-bg: #14161d;
+  --mz-bg: #e7eaf4;
   --mz-slide-bg: #ffffff;
-  --mz-fg: #23272f;
-  --mz-muted: #686f89;
-  --mz-accent1: #3056d3;
-  --mz-accent2: #12b8a6;
-  --mz-border: #e3e6ef;
-  --mz-chart3: #c96f1f;
-  --mz-chart4: #9b51e0;
-  --mz-chart5: #eb5757;
-  --mz-chart6: #2d9cdb;
-  --mz-shape-fill: #eef1fb;
-  --mz-surface: #f3f5fb;
-  --mz-danger-bg: #fff0f0;
-  --mz-danger-fg: #b3261e;
-  --mz-danger-border: #e5484d;
+  --mz-fg: #17203a;
+  --mz-muted: #616981;
+  --mz-border: #dde1ec;
+  --mz-surface: #f1f3fa;
+  --mz-shape-fill: #f1f3fa;
+  --mz-accent1: #6557d9;
+  --mz-accent2: #3c6e9e;
+  --mz-chart3: #3f7f63;
+  --mz-chart4: #9e7828;
+  --mz-chart5: #b2495b;
+  --mz-chart6: #7a69f0;
+  --mz-danger-bg: #fdecef;
+  --mz-danger-fg: #b3253a;
+  --mz-danger-border: #c96a78;
 }
 @media (prefers-color-scheme: dark) {
   :where(:root[data-theme="default"]:not([data-mode="light"])) {
-    --mz-bg: #14161d;
-    --mz-slide-bg: #1b1e27;
-    --mz-fg: #eef0f6;
-    --mz-muted: #9aa1b8;
-    --mz-accent1: #6f97ff;
-    --mz-accent2: #2dd4bf;
-    --mz-border: #2f3342;
-    --mz-chart3: #ffb46b;
-    --mz-chart4: #c9a3f5;
-    --mz-chart5: #ff9b9b;
-    --mz-chart6: #6cc3f5;
-    --mz-shape-fill: #232733;
-    --mz-surface: #262b37;
-    --mz-danger-bg: #3a2226;
-    --mz-danger-fg: #ff9b9b;
-    --mz-danger-border: #e5484d;
+    --mz-bg: #05080f;
+    --mz-slide-bg: #080c18;
+    --mz-fg: #f4f6ff;
+    --mz-muted: #8f9ab8;
+    --mz-border: #252e47;
+    --mz-surface: #0e1425;
+    --mz-shape-fill: #131b2e;
+    --mz-accent1: #9b8cff;
+    --mz-accent2: #72b5e8;
+    --mz-chart3: #72c6a2;
+    --mz-chart4: #ddb86a;
+    --mz-chart5: #e58a9a;
+    --mz-chart6: #c0b7ff;
+    --mz-danger-bg: #21131a;
+    --mz-danger-fg: #e58a9a;
+    --mz-danger-border: #c96a78;
   }
 }
 :where(:root[data-theme="default"][data-mode="dark"]) {
-  --mz-bg: #14161d;
-  --mz-slide-bg: #1b1e27;
-  --mz-fg: #eef0f6;
-  --mz-muted: #9aa1b8;
-  --mz-accent1: #6f97ff;
-  --mz-accent2: #2dd4bf;
-  --mz-border: #2f3342;
-  --mz-chart3: #ffb46b;
-  --mz-chart4: #c9a3f5;
-  --mz-chart5: #ff9b9b;
-  --mz-chart6: #6cc3f5;
-  --mz-shape-fill: #232733;
-  --mz-surface: #262b37;
-  --mz-danger-bg: #3a2226;
-  --mz-danger-fg: #ff9b9b;
-  --mz-danger-border: #e5484d;
+  --mz-bg: #05080f;
+  --mz-slide-bg: #080c18;
+  --mz-fg: #f4f6ff;
+  --mz-muted: #8f9ab8;
+  --mz-border: #252e47;
+  --mz-surface: #0e1425;
+  --mz-shape-fill: #131b2e;
+  --mz-accent1: #9b8cff;
+  --mz-accent2: #72b5e8;
+  --mz-chart3: #72c6a2;
+  --mz-chart4: #ddb86a;
+  --mz-chart5: #e58a9a;
+  --mz-chart6: #c0b7ff;
+  --mz-danger-bg: #21131a;
+  --mz-danger-fg: #e58a9a;
+  --mz-danger-border: #c96a78;
 }

@@ -203,6 +203,7 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <div id="controls">
 <button id="mz-prev" type="button" aria-label="Previous">‹</button>
 <button id="mz-next" type="button" aria-label="Next">›</button>
+<button id="mz-mode" type="button" aria-label="Switch colour mode"></button>
 <button id="mz-help" type="button" aria-label="Keyboard shortcuts">?</button>
 </div>
 </div>
