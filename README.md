@@ -171,24 +171,27 @@ that same page against your working copy:
 
 ## Examples
 
-**A tutorial in six decks**, each written in the markup it teaches. Read them in
-order, with the source open beside the slides:
+**Start here** — [`examples/01-start.md`](examples/01-start.md): the smallest file
+that works, where a page breaks, and the three commands, in six slides.
 
-| Deck | What it teaches |
+**The markup, deck by deck.** Not a path to walk, a reference to look things up
+in — each covers one area and is written in the markup it documents, so the
+source beside the slides is the example.
+
+| Deck | Covers |
 |---|---|
-| [`examples/01-start.md`](examples/01-start.md) | The smallest deck that works, where a page breaks, the three commands |
-| [`examples/02-writing.md`](examples/02-writing.md) | Plain CommonMark on a slide — and not one Mirzam extension |
+| [`examples/02-writing.md`](examples/02-writing.md) | Headings, emphasis, lists, tables, maths, footnotes, emoji |
 | [`examples/03-layout.md`](examples/03-layout.md) | Layout rules, one per slide — the companion to [docs/layout.md](docs/layout.md) |
 | [`examples/04-components.md`](examples/04-components.md) | Charts, shapes, connectors, media and annotations, beside their source |
 | [`examples/05-motion.md`](examples/05-motion.md) | Animation: entrances, click-through builds, page turns, presentation effects |
 | [`examples/06-theming.md`](examples/06-theming.md) | Themes, every frontmatter field, attributes, custom CSS |
 
-**Two decks written as decks**, not as documentation:
+**Whole decks**, written for an audience rather than as documentation:
 
 | Deck | What it is |
 |---|---|
 | [`examples/pitch.md`](examples/pitch.md) | A sales pitch: metric tiles, charts from CSV, a custom dark theme |
-| [`examples/seminar.md`](examples/seminar.md) | A research talk in Japanese: math, tables, CJK typography |
+| [`examples/seminar.md`](examples/seminar.md) | A research talk in Japanese: maths, a quoted figure, citations, CJK typography |
 
 ```bash
 cargo run --bin mirzam -- build examples/01-start.md -o out && open out/index.html

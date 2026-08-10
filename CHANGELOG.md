@@ -15,6 +15,15 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   rather than a choice to look like anything at all. `theme: mirzam` still
   works and is the same palette; a test compares the two token sets so they
   cannot drift into two slightly different Mirzams.
+- **The sample decks stopped claiming to be a tutorial.** "Learn it, in order"
+  was a promise nothing kept: 02 to 06 are subject areas, and nobody reads
+  Components because they finished Layout. The site now says **Start here**
+  (a first deck, and a README turned into one by `--split h2`), **The markup,
+  deck by deck** (a reference to look things up in), and **Whole decks**
+  (`pitch` and `seminar`, written for an audience rather than as
+  documentation) — which is also what the author meant by the research talk
+  being one use case and the README deck being one feature, rather than both
+  sitting on the front page as equals.
 
 ### Added
 - **`examples/02-writing.md` is the reference for writing a slide**, rebuilt

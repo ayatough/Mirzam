@@ -75,12 +75,14 @@ code --install-extension editors/vscode/mirzam-preview-*.vsix
 
 ## サンプル
 
-順番に読むチュートリアル（それぞれが、教えている記法そのもので書かれています）:
+まず `examples/01-start.md` — 最小のデッキ、ページの区切り方、3 つのコマンドを 6 枚で。
+
+記法のリファレンス。読む順序ではなく分野で分かれており、それぞれが説明している記法
+そのもので書かれています:
 
 | デッキ | 内容 |
 |---|---|
-| `examples/01-start.md` | 最小のデッキ、ページの区切り方、3 つのコマンド |
-| `examples/02-writing.md` | 素の CommonMark がスライドでどう出るか。拡張記法は一切なし |
+| `examples/02-writing.md` | ペインの中身すべて。見出し・強調・リスト・表・数式・脚注・絵文字 |
 | `examples/03-layout.md` | レイアウト規則を 1 スライド 1 ルールで |
 | `examples/04-components.md` | グラフ・図形・コネクタ・メディア・注釈をソースと並べて |
 | `examples/05-motion.md` | アニメーション。登場・クリック送り・ページ送り・演出 |

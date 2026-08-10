@@ -133,20 +133,26 @@ it small and dependency-free.
 
 ### The sample decks
 
-`examples/` is two groups, and a new slide belongs to exactly one of them. The
-numbered decks are a tutorial read in order; each teaches one layer and is
-written in the markup it teaches.
+`examples/` is three groups, and a new slide belongs to exactly one of them.
+
+`01-start.md` is on its own: the path from reading about Mirzam to having a
+deck. It is the only one with an order to it.
+
+**02 to 06 are a reference, not a course.** They were labelled a tutorial to be
+read in order, which was a claim nothing supported — the numbers are subject
+areas, and nobody reads 04 because they finished 03. They are written in the
+markup they document, so the source beside the slides is the example. Ordering
+a change by "which deck owns this":
 
 | Deck | Owns |
 |---|---|
-| `01-start.md` | Getting a first deck built and presented |
-| `02-writing.md` | Plain CommonMark on a slide. **No Mirzam extension may appear in this file** — that is the whole point of it |
+| `02-writing.md` | Everything inside a pane: headings, emphasis, lists, tables, maths, footnotes, emoji. Held to `markup_coverage.rs` — a mark that renders and is not shown here fails CI |
 | `03-layout.md` | Layout rules, one per slide; the companion to `docs/layout.md` |
 | `04-components.md` | Charts, shapes, connectors, media, annotations |
 | `05-motion.md` | `anim`, transitions, `effects` |
 | `06-theming.md` | Themes, frontmatter, attributes, custom CSS |
 
-`pitch.md` and `seminar.md` are the other group: complete decks, written the way
+`pitch.md` and `seminar.md` are the third group: complete decks, written the way
 somebody would write one for an audience. They are not feature catalogues, so do
 not add a slide to them to demonstrate something.
 

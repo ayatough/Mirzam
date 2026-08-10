@@ -328,26 +328,33 @@ try {
 
 <main class="wrap">
 <!--UNRELEASED-->
-  <h2>See it running</h2>
-  <p>Two decks written as decks, not as documentation.
+  <h2>Start here</h2>
+  <p>Six slides between reading about Mirzam and having a deck.
   <span class="kbd">←</span> <span class="kbd">→</span> to navigate,
   <span class="kbd">N</span> for speaker notes, <span class="kbd">/</span> for the rest.</p>
   <div class="cards">
-    <a class="card" href="decks/pitch/"><b>Pitch deck</b><span>Metric tiles, charts from CSV, one hero image per colour mode</span></a>
-    <a class="card" href="decks/seminar/"><b>Research talk</b><span>Math, tables, Japanese typography</span></a>
-    <a class="card" href="decks/readme/"><b>This README, as a deck</b><span>No Mirzam syntax: <code>--split h2</code> on an ordinary document</span></a>
+    <a class="card" href="decks/01-start/"><b>Your first deck</b><span>The smallest file that works, where a page breaks, the three commands</span></a>
+    <a class="card" href="decks/readme/"><b>A README, unedited</b><span>What <code>--split h2</code> does to a document nobody wrote for slides</span></a>
   </div>
 
-  <h2>Learn it, in order</h2>
-  <p>Six decks that teach the markup by being written in it. Each one is a file in
-  <code>examples/</code> — read the source beside the slides.</p>
+  <h2>The markup, deck by deck</h2>
+  <p>Not a path to walk — a reference to look things up in. Each deck covers one
+  area and is written in the markup it documents, so the source beside the slides
+  is the example.</p>
   <div class="cards">
-    <a class="card" href="decks/01-start/"><b>01 · Start here</b><span>The smallest deck, page breaks, the three commands</span></a>
-    <a class="card" href="decks/02-writing/"><b>02 · Plain Markdown</b><span>Headings, lists, quotes, tables, code, footnotes — no extensions</span></a>
+    <a class="card" href="decks/02-writing/"><b>02 · Writing a slide</b><span>Headings, emphasis, lists, tables, maths, footnotes, emoji</span></a>
     <a class="card" href="decks/03-layout/"><b>03 · Layout</b><span>One layout rule per slide</span></a>
-    <a class="card" href="decks/04-components/"><b>04 · Components</b><span>Charts, shapes, connectors, media, annotations, beside their source</span></a>
+    <a class="card" href="decks/04-components/"><b>04 · Components</b><span>Charts, shapes, connectors, media, annotations</span></a>
     <a class="card" href="decks/05-motion/"><b>05 · Motion</b><span>Entrances, click-through builds, page turns, effects</span></a>
     <a class="card" href="decks/06-theming/"><b>06 · Theming</b><span>Themes, frontmatter, attributes, custom CSS</span></a>
+  </div>
+
+  <h2>Whole decks</h2>
+  <p>Written for an audience rather than as documentation — which is the only
+  honest way to show what the markup adds up to.</p>
+  <div class="cards">
+    <a class="card" href="decks/pitch/"><b>A sales pitch</b><span>Metric tiles, charts from CSV, one hero image per colour mode</span></a>
+    <a class="card" href="decks/seminar/"><b>A research talk, in Japanese</b><span>Maths, a quoted figure, citations, CJK typography</span></a>
   </div>
 
   <h2>How it works</h2>
