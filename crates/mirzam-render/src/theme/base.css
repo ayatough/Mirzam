@@ -138,7 +138,51 @@ a { color: var(--mz-accent1); }
 .u { text-decoration: underline; text-decoration-color: var(--mz-accent2); text-decoration-thickness: 3px; text-underline-offset: 4px; }
 .center { text-align: center; }
 .right { text-align: right; }
+
+/* `==marked==`. The browser default is a fixed yellow, which is the one colour
+   on the slide that would not move when the theme or the mode does - so the
+   wash is drawn from the accent instead, at the weight of a marker pen rather
+   than a highlighter that swallows the words. */
+mark {
+  background: color-mix(in srgb, var(--mz-accent2) 26%, transparent);
+  color: inherit;
+  padding: .05em .15em;
+  border-radius: 3px;
+}
+/* `++inserted++`, which on a slide is read as an underline and nothing more:
+   HTML's own "this was added" meaning belongs to a diff, not to a talk. */
+ins { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+
+/* A term and its definition. Slides faked this with a two-column table, which
+   made a reader's screen reader announce a data grid and put a rule between a
+   word and its meaning. */
+dl { margin: .4em 0; }
+dt { font-weight: 600; color: var(--mz-accent1); margin-top: .5em; }
+dd { margin: .1em 0 0 1.2em; color: var(--mz-fg); }
+
+/* Emphasis by size and colour, for the places bold is not enough and a
+   stylesheet of your own is too much. Every one takes a theme token, so they
+   follow the palette and survive `D` - which a hard-coded colour cannot, and
+   which is why there is no syntax for writing one. */
 .small { font-size: .8em; color: var(--mz-muted); }
+.big { font-size: 1.35em; }
+.huge { font-size: 2em; line-height: 1.15; }
+.muted { color: var(--mz-muted); }
+.accent { color: var(--mz-accent1); }
+.accent2 { color: var(--mz-accent2); }
+.danger { color: var(--mz-danger-fg); }
+
+/* A bordered block, for the aside that is not a quotation. `.card` in the
+   sample themes is this with a shadow and a fill; this one is in base so a
+   deck that picked no stylesheet still has somewhere to put a caveat. */
+.box {
+  border: 1px solid var(--mz-border);
+  border-radius: 10px;
+  padding: .6em .9em;
+  background: var(--mz-surface);
+}
+.box > :first-child { margin-top: 0; }
+.box > :last-child { margin-bottom: 0; }
 
 /* Title slide */
 section.slide:has(.title-slide) .grid {

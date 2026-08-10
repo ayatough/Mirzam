@@ -17,6 +17,25 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   cannot drift into two slightly different Mirzams.
 
 ### Added
+- **The marks a slide reaches for, which CommonMark has none of**:
+  `==highlight==`, `++underline++`, `:tada:`, and term lists (a line, then
+  `: its meaning`) — which decks had been faking with a two-column table, so a
+  screen reader announced a data grid and a rule sat between a word and its
+  definition. `<mark>`'s browser default is a fixed yellow, the one colour on a
+  slide that would not move when the theme or the mode did, so the wash is
+  drawn from the accent instead. The emoji table costs the browser build 103 KB
+  gzipped, which is on the record here because it is a real price for a
+  convenience: typing the character directly always worked.
+- **Classes for colour, size and a bordered aside**: `.big`, `.huge`, `.muted`,
+  `.accent`, `.accent2`, `.danger`, `.box`. Inline colour and size had no
+  syntax at all, and `.card` existed only in the sample themes, so a deck that
+  picked no stylesheet had nowhere to put a caveat. Each takes a theme token,
+  which is also the reason there is still no way to write a colour literal: a
+  hex value chosen against a white slide is exactly what cannot follow the deck
+  into dark mode.
+- Task lists (`- [ ]`) are documented. They have worked all along and appeared
+  in no sample and no reference, which is the kind of gap this release exists
+  to close.
 - **A `<picture>` that picks art by colour scheme follows the deck, not the
   machine.** The markup every README uses so its logo survives GitHub's dark
   theme is rewritten at build time into one image per mode, switched the way

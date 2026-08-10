@@ -10,6 +10,8 @@ Markdown parser still renders as readable text — that rule is enforced by
 | Those same blocks inside a longer fence (````` ```` `````) | Quoted, not executed — this is how a document shows Mirzam syntax |
 | Fenced divs (`::: pane main`) | A paragraph of text |
 | Inline attributes `{#id .class k=v}` | Literal text (Pandoc reads them as attributes) |
+| Marks `==highlight==`, `++underline++`, `:tada:` | Literal text (many renderers, GitHub included, read them) |
+| Term lists (`Term`, then `: meaning`) | The two lines, as written |
 | Variables `{{ price * 12 }}` | Literal text |
 | Transclusion `![[file.md]]` | An image-like link (Obsidian embeds it) |
 | Speaker notes `<!-- note: ... -->` | Nothing; it is an HTML comment |
@@ -180,8 +182,43 @@ with no network access.
 ![Figure](img/a.png){#fig1 fit=contain w=80%}
 ```
 
-`#id` names an element so `connect` and (later) `anim` can target it. `.u`
-underlines, `.center` / `.right` align, `.small` de-emphasizes; themes add more.
+`#id` names an element so `connect` and (later) `anim` can target it.
+
+The classes the renderer brings, before any theme adds its own:
+
+| Class | |
+|---|---|
+| `.u` | an accent-coloured rule under the words |
+| `.center` `.right` | alignment |
+| `.small` `.big` `.huge` | size |
+| `.muted` `.accent` `.accent2` `.danger` | colour |
+| `.box` | a bordered aside |
+
+Every colour here is a theme token, so it moves with the palette and survives
+`D`. That is also why there is no syntax for writing a colour directly: a hex
+value picked against a white slide is the one thing that cannot follow the
+deck into dark mode.
+
+### Marks beyond CommonMark
+
+```markdown
+==marked== and ++underlined++ and :tada:
+
+Term
+: What the term means.
+```
+
+| Written | Becomes | In a plain Markdown reader |
+|---|---|---|
+| `==text==` | a marker-pen wash in the accent colour | literal `==text==` |
+| `++text++` | an underline | literal `++text++` |
+| `:tada:` | 🎉 | literal `:tada:` |
+| a line, then `: definition` | a term list | the two lines, as written |
+
+Typing the emoji character directly always worked and still does; the
+shortcode is for the keyboards that make that hard.
+
+Task lists work too — `- [ ]` and `- [x]` — and always have.
 
 ### Variables and arithmetic
 

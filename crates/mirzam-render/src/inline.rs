@@ -503,6 +503,19 @@ pub fn render_markdown(md: &str) -> String {
     options.extension.table = true;
     options.extension.strikethrough = true;
     options.extension.tasklist = true;
+    // The marks a slide actually reaches for, none of which CommonMark has.
+    // Each degrades to its own punctuation in a plain reader rather than
+    // vanishing, which is the trade the rest of the markup makes too.
+    // ==marked==
+    options.extension.highlight = true;
+    // ++underlined++
+    options.extension.insert = true;
+    // A term and its definition, which is a list shape a slide wants often and
+    // has had to fake with a two-column table.
+    options.extension.description_lists = true;
+    // `:tada:`. Writing the character directly still works and always did;
+    // this is for the keyboards that make that hard.
+    options.extension.shortcodes = true;
     // Handles emphasis adjacent to CJK text and punctuation correctly.
     options.extension.cjk_friendly_emphasis = true;
     // Citations. A slide is rendered on its own, so the notes collect at the
