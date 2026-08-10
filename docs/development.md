@@ -262,9 +262,12 @@ the same crate — which is what the ownership tables in
    is nothing for `install.sh` to fetch. Running the workflow with `publish`
    unchecked builds the whole matrix and cuts nothing, which is how to find out
    that a runner image has been retired *before* a tag is waiting on it.
-7. Rebuild the site — the **Pages** workflow, run by hand. Tagging does not
-   trigger it, and until it runs the root of the site is still the *previous*
-   release.
+7. Check the site rebuilt. Publishing the release triggers **Pages**, which is
+   what moves the root onto the new tag — but the CI run for the version-bump
+   commit *also* triggers it, a minute earlier, when the tag does not exist
+   yet. That earlier run rebuilds the root from the previous release, so until
+   the release-triggered one lands the front page is a version behind. If it
+   did not fire, run Pages by hand.
 
 ### The tag is what the public sees
 

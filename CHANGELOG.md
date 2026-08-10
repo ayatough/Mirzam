@@ -7,7 +7,14 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+- Publishing a release left the *previous* one on the front page. Cutting a
+  release pushes the version bump and then tags it, so the Pages run that CI
+  triggers for that commit starts before the tag exists and rebuilds the root
+  from the release before last — which is how v0.2.0 shipped with v0.1.0's
+  decks at the root for nine minutes. Pages now also runs on `release:
+  published`, and takes the default branch rather than `github.ref`, since on
+  that event the ref is the tag and `/next/` would have stopped being `main`.
 
 ## [0.2.0] - 2026-08-10
 

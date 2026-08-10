@@ -14,11 +14,19 @@ name: Pages
 #
 # Triggered by CI finishing rather than by the push: the two ran in parallel on
 # the same event, so a commit with a red test suite still reached the site.
+#
+# Publishing a release is the other trigger, and it is not optional. Cutting one
+# means pushing the version bump and *then* tagging it, so the CI run for that
+# commit finishes before the tag exists - and the root, which is built from the
+# newest tag, gets rebuilt from the release before last. The first v0.2.0 deploy
+# put v0.1.0 back on the front page exactly that way.
 on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
     branches: ["main"]
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -32,10 +40,11 @@ concurrency:
 
 jobs:
   build:
-    # Nothing is published unless the run that produced it passed. A manual
-    # dispatch is the author saying so by hand, which is the escape hatch when
-    # the site needs rebuilding without a code change.
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    # Nothing that came from a push is published unless the run that produced it
+    # passed. The other two triggers are the author saying so by hand - a
+    # dispatch, or a release, whose commit CI already went green on before it
+    # could be tagged.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -44,8 +53,13 @@ jobs:
           # shallow clone has neither. Checking out the commit CI actually
           # tested, rather than whatever `main` points at now, keeps the site
           # and the green tick describing the same thing.
+          #
+          # Every other trigger takes the default branch, never `github.ref`:
+          # on a `release` that ref is the tag, and checking it out would build
+          # the preview from the release too - leaving /next/ claiming to be
+          # `main` while showing something else entirely.
           fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+          ref: ${{ github.event.workflow_run.head_sha || github.event.repository.default_branch }}
       - run: git fetch --tags --force
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
