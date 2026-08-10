@@ -75,6 +75,11 @@ a layout technique: run the checker below and the overflow is reported.
 some sections will simply be longer than a slide. The checker reports each one.
 In order of effort:
 
+- build it with `--fit shrink`, which scales an overfull pane's text down
+  instead of clipping it — the only one of these that needs no edit at all, and
+  therefore the answer for a document you do not control or must not touch. It
+  is `fit: shrink` in frontmatter, given on the command line for a document that
+  has none; this is how the site publishes its own README as a deck
 - split at a deeper level (`--split h3`) so sections are smaller
 - add `---` where you want a break; it is still valid Markdown for the document
 - move the long part into a `<details>` block or trim it

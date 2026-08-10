@@ -338,6 +338,10 @@ fit: shrink        # every pane on every slide
 ::: pane body {fit=shrink}
 ```
 
+```bash
+mirzam build README.md --split h2 --fit shrink   # for a document with no frontmatter
+```
+
 `fit=shrink` gives up the type size to keep the words: the pane's contents are
 scaled down in small steps until they fit, to a floor of 55%, and re-measured
 on every page turn and window resize. It runs in the PDF too — it only ever

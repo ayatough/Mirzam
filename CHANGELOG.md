@@ -14,10 +14,12 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   `media` query can only ask the operating system. Naming one leaves `bg=` as
   the other mode's image; naming one *without* a partner warns, because the
   other mode would show a bare pane with photo-coloured text on it.
-- `mirzam build --theme <name>` and `--css <file>`: the frontmatter's theme and
-  stylesheet, chosen from the command line. This is what lets a document that
-  cannot carry frontmatter — a README, where it would surface as a stray table
-  on GitHub — still be published as a deck with an identity.
+- `mirzam build --theme <name>`, `--css <file>` and `--fit shrink`: the
+  frontmatter's theme, stylesheet and overflow behaviour, chosen from the
+  command line. This is what lets a document that cannot carry frontmatter — a
+  README, where it would surface as a stray table on GitHub — still be published
+  as a deck with an identity, and without four of its sections cut off at the
+  bottom of the slide.
 - The landing page has a light/dark switch instead of only following the
   machine, and stores the choice where a deck's viewer reads it, so a deck
   opened from a light page opens light. The viewer's own `D` writes the same

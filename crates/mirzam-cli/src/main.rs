@@ -58,6 +58,13 @@ fn main() -> ExitCode {
                             None => return usage("--css requires a stylesheet path"),
                         }
                     }
+                    "--fit" => {
+                        i += 1;
+                        match args.get(i).map(String::as_str) {
+                            Some("shrink") => opts.fit = Some("shrink".to_string()),
+                            _ => return usage("--fit takes shrink"),
+                        }
+                    }
                     "--split" => {
                         i += 1;
                         match args.get(i).map(String::as_str) {
@@ -215,7 +222,7 @@ fn help_text() -> String {
         r#"
 Usage:
   mirzam build <input.md> [-o <out_dir>] [--split h1|h2|h3] [--theme <name>]
-               [--css <file>] [--base-url <url>] [--debug-layout]
+               [--css <file>] [--fit shrink] [--base-url <url>] [--debug-layout]
   mirzam serve <input.md> [-p <port>]
   mirzam export pdf <input.md> [-o <out.pdf>] [--chromium <bin>]
 
@@ -225,6 +232,9 @@ Usage:
           --theme and --css override the deck's frontmatter, so a document
           that carries none still gets an identity: --theme takes a built-in
           palette, --css a stylesheet with the type and furniture as well
+          --fit shrink scales an overfull pane's text down instead of clipping
+          it, which is what a section of prose that was never written to be a
+          slide usually needs
           --base-url is where the input file's directory lives once published,
           so links to other documents still resolve from the deck's own path
           --debug-layout bakes on the pane outline overlay, for screenshotting
@@ -252,6 +262,8 @@ struct BuildArgs {
     /// Overrides frontmatter `css:`. Resolved against the working directory,
     /// not the deck's, because it is a path the caller typed.
     css: Option<PathBuf>,
+    /// Overrides frontmatter `fit:`.
+    fit: Option<String>,
 }
 
 impl Default for BuildArgs {
@@ -263,6 +275,7 @@ impl Default for BuildArgs {
             base_url: None,
             theme: None,
             css: None,
+            fit: None,
         }
     }
 }
@@ -278,6 +291,9 @@ fn build(input: &Path, args: &BuildArgs) -> Result<(), String> {
     // an identity without editing the document to get one.
     if let Some(name) = &args.theme {
         out.meta.theme = Some(name.clone());
+    }
+    if let Some(fit) = &args.fit {
+        out.meta.fit = Some(fit.clone());
     }
     if let Some(path) = &args.css {
         // Unreadable frontmatter `css:` is a warning, because the deck is still
