@@ -60,11 +60,30 @@ plus, when the change is user-visible:
   `MIRZAM_UPDATE_SNAPSHOTS=1 cargo test -p mirzam-cli --test golden`
 
 **Then push it to `main`.** There is no second reader waiting on a branch, and
-`main` is the only ref the site publishes from, so a change parked on a branch
-cannot be looked at where it matters. This makes the gate above the whole of the
-review: run it before you push, not after. If something does land broken,
+the preview site publishes from `main` and nowhere else, so a change parked on a
+branch cannot be looked at where it matters. This makes the gate above the whole
+of the review: run it before you push, not after. If something does land broken,
 `git revert` it — reverting a small commit costs less than the branch dance
 would have cost every commit that was fine.
+
+### Where a change shows up
+
+The site is two builds in one deployment, because the person checking a change
+and the person arriving from a link want different things.
+
+| URL | Built from | Carries |
+|---|---|---|
+| [`/`](https://ayatough.github.io/Mirzam/) | the latest tag | the released version, indexed |
+| [`/next/`](https://ayatough.github.io/Mirzam/next/) | the tip of `main` | a `DEV` banner, `v<tag> +<n> · <sha>`, the changelog's `[Unreleased]` section, and `noindex` |
+
+So **a push to `main` moves `/next/`, and only a release moves `/`.** That is
+what lets work land directly on `main` without a half-finished afternoon
+becoming the front page. It also means the author reviews a change at
+`/next/` — say where to look when a change is visual.
+
+`.github/workflows/pages.yml` runs on CI *finishing*, not on the push, so a
+commit whose tests are red is never published. Do not change that back: with no
+pull request in the way, it is the only gate there is.
 
 ## Verify by rendering, not by reading
 

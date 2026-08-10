@@ -224,8 +224,18 @@ guide](docs/development.md) to work on it.
 **`main` is the working branch, not a stable one.** Development happens on it
 directly: this is a single author working with an AI assistant, so a pull
 request has no second reader to wait for, and holding changes on a branch only
-delays the one review that does happen — looking at the deployed site, which
-[publishes from `main`](.github/workflows/pages.yml) and nowhere else.
+delays the one review that does happen — looking at the deployed site.
+
+The site is [published in two channels](.github/workflows/pages.yml) so that
+landing a change and releasing it stay separate things:
+
+| | Built from | For |
+|---|---|---|
+| **[ayatough.github.io/Mirzam](https://ayatough.github.io/Mirzam/)** | the latest release tag | anyone arriving from a link |
+| **[/next/](https://ayatough.github.io/Mirzam/next/)** | the tip of `main` | seeing a change before it is released |
+
+`/next/` says which commit it is and lists the changelog's unreleased entries.
+It is a working copy — take it as a preview, not a promise.
 
 What that means if you are using Mirzam:
 

@@ -262,3 +262,19 @@ the same crate — which is what the ownership tables in
    is nothing for `install.sh` to fetch. Running the workflow with `publish`
    unchecked builds the whole matrix and cuts nothing, which is how to find out
    that a runner image has been retired *before* a tag is waiting on it.
+7. Rebuild the site — the **Pages** workflow, run by hand. Tagging does not
+   trigger it, and until it runs the root of the site is still the *previous*
+   release.
+
+### The tag is what the public sees
+
+`ayatough.github.io/Mirzam/` is built from the latest tag;
+`ayatough.github.io/Mirzam/next/` is built from `main`. So a release is not only
+a version number — it is the moment months of work on `main` become the page a
+stranger lands on. Two consequences worth holding on to:
+
+- **Look at `/next/` before tagging.** It is the release candidate, rendered.
+- **Do not let the gap grow too wide.** The longer the root lags `main`, the
+  more the documentation people actually read describes a version that no
+  longer exists. Somewhere around three or four unreleased features, or any
+  markup change, is the point to cut one.

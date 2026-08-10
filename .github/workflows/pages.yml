@@ -1,9 +1,23 @@
 name: Pages
 
-# Publishes the documentation site: the guides plus every sample deck rendered
-# as a live HTML page, so the docs can be checked against real output.
+# Publishes two sites from one deployment, because GitHub Pages serves exactly
+# one directory tree per repository:
+#
+#   /        the latest tag - what somebody arriving from a link should see
+#   /next/   the tip of `main` - how a change gets looked at before it is
+#            released, labelled as a working copy and asking not to be indexed
+#
+# The split exists because checking a change and publishing it used to be the
+# same action. With no pull request in the way, `main` is where work lands, so
+# tying the public face of the project to a tag is what keeps a half-finished
+# afternoon off the front page.
+#
+# Triggered by CI finishing rather than by the push: the two ran in parallel on
+# the same event, so a commit with a red test suite still reached the site.
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: ["main"]
   workflow_dispatch:
 
@@ -18,13 +32,66 @@ concurrency:
 
 jobs:
   build:
+    # Nothing is published unless the run that produced it passed. A manual
+    # dispatch is the author saying so by hand, which is the escape hatch when
+    # the site needs rebuilding without a code change.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # `git describe` needs the history and the tags, and the default
+          # shallow clone has neither. Checking out the commit CI actually
+          # tested, rather than whatever `main` points at now, keeps the site
+          # and the green tick describing the same thing.
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+      - run: git fetch --tags --force
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: build site
-        run: ./scripts/build-site.sh site
+
+      - name: resolve version
+        id: v
+        run: |
+          sha=$(git rev-parse --short HEAD)
+          tag=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          if [ -n "$tag" ]; then
+            n=$(git rev-list --count "$tag..HEAD")
+            echo "tag=$tag"            >> "$GITHUB_OUTPUT"
+            echo "dev=$tag +$n · $sha" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag="       >> "$GITHUB_OUTPUT"
+            echo "dev=$sha"   >> "$GITHUB_OUTPUT"
+          fi
+
+      # Built from the tag's own tree, so the released site is the site that
+      # was released - its decks, its docs, its build script. A tag predating
+      # the two-channel split simply builds as it always did: it does not know
+      # the channel variables and ignores them, which costs the root page its
+      # version stamp until the next release and nothing else.
+      - name: build the released site
+        env:
+          MIRZAM_SITE_CHANNEL: stable
+          MIRZAM_SITE_VERSION: ${{ steps.v.outputs.tag }}
+        run: |
+          if [ -z "${{ steps.v.outputs.tag }}" ]; then
+            echo "no tag yet; the root gets main instead"
+            ./scripts/build-site.sh site
+            exit 0
+          fi
+          git worktree add /tmp/released "${{ steps.v.outputs.tag }}"
+          cd /tmp/released
+          ./scripts/build-site.sh "$GITHUB_WORKSPACE/site"
+
+      # `build-site.sh` clears its own output directory, so this has to come
+      # second: the other order would take the released site down with it.
+      - name: build the preview site
+        if: steps.v.outputs.tag != ''
+        env:
+          MIRZAM_SITE_CHANNEL: dev
+          MIRZAM_SITE_VERSION: ${{ steps.v.outputs.dev }}
+        run: ./scripts/build-site.sh site/next
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

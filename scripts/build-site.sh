@@ -2,11 +2,28 @@
 # Build the documentation site: a landing page plus every sample deck rendered
 # as a live, self-contained HTML file.
 #   ./scripts/build-site.sh [out_dir]
+#
+# Two channels, because the site is read by two different people. `stable` is
+# built from the latest tag and published at the root - that is what a stranger
+# arriving from a link sees. `dev` is built from the tip of `main` and published
+# under /next/, which is how the author checks a change without waiting for a
+# release. The dev build says so on the page and asks not to be indexed;
+# everything else about the two is identical.
+#
+#   MIRZAM_SITE_CHANNEL=dev MIRZAM_SITE_VERSION="v0.1.0 +11 · 72433fb" \
+#     ./scripts/build-site.sh site/next
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 OUT="${1:-site}"
 DECKS=(01-start 02-writing 03-layout 04-components 05-motion 06-theming pitch seminar)
+
+CHANNEL="${MIRZAM_SITE_CHANNEL:-stable}"
+# Falls back to `git describe` so a build run by hand is stamped too. The
+# workflow passes the string it wants rather than relying on this, because a
+# shallow checkout has no tags to describe against.
+VERSION="${MIRZAM_SITE_VERSION:-$(git describe --tags --always 2>/dev/null || echo unknown)}"
+BUILT="$(date -u +%Y-%m-%d)"
 
 rm -rf "$OUT"
 mkdir -p "$OUT/decks"
@@ -70,6 +87,7 @@ cat > "$OUT/index.html" <<'HTML'
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mirzam - presentation decks that live in your repository</title>
 <meta name="description" content="Write plain Markdown, draw the layout as ASCII, and get a deck with real charts, diagrams, video and math - as one self-contained HTML file or a PDF.">
+<!--NOINDEX-->
 
 <link rel="icon" href="brand/mirzam-icon-light.svg">
 <link rel="apple-touch-icon" href="brand/mirzam-icon-512.png">
@@ -258,6 +276,31 @@ try {
     color: var(--muted); font-size: .9rem; margin-top: 4.5em;
     border-top: 1px solid var(--line); padding-top: 1.6em;
   }
+
+  /* The preview banner. Only the /next/ build carries one, and it is the first
+     thing on the page because its whole job is to stop somebody mistaking a
+     working copy for the product. Both accents clear AA against the button ink
+     they pair with, in either mode - see the palette in docs/brand. */
+  .devbar {
+    background: var(--accent); color: var(--btn-ink);
+    padding: 11px 24px; font-size: .92rem; line-height: 1.6;
+  }
+  .devbar b {
+    font-family: "Space Grotesk", system-ui, sans-serif;
+    font-weight: 500; letter-spacing: .08em; margin-right: .5em;
+  }
+  .devbar code { background: rgba(0,0,0,.2); color: inherit; }
+  .devbar a { color: inherit; text-underline-offset: 3px; }
+
+  /* The unreleased changelog, on the dev build only: what this site has that
+     the released one does not. */
+  .unreleased h3 {
+    font-family: "Space Grotesk", system-ui, sans-serif;
+    font-weight: 500; font-size: 1.02rem; margin: 1.8em 0 .2em;
+  }
+  .unreleased ul { margin-top: .4em; }
+  .unreleased li { color: var(--muted); }
+  .unreleased li code { font-size: .84em; }
   @media (max-width: 620px) {
     .hero .wrap { padding-top: 56px; padding-bottom: 72px; }
     h2 { font-size: 1.45rem; }
@@ -265,6 +308,7 @@ try {
 </style>
 </head>
 <body>
+<!--DEVBAR-->
 
 <header class="hero">
   <button class="switch" id="switch" type="button" aria-label="Switch colour mode"></button>
@@ -280,6 +324,7 @@ try {
 </header>
 
 <main class="wrap">
+<!--UNRELEASED-->
   <h2>See it running</h2>
   <p>Two decks written as decks, not as documentation.
   <span class="kbd">←</span> <span class="kbd">→</span> to navigate,
@@ -341,6 +386,7 @@ mirzam export pdf deck.md</code></pre>
 
   <footer>
     MIT licensed · <a href="https://github.com/ayatough/Mirzam">Source on GitHub</a>
+    · <!--VERSION-->
   </footer>
 </main>
 
@@ -391,6 +437,106 @@ HTML
 # Every local link on the landing page must resolve in the artifact, since
 # nothing rewrites paths after this point.
 sed -i.bak "s|<!--TRY-->|$TRY_CARD|" "$OUT/index.html" && rm -f "$OUT/index.html.bak"
+
+# The channel markers. Python rather than sed because two of the three
+# replacements are multi-line, and one of them is the `[Unreleased]` section of
+# CHANGELOG.md turned into HTML - so that the question the dev site exists to
+# answer, "what does this build have that the last release did not", is on the
+# page instead of one tap away on GitHub.
+#
+# The converter handles the subset the changelog actually uses: `### Heading`,
+# `- bullet` with indented continuation lines, and inline code, bold and links.
+# Anything else passes through as escaped text, which is wrong-looking rather
+# than broken, and is the trade for not carrying a Markdown library here.
+CHANNEL="$CHANNEL" VERSION="$VERSION" BUILT="$BUILT" python3 - "$OUT/index.html" <<'PY'
+import html, os, re, sys
+
+page = sys.argv[1]
+channel, version, built = os.environ["CHANNEL"], os.environ["VERSION"], os.environ["BUILT"]
+
+
+def inline(text):
+    out = html.escape(text)
+    out = re.sub(r"`([^`]+)`", r"<code>\1</code>", out)
+    out = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", out)
+    out = re.sub(r"\*([^*]+)\*", r"<em>\1</em>", out)  # bold is already gone
+    return re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)", r'<a href="\2">\1</a>', out)
+
+
+def unreleased_html():
+    """The `## [Unreleased]` section of the changelog, as HTML."""
+    lines, inside = [], False
+    for line in open("CHANGELOG.md", encoding="utf-8"):
+        if line.startswith("## [Unreleased]"):
+            inside = True
+            continue
+        if inside and line.startswith("## "):
+            break
+        if inside:
+            lines.append(line.rstrip())
+
+    out, items, item = [], [], None
+
+    def flush():
+        # A list closes on the first line that is not part of one.
+        nonlocal item
+        if item is not None:
+            items.append(item)
+            item = None
+        if items:
+            out.append("<ul>" + "".join(f"<li>{inline(i)}</li>" for i in items) + "</ul>")
+            items.clear()
+
+    for line in lines:
+        if line.startswith("### "):
+            flush()
+            out.append(f"<h3>{inline(line[4:])}</h3>")
+        elif line.startswith("- "):
+            if item is not None:
+                items.append(item)
+            item = line[2:]
+        elif line.strip() and item is not None:
+            item += " " + line.strip()   # an indented continuation of the bullet
+        elif not line.strip():
+            flush()
+    flush()
+    return "\n".join(out)
+
+
+if channel == "dev":
+    body = unreleased_html()
+    fill = {
+        "<!--NOINDEX-->": '<meta name="robots" content="noindex, nofollow">',
+        "<!--DEVBAR-->": (
+            '<div class="devbar"><b>DEV</b>'
+            f"Unreleased build of <code>main</code> — <code>{html.escape(version)}</code>, "
+            f"built {built}. "
+            '<a href="../">The released site is here.</a></div>'
+        ),
+        "<!--UNRELEASED-->": (
+            "  <h2>What this build has that the release does not</h2>\n"
+            "  <p>Straight from the changelog's unreleased section.</p>\n"
+            f'  <div class="unreleased">\n{body}\n  </div>'
+            if body
+            else ""
+        ),
+        "<!--VERSION-->": f"<code>{html.escape(version)}</code>, built {built}",
+    }
+else:
+    # A release is named by its tag and nothing else; there is no unreleased
+    # work on it by definition, and it wants to be indexed.
+    fill = {
+        "<!--NOINDEX-->": "",
+        "<!--DEVBAR-->": "",
+        "<!--UNRELEASED-->": "",
+        "<!--VERSION-->": f"<code>{html.escape(version)}</code>",
+    }
+
+text = open(page, encoding="utf-8").read()
+for marker, replacement in fill.items():
+    text = text.replace(marker, replacement)
+open(page, "w", encoding="utf-8").write(text)
+PY
 
 echo "==> checking links"
 # Images count: a missing wordmark or social card is as broken as a dead link,

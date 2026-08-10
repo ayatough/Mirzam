@@ -38,6 +38,17 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   key, which also makes that toggle stick from one deck to the next.
 
 ### Changed
+- **The site is published in two channels.** The root is built from the latest
+  tag; `/next/` is built from the tip of `main`, carries a `DEV` banner naming
+  the commit (`v0.1.0 +11 · 72433fb`), lists this file's `[Unreleased]` section,
+  and asks not to be indexed. Landing a change and releasing it were the same
+  action before this, which is a poor arrangement for a repository where work
+  goes straight to `main`: the only way to look at a change was to publish it to
+  everyone. Now a push moves `/next/` and only a tag moves the root.
+- **Pages runs after CI, not beside it.** Both workflows triggered on the same
+  push and raced, so a commit whose tests were red still reached the site. With
+  no pull request in the way, CI is the only gate there is, and the deployment
+  now waits for it.
 - The sample decks are a numbered series rather than six files at the same
   level with three different jobs between them. `cookbook.md` → `03-layout.md`,
   `showcase.md` → `04-components.md`, `motion.md` → `05-motion.md`; `pitch.md`
