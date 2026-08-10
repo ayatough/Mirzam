@@ -174,6 +174,34 @@ with no network access.
 
 ## Inline syntax
 
+### The Markdown you already write
+
+All of CommonMark works on a slide, plus GitHub's tables, strikethrough and task
+lists. Listing it may look redundant; it is not. This reference described only
+what Mirzam *adds* for two releases, so "does it do tables?" had no answer here,
+and both strikethrough and task lists shipped working and undocumented.
+
+| | |
+|---|---|
+| `**bold**`, `*italic*`, `inline code` | as anywhere |
+| `~~text~~` | strikethrough (GFM) |
+| `# ` to `###` | headings; `#` is the deck's title |
+| `- ` and nested `  - ` | bullets |
+| `1.` numbered lists | the renderer counts, so inserting an item renumbers the rest |
+| `- [ ]` / `- [x]` | task lists (GFM) |
+| `> ` | a quotation |
+| `***` or `___` | a horizontal rule — **not** `---`, which breaks the slide |
+| `[text](url)`, bare URLs | links, kept clickable, printed beside the words in the PDF |
+| `| a | b |` | tables; `---` left, `---:` right, `:---:` centred |
+| ` ``` ` fences and indents | code blocks. The language is recorded but not yet coloured — syntax highlighting is not implemented |
+| `[^key]` | footnotes, landing on the slide that cites them |
+| `<!-- -->` | comments; `<!-- note: -->` is a speaker note |
+| raw HTML | passed through, so `<div class="box">` works |
+
+`crates/mirzam-cli/tests/markup_coverage.rs` holds this table, the renderer and
+`examples/02-writing.md` to each other: a mark that renders but is missing from
+either fails the build.
+
 ### Attributes
 
 ```markdown
@@ -210,10 +238,17 @@ Term
 
 | Written | Becomes | In a plain Markdown reader |
 |---|---|---|
+| `~~text~~` | struck through | struck through — this one is GFM, not ours |
 | `==text==` | a marker-pen wash in the accent colour | literal `==text==` |
 | `++text++` | an underline | literal `++text++` |
 | `:tada:` | 🎉 | literal `:tada:` |
 | a line, then `: definition` | a term list | the two lines, as written |
+
+**Underline is `++`, not `__`.** Some editors take double underscores for an
+underline; CommonMark and GFM both read them as **bold**, and Mirzam's whole
+premise is that the same file renders on GitHub. Taking `__` would mean a
+document written anywhere else silently changes meaning when it becomes a
+deck — with no way to warn, since `__bold__` is perfectly valid markup.
 
 Typing the emoji character directly always worked and still does; the
 shortcode is for the keyboards that make that hard.

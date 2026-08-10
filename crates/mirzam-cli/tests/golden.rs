@@ -68,7 +68,7 @@ fn examples_match_snapshots() {
 fn example_slide_counts() {
     for (deck, expected) in [
         ("01-start.md", 6),
-        ("02-writing.md", 11),
+        ("02-writing.md", 10),
         ("03-layout.md", 11),
         ("04-components.md", 16),
         ("05-motion.md", 9),

@@ -1,183 +1,243 @@
 <section class="slide" data-index="0">
 <div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
-<div class="pane pane-main" data-pane="main" style="grid-area:main"><h1>Writing in plain Markdown</h1>
-<p>Not one line of this deck uses a Mirzam extension. No <code>pane</code>, no <code>:::</code>, no
-attributes — only CommonMark, split into slides by <code>---</code>.</p>
-<p>It also picks no theme, so this is the deck you get before you choose anything.</p>
+<div class="pane pane-main" data-pane="main" style="grid-area:main"><h1 class="title-slide">Writing a slide</h1>
+<p>Every mark Mirzam understands inside a pane: text, lists, tables, maths — and
+the handful of additions CommonMark does not have.</p>
+<p>Nothing here needs a layout. That is the next deck.</p>
 </div>
 </div>
-<aside class="notes"><p>This deck is the control group. If something here renders badly, it is a bug in the default theme, not in a feature.</p>
+<aside class="notes"><p>This deck is the reference the markup coverage test checks against. A mark that works and is not shown here fails CI.</p>
 </aside>
 </section>
 <section class="slide" data-index="1">
-<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
-<div class="pane pane-main" data-pane="main" style="grid-area:main"><h2>Headings set the rhythm</h2>
-<h3>A third level, for the detail underneath</h3>
-<p>Paragraphs are just paragraphs. A blank line separates them; a single newline
-does not, so you can wrap the source at whatever width your editor likes and
-the sentence stays one sentence.</p>
-<p>The <code>#</code> on the opening slide is the first level — the same one you would put
-at the top of a document. On a slide it reads as a title, so it is usually the
-only <code>#</code> in the deck.</p>
-<p>Two levels are usually enough after that. Three is a sign the slide wants to
-be two slides.</p>
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Contents</span></p>
+<h2>A contents page that writes itself</h2>
+</div>
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">```toc
+from: 2
+depth: 2
+current: true
+```
+</code></pre>
+<ul>
+<li><code>from</code> skips the deck's own title</li>
+<li><code>current</code> marks the section you are inside</li>
+</ul>
+</div>
+<div class="pane pane-out" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><nav class="mz-toc" data-current="1"><ol><li class="mz-toc-l2" data-slide="2" style="margin-left:0em"><a href="#3">Headings</a><span class="mz-toc-page">3</span></li><li class="mz-toc-l2" data-slide="2" style="margin-left:0em"><a href="#3">Two, a slide's own heading</a><span class="mz-toc-page">3</span></li><li class="mz-toc-l2" data-slide="3" style="margin-left:0em"><a href="#4">Marking a phrase</a><span class="mz-toc-page">4</span></li><li class="mz-toc-l2" data-slide="4" style="margin-left:0em"><a href="#5">Colour and size</a><span class="mz-toc-page">5</span></li><li class="mz-toc-l2" data-slide="5" style="margin-left:0em"><a href="#6">Quotes, asides and code</a><span class="mz-toc-page">6</span></li><li class="mz-toc-l2" data-slide="6" style="margin-left:0em"><a href="#7">Four kinds of list</a><span class="mz-toc-page">7</span></li><li class="mz-toc-l2" data-slide="7" style="margin-left:0em"><a href="#8">Tables and mathematics</a><span class="mz-toc-page">8</span></li><li class="mz-toc-l2" data-slide="8" style="margin-left:0em"><a href="#9">Emoji, footnotes and what you do not show</a><span class="mz-toc-page">9</span></li><li class="mz-toc-l2" data-slide="9" style="margin-left:0em"><a href="#10">Still Markdown</a><span class="mz-toc-page">10</span></li></ol></nav>
 </div>
 </div>
 </section>
 <section class="slide" data-index="2">
-<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
-<div class="pane pane-main" data-pane="main" style="grid-area:main"><h2>Emphasis, and what it costs</h2>
-<p><strong>Bold</strong> for the one phrase the audience should leave with. <em>Italic</em> for a
-term being introduced. <del>Struck</del> for something you are explicitly retracting.</p>
-<p><code>Inline code</code> keeps identifiers out of the prose — <code>--split h2</code>, <code>PATH</code>,
-<code>deck.md</code> — and it never wraps mid-token.</p>
-<p>Every one of these is cheap to write and expensive to overuse. A slide with
-four bold phrases has none.</p>
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Structure</span></p>
+<h2>Headings</h2>
+</div>
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown"># One, the title of the deck
+
+## Two, a slide's own heading
+
+### Three, for the detail under it
+</code></pre>
+<p>Two levels are usually enough on a slide. Three is a sign it wants to be two
+slides.</p>
+</div>
+<div class="pane pane-out" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><h2>Two, a slide's own heading</h2>
+<h3>Three, for the detail under it</h3>
+<p>Paragraphs are paragraphs: a blank line separates them, a single newline does
+not, so wrap the source where your editor likes.</p>
 </div>
 </div>
 </section>
 <section class="slide" data-index="3">
-<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
-<div class="pane pane-main" data-pane="main" style="grid-area:main"><h2>Links</h2>
-<p>A <a href="https://github.com/ayatough/Mirzam/blob/main/docs/syntax.md">link to the syntax reference</a>
-reads as text and stays clickable in the HTML deck.</p>
-<p>In the PDF the address is printed beside the words, because a reader holding
-a page cannot click it.</p>
-<p>A bare URL such as <a href="https://ayatough.github.io/Mirzam/">https://ayatough.github.io/Mirzam/</a> becomes a link on its
-own.</p>
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Emphasis</span></p>
+<h2>Marking a phrase</h2>
+</div>
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">**bold**  *italic*  `code`
+~~struck~~
+==highlighted==
+++underlined++
+[a link](https://example.com)
+</code></pre>
+<p>Underline is <code>++text++</code>, <strong>not</strong> <code>__text__</code> — CommonMark reads double
+underscores as bold, and the same file has to render on GitHub.</p>
+</div>
+<div class="pane pane-out" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><p><strong>Bold</strong> for the one phrase they should leave with. <em>Italic</em> for a term being
+introduced. <code>inline code</code> for an identifier.</p>
+<p><del>Struck</del> for something withdrawn. <mark>Highlighted</mark> like a marker pen.
+<ins>Underlined</ins> where a rule reads better than a colour.</p>
+<p>And <a href="https://example.com">a link</a>, which stays clickable.</p>
 </div>
 </div>
 </section>
 <section class="slide" data-index="4">
-<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
-<div class="pane pane-main" data-pane="main" style="grid-area:main"><h2>Lists, and how deep to nest them</h2>
-<ul>
-<li>A top-level point, one line long</li>
-<li>Another one
-<ul>
-<li>A qualification, indented two spaces</li>
-<li>Another qualification
-<ul>
-<li>A third level, which is already too many</li>
-</ul>
-</li>
-</ul>
-</li>
-<li>Back to the top level</li>
-</ul>
-<p>The nesting is real, so it survives the PDF and the outline. It is still worth
-asking whether the third level is a list item or a sentence.</p>
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Emphasis</span></p>
+<h2>Colour and size</h2>
+</div>
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">[quiet]{.muted}   [loud]{.big}
+[the point]{.accent}
+[careful]{.danger}
+</code></pre>
+<p>There is no way to write a colour literal, on purpose: a hex value picked
+against a white slide is the one thing that cannot follow the deck into dark
+mode. Every class here is a theme token.</p>
+</div>
+<div class="pane pane-out" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><p><span class="small">small</span> · <span class="muted">normal</span> · <span class="big">big</span></p>
+<p><span class="accent">accent</span> · <span class="accent2">accent2</span> · <span class="danger">danger</span></p>
+<p><span class="accent">Press <code>D</code>.</span> Every one of them moves with the palette.</p>
 </div>
 </div>
 </section>
 <section class="slide" data-index="5">
-<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
-<div class="pane pane-main" data-pane="main" style="grid-area:main"><h2>Numbered lists</h2>
-<ol>
-<li>Write the deck as text</li>
-<li>Build it into one HTML file</li>
-<li>Present from that file</li>
-</ol>
-<p>The numbers come from the renderer, not from what you typed, so an item
-inserted in the middle renumbers the rest:</p>
-<pre><code class="language-markdown">1. First
-1. Second
-1. Third
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Blocks</span></p>
+<h2>Quotes, asides and code</h2>
+</div>
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">&gt; Somebody else's voice.
+
+&lt;div class=&quot;box&quot;&gt;
+An aside that is not a quotation.
+&lt;/div&gt;
 </code></pre>
+<p>A horizontal rule is <code>***</code>. Three hyphens would end the slide — the one place a
+deck reads Markdown differently from a document.</p>
+</div>
+<div class="pane pane-out" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><blockquote>
+<p>A quotation gets an accent rule and quieter text.</p>
+</blockquote>
+<div class="box">
+<code>.box</code> is in the renderer, not a theme, so a deck that picked no
+stylesheet still has somewhere to put a caveat.
+</div>
+<pre><code class="language-rust">fn main() {
+    println!(&quot;a fence keeps its shape&quot;);
+}
+</code></pre>
+<p><span class="small">The language is recorded but not coloured yet.</span></p>
 </div>
 </div>
 </section>
 <section class="slide" data-index="6">
-<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
-<div class="pane pane-main" data-pane="main" style="grid-area:main"><h2>Quotes and rules</h2>
-<blockquote>
-<p>A quotation gets an accent rule and quieter text, so it reads as somebody
-else's voice without needing quotation marks around it.</p>
-</blockquote>
-<p>A horizontal rule needs three asterisks or three underscores:</p>
-<hr />
-<p>Three hyphens would have ended the slide here instead — that is the one place
-where a Mirzam deck reads Markdown differently from a document.</p>
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Lists</span></p>
+<h2>Four kinds of list</h2>
+</div>
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">- bullet
+  - nested
+
+1. numbered
+2. and the renderer counts
+
+- [x] done
+- [ ] not
+
+Term
+: What it means.
+</code></pre>
+</div>
+<div class="pane pane-out" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><ul>
+<li>A point, and under it
+<ul>
+<li>a qualification</li>
+</ul>
+</li>
+</ul>
+<ol>
+<li>Write the deck</li>
+<li>Build it</li>
+</ol>
+<ul>
+<li><input type="checkbox" checked="" disabled="" /> Task lists work</li>
+<li><input type="checkbox" disabled="" /> and always have</li>
+</ul>
+<dl>
+<dt>Term list</dt>
+<dd>A term and its meaning, without a table pretending to be one.</dd>
+</dl>
 </div>
 </div>
 </section>
 <section class="slide" data-index="7">
-<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
-<div class="pane pane-main" data-pane="main" style="grid-area:main"><h2>Tables</h2>
-<table>
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "table math"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Data</span></p>
+<h2>Tables and mathematics</h2>
+</div>
+<div class="pane pane-table" data-pane="table" style="grid-area:table;display:flex;flex-direction:column;justify-content:center"><table>
 <thead>
 <tr>
 <th>Command</th>
-<th>What it writes</th>
-<th>When</th>
+<th>Writes</th>
+<th align="right">When</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>serve</code></td>
-<td>nothing; a live preview</td>
-<td>while writing</td>
+<td>a live preview</td>
+<td align="right">writing</td>
 </tr>
 <tr>
 <td><code>build</code></td>
-<td>one self-contained <code>.html</code></td>
-<td>before presenting</td>
+<td>one <code>.html</code></td>
+<td align="right">presenting</td>
 </tr>
 <tr>
 <td><code>export pdf</code></td>
 <td>one <code>.pdf</code></td>
-<td>to hand out</td>
+<td align="right">handing out</td>
 </tr>
 </tbody>
 </table>
-<p>Alignment comes from the separator row: <code>---</code> is left, <code>---:</code> is right,
-<code>:---:</code> is centred. Wide tables shrink rather than clip.</p>
+<p><span class="small"><code>---</code> is left, <code>---:</code> right, <code>:---:</code> centred.</span></p>
+</div>
+<div class="pane pane-math" data-pane="math" style="grid-area:math;display:flex;flex-direction:column;justify-content:center"><p>Inline maths such as <math><mi>O</mi><mo stretchy="false">(</mo><mn>1</mn><mo stretchy="false">)</mo></math> sits in running text.</p>
+<p><math display="block"><msub><mi>p</mi><mn>95</mn></msub><mo>=</mo><mi>μ</mi><mo>+</mo><mn>1.645</mn><mspace width="0.16666667em"/><mi>σ</mi><msqrt><mfrac><mi>n</mi><mrow><mi>n</mi><mo>−</mo><mn>1</mn></mrow></mfrac></msqrt></math></p>
+<p><span class="small">LaTeX becomes MathML at build time — no JavaScript, and it reaches the PDF.</span></p>
 </div>
 </div>
 </section>
 <section class="slide" data-index="8">
-<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
-<div class="pane pane-main" data-pane="main" style="grid-area:main"><h2>Code blocks</h2>
-<pre><code class="language-rust">fn main() {
-    println!(&quot;A fenced block keeps its indentation and its blank lines.&quot;);
-}
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Aside</span></p>
+<h2>Emoji, footnotes and what you do not show</h2>
+</div>
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">:tada: or 🎉 — both work
+
+Text with a note[^a]
+
+[^a]: The note itself.
+
+&lt;!-- an ordinary comment --&gt;
+&lt;!-- note: what you say here --&gt;
 </code></pre>
-<p>The language after the fence is recorded but not yet coloured — syntax
-highlighting is not implemented, so a code block is monospaced and nothing
-more.</p>
-<p>Indented blocks work too, but a fence is clearer about where the code stops.</p>
 </div>
-</div>
-</section>
-<section class="slide" data-index="9">
-<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
-<div class="pane pane-main" data-pane="main" style="grid-area:main"><h2>Footnotes land on the slide that cites them</h2>
-<p>Dispersive readout is the standard measurement for a superconducting
-qubit<sup class="footnote-ref"><a href="#fn-blais" id="fnref-blais" data-footnote-ref>1</a></sup>, and the fidelity ceiling is set by the amplifier chain<sup class="footnote-ref"><a href="#fn-jpa" id="fnref-jpa" data-footnote-ref>2</a></sup>.</p>
-<p>The marker is a link; the note appears at the foot of <em>this</em> slide, not
-collected at the end of the deck, because a slide is where the audience is
-looking.</p>
+<div class="pane pane-out" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><p>Shipping 🚀 — the shortcode is for keyboards that make the character
+hard to type<sup class="footnote-ref"><a href="#fn-why" id="fnref-why" data-footnote-ref>1</a></sup>.</p>
+<p>An HTML comment is invisible everywhere. A comment beginning <code>note:</code> is your
+script: press <code>N</code>.</p>
 <section class="footnotes" data-footnotes>
 <ol>
-<li id="fn-blais">
-<p>Blais et al., <em>Circuit quantum electrodynamics</em>, Rev. Mod. Phys. 93, 025005 (2021). <a href="#fnref-blais" class="footnote-backref" data-footnote-backref data-footnote-backref-idx="1" aria-label="Back to reference 1">↩</a></p>
-</li>
-<li id="fn-jpa">
-<p>Aumentado, <em>Superconducting parametric amplifiers</em>, IEEE Microw. Mag. 21, 45 (2020). <a href="#fnref-jpa" class="footnote-backref" data-footnote-backref data-footnote-backref-idx="2" aria-label="Back to reference 2">↩</a></p>
+<li id="fn-why">
+<p>Typing 🎉 directly always worked and still does. <a href="#fnref-why" class="footnote-backref" data-footnote-backref data-footnote-backref-idx="1" aria-label="Back to reference 1">↩</a></p>
 </li>
 </ol>
 </section>
 </div>
 </div>
+<aside class="notes"><p>This is a speaker note. The audience never sees it; the presenter window does.</p>
+</aside>
 </section>
-<section class="slide" data-index="10">
-<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
-<div class="pane pane-main" data-pane="main" style="grid-area:main"><h2>That was all of it</h2>
-<p>Headings, emphasis, links, lists, quotes, rules, tables, code, footnotes — the
-Markdown you already write, on a slide, with no configuration.</p>
-<p>What plain Markdown cannot do is put two things side by side. That is the next
-deck: <code>03-layout.md</code> draws the layout as ASCII, and everything above keeps
-working inside it.</p>
+<section class="slide" data-index="9">
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:3fr 1fr;grid-template-areas:"main" "foot"'>
+<div class="pane pane-main" data-pane="main" style="grid-area:main;text-align:center;display:flex;flex-direction:column;justify-content:center"><h2>Still Markdown</h2>
+<p>Every mark above renders on GitHub. The four Mirzam adds — <code>==</code>, <code>++</code>,
+<code>:emoji:</code>, term lists — show as the punctuation you typed, never as nothing.</p>
+<p><strong>Next:</strong> <code>03-layout.md</code> puts two of these side by side.</p>
+</div>
+<div class="pane pane-foot" data-pane="foot" style="grid-area:foot;text-align:right"><p><span class="foot">examples/02-writing.md</span></p>
 </div>
 </div>
 </section>

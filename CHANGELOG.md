@@ -17,6 +17,19 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   cannot drift into two slightly different Mirzams.
 
 ### Added
+- **`examples/02-writing.md` is the reference for writing a slide**, rebuilt
+  around what a reader actually asks: a contents page, headings, the marks for
+  a phrase, colour and size, quotes and asides and code, four kinds of list,
+  tables, mathematics, emoji, footnotes and the two kinds of comment. It used
+  to be a deck arguing that plain CommonMark works, which is one slide's worth
+  of point stretched over eleven.
+- **`markup_coverage.rs`, so "is X supported?" has an answer that cannot rot.**
+  Every inline mark is listed once and held to three conditions: it renders, it
+  is in `docs/syntax.md`, and some deck shows it. Adding it caught six marks the
+  reference had never mentioned — bold, italic, inline code, ordered lists,
+  quotations and tables — because the reference described only what Mirzam
+  *adds*, so "does it do tables?" could not be answered from it. Strikethrough
+  and task lists had already shipped that way for two releases.
 - **The marks a slide reaches for, which CommonMark has none of**:
   `==highlight==`, `++underline++`, `:tada:`, and term lists (a line, then
   `: its meaning`) — which decks had been faking with a two-column table, so a
