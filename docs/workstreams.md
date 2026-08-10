@@ -363,7 +363,7 @@ only place colors come from.
 
 **Difficulty C · Fable · landed**
 
-Seven effects: `flash`, `shake`, `lines` (集中線), `boom`, `burst <emoji>`,
+Seven effects: `flash`, `shake`, `lines` (speed lines), `boom`, `burst <emoji>`,
 `confetti`, `danmaku "<text>"`. The key table is validated against the
 viewer's own bindings, so shadowing navigation is a build warning rather than
 a surprise on stage.
@@ -389,7 +389,7 @@ an explosion, speed lines, a burst of emoji, a Nico-Nico-style comment sweep.
 1 : flash
 2 : shake
 e : burst 🎉
-d : danmaku "そこ、大事です"
+d : danmaku "this bit matters"
 ```
 ````
 

@@ -4,7 +4,7 @@
 //! 1 : flash
 //! s : shake
 //! e : burst 🎉
-//! m : danmaku "そこ、大事です"
+//! m : danmaku "this bit matters"
 //! ```
 //!
 //! **These are not animations, and the difference is the whole design.** An
@@ -214,6 +214,11 @@ mod tests {
 
     #[test]
     fn danmaku_keeps_its_quoted_text() {
+        let (out, w) = one("m : danmaku \"this bit matters\"\n");
+        assert!(w.is_empty(), "{w:?}");
+        assert!(out.contains("this bit matters"));
+
+        // Multi-byte text survives the round trip intact.
         let (out, w) = one("m : danmaku \"そこ、大事です\"\n");
         assert!(w.is_empty(), "{w:?}");
         assert!(out.contains("そこ、大事です"));

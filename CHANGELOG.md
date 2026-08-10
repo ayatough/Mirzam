@@ -216,7 +216,7 @@ contents page that writes itself.
   slide quoting a figure from the paper under discussion, annotated, pointed at
   from the prose, with its references beneath it.
 - `effects` blocks: presenter-triggered flourishes bound to a key — `flash`,
-  `shake`, `lines` (集中線), `boom`, `burst 🎉`, `confetti` and a Nico-Nico-style
+  `shake`, `lines` (speed lines), `boom`, `burst 🎉`, `confetti` and a Nico-Nico-style
   `danmaku`. These are part of the performance rather than the document: they
   never reach the PDF, `Esc` clears them, a page turn cancels them, and binding
   a key the viewer already uses is a build warning. Nothing they draw can

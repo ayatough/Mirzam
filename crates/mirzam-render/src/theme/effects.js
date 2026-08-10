@@ -119,7 +119,7 @@
       }, ms + 60 * 12);
     },
 
-    // 集中線: lines converging on the middle of the slide.
+    // Speed lines converging on the middle of the slide.
     lines(sec) {
       const ms = REDUCED ? 240 : 700;
       run(sec, (layer) => {

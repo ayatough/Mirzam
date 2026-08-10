@@ -308,7 +308,7 @@ An `effects` block binds a key to a flourish. Press one; `Esc` clears it.
 |---|---|
 | `1` | flash |
 | `2` | shake |
-| `3` | 集中線 |
+| `3` | speed lines |
 | `4` | explosion |
 | `e` | emoji |
 | `c` | confetti |
@@ -330,7 +330,7 @@ press the key.
 4 : boom
 e : burst 🎉
 c : confetti
-m : danmaku "そこ、大事です"
+m : danmaku "this bit matters"
 ```
 
 ```anim

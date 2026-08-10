@@ -449,7 +449,7 @@ Flourishes the speaker fires with a key, bound per slide:
 4 : boom
 e : burst 🎉
 c : confetti
-m : danmaku "そこ、大事です"
+m : danmaku "this bit matters"
 ```
 ````
 
@@ -457,7 +457,7 @@ m : danmaku "そこ、大事です"
 |---|---|
 | `flash` | one bright pulse over the slide |
 | `shake` | the slide shakes |
-| `lines` | 集中線 — lines converging on the middle |
+| `lines` | speed lines converging on the middle |
 | `boom` | an explosion out of the centre |
 | `burst <emoji>` | emoji thrown upward |
 | `confetti` | paper instead of emoji |
