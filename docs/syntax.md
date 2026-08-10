@@ -222,6 +222,28 @@ video is replaced by its poster, or a placeholder if none was given.
 Prefer `webm` for distribution: Chromium builds without proprietary codecs cannot
 play H.264.
 
+#### A `<picture>` that picks art by colour scheme
+
+The markup a README uses so its logo survives GitHub's dark theme is rewritten
+into one image per mode:
+
+```html
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="logo-dark.svg">
+  <img src="logo-light.svg" alt="Mirzam" width="340">
+</picture>
+```
+
+Written as-is it would follow the **machine**, while the deck's mode follows
+`mode:`, `?mode=` or the reader pressing `D` — so a light deck on a dark phone
+showed the pale logo on a white slide. Both images still ship; which one is
+displayed now follows the deck. Every other attribute you wrote, `alt` and
+`width` included, is carried into both copies.
+
+A `<picture>` whose sources select on anything else — a width breakpoint, a
+`webp` fallback — is left alone, because there the element is doing a job this
+would break.
+
 ## Charts
 
 ````markdown

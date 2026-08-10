@@ -17,6 +17,16 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   cannot drift into two slightly different Mirzams.
 
 ### Added
+- **A `<picture>` that picks art by colour scheme follows the deck, not the
+  machine.** The markup every README uses so its logo survives GitHub's dark
+  theme is rewritten at build time into one image per mode, switched the way
+  `bg-light=`/`bg-dark=` already switched. Left as written it consults
+  `prefers-color-scheme`, which can only ask the operating system, while a
+  deck's mode is `mode:`, `?mode=` or the reader pressing `D` — so Mirzam's own
+  README, published as a deck, showed a pale wordmark on a white slide whenever
+  the reader's phone was dark and the deck was not. `alt`, `width` and every
+  other attribute are carried into both copies; a `<picture>` selecting on a
+  width breakpoint or a format fallback is left alone.
 - **A colour-mode button in the viewer.** The mode was bound to `D` and nothing
   else, so on a phone — which has no keyboard, and which is where a deck
   arriving from a share is read — there was no way to reach it at all, and a
@@ -33,6 +43,11 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   decks at the root for nine minutes. Pages now also runs on `release:
   published`, and takes the default branch rather than `github.ref`, since on
   that event the ref is the tag and `/next/` would have stopped being `main`.
+- The landing page's deck links carry the build they came from. Each deck is its
+  own file, so a phone that had opened one before kept serving that copy while a
+  deck visited for the first time arrived fresh — which reads as the new control
+  being missing from one deck rather than as a stale page, and cost an
+  afternoon working out which of the two sites was being looked at.
 - The preview banner separated its `DEV` tag from the sentence with a CSS
   margin and nothing else, so it looked right and copied out — and read aloud —
   as `DEVUnreleased build of main`. The gap is a space in the markup now.

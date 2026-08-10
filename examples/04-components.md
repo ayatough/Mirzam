@@ -368,7 +368,8 @@ The photo is inlined with everything else, so the deck is still one file.
 ```
 
 - Both images ship; the deck shows the one that matches
-- It follows `D` too — a `<picture>` could only follow the machine
+- It follows `D`, not the machine — and a `<picture>` written the GitHub way
+  is rewritten into this, so a README keeps its logo
 - `text=dark` takes the theme's own ink, which flips with it
 :::
 

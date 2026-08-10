@@ -403,6 +403,12 @@ mirzam export pdf deck.md</code></pre>
 (() => {
   const KEY = 'mirzam-mode';
   const root = document.documentElement;
+  // Stamped per build. Each deck is its own file, so a phone that has opened
+  // one before keeps serving that copy while a deck visited for the first time
+  // arrives fresh — which reads as "the new control is missing from this one
+  // slide deck only". Carrying the build in the link makes every deck's URL
+  // change when the site does.
+  const BUILD = '<!--BUILD-->';
   const read = () => { try { return localStorage.getItem(KEY); } catch (e) { return null; } };
   const write = (m) => { try { localStorage.setItem(KEY, m); } catch (e) {} };
 
@@ -417,7 +423,10 @@ mirzam export pdf deck.md</code></pre>
     }
     for (const a of document.querySelectorAll('a[href^="decks/"], a[href^="try/"]')) {
       const base = a.getAttribute('href').split('?')[0];
-      a.setAttribute('href', mode ? base + '?mode=' + mode : base);
+      const q = [];
+      if (BUILD) q.push('v=' + encodeURIComponent(BUILD));
+      if (mode) q.push('mode=' + mode);
+      a.setAttribute('href', q.length ? base + '?' + q.join('&') : base);
     }
   };
 
@@ -456,6 +465,8 @@ import html, os, re, sys
 
 page = sys.argv[1]
 channel, version, built = os.environ["CHANNEL"], os.environ["VERSION"], os.environ["BUILT"]
+# A token that changes whenever the site does, safe to put in a query string.
+build_id = re.sub(r"[^A-Za-z0-9._-]+", "-", f"{version}-{built}").strip("-")
 
 
 def inline(text):
@@ -524,6 +535,7 @@ if channel == "dev":
             else ""
         ),
         "<!--VERSION-->": f"<code>{html.escape(version)}</code>, built {built}",
+        "<!--BUILD-->": build_id,
     }
 else:
     # A release is named by its tag and nothing else; there is no unreleased
@@ -533,6 +545,7 @@ else:
         "<!--DEVBAR-->": "",
         "<!--UNRELEASED-->": "",
         "<!--VERSION-->": f"<code>{html.escape(version)}</code>",
+        "<!--BUILD-->": build_id,
     }
 
 text = open(page, encoding="utf-8").read()

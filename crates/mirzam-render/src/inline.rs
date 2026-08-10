@@ -123,10 +123,104 @@ fn map_fence_segments(src: &str, f: impl Fn(&str) -> String) -> String {
 pub fn preprocess(src: &str) -> String {
     // `$$...$$` can span lines, so block math is handled per fence-free segment.
     let src = map_fence_segments(src, block_math);
+    // As can `<picture>`, which is usually written across four.
+    let src = map_fence_segments(&src, picture_modes);
     let src = map_outside_fences(&src, inline_math);
     let src = map_outside_fences(&src, heading_attrs);
     let src = map_outside_fences(&src, image_attrs);
     map_outside_fences(&src, span_attrs)
+}
+
+/// A `<picture>` choosing art by `prefers-color-scheme` becomes one image per
+/// mode, switched the way `bg-light=`/`bg-dark=` switches.
+///
+/// This is the standard way a README ships a logo that survives GitHub's dark
+/// theme, and `--split h2` on a README is a headline feature — so the markup
+/// arrives whether or not anyone writing a deck chose it. Left alone it is
+/// wrong here in a way it never is on GitHub: `media` can only ask the
+/// *machine*, while a deck's mode is `mode:`, `?mode=` or the reader pressing
+/// `D`. Mirzam's own README, published as a deck, showed a pale wordmark on a
+/// white slide for exactly that reason — the deck was light and the phone was
+/// not.
+///
+/// Both images ship, as they already did; only which one is displayed changes.
+/// A `<picture>` with no `prefers-color-scheme` source is left untouched, since
+/// then it is doing something else (art direction by width, a format
+/// fallback) that this would break.
+fn picture_modes(segment: &str) -> String {
+    static PICTURE: OnceLock<Regex> = OnceLock::new();
+    static DARK_SRC: OnceLock<Regex> = OnceLock::new();
+    static IMG: OnceLock<Regex> = OnceLock::new();
+    let picture = re(&PICTURE, r"(?s)<picture\b[^>]*>(.*?)</picture>");
+    // `srcset` may carry a candidate list; the plain URL is the first entry.
+    let dark = re(
+        &DARK_SRC,
+        r#"(?s)<source\b[^>]*prefers-color-scheme:\s*dark[^>]*srcset\s*=\s*"([^"]+)""#,
+    );
+    let img = re(&IMG, r"(?s)<img\b[^>]*>");
+
+    picture
+        .replace_all(segment, |c: &regex::Captures| {
+            let inner = &c[1];
+            let (Some(d), Some(i)) = (dark.captures(inner), img.find(inner)) else {
+                return c[0].to_string();
+            };
+            let dark_src = d[1]
+                .split(',')
+                .next()
+                .unwrap_or("")
+                .split_whitespace()
+                .next()
+                .unwrap_or("");
+            let light_tag = i.as_str();
+            let Some(dark_tag) = swap_src(light_tag, dark_src) else {
+                return c[0].to_string();
+            };
+            format!(
+                "{}{}",
+                add_class(light_tag, "mz-only-light"),
+                add_class(&dark_tag, "mz-only-dark")
+            )
+        })
+        .into_owned()
+}
+
+/// The same `<img>` tag pointing somewhere else, so alt text, width and every
+/// other attribute the author wrote survives into the second copy.
+fn swap_src(tag: &str, src: &str) -> Option<String> {
+    static SRC: OnceLock<Regex> = OnceLock::new();
+    let r = re(&SRC, r#"\ssrc\s*=\s*"[^"]*""#);
+    let m = r.find(tag)?;
+    Some(format!(
+        "{}{}{}",
+        &tag[..m.start()],
+        format_args!(" src=\"{src}\""),
+        &tag[m.end()..]
+    ))
+}
+
+/// Adds a class, joining one the author already wrote rather than replacing it.
+fn add_class(tag: &str, class: &str) -> String {
+    static CLASS: OnceLock<Regex> = OnceLock::new();
+    let r = re(&CLASS, r#"\sclass\s*=\s*"([^"]*)""#);
+    match r.captures(tag) {
+        Some(c) => {
+            let m = c.get(0).expect("whole match");
+            format!(
+                "{} class=\"{} {class}\"{}",
+                &tag[..m.start()],
+                &c[1],
+                &tag[m.end()..]
+            )
+        }
+        // `<img ...>` and `<img ... />` both end in `>`, and the slash is an
+        // attribute-position character, so inserting before it is safe.
+        None => {
+            let cut = tag.rfind('>').unwrap_or(tag.len());
+            let (head, tail) = tag.split_at(cut);
+            format!("{head} class=\"{class}\"{tail}")
+        }
+    }
 }
 
 /// `## Text {attrs}` becomes `<h2 ...>Text</h2>` with inline Markdown rendered.
@@ -579,5 +673,49 @@ mod tests {
     fn code_fences_untouched() {
         let src = "```\n## not a heading {#x}\n```\n";
         assert_eq!(preprocess(src), src);
+    }
+
+    /// The exact shape a README uses to survive GitHub's dark theme, which
+    /// `--split h2` then turns into a slide.
+    #[test]
+    fn picture_becomes_one_image_per_mode() {
+        let out = preprocess(
+            "<picture>\n  \
+             <source media=\"(prefers-color-scheme: dark)\" srcset=\"logo-dark.svg\">\n  \
+             <img src=\"logo-light.svg\" alt=\"Mirzam\" width=\"340\">\n\
+             </picture>\n",
+        );
+        assert!(
+            !out.contains("<picture"),
+            "the picture element should be gone"
+        );
+        // Both ship; the alt text and the width survive into both copies.
+        assert!(out.contains(
+            r#"<img src="logo-light.svg" alt="Mirzam" width="340" class="mz-only-light">"#
+        ));
+        assert!(out.contains(
+            r#"<img src="logo-dark.svg" alt="Mirzam" width="340" class="mz-only-dark">"#
+        ));
+    }
+
+    /// Art direction by width, or a `webp` fallback, is doing something this
+    /// rewrite would break — so it is left alone.
+    #[test]
+    fn a_picture_without_a_mode_source_is_left_alone() {
+        let src = "<picture>\n  \
+                   <source media=\"(min-width: 800px)\" srcset=\"wide.png\">\n  \
+                   <img src=\"narrow.png\" alt=\"x\">\n\
+                   </picture>\n";
+        assert_eq!(preprocess(src), src);
+    }
+
+    #[test]
+    fn an_existing_class_is_joined_rather_than_replaced() {
+        let out = preprocess(
+            "<picture><source media=\"(prefers-color-scheme:dark)\" srcset=\"d.svg\">\
+             <img class=\"hero\" src=\"l.svg\"></picture>\n",
+        );
+        assert!(out.contains(r#"class="hero mz-only-light""#), "got: {out}");
+        assert!(out.contains(r#"class="hero mz-only-dark""#), "got: {out}");
     }
 }

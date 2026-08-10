@@ -80,6 +80,23 @@ section.slide { background: var(--mz-slide-bg); border-radius: inherit; }
 }
 :root[data-mode="dark"] .mz-bg-light { display: none; }
 :root[data-mode="dark"] .mz-bg-dark { display: block; }
+/* One element per colour mode, for content rather than backgrounds: what a
+   `<picture>` selecting art by `prefers-color-scheme` is rewritten into. The
+   pair exists because that media query can only ask the machine, and a deck's
+   mode is its own - so a README's logo followed the phone while the slide
+   under it followed `D`, and the two disagreed.
+
+   `revert` rather than a display value: these wrap whatever the author wrote,
+   and an image that was inline must not become a block on the mode that shows
+   it. */
+.mz-only-dark { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-mode="light"]) .mz-only-light { display: none; }
+  :root:not([data-mode="light"]) .mz-only-dark { display: revert; }
+}
+:root[data-mode="dark"] .mz-only-light { display: none; }
+:root[data-mode="dark"] .mz-only-dark { display: revert; }
+
 .mz-scrim { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
 /* The wrapper is a flex item when the pane uses valign=, so give it the width. */
 .mz-bg-content { position: relative; z-index: 2; width: 100%; }
