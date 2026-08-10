@@ -201,7 +201,7 @@ Run `./scripts/build-site.sh` to build the same site locally.
 
 ## Status
 
-`v0.1.0` is the first tagged release, covered by regression tests in CI. It is
+`v0.2.0` is the current release, covered by regression tests in CI. It is
 `0.x`: the markup will keep changing, so pin a version if you depend on it.
 
 - **Working:** build, live-reload server, PDF export, ASCII pane layout, file

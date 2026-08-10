@@ -6,9 +6,9 @@ Where Mirzam is and what comes next. Design rationale lives in
 
 ## Status
 
-`v0.1.0` is the first tagged release: everything below marked Done is in it,
-built by CI and published as a prebuilt binary. It is still `0.x` — the markup
-will keep changing.
+`v0.2.0` is the current release: everything below marked Done is in it, built
+by CI and published as a prebuilt binary. It is still `0.x` — the markup will
+keep changing.
 
 | Area | State |
 |---|---|
