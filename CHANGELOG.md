@@ -15,6 +15,9 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   decks at the root for nine minutes. Pages now also runs on `release:
   published`, and takes the default branch rather than `github.ref`, since on
   that event the ref is the tag and `/next/` would have stopped being `main`.
+- The preview banner separated its `DEV` tag from the sentence with a CSS
+  margin and nothing else, so it looked right and copied out — and read aloud —
+  as `DEVUnreleased build of main`. The gap is a space in the markup now.
 
 ## [0.2.0] - 2026-08-10
 

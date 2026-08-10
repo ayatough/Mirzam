@@ -83,7 +83,20 @@ becoming the front page. It also means the author reviews a change at
 
 `.github/workflows/pages.yml` runs on CI *finishing*, not on the push, so a
 commit whose tests are red is never published. Do not change that back: with no
-pull request in the way, it is the only gate there is.
+pull request in the way, it is the only gate there is. It also runs on `release:
+published`, because a release is tagged *after* its commit's CI has already
+rebuilt the site — without that second trigger the root lands on the previous
+release every time.
+
+**Write the changelog entry for a reader on a phone.** `/next/` renders
+`[Unreleased]` on the page, so that section is not paperwork filed for a future
+release — it is the only summary of your change the author will see before
+looking at the slides. Say what changed and why it changed, not which files you
+touched; the diff already has those.
+
+**The author reviews from a phone, away from a machine.** So when a change is
+visual, name the deck and the slide number to open at `/next/`, and do not
+assume a terminal is available to reproduce anything.
 
 ## Verify by rendering, not by reading
 
@@ -201,6 +214,26 @@ caught it; if not, consider teaching it to.
 
 ## Things that will waste your time
 
+- **`check-layout.mjs` needs a browser you probably have to point it at.** It
+  imports `playwright-core`, which is not a repository dependency — `npm i
+  playwright-core` first. If the version you install expects a Chromium build
+  the machine does not have, do not run `playwright install`: set
+  `MIRZAM_CHROMIUM` to the browser already on disk.
+  ```bash
+  npm i playwright-core
+  MIRZAM_CHROMIUM=/opt/pw-browsers/chromium-*/chrome-linux/chrome \
+    node scripts/check-layout.mjs /tmp/out/index.html
+  ```
+  Clean up `package.json`, `package-lock.json` and `node_modules` before
+  committing; none of them belong in the repository.
+- **An attribute span has to be on one line.** `[text]{.small}` split across a
+  line break is not recognised and renders as literal `[text]{.small}` on the
+  slide. The layout checker measures boxes, so it passes this happily — only
+  looking at the slide catches it.
+- **`git push` of a tag is refused for an agent** (403; the credentials are
+  scoped to branches). Cut releases with the **Release** workflow and
+  `publish` checked, which makes the tag from the manifest version. The
+  [release checklist](docs/development.md#release-checklist) assumes this.
 - The `wasm-bindgen` CLI must match the version resolved in `Cargo.lock` exactly.
   `scripts/build-wasm.sh` handles this; do not install it by hand.
 - `comrak` is built with `default-features = false` because its default features

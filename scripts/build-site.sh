@@ -285,9 +285,12 @@ try {
     background: var(--accent); color: var(--btn-ink);
     padding: 11px 24px; font-size: .92rem; line-height: 1.6;
   }
+  /* The gap after the tag is a real space in the markup, not margin alone:
+     margin separates the words on screen and nowhere else, so the banner
+     copied out as "DEVUnreleased" and read aloud the same way. */
   .devbar b {
     font-family: "Space Grotesk", system-ui, sans-serif;
-    font-weight: 500; letter-spacing: .08em; margin-right: .5em;
+    font-weight: 500; letter-spacing: .08em; margin-right: .25em;
   }
   .devbar code { background: rgba(0,0,0,.2); color: inherit; }
   .devbar a { color: inherit; text-underline-offset: 3px; }
@@ -508,7 +511,7 @@ if channel == "dev":
     fill = {
         "<!--NOINDEX-->": '<meta name="robots" content="noindex, nofollow">',
         "<!--DEVBAR-->": (
-            '<div class="devbar"><b>DEV</b>'
+            '<div class="devbar"><b>DEV</b> '
             f"Unreleased build of <code>main</code> — <code>{html.escape(version)}</code>, "
             f"built {built}. "
             '<a href="../">The released site is here.</a></div>'
