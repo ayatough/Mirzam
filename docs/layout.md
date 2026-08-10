@@ -4,7 +4,7 @@ How space is allocated, why content sometimes disappears, and how to control
 connectors. Read this when a slide does not look the way you drew it.
 
 For the full list of syntax see [syntax.md](syntax.md). Every rule here is
-demonstrated in [`examples/cookbook.md`](../examples/cookbook.md), which you can
+demonstrated in [`examples/03-layout.md`](../examples/03-layout.md), which you can
 build and read side by side with its source.
 
 ## Sizing: the drawing is the specification
@@ -57,7 +57,7 @@ There are four fixes, in order of preference:
 4. **Break the pane in two.** `<!-- next -->` inside a pane carries it on to the
    next slide while every other pane stays exactly where it is — the audience
    sees the words change and nothing else move. Rule 7 in
-   [`examples/cookbook.md`](../examples/cookbook.md) demonstrates it; the
+   [`examples/03-layout.md`](../examples/03-layout.md) demonstrates it; the
    [syntax reference](syntax.md#carrying-one-pane-on-to-the-next-slide) has the
    rules.
 

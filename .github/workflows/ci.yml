@@ -35,7 +35,7 @@ jobs:
 
       - name: build sample decks
         run: |
-          for deck in pitch showcase cookbook seminar media motion; do
+          for deck in 01-start 02-writing 03-layout 04-components 05-motion 06-theming pitch seminar; do
             cargo run -q --bin mirzam -- build "examples/$deck.md" -o "/tmp/out-$deck"
           done
 
@@ -72,8 +72,9 @@ jobs:
       - name: check layout
         run: |
           node scripts/check-layout.mjs --build \
-            examples/pitch.md examples/showcase.md examples/cookbook.md \
-            examples/seminar.md examples/media.md examples/motion.md
+            examples/01-start.md examples/02-writing.md examples/03-layout.md \
+            examples/04-components.md examples/05-motion.md examples/06-theming.md \
+            examples/pitch.md examples/seminar.md
 
   bench:
     name: benchmark

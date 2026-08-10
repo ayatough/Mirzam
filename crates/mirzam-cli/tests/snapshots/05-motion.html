@@ -9,6 +9,20 @@ lines of Markdown, and none of it is needed to read the deck.</p>
 </aside>
 </section>
 <section class="slide" data-index="1">
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:2fr 2fr;grid-template-areas:"head" "body"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">The idea</span></p>
+<h2 class="m-tl"><span class="mz-split-item">A</span><span class="mz-split-item">n</span><span class="mz-split-item">i</span><span class="mz-split-item">m</span><span class="mz-split-item">a</span><span class="mz-split-item">t</span><span class="mz-split-item">i</span><span class="mz-split-item">o</span><span class="mz-split-item">n</span><span class="mz-split-item"> </span><span class="mz-split-item">i</span><span class="mz-split-item">s</span><span class="mz-split-item"> </span><span class="mz-split-item">a</span><span class="mz-split-item"> </span><span class="mz-split-item">t</span><span class="mz-split-item">i</span><span class="mz-split-item">m</span><span class="mz-split-item">e</span><span class="mz-split-item">l</span><span class="mz-split-item">i</span><span class="mz-split-item">n</span><span class="mz-split-item">e</span><span class="mz-split-item">,</span><span class="mz-split-item"> </span><span class="mz-split-item">n</span><span class="mz-split-item">o</span><span class="mz-split-item">t</span><span class="mz-split-item"> </span><span class="mz-split-item">a</span><span class="mz-split-item"> </span><span class="mz-split-item">p</span><span class="mz-split-item">l</span><span class="mz-split-item">u</span><span class="mz-split-item">g</span><span class="mz-split-item">i</span><span class="mz-split-item">n</span></h2>
+</div>
+<div class="pane pane-body" data-pane="body" style="grid-area:body;display:flex;flex-direction:column;justify-content:center"><p>An <code>anim</code> block compiles to a timeline embedded in the slide — triggers,
+targets, effects and easing all resolved at build time, so the runtime plays a
+curve instead of computing one. Press <code>→</code> twice.</p>
+<p><span class="m-callout small">This line waited for a click.</span></p>
+<p><span class="m-echo small">And this one followed it, unprompted.</span></p>
+</div>
+</div>
+<script type="application/json" class="mz-anim">{"steps":2,"tracks":[{"delay":0,"dur":400,"ease":"cubic-bezier(.33,1,.68,1)","effect":"fade-in","stagger":30,"target":{"sel":".m-tl","split":"chars"},"trigger":{"kind":"enter"}},{"delay":0,"dir":"up","dur":400,"ease":"linear(0.0000, 0.0242, 0.0860, 0.1714, 0.2697, 0.3726, 0.4739, 0.5696, 0.6568, 0.7341, 0.8009, 0.8572, 0.9035, 0.9406, 0.9695, 0.9913, 1.0071, 1.0180, 1.0248, 1.0285, 1.0298, 1.0293, 1.0277, 1.0253)","effect":"slide-in","stagger":0,"target":{"sel":".m-callout","split":null},"trigger":{"kind":"click","n":1}},{"delay":0,"dur":300,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".m-echo","split":null},"trigger":{"kind":"click","n":2}}]}</script>
+</section>
+<section class="slide" data-index="2">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Entrances</span></p>
 <h2 class="m-title"><span class="mz-split-item">O</span><span class="mz-split-item">n</span><span class="mz-split-item">e</span><span class="mz-split-item"> </span><span class="mz-split-item">l</span><span class="mz-split-item">i</span><span class="mz-split-item">n</span><span class="mz-split-item">e</span><span class="mz-split-item">,</span><span class="mz-split-item"> </span><span class="mz-split-item">o</span><span class="mz-split-item">n</span><span class="mz-split-item">e</span><span class="mz-split-item"> </span><span class="mz-split-item">m</span><span class="mz-split-item">o</span><span class="mz-split-item">v</span><span class="mz-split-item">e</span><span class="mz-split-item">m</span><span class="mz-split-item">e</span><span class="mz-split-item">n</span><span class="mz-split-item">t</span></h2>
@@ -31,7 +45,7 @@ lines of Markdown, and none of it is needed to read the deck.</p>
 <aside class="notes"><p>chars splitting happens at build time; the runtime only selects the spans.</p>
 </aside>
 </section>
-<section class="slide" data-index="2">
+<section class="slide" data-index="3">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "chart note"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Charts</span></p>
 <h2>Bars that grow as you talk</h2>
@@ -48,7 +62,7 @@ label, as one group — so a bar rises with its number on top:</p>
 </div>
 <script type="application/json" class="mz-anim">{"steps":3,"tracks":[{"delay":0,"dir":"up","dur":450,"ease":"cubic-bezier(.33,1,.68,1)","effect":"wipe-in","stagger":0,"target":{"sel":"#rev-0-0","split":null},"trigger":{"kind":"click","n":1}},{"delay":80,"dir":"up","dur":450,"ease":"cubic-bezier(.33,1,.68,1)","effect":"wipe-in","stagger":0,"target":{"sel":"#rev-1-0","split":null},"trigger":{"kind":"click","n":1}},{"delay":0,"dir":"up","dur":450,"ease":"cubic-bezier(.33,1,.68,1)","effect":"wipe-in","stagger":0,"target":{"sel":"#rev-0-1","split":null},"trigger":{"kind":"click","n":2}},{"delay":80,"dir":"up","dur":450,"ease":"cubic-bezier(.33,1,.68,1)","effect":"wipe-in","stagger":0,"target":{"sel":"#rev-1-1","split":null},"trigger":{"kind":"click","n":2}},{"delay":0,"dir":"up","dur":450,"ease":"cubic-bezier(.33,1,.68,1)","effect":"wipe-in","stagger":0,"target":{"sel":"#rev-0-2","split":null},"trigger":{"kind":"click","n":3}},{"delay":80,"dir":"up","dur":450,"ease":"cubic-bezier(.33,1,.68,1)","effect":"wipe-in","stagger":0,"target":{"sel":"#rev-1-2","split":null},"trigger":{"kind":"click","n":3}},{"delay":0,"dur":400,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".m-punch","split":null},"trigger":{"id":"rev-1-2","kind":"after","offset":150}}]}</script>
 </section>
-<section class="slide" data-index="3">
+<section class="slide" data-index="4">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "text fig"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Diagrams</span></p>
 <h2>A diagram that draws itself</h2>
@@ -87,7 +101,7 @@ label, as one group — so a bar rises with its number on top:</p>
 <aside class="notes"><p>Five clicks: box, arrow, box, arrow, box. The caption follows on its own.</p>
 </aside>
 </section>
-<section class="slide" data-index="4">
+<section class="slide" data-index="5">
 <div class="grid" style='grid-template-columns:11fr 11fr 12fr;grid-template-rows:2fr 3fr 1fr;grid-template-areas:"head head head" "a b c" "foot foot foot"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Images</span></p>
 <h2>Photos come and go</h2>
@@ -105,7 +119,7 @@ label, as one group — so a bar rises with its number on top:</p>
 <aside class="notes"><p>Three photos, three clicks, three different entrances.</p>
 </aside>
 </section>
-<section class="slide" data-index="5">
+<section class="slide" data-index="6">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:2fr 3fr;grid-template-areas:"head" "body"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Page turns</span></p>
 <h2 class="m-h">This slide arrives by wiping</h2>
@@ -120,7 +134,7 @@ of that with an ordinary whole-slide track — this one wipes in and irises out:
 </div>
 <script type="application/json" class="mz-anim">{"steps":0,"tracks":[{"delay":0,"dir":"right","dur":450,"ease":"linear","effect":"wipe-in","stagger":0,"target":{"sel":":scope","split":null},"trigger":{"kind":"enter"}},{"delay":0,"dur":450,"ease":"linear","effect":"iris-out","stagger":0,"target":{"sel":":scope","split":null},"trigger":{"kind":"exit"}}]}</script>
 </section>
-<section class="slide" data-index="6">
+<section class="slide" data-index="7">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:2fr 3fr;grid-template-areas:"head" "body"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">The rule</span></p>
 <h2 class="m-last"><span class="mz-split-item">Motion</span> <span class="mz-split-item">is</span> <span class="mz-split-item">something</span> <span class="mz-split-item">a</span> <span class="mz-split-item">deck</span> <span class="mz-split-item">gains</span></h2>
@@ -131,7 +145,7 @@ of that with an ordinary whole-slide track — this one wipes in and irises out:
 </div>
 <script type="application/json" class="mz-anim">{"steps":2,"tracks":[{"delay":0,"dur":500,"ease":"linear","effect":"blur-in","stagger":60,"target":{"sel":".m-last","split":"words"},"trigger":{"kind":"enter"}},{"delay":0,"dur":400,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".m-p1","split":null},"trigger":{"kind":"click","n":1}},{"delay":0,"dur":400,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".m-p2","split":null},"trigger":{"kind":"click","n":2}},{"delay":0,"dur":400,"ease":"linear","effect":"zoom-in","stagger":0,"target":{"sel":":scope","split":null},"trigger":{"kind":"enter"}}]}</script>
 </section>
-<section class="slide" data-index="7">
+<section class="slide" data-index="8">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "keys stage"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Effects</span></p>
 <h2>Things you do, not things the deck does</h2>

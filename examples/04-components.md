@@ -248,17 +248,57 @@ $$
 :::
 
 ::: pane desc {valign=middle}
+The image syntax becomes a `<video>` on the file extension alone:
+
 ```markdown
 ![Demo](media/demo.webm){.autoplay .loop .controls}
 ```
 
-- Plays inline in the HTML export
-- Falls back to the poster frame in PDF
+- Flags: `.autoplay`, `.loop`, `.controls`, `.muted`
+- `autoplay` implies **`muted`** — browsers block audible autoplay
+- In the PDF it becomes its `poster=` frame
 - The file is embedded, so one HTML is the whole deck
 :::
 
 ::: pane clip
 ![Demo clip](media/demo.webm){.autoplay .loop .controls poster=media/demo-poster.png fit=contain}
+:::
+
+<!-- note: mp4, webm, ogv and mov all work. The samples are webm because a Chromium built without proprietary codecs cannot play H.264. -->
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|  desc            |  clip           |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Media]{.eyebrow}
+## A GIF stays a GIF
+:::
+
+::: pane desc {valign=middle}
+Animated GIFs stay `<img>` elements and loop on their own — there is no
+player to configure and no flag to set.
+
+```markdown
+![Motion](media/demo.gif){w=90%}
+```
+
+The PDF export uses the first frame.
+:::
+
+::: pane clip {align=center valign=middle}
+![Animated GIF](media/demo.gif){w=90%}
 :::
 
 ---
@@ -337,63 +377,6 @@ The photo is inlined with everything else, so the deck is still one file.
 
 The art changes with the deck, not with the laptop.
 :::
-
----
-
-```pane
-+------------------------------------+
-|                                    |
-|  main                              |
-|                                    |
-+------------------------------------+
-|  foot                              |
-+------------------------------------+
-```
-
-::: pane main {align=center valign=middle}
-## That is the whole vocabulary
-
-`pane` · `::: pane` · `shape` · `connect` · `chart` · attributes · variables
-
-*Nothing here needs a mouse.*
-:::
-
-::: pane foot {align=right}
-<span class="foot">examples/showcase.md</span>
-:::
-
----
-
-```pane
-+------------------------------------+
-|                                    |
-|  head                              |
-+------------------------------------+
-|                                    |
-|  body                              |
-+------------------------------------+
-```
-
-::: pane head
-[Motion]{.eyebrow}
-## Animation is a timeline, not a plugin {.anim-title}
-:::
-
-::: pane body {valign=middle}
-An `anim` block compiles to a timeline embedded in the slide - triggers,
-targets, effects and easing all resolved at build time, so the runtime plays a
-curve instead of computing one. Press `→` twice.
-
-[This line waited for a click.]{.callout .small}
-
-[And this one followed it, unprompted.]{.echo .small}
-:::
-
-```anim
-[enter]   .anim-title : chars fade-in 400ms stagger=30ms ease=out-cubic
-[click 1] .callout    : slide-in 400ms dir=up ease=spring(1,180,20)
-[click 2] .echo       : fade-in 300ms
-```
 
 ---
 
@@ -654,3 +637,27 @@ box       #s-edit   : color=@accent2 step=3 pad=4
 ```
 
 <!-- note: Three clicks. The underlined phrase wraps, so watch it marked line by line rather than as one box swallowing the gap. -->
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  main                              |
+|                                    |
++------------------------------------+
+|  foot                              |
++------------------------------------+
+```
+
+::: pane main {align=center valign=middle}
+## That is the whole vocabulary
+
+`pane` · `::: pane` · `chart` · `shape` · `connect` · `annotate` · attributes · variables
+
+Motion is next door, in `05-motion.md`.
+:::
+
+::: pane foot {align=right}
+<span class="foot">examples/04-components.md</span>
+:::

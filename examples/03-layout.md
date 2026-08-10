@@ -7,7 +7,7 @@ css: themes/pitch.css
 
 # Layout cookbook {.title-slide}
 
-Each slide states one rule and demonstrates it. Read it beside `examples/cookbook.md`.
+Each slide states one rule and demonstrates it. Read it beside `examples/03-layout.md`.
 
 <!-- note: This deck is checked by scripts/check-layout.mjs in CI, so every rule here is verified, not asserted. -->
 
@@ -345,7 +345,7 @@ When it is not, choose the break yourself instead of letting the box choose it.
 
 ::: pane body {valign=middle}
 ```bash
-node scripts/check-layout.mjs --build examples/cookbook.md
+node scripts/check-layout.mjs --build examples/03-layout.md
 ```
 
 It renders every slide and reports what HTML snapshots cannot see:

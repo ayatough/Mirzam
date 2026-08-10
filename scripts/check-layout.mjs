@@ -3,7 +3,7 @@
 // is invisible to HTML-level snapshot tests.
 //
 //   node scripts/check-layout.mjs out/index.html [more.html ...]
-//   node scripts/check-layout.mjs --build examples/pitch.md examples/showcase.md
+//   node scripts/check-layout.mjs --build examples/pitch.md examples/04-components.md
 //
 // Exits non-zero when any deck has a violation, so CI can gate on it.
 

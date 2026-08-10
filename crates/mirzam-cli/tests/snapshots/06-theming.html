@@ -1,0 +1,203 @@
+<section class="slide" data-index="0">
+<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
+<div class="pane pane-main" data-pane="main" style="grid-area:main"><h1 class="title-slide">Theming and settings</h1>
+<p>Every knob a deck has, and the order they are read in. This deck sets two of
+them on itself: <code>theme: mirzam</code> for the palette, <code>css: themes/mirzam.css</code> for
+the typography on top of it.</p>
+</div>
+</div>
+<aside class="notes"><p>Press D. The whole deck flips, because the stylesheet defines both modes.</p>
+</aside>
+</section>
+<section class="slide" data-index="1">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "list how"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Palette</span></p>
+<h2>Named themes</h2>
+</div>
+<div class="pane pane-list" data-pane="list" style="grid-area:list;display:flex;flex-direction:column;justify-content:center"><table>
+<thead>
+<tr>
+<th><code>theme:</code></th>
+<th>Palette</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>default</code></td>
+<td>ours</td>
+</tr>
+<tr>
+<td><code>nord</code></td>
+<td>Nord</td>
+</tr>
+<tr>
+<td><code>solarized</code></td>
+<td>Solarized</td>
+</tr>
+<tr>
+<td><code>vscode</code></td>
+<td>VS Code Light+/Dark+</td>
+</tr>
+<tr>
+<td><code>mirzam</code></td>
+<td>Mirzam's own</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="pane pane-how" data-pane="how" style="grid-area:how;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-yaml">---
+theme: nord
+---
+</code></pre>
+<ul>
+<li>A theme is a <strong>palette</strong>, not a design: it sets colour tokens and nothing
+else</li>
+<li>Each one defines a light and a dark variant</li>
+<li>An unknown name is a warning, not a failed build, and falls back to
+<code>default</code></li>
+</ul>
+<p><em>On the command line: <code>mirzam build deck.md --theme nord</code>.</em></p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="2">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "order why"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Light and dark</span></p>
+<h2>Four ways to choose a mode</h2>
+</div>
+<div class="pane pane-order card" data-pane="order" style="grid-area:order;display:flex;flex-direction:column;justify-content:center"><ol>
+<li><code>mode: dark</code> in frontmatter</li>
+<li><code>?mode=dark</code> in the URL</li>
+<li><code>D</code> in the viewer</li>
+<li>the reader's <code>prefers-color-scheme</code></li>
+</ol>
+<p><em>First one that is set wins.</em></p>
+</div>
+<div class="pane pane-why" data-pane="why" style="grid-area:why;display:flex;flex-direction:column;justify-content:center"><p><code>mode:</code> is baked into the file, so a deck that must be dark never flashes
+white while it loads.</p>
+<p>Leave it unset and the deck follows the machine it is opened on, live, with no
+reload — which is usually what you want for something you are emailing to
+somebody.</p>
+<p><code>D</code> only lasts for that reading session; it changes nothing on disk.</p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="3">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src what"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Reference</span></p>
+<h2>Every frontmatter field</h2>
+</div>
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-yaml">---
+title: Quarterly review
+author: Your Name
+theme: mirzam
+mode: dark
+aspect: &quot;16:9&quot;
+css: themes/mirzam.css
+split: h2
+transition: fade 240ms
+fit: shrink
+vars:
+  seats: 8
+---
+</code></pre>
+</div>
+<div class="pane pane-what" data-pane="what" style="grid-area:what;display:flex;flex-direction:column;justify-content:center"><ul>
+<li>All optional; a deck with no frontmatter builds</li>
+<li><code>css:</code> is resolved <strong>relative to the deck file</strong></li>
+<li><code>split:</code> starts a slide at every heading of that level</li>
+<li><code>transition:</code> is the deck-wide page turn; a slide can override its half</li>
+<li><code>vars:</code> are substituted with <code>{{ }}</code>, and arithmetic works: <code>{{ seats * 12 }}</code></li>
+</ul>
+</div>
+</div>
+</section>
+<section class="slide" data-index="4">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src what"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Per element</span></p>
+<h2>Settings smaller than a deck</h2>
+</div>
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">## Heading {#intro .center}
+
+[a phrase]{#win .u}
+
+::: pane hero {.card valign=middle}
+Content of the pane.
+:::
+</code></pre>
+<p>An attribute block takes an <code>#id</code>, any number of <code>.class</code>es, and <code>key=value</code>
+pairs.</p>
+</div>
+<div class="pane pane-what" data-pane="what" style="grid-area:what;display:flex;flex-direction:column;justify-content:center"><ul>
+<li>On a <strong>heading or a span</strong>: the id a connector or an annotation points at,
+and the classes your stylesheet styles</li>
+<li>On a <strong>pane</strong>: <code>align</code>, <code>valign</code>, <code>bg</code>, <code>dim</code>, <code>blur</code>, <code>scrim</code>, <code>fit</code></li>
+<li><code>.center</code>, <code>.right</code>, <code>.small</code> and <code>.u</code> come with the renderer; anything else
+is yours to define</li>
+</ul>
+<p><em>In a plain Markdown reader the braces are literal text — that is the price,
+and the reason the syntax is this quiet.</em></p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="5">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src warn"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Custom CSS</span></p>
+<h2>Override the tokens, not the layout</h2>
+</div>
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-css">:root {
+  --mz-slide-bg: #0d1117;
+  --mz-fg: #e9edf5;
+  --mz-accent1: #5b8cff;
+  --mz-accent2: #2dd4bf;
+}
+:root[data-mode=&quot;light&quot;] {
+  --mz-slide-bg: #ffffff;
+  --mz-fg: #17202a;
+  --mz-accent1: #2f5fe0;
+  --mz-accent2: #0f766e;
+}
+</code></pre>
+</div>
+<div class="pane pane-warn" data-pane="warn" style="grid-area:warn;display:flex;flex-direction:column;justify-content:center"><p>The built-in tokens carry no specificity, which is what lets a plain <code>:root</code>
+beat them — and is why a stylesheet that sets its colours <strong>once</strong> pins the
+deck to one mode. <code>D</code> then changes <code>data-mode</code> and nothing moves.</p>
+<p>Set every token in both blocks, or set none and let the theme do it.</p>
+<p><span class="small">A test holds <code>examples/themes/*.css</code> to that rule, in both modes.</span></p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="6">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src what"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Overflow</span></p>
+<h2>When a slide has too much on it</h2>
+</div>
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-yaml">---
+fit: shrink
+---
+</code></pre>
+<pre><code class="language-markdown">::: pane notes {fit=shrink}
+</code></pre>
+<pre><code class="language-bash">mirzam build long.md --fit shrink
+</code></pre>
+</div>
+<div class="pane pane-what" data-pane="what" style="grid-area:what;display:flex;flex-direction:column;justify-content:center"><p>Without it, a pane that overflows is <strong>clipped</strong> — the last line simply is not
+there, and nothing on screen says so.</p>
+<p><code>fit: shrink</code> scales the pane's text down until it fits instead. It is the
+right default for a document you converted rather than wrote, and the wrong
+one for a deck you are still editing, where you want to see the overflow and
+cut something.</p>
+<p><em><code>node scripts/check-layout.mjs</code> finds them either way.</em></p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="7">
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:3fr 1fr;grid-template-areas:"main" "foot"'>
+<div class="pane pane-main" data-pane="main" style="grid-area:main;text-align:center;display:flex;flex-direction:column;justify-content:center"><h2>That is every setting</h2>
+<p>frontmatter · <code>{#id .class key=value}</code> · a stylesheet of your own</p>
+<p><em>Read in that order, last one wins.</em></p>
+</div>
+<div class="pane pane-foot" data-pane="foot" style="grid-area:foot;text-align:right"><p><span class="foot">examples/06-theming.md</span></p>
+</div>
+</div>
+</section>

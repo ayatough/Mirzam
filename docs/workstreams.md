@@ -19,9 +19,9 @@ slide and tests — that can be merged on its own. Half a feature cannot.
    `crates/mirzam-cli/tests/snapshots/*.html`. Land one, regenerate, then the
    next. Keep your own diff to the snapshot minimal by adding sample slides at
    the *end* of a deck.
-4. **New markup goes in `examples/showcase.md` and `docs/syntax.md`**, per the
-   definition of done. New layout behaviour goes in `examples/cookbook.md` and
-   `docs/layout.md`.
+4. **New markup goes in `examples/04-components.md` and `docs/syntax.md`**, per
+   the definition of done. New layout behaviour goes in `examples/03-layout.md`
+   and `docs/layout.md`.
 5. **The final state is the resting state.** Anything animated, annotated or
    themed must look correct with JavaScript disabled and in PDF export. The
    runtime opts *into* motion; it never opts out of correctness.

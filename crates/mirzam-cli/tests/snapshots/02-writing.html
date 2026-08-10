@@ -1,0 +1,183 @@
+<section class="slide" data-index="0">
+<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
+<div class="pane pane-main" data-pane="main" style="grid-area:main"><h1>Writing in plain Markdown</h1>
+<p>Not one line of this deck uses a Mirzam extension. No <code>pane</code>, no <code>:::</code>, no
+attributes — only CommonMark, split into slides by <code>---</code>.</p>
+<p>It also picks no theme, so this is the deck you get before you choose anything.</p>
+</div>
+</div>
+<aside class="notes"><p>This deck is the control group. If something here renders badly, it is a bug in the default theme, not in a feature.</p>
+</aside>
+</section>
+<section class="slide" data-index="1">
+<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
+<div class="pane pane-main" data-pane="main" style="grid-area:main"><h2>Headings set the rhythm</h2>
+<h3>A third level, for the detail underneath</h3>
+<p>Paragraphs are just paragraphs. A blank line separates them; a single newline
+does not, so you can wrap the source at whatever width your editor likes and
+the sentence stays one sentence.</p>
+<p>The <code>#</code> on the opening slide is the first level — the same one you would put
+at the top of a document. On a slide it reads as a title, so it is usually the
+only <code>#</code> in the deck.</p>
+<p>Two levels are usually enough after that. Three is a sign the slide wants to
+be two slides.</p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="2">
+<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
+<div class="pane pane-main" data-pane="main" style="grid-area:main"><h2>Emphasis, and what it costs</h2>
+<p><strong>Bold</strong> for the one phrase the audience should leave with. <em>Italic</em> for a
+term being introduced. <del>Struck</del> for something you are explicitly retracting.</p>
+<p><code>Inline code</code> keeps identifiers out of the prose — <code>--split h2</code>, <code>PATH</code>,
+<code>deck.md</code> — and it never wraps mid-token.</p>
+<p>Every one of these is cheap to write and expensive to overuse. A slide with
+four bold phrases has none.</p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="3">
+<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
+<div class="pane pane-main" data-pane="main" style="grid-area:main"><h2>Links</h2>
+<p>A <a href="https://github.com/ayatough/Mirzam/blob/main/docs/syntax.md">link to the syntax reference</a>
+reads as text and stays clickable in the HTML deck.</p>
+<p>In the PDF the address is printed beside the words, because a reader holding
+a page cannot click it.</p>
+<p>A bare URL such as <a href="https://ayatough.github.io/Mirzam/">https://ayatough.github.io/Mirzam/</a> becomes a link on its
+own.</p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="4">
+<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
+<div class="pane pane-main" data-pane="main" style="grid-area:main"><h2>Lists, and how deep to nest them</h2>
+<ul>
+<li>A top-level point, one line long</li>
+<li>Another one
+<ul>
+<li>A qualification, indented two spaces</li>
+<li>Another qualification
+<ul>
+<li>A third level, which is already too many</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Back to the top level</li>
+</ul>
+<p>The nesting is real, so it survives the PDF and the outline. It is still worth
+asking whether the third level is a list item or a sentence.</p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="5">
+<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
+<div class="pane pane-main" data-pane="main" style="grid-area:main"><h2>Numbered lists</h2>
+<ol>
+<li>Write the deck as text</li>
+<li>Build it into one HTML file</li>
+<li>Present from that file</li>
+</ol>
+<p>The numbers come from the renderer, not from what you typed, so an item
+inserted in the middle renumbers the rest:</p>
+<pre><code class="language-markdown">1. First
+1. Second
+1. Third
+</code></pre>
+</div>
+</div>
+</section>
+<section class="slide" data-index="6">
+<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
+<div class="pane pane-main" data-pane="main" style="grid-area:main"><h2>Quotes and rules</h2>
+<blockquote>
+<p>A quotation gets an accent rule and quieter text, so it reads as somebody
+else's voice without needing quotation marks around it.</p>
+</blockquote>
+<p>A horizontal rule needs three asterisks or three underscores:</p>
+<hr />
+<p>Three hyphens would have ended the slide here instead — that is the one place
+where a Mirzam deck reads Markdown differently from a document.</p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="7">
+<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
+<div class="pane pane-main" data-pane="main" style="grid-area:main"><h2>Tables</h2>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>What it writes</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>serve</code></td>
+<td>nothing; a live preview</td>
+<td>while writing</td>
+</tr>
+<tr>
+<td><code>build</code></td>
+<td>one self-contained <code>.html</code></td>
+<td>before presenting</td>
+</tr>
+<tr>
+<td><code>export pdf</code></td>
+<td>one <code>.pdf</code></td>
+<td>to hand out</td>
+</tr>
+</tbody>
+</table>
+<p>Alignment comes from the separator row: <code>---</code> is left, <code>---:</code> is right,
+<code>:---:</code> is centred. Wide tables shrink rather than clip.</p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="8">
+<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
+<div class="pane pane-main" data-pane="main" style="grid-area:main"><h2>Code blocks</h2>
+<pre><code class="language-rust">fn main() {
+    println!(&quot;A fenced block keeps its indentation and its blank lines.&quot;);
+}
+</code></pre>
+<p>The language after the fence is recorded but not yet coloured — syntax
+highlighting is not implemented, so a code block is monospaced and nothing
+more.</p>
+<p>Indented blocks work too, but a fence is clearer about where the code stops.</p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="9">
+<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
+<div class="pane pane-main" data-pane="main" style="grid-area:main"><h2>Footnotes land on the slide that cites them</h2>
+<p>Dispersive readout is the standard measurement for a superconducting
+qubit<sup class="footnote-ref"><a href="#fn-blais" id="fnref-blais" data-footnote-ref>1</a></sup>, and the fidelity ceiling is set by the amplifier chain<sup class="footnote-ref"><a href="#fn-jpa" id="fnref-jpa" data-footnote-ref>2</a></sup>.</p>
+<p>The marker is a link; the note appears at the foot of <em>this</em> slide, not
+collected at the end of the deck, because a slide is where the audience is
+looking.</p>
+<section class="footnotes" data-footnotes>
+<ol>
+<li id="fn-blais">
+<p>Blais et al., <em>Circuit quantum electrodynamics</em>, Rev. Mod. Phys. 93, 025005 (2021). <a href="#fnref-blais" class="footnote-backref" data-footnote-backref data-footnote-backref-idx="1" aria-label="Back to reference 1">↩</a></p>
+</li>
+<li id="fn-jpa">
+<p>Aumentado, <em>Superconducting parametric amplifiers</em>, IEEE Microw. Mag. 21, 45 (2020). <a href="#fnref-jpa" class="footnote-backref" data-footnote-backref data-footnote-backref-idx="2" aria-label="Back to reference 2">↩</a></p>
+</li>
+</ol>
+</section>
+</div>
+</div>
+</section>
+<section class="slide" data-index="10">
+<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
+<div class="pane pane-main" data-pane="main" style="grid-area:main"><h2>That was all of it</h2>
+<p>Headings, emphasis, links, lists, quotes, rules, tables, code, footnotes — the
+Markdown you already write, on a slide, with no configuration.</p>
+<p>What plain Markdown cannot do is put two things side by side. That is the next
+deck: <code>03-layout.md</code> draws the layout as ASCII, and everything above keeps
+working inside it.</p>
+</div>
+</div>
+</section>

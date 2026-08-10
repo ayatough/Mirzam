@@ -1,0 +1,154 @@
+<section class="slide" data-index="0">
+<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
+<div class="pane pane-main" data-pane="main" style="grid-area:main"><h1 class="title-slide">Start here</h1>
+<p>The smallest deck that works, how a page break is written, and the three
+commands. Six slides, and nothing on the way needs a mouse.</p>
+</div>
+</div>
+<aside class="notes"><p>This is the first deck of the tutorial series: 01 start, 02 writing, 03 layout, 04 components, 05 motion, 06 theming.</p>
+</aside>
+</section>
+<section class="slide" data-index="1">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Step 1</span></p>
+<h2>Five lines are a deck</h2>
+</div>
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown"># What changed this week
+
+---
+
+## Latency
+
+p95 dropped in **every region**.
+</code></pre>
+</div>
+<div class="pane pane-out" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><ul>
+<li>Two slides, because of the one <code>---</code></li>
+<li>No frontmatter, no configuration, no theme chosen</li>
+<li>The same file still reads as a document on GitHub</li>
+</ul>
+<p><em>Save it as <code>deck.md</code>. That is the whole setup step.</em></p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="2">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "rule auto"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Step 2</span></p>
+<h2>Where the page breaks</h2>
+</div>
+<div class="pane pane-rule" data-pane="rule" style="grid-area:rule;display:flex;flex-direction:column;justify-content:center"><p>A line of three or more hyphens, on its own, outside any code fence:</p>
+<pre><code class="language-markdown">Last line of this slide.
+
+---
+
+First line of the next one.
+</code></pre>
+<p>Inside a fenced block it is just text, so a code sample can contain one.</p>
+</div>
+<div class="pane pane-auto" data-pane="auto" style="grid-area:auto;display:flex;flex-direction:column;justify-content:center"><p>A document nobody wrote for slides — a README, a set of notes — breaks at its
+own headings instead:</p>
+<pre><code class="language-bash">mirzam build notes.md --split h2
+</code></pre>
+<p>or, for a file you own, in frontmatter:</p>
+<pre><code class="language-yaml">split: h2
+</code></pre>
+<p><code>---</code> still breaks a page either way.</p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="3">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Step 3</span></p>
+<h2>Frontmatter, if you want it</h2>
+</div>
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-yaml">---
+title: Weekly review
+author: Your Name
+aspect: &quot;16:9&quot;      # or &quot;4:3&quot;
+theme: mirzam
+---
+</code></pre>
+</div>
+<div class="pane pane-out" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><ul>
+<li>Every field is optional; the deck above had none</li>
+<li><code>title</code> names the browser tab and the PDF</li>
+<li>YAML at the top of a Markdown file is a convention GitHub already knows</li>
+</ul>
+<p><em>The full list, and how to override any of it, is <code>06-theming.md</code>.</em></p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="4">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "cmds notes"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Step 4</span></p>
+<h2>Three commands</h2>
+</div>
+<div class="pane pane-cmds card" data-pane="cmds" style="grid-area:cmds;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-bash">mirzam serve deck.md
+
+mirzam build deck.md -o out
+
+mirzam export pdf deck.md -o deck.pdf
+</code></pre>
+</div>
+<div class="pane pane-notes" data-pane="notes" style="grid-area:notes;display:flex;flex-direction:column;justify-content:center"><ul>
+<li><strong>serve</strong> — live preview on <code>localhost:4321</code>, re-rendering only the slide
+you touched</li>
+<li><strong>build</strong> — one self-contained HTML file. Images, video and fonts are
+inlined, so there is no assets folder to carry</li>
+<li><strong>export pdf</strong> — the same deck, flattened, every animated slide fully
+revealed</li>
+</ul>
+<p><em>No install yet? The browser editor does <code>build</code> with no toolchain at all.</em></p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="5">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "keys next"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Step 5</span></p>
+<h2>Presenting it</h2>
+</div>
+<div class="pane pane-keys" data-pane="keys" style="grid-area:keys;display:flex;flex-direction:column;justify-content:center"><table>
+<thead>
+<tr>
+<th>Key</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>→</code> <code>←</code></td>
+<td>next / previous, and step through a build</td>
+</tr>
+<tr>
+<td><code>N</code></td>
+<td>speaker notes</td>
+</tr>
+<tr>
+<td><code>P</code></td>
+<td>presenter window: next slide, notes, timer</td>
+</tr>
+<tr>
+<td><code>F</code></td>
+<td>fullscreen</td>
+</tr>
+<tr>
+<td><code>D</code></td>
+<td>dark mode</td>
+</tr>
+<tr>
+<td><code>/</code></td>
+<td>every key this deck responds to</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="pane pane-next" data-pane="next" style="grid-area:next;display:flex;flex-direction:column;justify-content:center"><p>Speaker notes are HTML comments, so they stay invisible everywhere else:</p>
+<pre><code class="language-markdown">&lt;!-- note: Skip the derivation if time is short. --&gt;
+</code></pre>
+<p>On a phone: swipe to turn the page, swipe up for the notes.</p>
+<p><span class="small"><strong>Next:</strong> <code>02-writing.md</code> — what plain Markdown looks like on a slide.</span></p>
+</div>
+</div>
+<aside class="notes"><p>Press N now; this is what the audience never sees.</p>
+</aside>
+</section>

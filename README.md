@@ -171,17 +171,27 @@ that same page against your working copy:
 
 ## Examples
 
-| Deck | What it shows |
+**A tutorial in six decks**, each written in the markup it teaches. Read them in
+order, with the source open beside the slides:
+
+| Deck | What it teaches |
+|---|---|
+| [`examples/01-start.md`](examples/01-start.md) | The smallest deck that works, where a page breaks, the three commands |
+| [`examples/02-writing.md`](examples/02-writing.md) | Plain CommonMark on a slide — and not one Mirzam extension |
+| [`examples/03-layout.md`](examples/03-layout.md) | Layout rules, one per slide — the companion to [docs/layout.md](docs/layout.md) |
+| [`examples/04-components.md`](examples/04-components.md) | Charts, shapes, connectors, media and annotations, beside their source |
+| [`examples/05-motion.md`](examples/05-motion.md) | Animation: entrances, click-through builds, page turns, presentation effects |
+| [`examples/06-theming.md`](examples/06-theming.md) | Themes, every frontmatter field, attributes, custom CSS |
+
+**Two decks written as decks**, not as documentation:
+
+| Deck | What it is |
 |---|---|
 | [`examples/pitch.md`](examples/pitch.md) | A sales pitch: metric tiles, charts from CSV, a custom dark theme |
-| [`examples/showcase.md`](examples/showcase.md) | Every component, side by side with its source |
-| [`examples/cookbook.md`](examples/cookbook.md) | Layout rules, one per slide — the companion to [docs/layout.md](docs/layout.md) |
 | [`examples/seminar.md`](examples/seminar.md) | A research talk in Japanese: math, tables, CJK typography |
-| [`examples/motion.md`](examples/motion.md) | Animation: entrances, click-through builds, a diagram that draws itself |
-| [`examples/media.md`](examples/media.md) | Video and GIF embedding |
 
 ```bash
-cargo run --bin mirzam -- build examples/pitch.md -o out && open out/index.html
+cargo run --bin mirzam -- build examples/01-start.md -o out && open out/index.html
 ```
 
 Every one of them is published, built by Mirzam itself, at

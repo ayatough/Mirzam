@@ -166,9 +166,9 @@ data: |
   Markdown パーサでの見え方
 - **[レイアウトガイド](../layout.md)** — ペインの寸法、入りきらないときの対処、
   矢印を本文から遠ざける方法
-- **[サンプル](../../examples/)** — [`cookbook.md`](../../examples/cookbook.md) は
-  1 スライド 1 ルール、[`seminar.md`](../../examples/seminar.md) は数式・図の引用・
-  参考文献つきの研究発表
+- **[サンプル](../../examples/)** — 記法を順番に教える 6 本のデッキ。まずは
+  [`01-start.md`](../../examples/01-start.md) から。[`seminar.md`](../../examples/seminar.md)
+  は数式・図の引用・参考文献つきの研究発表
 - **[全部動いているところ](https://ayatough.github.io/Mirzam/)**
 
 デッキ上で `/` を押すと、そのビューアが応答する操作の一覧が出ます。

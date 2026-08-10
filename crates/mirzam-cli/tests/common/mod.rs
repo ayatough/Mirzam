@@ -20,12 +20,14 @@ pub fn example(name: &str) -> PathBuf {
 
 /// Sample decks in the repository, covered by the golden tests.
 pub const EXAMPLE_DECKS: &[&str] = &[
+    "01-start.md",
+    "02-writing.md",
+    "03-layout.md",
+    "04-components.md",
+    "05-motion.md",
+    "06-theming.md",
     "pitch.md",
-    "showcase.md",
-    "cookbook.md",
     "seminar.md",
-    "media.md",
-    "motion.md",
 ];
 
 /// Normalizes output for snapshot comparison.

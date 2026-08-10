@@ -27,7 +27,7 @@ CLI は **Rust なしで入ります**（macOS / Linux / Windows のビルド済
 curl -fsSL https://raw.githubusercontent.com/ayatough/Mirzam/main/scripts/install.sh | sh
 
 mirzam build examples/pitch.md -o out   # 単一 HTML
-mirzam serve examples/showcase.md       # ホットリロード付きプレビュー
+mirzam serve examples/01-start.md       # ホットリロード付きプレビュー
 mirzam export pdf examples/pitch.md
 ```
 
@@ -75,12 +75,23 @@ code --install-extension editors/vscode/mirzam-preview-*.vsix
 
 ## サンプル
 
+順番に読むチュートリアル（それぞれが、教えている記法そのもので書かれています）:
+
+| デッキ | 内容 |
+|---|---|
+| `examples/01-start.md` | 最小のデッキ、ページの区切り方、3 つのコマンド |
+| `examples/02-writing.md` | 素の CommonMark がスライドでどう出るか。拡張記法は一切なし |
+| `examples/03-layout.md` | レイアウト規則を 1 スライド 1 ルールで |
+| `examples/04-components.md` | グラフ・図形・コネクタ・メディア・注釈をソースと並べて |
+| `examples/05-motion.md` | アニメーション。登場・クリック送り・ページ送り・演出 |
+| `examples/06-theming.md` | テーマ、フロントマターの全項目、属性、カスタム CSS |
+
+ドキュメントではなく、デッキとして書かれたもの:
+
 | デッキ | 内容 |
 |---|---|
 | `examples/pitch.md` | 営業向けピッチ。指標タイル、CSV からのグラフ、ダークテーマ |
-| `examples/showcase.md` | 全コンポーネントをソースと並べて紹介 |
 | `examples/seminar.md` | 研究発表(日本語)。数式・表・和文組版 |
-| `examples/media.md` | 動画と GIF |
 
 ## 日本語まわりの注意
 

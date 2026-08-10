@@ -170,9 +170,10 @@ you drew, row heights from the number of lines.
   plain Markdown parser shows instead
 - **[Layout guide](layout.md)** — sizing panes, what to do when content does not
   fit, keeping arrows out of the text
-- **[The examples](../examples/)** — [`cookbook.md`](../examples/cookbook.md) is
-  one layout rule per slide; [`seminar.md`](../examples/seminar.md) is a research
-  talk with math, a quoted figure and citations
+- **[The examples](../examples/)** — six numbered decks that teach the markup in
+  order, starting at [`01-start.md`](../examples/01-start.md), plus
+  [`seminar.md`](../examples/seminar.md), a research talk with math, a quoted
+  figure and citations
 - **[All of them running](https://ayatough.github.io/Mirzam/)**
 
 Press `/` in any deck to see what the viewer responds to.

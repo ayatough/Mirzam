@@ -8,6 +8,18 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- `examples/01-start.md`: the deck that was missing. The smallest file that
+  builds, where a page breaks, `--split h2`, the three commands and the viewer
+  keys — six slides between reading about Mirzam and having a deck.
+- `examples/02-writing.md`: plain CommonMark on a slide, with no Mirzam
+  extension anywhere in it and no theme chosen. Headings, emphasis, links,
+  nested lists, quotes, `***` rules, tables, code blocks and footnotes. It is
+  also the control group: anything that renders badly here is the default
+  theme's fault, not a feature's.
+- `examples/06-theming.md`: named themes, the four ways a colour mode is
+  chosen, every frontmatter field in one place, `{#id .class key=value}`, custom
+  CSS and the both-modes rule, and `fit: shrink`. `theme:`, `split:` and `fit:`
+  had no sample deck at all before this.
 - `bg-light=` and `bg-dark=` on a pane: one photograph per colour mode. Both
   are inlined and the deck shows the one that matches — including after the
   reader presses `D`, which a `<picture>` element cannot follow, since its
@@ -26,6 +38,17 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   key, which also makes that toggle stick from one deck to the next.
 
 ### Changed
+- The sample decks are a numbered series rather than six files at the same
+  level with three different jobs between them. `cookbook.md` → `03-layout.md`,
+  `showcase.md` → `04-components.md`, `motion.md` → `05-motion.md`; `pitch.md`
+  and `seminar.md` keep their names, because they are decks rather than
+  documentation and are not read in an order. The site, the README and the
+  Japanese README present the two groups separately.
+- Each feature now has one home. `media.md` was two slides and a whole file, so
+  its video and GIF material moved into `04-components.md` and the file is
+  gone; the animation slide `04-components.md` was still carrying moved to
+  `05-motion.md`, where the rest of the animation material already lived. The
+  closing "that is the whole vocabulary" slide is now actually the last one.
 - `main` is documented as the working branch rather than a stable one, in the
   README, its Japanese translation, `CONTRIBUTING.md` and `AGENTS.md`. It is
   where development lands directly: the site publishes from `main` and nowhere

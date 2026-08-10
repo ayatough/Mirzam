@@ -67,12 +67,14 @@ fn examples_match_snapshots() {
 #[test]
 fn example_slide_counts() {
     for (deck, expected) in [
+        ("01-start.md", 6),
+        ("02-writing.md", 11),
+        ("03-layout.md", 11),
+        ("04-components.md", 16),
+        ("05-motion.md", 9),
+        ("06-theming.md", 8),
         ("pitch.md", 9),
-        ("showcase.md", 16),
-        ("cookbook.md", 11),
         ("seminar.md", 11),
-        ("media.md", 2),
-        ("motion.md", 8),
     ] {
         let mut cache = HashMap::new();
         let out = mirzam_cli::pipeline::build_deck(&example(deck), &mut cache).unwrap();

@@ -38,7 +38,9 @@ export RUSTFLAGS="-D warnings"               # CI sets this; without it, clippy 
 cargo test --workspace                       # 23 suites
 cargo clippy --workspace --all-targets       # zero warnings
 cargo fmt --all -- --check
-node scripts/check-layout.mjs --build examples/pitch.md examples/showcase.md examples/cookbook.md
+node scripts/check-layout.mjs --build examples/01-start.md examples/02-writing.md \
+  examples/03-layout.md examples/04-components.md examples/05-motion.md \
+  examples/06-theming.md examples/pitch.md examples/seminar.md
 ```
 
 **Run these on the same toolchain CI does.** CI uses `dtolnay/rust-toolchain@stable`,
@@ -51,8 +53,9 @@ did not exist in 1.94 broke the first build that ever reached CI. If `rustc
 plus, when the change is user-visible:
 
 - a line in `CHANGELOG.md` under `[Unreleased]`
-- syntax changes documented in `docs/syntax.md` and shown in `examples/showcase.md`
-- layout behaviour documented in `docs/layout.md` and shown in `examples/cookbook.md`
+- syntax changes documented in `docs/syntax.md` and shown in `examples/04-components.md`
+  (or `examples/05-motion.md` if it moves, `examples/06-theming.md` if it is a setting)
+- layout behaviour documented in `docs/layout.md` and shown in `examples/03-layout.md`
 - golden snapshots updated **deliberately**, with the diff reviewed:
   `MIRZAM_UPDATE_SNAPSHOTS=1 cargo test -p mirzam-cli --test golden`
 
@@ -96,6 +99,29 @@ The viewer runtime (navigation, connector drawing) is the JavaScript string in
 `crates/mirzam-render/src/theme/viewer.js`. It ships inside every deck, so keep
 it small and dependency-free.
 
+### The sample decks
+
+`examples/` is two groups, and a new slide belongs to exactly one of them. The
+numbered decks are a tutorial read in order; each teaches one layer and is
+written in the markup it teaches.
+
+| Deck | Owns |
+|---|---|
+| `01-start.md` | Getting a first deck built and presented |
+| `02-writing.md` | Plain CommonMark on a slide. **No Mirzam extension may appear in this file** — that is the whole point of it |
+| `03-layout.md` | Layout rules, one per slide; the companion to `docs/layout.md` |
+| `04-components.md` | Charts, shapes, connectors, media, annotations |
+| `05-motion.md` | `anim`, transitions, `effects` |
+| `06-theming.md` | Themes, frontmatter, attributes, custom CSS |
+
+`pitch.md` and `seminar.md` are the other group: complete decks, written the way
+somebody would write one for an audience. They are not feature catalogues, so do
+not add a slide to them to demonstrate something.
+
+A feature gets **one** home. Before adding a slide, check the feature is not
+already shown in a sibling deck — the previous layout had video in two files and
+animation in two more, which is how they drifted apart.
+
 ## Running several agents at once
 
 The current batch of work is already split into streams, with the shared
@@ -134,7 +160,7 @@ ends with green quality gates can be merged independently; half a feature cannot
 pane, in the renderer's extraction pass — see `crates/mirzam-render/src/charts.rs`)
 → put the semantics in its own crate → emit HTML/SVG from `mirzam-render` using
 theme variables, never hard-coded colors → document in `docs/syntax.md` → add a
-slide to `examples/showcase.md` → update snapshots.
+slide to `examples/04-components.md` → update snapshots.
 
 **Change how something looks.** Edit `crates/mirzam-render/src/theme/base.css` for
 layout shared by every theme, or `theme/themes/*.css` for one theme's tokens →

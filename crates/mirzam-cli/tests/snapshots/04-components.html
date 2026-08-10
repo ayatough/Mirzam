@@ -136,19 +136,38 @@
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Media</span></p>
 <h2>Video is a first-class citizen</h2>
 </div>
-<div class="pane pane-desc" data-pane="desc" style="grid-area:desc;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">![Demo](media/demo.webm){.autoplay .loop .controls}
+<div class="pane pane-desc" data-pane="desc" style="grid-area:desc;display:flex;flex-direction:column;justify-content:center"><p>The image syntax becomes a <code>&lt;video&gt;</code> on the file extension alone:</p>
+<pre><code class="language-markdown">![Demo](media/demo.webm){.autoplay .loop .controls}
 </code></pre>
 <ul>
-<li>Plays inline in the HTML export</li>
-<li>Falls back to the poster frame in PDF</li>
+<li>Flags: <code>.autoplay</code>, <code>.loop</code>, <code>.controls</code>, <code>.muted</code></li>
+<li><code>autoplay</code> implies <strong><code>muted</code></strong> — browsers block audible autoplay</li>
+<li>In the PDF it becomes its <code>poster=</code> frame</li>
 <li>The file is embedded, so one HTML is the whole deck</li>
 </ul>
 </div>
 <div class="pane pane-clip" data-pane="clip" style="grid-area:clip"><p><video src="<data-uri len=93951>" title="Demo clip" poster="<data-uri len=38274>" autoplay muted loop controls playsinline style="object-fit:contain;width:100%;height:100%;"></video></p>
 </div>
 </div>
+<aside class="notes"><p>mp4, webm, ogv and mov all work. The samples are webm because a Chromium built without proprietary codecs cannot play H.264.</p>
+</aside>
 </section>
 <section class="slide" data-index="7">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "desc clip"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Media</span></p>
+<h2>A GIF stays a GIF</h2>
+</div>
+<div class="pane pane-desc" data-pane="desc" style="grid-area:desc;display:flex;flex-direction:column;justify-content:center"><p>Animated GIFs stay <code>&lt;img&gt;</code> elements and loop on their own — there is no
+player to configure and no flag to set.</p>
+<pre><code class="language-markdown">![Motion](media/demo.gif){w=90%}
+</code></pre>
+<p>The PDF export uses the first frame.</p>
+</div>
+<div class="pane pane-clip" data-pane="clip" style="grid-area:clip;text-align:center;display:flex;flex-direction:column;justify-content:center"><img src="<data-uri len=102634>" alt="Animated GIF" style="width:90%;">
+</div>
+</div>
+</section>
+<section class="slide" data-index="8">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src hero"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Backgrounds</span></p>
 <h2>A photo behind the words</h2>
@@ -170,7 +189,7 @@
 </div></div>
 </div>
 </section>
-<section class="slide" data-index="8">
+<section class="slide" data-index="9">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:1fr 3fr;grid-template-areas:"head head" "src hero"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Backgrounds</span></p>
 <h2>One photo per colour mode</h2>
@@ -192,31 +211,7 @@
 </div></div>
 </div>
 </section>
-<section class="slide" data-index="9">
-<div class="grid" style='grid-template-columns:36fr;grid-template-rows:3fr 1fr;grid-template-areas:"main" "foot"'>
-<div class="pane pane-main" data-pane="main" style="grid-area:main;text-align:center;display:flex;flex-direction:column;justify-content:center"><h2>That is the whole vocabulary</h2>
-<p><code>pane</code> · <code>::: pane</code> · <code>shape</code> · <code>connect</code> · <code>chart</code> · attributes · variables</p>
-<p><em>Nothing here needs a mouse.</em></p>
-</div>
-<div class="pane pane-foot" data-pane="foot" style="grid-area:foot;text-align:right"><p><span class="foot">examples/showcase.md</span></p>
-</div>
-</div>
-</section>
-<section class="slide" data-index="10">
-<div class="grid" style='grid-template-columns:36fr;grid-template-rows:2fr 2fr;grid-template-areas:"head" "body"'>
-<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Motion</span></p>
-<h2 class="anim-title"><span class="mz-split-item">A</span><span class="mz-split-item">n</span><span class="mz-split-item">i</span><span class="mz-split-item">m</span><span class="mz-split-item">a</span><span class="mz-split-item">t</span><span class="mz-split-item">i</span><span class="mz-split-item">o</span><span class="mz-split-item">n</span><span class="mz-split-item"> </span><span class="mz-split-item">i</span><span class="mz-split-item">s</span><span class="mz-split-item"> </span><span class="mz-split-item">a</span><span class="mz-split-item"> </span><span class="mz-split-item">t</span><span class="mz-split-item">i</span><span class="mz-split-item">m</span><span class="mz-split-item">e</span><span class="mz-split-item">l</span><span class="mz-split-item">i</span><span class="mz-split-item">n</span><span class="mz-split-item">e</span><span class="mz-split-item">,</span><span class="mz-split-item"> </span><span class="mz-split-item">n</span><span class="mz-split-item">o</span><span class="mz-split-item">t</span><span class="mz-split-item"> </span><span class="mz-split-item">a</span><span class="mz-split-item"> </span><span class="mz-split-item">p</span><span class="mz-split-item">l</span><span class="mz-split-item">u</span><span class="mz-split-item">g</span><span class="mz-split-item">i</span><span class="mz-split-item">n</span></h2>
-</div>
-<div class="pane pane-body" data-pane="body" style="grid-area:body;display:flex;flex-direction:column;justify-content:center"><p>An <code>anim</code> block compiles to a timeline embedded in the slide - triggers,
-targets, effects and easing all resolved at build time, so the runtime plays a
-curve instead of computing one. Press <code>→</code> twice.</p>
-<p><span class="callout small">This line waited for a click.</span></p>
-<p><span class="echo small">And this one followed it, unprompted.</span></p>
-</div>
-</div>
-<script type="application/json" class="mz-anim">{"steps":2,"tracks":[{"delay":0,"dur":400,"ease":"cubic-bezier(.33,1,.68,1)","effect":"fade-in","stagger":30,"target":{"sel":".anim-title","split":"chars"},"trigger":{"kind":"enter"}},{"delay":0,"dir":"up","dur":400,"ease":"linear(0.0000, 0.0242, 0.0860, 0.1714, 0.2697, 0.3726, 0.4739, 0.5696, 0.6568, 0.7341, 0.8009, 0.8572, 0.9035, 0.9406, 0.9695, 0.9913, 1.0071, 1.0180, 1.0248, 1.0285, 1.0298, 1.0293, 1.0277, 1.0253)","effect":"slide-in","stagger":0,"target":{"sel":".callout","split":null},"trigger":{"kind":"click","n":1}},{"delay":0,"dur":300,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".echo","split":null},"trigger":{"kind":"click","n":2}}]}</script>
-</section>
-<section class="slide" data-index="11" data-connectors="[{&quot;arrow&quot;:&quot;end&quot;,&quot;color&quot;:&quot;var(--mz-accent2)&quot;,&quot;curve&quot;:null,&quot;dashed&quot;:false,&quot;from&quot;:&quot;t-hot&quot;,&quot;fromEdge&quot;:null,&quot;to&quot;:&quot;hot&quot;,&quot;toEdge&quot;:null}]">
+<section class="slide" data-index="10" data-connectors="[{&quot;arrow&quot;:&quot;end&quot;,&quot;color&quot;:&quot;var(--mz-accent2)&quot;,&quot;curve&quot;:null,&quot;dashed&quot;:false,&quot;from&quot;:&quot;t-hot&quot;,&quot;fromEdge&quot;:null,&quot;to&quot;:&quot;hot&quot;,&quot;toEdge&quot;:null}]">
 <div class="grid" style='grid-template-columns:21fr 18fr;grid-template-rows:3fr 7fr;grid-template-areas:"head head" "shot text"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Annotations</span></p>
 <h2>Circle the thing you are talking about</h2>
@@ -235,7 +230,7 @@ slide.</p>
 <aside class="notes"><p>The connector's endpoint is drawn by the annotation overlay, so it only exists once the marks do - and it arrives with them.</p>
 </aside>
 </section>
-<section class="slide" data-index="12">
+<section class="slide" data-index="11">
 <div class="grid" style='grid-template-columns:18fr 21fr;grid-template-rows:3fr 4fr 1fr;grid-template-areas:"head head" "text shot" "foot ."'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Annotations</span></p>
 <h2>The same three lines, after you moved everything</h2>
@@ -254,7 +249,7 @@ shape, and lost a third of its width.</p>
 <aside class="notes"><p>Byte for byte the block on the slide before. Nothing in it knows where the pane went.</p>
 </aside>
 </section>
-<section class="slide" data-index="13">
+<section class="slide" data-index="12">
 <div class="grid" style='grid-template-columns:21fr 18fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "bars note"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Annotations</span></p>
 <h2>A chart mark needs no coordinates</h2>
@@ -275,7 +270,7 @@ rect #load-0-2 : pad=10 step=1
 <aside class="notes"><p>The next slide changes two numbers in the CSV. The annotate block is identical.</p>
 </aside>
 </section>
-<section class="slide" data-index="14">
+<section class="slide" data-index="13">
 <div class="grid" style='grid-template-columns:21fr 18fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "bars note"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Annotations</span></p>
 <h2>Change the numbers; the box follows</h2>
@@ -297,7 +292,7 @@ rect #load-0-2 : pad=10 step=1
 <aside class="notes"><p>A hand-measured rectangle would now be pointing at empty air.</p>
 </aside>
 </section>
-<section class="slide" data-index="15">
+<section class="slide" data-index="14">
 <div class="grid" style='grid-template-columns:18fr 21fr;grid-template-rows:3fr 5fr;grid-template-areas:"head head" "prose src"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Annotations</span></p>
 <h2>Point at a phrase, not across the slide</h2>
@@ -326,4 +321,14 @@ there are no percentages to measure.</p>
 <script type="application/json" class="mz-annot" data-target=":scope">{"items":[{"kind":"highlight","anchor":"s-moment","color":"var(--mz-accent2)","step":1},{"kind":"underline","anchor":"s-colour","color":"var(--mz-accent1)","step":2},{"kind":"box","anchor":"s-edit","pad":4,"color":"var(--mz-accent2)","step":3}]}</script>
 <aside class="notes"><p>Three clicks. The underlined phrase wraps, so watch it marked line by line rather than as one box swallowing the gap.</p>
 </aside>
+</section>
+<section class="slide" data-index="15">
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:3fr 1fr;grid-template-areas:"main" "foot"'>
+<div class="pane pane-main" data-pane="main" style="grid-area:main;text-align:center;display:flex;flex-direction:column;justify-content:center"><h2>That is the whole vocabulary</h2>
+<p><code>pane</code> · <code>::: pane</code> · <code>chart</code> · <code>shape</code> · <code>connect</code> · <code>annotate</code> · attributes · variables</p>
+<p>Motion is next door, in <code>05-motion.md</code>.</p>
+</div>
+<div class="pane pane-foot" data-pane="foot" style="grid-area:foot;text-align:right"><p><span class="foot">examples/04-components.md</span></p>
+</div>
+</div>
 </section>

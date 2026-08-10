@@ -25,7 +25,7 @@ Optional, installed automatically by the scripts that need them:
 
 ```bash
 cargo run --bin mirzam -- build examples/pitch.md -o out
-cargo run --bin mirzam -- serve examples/showcase.md
+cargo run --bin mirzam -- serve examples/04-components.md
 
 cargo run --release -p mirzam-cli --bin mirzam-bench   # performance benchmark
 ./scripts/build-wasm.sh                                # WASM package into pkg/
@@ -150,9 +150,9 @@ confidently produce work that fails CI.
   `docs/ja/` and are a convenience, never the source of truth.
 - Comments explain *why*, not *what*. The surrounding code already says what.
 - Every new syntax feature needs three things: a parser test, a line in
-  `docs/syntax.md`, and an appearance in `examples/showcase.md`.
+  `docs/syntax.md`, and an appearance in `examples/04-components.md`.
 - Anything that affects how content is placed also needs a rule in
-  `docs/layout.md` and a slide in `examples/cookbook.md`, so the guidance is
+  `docs/layout.md` and a slide in `examples/03-layout.md`, so the guidance is
   verified by the layout checker rather than merely asserted.
 - New rendering behavior means updating the golden snapshots deliberately.
 
@@ -165,7 +165,7 @@ confidently produce work that fails CI.
    geometry belong away from `render`.
 3. Emit HTML/SVG from `mirzam-render`, styling it through theme variables rather
    than hard-coded colors.
-4. Add it to `examples/showcase.md` and refresh the snapshots.
+4. Add it to `examples/04-components.md` and refresh the snapshots.
 5. If it is a fenced block, add its name to `mirzam_syntax::BLOCK_KINDS` and a
    sample body to `sample_block` in `tests/commonmark_compat.rs`. The promise
    that plain Markdown still reads is only kept for forms that list is aware
@@ -246,8 +246,8 @@ the same crate — which is what the ownership tables in
 
 1. `cargo test --workspace` and `cargo clippy --workspace --all-targets` are clean
 2. `cargo run --release -p mirzam-cli --bin mirzam-bench` shows no regression
-3. Sample decks build and pass the layout check: `pitch`, `showcase`, `cookbook`,
-   `seminar`, `media`, `motion`
+3. Sample decks build and pass the layout check: `01-start`, `02-writing`,
+   `03-layout`, `04-components`, `05-motion`, `06-theming`, `pitch`, `seminar`
 4. `./scripts/build-wasm.sh` and `./scripts/build-vsix.sh` succeed
 5. `CHANGELOG.md` updated, version bumped in the root `Cargo.toml` and in
    `editors/vscode/package.json`

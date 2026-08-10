@@ -243,8 +243,8 @@ Usage:
   export  render a PDF with headless Chromium (also honors MIRZAM_CHROMIUM)
 
 Examples:
-  mirzam build examples/showcase.md -o out
-  mirzam serve examples/showcase.md
+  mirzam build examples/01-start.md -o out
+  mirzam serve examples/04-components.md
   mirzam build README.md --split h2 -o out"#
     )
 }

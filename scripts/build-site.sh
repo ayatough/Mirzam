@@ -6,7 +6,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 OUT="${1:-site}"
-DECKS=(pitch showcase cookbook seminar media motion)
+DECKS=(01-start 02-writing 03-layout 04-components 05-motion 06-theming pitch seminar)
 
 rm -rf "$OUT"
 mkdir -p "$OUT/decks"
@@ -281,17 +281,25 @@ try {
 
 <main class="wrap">
   <h2>See it running</h2>
-  <p>Each deck below was built by Mirzam from the Markdown in <code>examples/</code>.
+  <p>Two decks written as decks, not as documentation.
   <span class="kbd">←</span> <span class="kbd">→</span> to navigate,
   <span class="kbd">N</span> for speaker notes, <span class="kbd">/</span> for the rest.</p>
   <div class="cards">
     <a class="card" href="decks/pitch/"><b>Pitch deck</b><span>Metric tiles, charts from CSV, one hero image per colour mode</span></a>
-    <a class="card" href="decks/showcase/"><b>Component gallery</b><span>Every feature beside its source</span></a>
-    <a class="card" href="decks/cookbook/"><b>Layout cookbook</b><span>One layout rule per slide</span></a>
     <a class="card" href="decks/seminar/"><b>Research talk</b><span>Math, tables, Japanese typography</span></a>
-    <a class="card" href="decks/motion/"><b>Motion</b><span>Entrances, click-through builds, page turns</span></a>
-    <a class="card" href="decks/media/"><b>Media</b><span>Video and GIF embedding</span></a>
     <a class="card" href="decks/readme/"><b>This README, as a deck</b><span>No Mirzam syntax: <code>--split h2</code> on an ordinary document</span></a>
+  </div>
+
+  <h2>Learn it, in order</h2>
+  <p>Six decks that teach the markup by being written in it. Each one is a file in
+  <code>examples/</code> — read the source beside the slides.</p>
+  <div class="cards">
+    <a class="card" href="decks/01-start/"><b>01 · Start here</b><span>The smallest deck, page breaks, the three commands</span></a>
+    <a class="card" href="decks/02-writing/"><b>02 · Plain Markdown</b><span>Headings, lists, quotes, tables, code, footnotes — no extensions</span></a>
+    <a class="card" href="decks/03-layout/"><b>03 · Layout</b><span>One layout rule per slide</span></a>
+    <a class="card" href="decks/04-components/"><b>04 · Components</b><span>Charts, shapes, connectors, media, annotations, beside their source</span></a>
+    <a class="card" href="decks/05-motion/"><b>05 · Motion</b><span>Entrances, click-through builds, page turns, effects</span></a>
+    <a class="card" href="decks/06-theming/"><b>06 · Theming</b><span>Themes, frontmatter, attributes, custom CSS</span></a>
   </div>
 
   <h2>How it works</h2>

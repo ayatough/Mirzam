@@ -477,7 +477,7 @@ none of them fire is the same talk. Nothing here can change what the deck says.
   in a throwaway layer above the page.
 - Under `prefers-reduced-motion` the movement is dropped and the flash is brief.
 
-[`examples/motion.md`](../examples/motion.md) has a slide bound to all seven.
+[`examples/05-motion.md`](../examples/05-motion.md) has a slide bound to all seven.
 
 ## Annotations
 
@@ -634,7 +634,7 @@ transition: slide-left 400ms ease=out-cubic
 optionally with a duration and an `ease=`. Going backwards plays the
 directional ones the other way.
 
-[`examples/motion.md`](../examples/motion.md) demonstrates all of this: text
+[`examples/05-motion.md`](../examples/05-motion.md) demonstrates all of this: text
 entrances, a chart whose bars grow one click at a time, a diagram that assembles
 itself box by box, and a slide that overrides the deck's page turn.
 

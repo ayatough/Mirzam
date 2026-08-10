@@ -19,6 +19,39 @@ lines of Markdown, and none of it is needed to read the deck.
 +------------------------------------+
 |                                    |
 |  head                              |
++------------------------------------+
+|                                    |
+|  body                              |
++------------------------------------+
+```
+
+::: pane head
+[The idea]{.eyebrow}
+## Animation is a timeline, not a plugin {.m-tl}
+:::
+
+::: pane body {valign=middle}
+An `anim` block compiles to a timeline embedded in the slide — triggers,
+targets, effects and easing all resolved at build time, so the runtime plays a
+curve instead of computing one. Press `→` twice.
+
+[This line waited for a click.]{.m-callout .small}
+
+[And this one followed it, unprompted.]{.m-echo .small}
+:::
+
+```anim
+[enter]   .m-tl      : chars fade-in 400ms stagger=30ms ease=out-cubic
+[click 1] .m-callout : slide-in 400ms dir=up ease=spring(1,180,20)
+[click 2] .m-echo    : fade-in 300ms
+```
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
 +------------------+-----------------+
 |                  |                 |
 |                  |                 |

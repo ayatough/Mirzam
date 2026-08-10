@@ -1,7 +1,7 @@
 <section class="slide" data-index="0">
 <div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
 <div class="pane pane-main" data-pane="main" style="grid-area:main"><h1 class="title-slide">Layout cookbook</h1>
-<p>Each slide states one rule and demonstrates it. Read it beside <code>examples/cookbook.md</code>.</p>
+<p>Each slide states one rule and demonstrates it. Read it beside <code>examples/03-layout.md</code>.</p>
 </div>
 </div>
 <aside class="notes"><p>This deck is checked by scripts/check-layout.mjs in CI, so every rule here is verified, not asserted.</p>
@@ -178,7 +178,7 @@ When it is not, choose the break yourself instead of letting the box choose it.<
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Rule 8</span></p>
 <h2>Let the checker find what your eye misses</h2>
 </div>
-<div class="pane pane-body" data-pane="body" style="grid-area:body;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-bash">node scripts/check-layout.mjs --build examples/cookbook.md
+<div class="pane pane-body" data-pane="body" style="grid-area:body;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-bash">node scripts/check-layout.mjs --build examples/03-layout.md
 </code></pre>
 <p>It renders every slide and reports what HTML snapshots cannot see:</p>
 <ul>
