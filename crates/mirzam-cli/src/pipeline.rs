@@ -242,11 +242,19 @@ pub fn build_deck_with(
     // has no filesystem. It joins the watch set, so editing the shared shapes
     // re-renders the decks that use them.
     if let Some(rel) = meta.masters_file() {
+        // Watched even when the read fails, so creating the file it named
+        // brings the deck's layouts back without restarting `serve`.
         files.insert(base_dir.join(rel));
-        let (masters, master_warnings) =
-            mirzam_syntax::load_masters(rel, &base_dir, &mirzam_syntax::FsProvider);
-        ctx.masters = masters;
-        warnings.extend(master_warnings);
+        match mirzam_syntax::load_masters(rel, &base_dir, &mirzam_syntax::FsProvider) {
+            Ok((masters, master_warnings)) => {
+                ctx.masters = masters;
+                warnings.extend(master_warnings);
+            }
+            Err(w) => {
+                ctx.masters_unavailable = true;
+                warnings.push(w);
+            }
+        }
     }
     for text in [&mut ctx.footer, &mut ctx.slide_number]
         .into_iter()

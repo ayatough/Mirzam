@@ -55,6 +55,11 @@ pub struct DeckContext {
     pub slide_number: Option<String>,
     /// How many slides the deck has, for `{total}`.
     pub total: usize,
+    /// Set when the deck named a masters file that could not be read. Every
+    /// name it would have defined is then missing, and the file is the one
+    /// fact worth reporting: without this, deleting it says "cannot read the
+    /// file" and "no master named `body`" — the same sentence twice.
+    pub masters_unavailable: bool,
 }
 
 impl DeckContext {
@@ -75,6 +80,7 @@ impl DeckContext {
             footer: meta.footer.clone(),
             slide_number: meta.slide_number.clone(),
             total,
+            masters_unavailable: false,
         }
     }
 
@@ -87,6 +93,11 @@ impl DeckContext {
     /// already names it — reporting it twice would be worse than once.
     pub fn warnings(&self) -> Vec<String> {
         let mut out = Vec::new();
+        // The file that would have defined every name is already reported.
+        // Naming them one at a time after that is one fact, repeated.
+        if self.masters_unavailable {
+            return out;
+        }
         if let Some(name) = self.layout.as_deref().map(str::trim) {
             if name != "none" && !self.masters.contains_key(name) {
                 out.push(format!(
@@ -797,6 +808,10 @@ fn resolve_layout<'a>(
         }
         match ctx.masters.get_key_value(named) {
             Some((name, art)) => return Some((art.as_str(), Some(name.as_str()))),
+            // Silent when the masters file itself could not be read: that is
+            // reported once for the deck, and repeating it per slide would
+            // bury every other warning in a deck of forty.
+            None if ctx.masters_unavailable => {}
             None => warnings.push(format!(
                 "slide {}: no master named `{named}`{}",
                 index + 1,

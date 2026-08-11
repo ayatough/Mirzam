@@ -830,27 +830,24 @@ pub fn parse_slide(src: &str) -> SlideSource {
 /// host supplies. A masters file resolved only in the CLI would leave the
 /// editor's preview drawing every slide as a single pane.
 ///
-/// A file that cannot be read is a warning and an empty set, never an error:
-/// a deck does not fail to build over its furniture. The warning says what
-/// the deck will look like instead, because "cannot read" on its own does not
-/// explain why every slide suddenly lost its layout.
+/// `Err` when the file could not be read at all, carrying the warning to
+/// report. It is separated from the warnings inside `Ok` because it is a
+/// different kind of fact: every name the deck could have used is missing, so
+/// the caller can stop reporting them one at a time. Either way a deck does
+/// not fail to build over its furniture — the warning says what it will look
+/// like instead, because "cannot read" alone does not explain why every slide
+/// lost its layout at once.
 pub fn load_masters(
     rel: &str,
     base_dir: &Path,
     provider: &dyn FileProvider,
-) -> (BTreeMap<String, String>, Vec<String>) {
-    let src = match provider.read(&base_dir.join(rel)) {
-        Ok(src) => src,
-        Err(e) => {
-            return (
-                BTreeMap::new(),
-                vec![format!(
-                    "masters: {e}; slides that do not draw their own grid \
-                     render as a single pane"
-                )],
-            )
-        }
-    };
+) -> Result<(BTreeMap<String, String>, Vec<String>), String> {
+    let src = provider.read(&base_dir.join(rel)).map_err(|e| {
+        format!(
+            "masters: {e}; slides that do not draw their own grid render as a \
+             single pane"
+        )
+    })?;
     let (masters, warnings) = parse_masters(&src);
     let mut warnings: Vec<String> = warnings
         .into_iter()
@@ -862,7 +859,7 @@ pub fn load_masters(
              block under it"
         ));
     }
-    (masters, warnings)
+    Ok((masters, warnings))
 }
 
 /// Parses a masters file: each heading names a master, and the ```pane block
@@ -1369,9 +1366,8 @@ loose text
                 Err(format!("cannot read {}", path.display()))
             }
         }
-        let (m, w) = load_masters("shapes.md", Path::new("."), &NoFiles);
-        assert!(m.is_empty());
-        assert!(w[0].contains("single pane"), "{w:?}");
+        let e = load_masters("shapes.md", Path::new("."), &NoFiles).unwrap_err();
+        assert!(e.contains("single pane"), "{e}");
     }
 
     #[test]

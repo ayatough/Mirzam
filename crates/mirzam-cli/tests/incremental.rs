@@ -326,22 +326,28 @@ fn editing_the_masters_file_re_renders_the_slides() {
 
 /// Losing the file loses every layout in the deck, which is a much louder
 /// failure than losing a stylesheet — so the warning has to say so.
+/// Losing the file loses every layout in the deck, which is a much louder
+/// failure than losing a stylesheet — so the warning has to say so. Once:
+/// every name in a deck of forty being unknown is that one fact, repeated.
 #[test]
-fn a_masters_file_that_is_not_there_warns_and_builds() {
+fn a_masters_file_that_is_not_there_warns_once_and_builds() {
     let deck = TempDeck::new(
         "masters-missing",
-        "---\ntitle: T\nmasters: gone.md\nlayout: body\n---\n\n::: pane main\nWords.\n:::\n",
+        "---\ntitle: T\nmasters: gone.md\nlayout: body\n---\n\n\
+         ::: pane main\nWords.\n:::\n\n---\n\n\
+         <!-- layout: two-up -->\n\n::: pane main\nMore.\n:::\n",
     );
     let mut cache = HashMap::new();
     let out = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("build");
+    assert_eq!(out.warnings.len(), 1, "{:?}", out.warnings);
     assert!(
-        out.warnings
-            .iter()
-            .any(|w| w.contains("masters") && w.contains("single pane")),
+        out.warnings[0].starts_with("masters: cannot read")
+            && out.warnings[0].ends_with("render as a single pane"),
         "{:?}",
         out.warnings
     );
     assert!(out.sections[0].contains("Words."));
+    assert!(out.sections[1].contains("More."));
 }
 
 // ---- `<!-- next -->`: one pane carried on to the next slide ----

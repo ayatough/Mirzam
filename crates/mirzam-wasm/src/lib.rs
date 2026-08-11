@@ -227,10 +227,16 @@ impl Renderer {
         // transcluded `![[…]]` does — so the preview draws the deck on the
         // same shapes the CLI does instead of falling back to single panes.
         if let Some(rel) = meta.masters_file() {
-            let (masters, master_warnings) =
-                mirzam_syntax::load_masters(rel, Path::new(""), &MapFiles(&self.files));
-            ctx.masters = masters;
-            warnings.extend(master_warnings);
+            match mirzam_syntax::load_masters(rel, Path::new(""), &MapFiles(&self.files)) {
+                Ok((masters, master_warnings)) => {
+                    ctx.masters = masters;
+                    warnings.extend(master_warnings);
+                }
+                Err(w) => {
+                    ctx.masters_unavailable = true;
+                    warnings.push(w);
+                }
+            }
         }
         for text in [&mut ctx.footer, &mut ctx.slide_number]
             .into_iter()
