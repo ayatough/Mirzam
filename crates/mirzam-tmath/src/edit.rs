@@ -36,6 +36,9 @@ pub enum MoveSlot {
     Before,
     /// A sibling after the destination.
     After,
+    /// Fills the destination, which must be a placeholder — what dropping
+    /// onto a hole means.
+    Into,
 }
 
 /// An empty slot: prints as `()`, renders as a hole.
@@ -180,6 +183,11 @@ pub fn delete(root: &mut Vec<Node>, path: &[usize]) -> Option<Node> {
             if last >= v.len() {
                 return None;
             }
+            // Taking the only thing out of a container leaves a hole, not an
+            // empty `sqrt()` with nothing left to aim an edit at.
+            if v.len() == 1 {
+                return Some(std::mem::replace(&mut v[0], placeholder()));
+            }
             Some(v.remove(last))
         }
         NodeKind::Frac(a, b) => {
@@ -269,6 +277,11 @@ pub fn move_node(root: &mut Vec<Node>, from: &[usize], to: &[usize], slot: MoveS
                 }
             }
         }
+        MoveSlot::Into => {
+            if !is_placeholder(target) {
+                return false;
+            }
+        }
     }
 
     // Whether taking `from` out shifts later sibling indices: it does when
@@ -280,9 +293,13 @@ pub fn move_node(root: &mut Vec<Node>, from: &[usize], to: &[usize], slot: MoveS
         if parent_path.is_empty() {
             true
         } else {
-            match node_at(root, parent_path).map(|p| &p.kind) {
-                Some(NodeKind::Script { .. }) => idx >= 1,
-                Some(k) => is_vec_parent(k),
+            match node_at(root, parent_path) {
+                Some(p) => match &p.kind {
+                    NodeKind::Script { .. } => idx >= 1,
+                    // A container's only child is swapped for a hole rather
+                    // than removed, so nothing shifts.
+                    k => is_vec_parent(k) && p.children().len() > 1,
+                },
                 None => return false,
             }
         }
@@ -327,6 +344,7 @@ pub fn move_node(root: &mut Vec<Node>, from: &[usize], to: &[usize], slot: MoveS
             };
             insert(root, parent_path, at, node)
         }
+        MoveSlot::Into => replace(root, &to, node.kind),
     }
 }
 
@@ -424,6 +442,19 @@ mod tests {
     }
 
     #[test]
+    fn deleting_a_containers_only_child_leaves_a_hole() {
+        let mut ast = parse("sqrt(2) y").unwrap();
+        let taken = delete(&mut ast, &[0, 0]).unwrap();
+        assert_eq!(print(&[taken]), "2");
+        assert_eq!(print(&ast), "sqrt(()) y");
+        assert!(is_placeholder(node_at(&ast, &[0, 0]).unwrap()));
+        // A root-level node still just leaves.
+        let mut ast = parse("x").unwrap();
+        delete(&mut ast, &[0]).unwrap();
+        assert!(ast.is_empty());
+    }
+
+    #[test]
     fn delete_from_a_script_slot_removes_the_slot() {
         let mut ast = parse("x_i^2").unwrap();
         // Children of the script: base x, sub i, sup 2.
@@ -481,6 +512,20 @@ mod tests {
         let mut ast = parse("a/b c").unwrap();
         let before = print(&ast);
         assert!(!move_node(&mut ast, &[1], &[0, 0], MoveSlot::Before));
+        assert_eq!(print(&ast), before);
+    }
+
+    /// Dropping a node onto a hole fills it — a drag from `c` to the empty
+    /// exponent is `Into`.
+    #[test]
+    fn move_into_a_hole() {
+        let mut ast = parse("x^() c").unwrap();
+        assert!(move_node(&mut ast, &[1], &[0, 1], MoveSlot::Into));
+        assert_eq!(print(&ast), "x^c");
+        // Not a hole: refused, unchanged.
+        let mut ast = parse("x^2 c").unwrap();
+        let before = print(&ast);
+        assert!(!move_node(&mut ast, &[1], &[0, 1], MoveSlot::Into));
         assert_eq!(print(&ast), before);
     }
 

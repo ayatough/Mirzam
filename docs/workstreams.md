@@ -970,7 +970,20 @@ Typst deck, the same tree lowered to LaTeX into a LaTeX deck (built once,
 feature, since LaTeX cannot be parsed back; in a LaTeX deck the cursor
 inside a formula inserts after it rather than mangling it.
 
-The proxy boxes then went away entirely. Step 4 as planned drew its own
+First-user feedback then removed the remaining ceremony. Put and Move —
+each a mode, each an extra tap — became a drop and a keystroke: dragging a
+palette symbol or a node onto the formula chooses the slot by where it
+lands (top is the shoulder, bottom the subscript, the sides its
+neighbours, a hole takes anything), with the slot previewed beside the
+finger; the entry places on Enter. The same feedback found the one real
+data-loss bug: the panel anchored its insert to byte offsets captured at
+open, and editing the deck underneath moved them — it anchors to the
+formula's *text* now and re-finds it. Two structural rules came out of the
+drag work: deleting a container's only child leaves a hole (an empty
+`sqrt()` has nothing left to aim an edit at), and dropping onto a hole is
+its own move slot.
+
+The proxy boxes went away before that. Step 4 as planned drew its own
 boxes because `math-core`'s output has no node identity — but nothing says
 the *editor's* preview must come from `math-core`. A second emitter draws
 the structure itself (`mfrac`, `msup`, `msqrt`) stamping `data-path` on

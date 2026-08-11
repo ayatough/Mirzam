@@ -229,7 +229,8 @@ fn apply(src: &str, op: &str) -> Result<String, String> {
                 Some("sub") => edit::MoveSlot::Sub,
                 Some("before") => edit::MoveSlot::Before,
                 Some("after") => edit::MoveSlot::After,
-                _ => return Err("`move` needs a `slot`: sup, sub, before or after".into()),
+                Some("into") => edit::MoveSlot::Into,
+                _ => return Err("`move` needs a `slot`: sup, sub, before, after or into".into()),
             };
             edit::move_node(&mut tree, &path_of("from")?, &path_of("to")?, slot)
         }

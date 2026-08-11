@@ -67,14 +67,25 @@
   #math-preview .math-error { color: var(--red); font-family: ui-monospace, monospace; font-size: 14px; }
   #math-src { display: block; text-align: center; padding: 0 14px 8px; color: var(--muted); background: var(--bg);
     font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; overflow-x: auto; white-space: nowrap; }
-  /* The tap surface: the typeset formula itself, one element per node. */
+  /* The tap surface: the typeset formula itself, one element per node.
+     touch-action: none on the nodes so a finger can drag them; a scroll
+     gesture that starts on the whitespace beside the formula still scrolls. */
   #math-boxes { padding: 12px; overflow: auto; text-align: center; }
   #math-boxes math { font-size: 30px; }
-  #math-boxes [data-path] { cursor: pointer; border-radius: 4px; padding: 1px 2px; }
+  #math-boxes [data-path] { cursor: pointer; border-radius: 4px; padding: 1px 2px; touch-action: none; }
   #math-boxes [data-path].sel { background: rgba(155,140,255,.22); outline: 1.5px solid var(--accent); }
-  #math-boxes [data-path].movesrc { background: rgba(192,183,255,.12); outline: 1.5px dashed var(--accent-2); }
+  #math-boxes [data-path].droptarget { background: rgba(114,198,162,.2); outline: 1.5px solid var(--green); }
   #math-boxes .mph { color: var(--muted); }
   .mhint { color: var(--muted); font-size: 13px; }
+  #math-syms button { touch-action: none; }
+  /* The thing under the finger while dragging: the glyph, and the slot it
+     would land in if released here. */
+  #math-ghost {
+    position: fixed; z-index: 40; pointer-events: none; display: none;
+    background: var(--raised); border: 1px solid var(--accent); border-radius: 8px;
+    padding: 4px 9px; font-size: 18px; box-shadow: 0 6px 18px rgba(0,0,0,.5);
+  }
+  #math-ghost .zone { font-size: 11px; color: var(--accent-2); margin-left: 6px; }
   #math-err { color: var(--red); font-size: 12px; padding: 0 14px; }
   #math-err:empty { display: none; }
   #math-note { font-size: 12px; color: var(--muted); padding: 4px 14px; display: flex; gap: 8px; align-items: center; }
@@ -149,14 +160,13 @@ Write Markdown. A --- on its own line starts a slide."></textarea>
     <div class="row" id="math-structs"></div>
     <div class="row" id="math-syms"></div>
     <div class="row">
-      <input id="math-entry" placeholder="x  42  alpha  sin(x) …" autocomplete="off">
-      <button type="button" id="math-put">Put</button>
-      <button type="button" id="math-move">Move</button>
+      <input id="math-entry" placeholder="type here — ↵ places it" autocomplete="off">
       <button type="button" id="math-parent" title="Select the enclosing node">▲</button>
       <button type="button" id="math-del">⌫</button>
     </div>
   </div>
 </div>
+<div id="math-ghost"></div>
 
 <script type="module">
 import init, { Renderer, math_state, math_apply } from './pkg/mirzam_wasm.js';
@@ -450,13 +460,11 @@ const mathEntry = document.getElementById('math-entry');
 
 let mathSrc = '';    // the formula being built, always Typst-math
 let mathSel = null;  // selected path (array of child indices), or null
-let mathRange = null; // [start, end] of the $...$ being edited, or null
-let mathInsertAt = null; // insertion offset override (after a LaTeX formula)
+let mathReplacing = false; // whether Insert replaces an existing formula
+let mathAnchor = ''; // the exact `$...$` the panel anchors to in the deck
 let mathLatex = '';  // the same formula as LaTeX, for LaTeX-dialect decks
 let mathTree = [];
 let mathSurface = ''; // the tap surface: MathML with data-path on every node
-let moveFrom = null;  // the path being moved, while Move is armed
-let movePendingTo = null; // the tapped destination, while the slot is chosen
 
 // Spellings the boxes show as the glyph the reader will get.
 const GLYPHS = {
@@ -510,43 +518,10 @@ function renderSurface() {
   if (mathSel) {
     mathBoxes.querySelector(`[data-path="${mathSel.join(',')}"]`)?.classList.add('sel');
   }
-  if (moveFrom) {
-    mathBoxes.querySelector(`[data-path="${moveFrom.join(',')}"]`)?.classList.add('movesrc');
-  }
 }
 
 function renderNote(typst) {
   mathNote.innerHTML = '';
-  // While a move is armed the note is its prompt.
-  if (moveFrom) {
-    if (movePendingTo) {
-      mathNote.append('Put it: ');
-      for (const [label, slot] of [['x²', 'sup'], ['x₂', 'sub'], ['⇤ before', 'before'], ['after ⇥', 'after']]) {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.textContent = label;
-        b.addEventListener('click', () => {
-          const op = { op: 'move', from: moveFrom, to: movePendingTo, slot };
-          moveFrom = null;
-          movePendingTo = null;
-          applyMath(op, () => null);
-        });
-        mathNote.appendChild(b);
-      }
-    } else {
-      mathNote.append('Moving — tap where it goes. ');
-    }
-    const cancel = document.createElement('button');
-    cancel.type = 'button';
-    cancel.textContent = 'Cancel';
-    cancel.addEventListener('click', () => {
-      moveFrom = null;
-      movePendingTo = null;
-      refreshMath();
-    });
-    mathNote.appendChild(cancel);
-    return;
-  }
   // The panel adapts to the deck's dialect rather than flipping the deck:
   // flipping would break every LaTeX formula already in it.
   if (!typst) {
@@ -565,25 +540,127 @@ function renderNote(typst) {
 
 // One listener for the whole surface: the deepest element with a path under
 // the finger is the node. Tapping the empty space beside the formula clears
-// the selection, so the next Put grows the formula at the end.
+// the selection, so the next placement grows the formula at the end.
 mathBoxes.addEventListener('click', (e) => {
+  // The click synthesised from a drop's own pointerup arrives within the
+  // same task; anything later is a new, intentional tap.
+  if (performance.now() - dragDropAt < 120) return;
   const hit = e.target.closest('[data-path]');
   if (!hit || !mathBoxes.contains(hit)) {
-    if (!moveFrom) {
-      mathSel = null;
-      renderSurface();
-    }
-    return;
-  }
-  const path = hit.dataset.path.split(',').map(Number);
-  if (moveFrom) {
-    movePendingTo = path;
+    mathSel = null;
     renderSurface();
-    renderNote(deckHasTypst(srcEl.value));
     return;
   }
-  mathSel = path;
+  mathSel = hit.dataset.path.split(',').map(Number);
   renderSurface();
+});
+
+// ---- Drag and drop ----
+// A symbol from the palette, or a node of the formula itself, can be dragged
+// onto the typeset formula. Where it lands inside the target decides the
+// slot: the top of a node is its shoulder, the bottom its subscript, the
+// left and right its neighbours — and a hole just takes what it is given.
+// A quick tap stays a tap: the drag begins only once the finger has moved.
+const ghost = document.getElementById('math-ghost');
+let drag = null;     // {src, label, active, x0, y0}
+// The click right after a completed drop must not re-select; but a drop is
+// not always followed by one, so this is a moment, not a flag a later tap
+// could inherit.
+let dragDropAt = 0;
+
+function dragSourceDown(e, src, label) {
+  if (e.button !== undefined && e.button !== 0) return;
+  drag = { src, label, active: false, x0: e.clientX, y0: e.clientY };
+}
+
+const ZONE_LABEL = { into: '□', sup: 'x²', sub: 'x₂', before: '⇤', after: '⇥' };
+
+function dropZoneAt(x, y) {
+  const el = document.elementFromPoint(x, y)?.closest('#math-boxes [data-path]');
+  if (!el) return null;
+  const path = el.dataset.path.split(',').map(Number);
+  if (drag.src.kind === 'node' && path.join(',') === drag.src.path.join(',')) return null;
+  const node = nodeAtPath(mathTree, path);
+  if (node && node.ph) return { el, path, zone: 'into' };
+  const r = el.getBoundingClientRect();
+  const fy = (y - r.top) / r.height;
+  const fx = (x - r.left) / r.width;
+  const zone = fy < 0.4 ? 'sup' : fy > 0.6 ? 'sub' : fx < 0.5 ? 'before' : 'after';
+  return { el, path, zone };
+}
+
+document.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  if (!drag.active) {
+    if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 8) return;
+    drag.active = true;
+    ghost.style.display = 'block';
+  }
+  ghost.style.left = `${e.clientX + 14}px`;
+  ghost.style.top = `${e.clientY - 34}px`;
+  mathBoxes.querySelector('.droptarget')?.classList.remove('droptarget');
+  const hit = dropZoneAt(e.clientX, e.clientY);
+  if (hit) hit.el.classList.add('droptarget');
+  ghost.innerHTML = '';
+  ghost.append(drag.label);
+  const z = document.createElement('span');
+  z.className = 'zone';
+  z.textContent = hit ? ZONE_LABEL[hit.zone] : '';
+  ghost.appendChild(z);
+});
+
+function endDrag(e, drop) {
+  if (!drag) return;
+  const wasActive = drag.active;
+  const src = drag.src;
+  const hit = wasActive && drop ? dropZoneAt(e.clientX, e.clientY) : null;
+  drag = null;
+  ghost.style.display = 'none';
+  mathBoxes.querySelector('.droptarget')?.classList.remove('droptarget');
+  if (!hit) return;
+  dragDropAt = performance.now();
+  if (src.kind === 'node') {
+    applyMath({ op: 'move', from: src.path, to: hit.path, slot: hit.zone }, () => null);
+    return;
+  }
+  if (hit.zone === 'into') {
+    applyMath({ op: 'replace', path: hit.path, src: src.text }, () => hit.path);
+  } else if (hit.zone === 'before' || hit.zone === 'after') {
+    const parent = hit.path.slice(0, -1);
+    const index = hit.path[hit.path.length - 1] + (hit.zone === 'after' ? 1 : 0);
+    applyMath({ op: 'insert', parent, index, src: src.text }, () => [...parent, index]);
+  } else {
+    // A palette symbol onto a shoulder: make the slot, then fill the hole
+    // it opened — two operations, the second aimed with the first's tree.
+    const first = JSON.parse(math_apply(mathSrc, JSON.stringify({ op: hit.zone, path: hit.path })));
+    if (!first.ok) {
+      mathErr.textContent = first.error;
+      return;
+    }
+    const node = nodeAtPath(first.tree, hit.path);
+    const hole = hit.zone === 'sub' ? 1 : 1 + (node && node.sub ? 1 : 0);
+    mathSrc = first.src;
+    mathTree = first.tree;
+    applyMath({ op: 'replace', path: [...hit.path, hole], src: src.text }, () => [...hit.path, hole]);
+  }
+}
+
+document.addEventListener('pointerup', (e) => endDrag(e, true));
+document.addEventListener('pointercancel', (e) => endDrag(e, false));
+
+// Sources: the palette symbols (by delegation — the buttons are built after
+// this line runs)…
+document.getElementById('math-syms').addEventListener('pointerdown', (e) => {
+  const b = e.target.closest('button');
+  if (b) dragSourceDown(e, { kind: 'text', text: b.title }, b.textContent);
+});
+// …and the formula's own nodes, likewise: the surface is rebuilt on every
+// edit, the listener is not.
+mathBoxes.addEventListener('pointerdown', (e) => {
+  const hit = e.target.closest('[data-path]');
+  if (!hit || !mathBoxes.contains(hit)) return;
+  const path = hit.dataset.path.split(',').map(Number);
+  dragSourceDown(e, { kind: 'node', path }, hit.textContent.trim().slice(0, 6) || '▣');
 });
 
 function applyMath(op, selectAfter) {
@@ -677,12 +754,10 @@ for (const s of SYMS) {
   document.getElementById('math-syms').appendChild(b);
 }
 
-document.getElementById('math-put').addEventListener('click', () => {
-  put(mathEntry.value.trim());
-  mathEntry.value = '';
-});
+// The entry has no button: Enter or space places what was typed, which is
+// what typing a formula out feels like.
 mathEntry.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
+  if (e.key === 'Enter' || e.key === ' ') {
     e.preventDefault();
     put(mathEntry.value.trim());
     mathEntry.value = '';
@@ -691,26 +766,6 @@ mathEntry.addEventListener('keydown', (e) => {
 document.getElementById('math-del').addEventListener('click', () => {
   if (!mathSel) return;
   applyMath({ op: 'delete', path: mathSel }, () => null);
-});
-
-// Move: arm with a selection, tap the destination, choose the slot. The
-// deletion and the placement are one wasm-side operation, so the paths a
-// finger chose stay meaningful.
-document.getElementById('math-move').addEventListener('click', () => {
-  if (moveFrom) {
-    moveFrom = null;
-    movePendingTo = null;
-    refreshMath();
-    return;
-  }
-  if (!mathSel) {
-    mathErr.textContent = 'Select what to move first.';
-    return;
-  }
-  moveFrom = mathSel;
-  mathSel = null;
-  movePendingTo = null;
-  refreshMath();
 });
 
 // A finger always lands on the deepest node; this steps the selection out to
@@ -738,10 +793,10 @@ function setTypstFrontmatter() {
   const inserted = m ? 'math: typst\n' : '---\nmath: typst\n---\n\n';
   srcEl.value = v.slice(0, insPos) + inserted + v.slice(insPos);
   // Everything after the insertion moved; keep the cursor with its text.
+  // The panel's own anchor is a string, not an offset, so it needs nothing.
   if (cursor >= insPos) {
     srcEl.selectionStart = srcEl.selectionEnd = cursor + inserted.length;
   }
-  if (mathInsertAt !== null && mathInsertAt >= insPos) mathInsertAt += inserted.length;
   localStorage.setItem('mirzam-src', srcEl.value);
   fullRender(srcEl.value);
 }
@@ -750,22 +805,24 @@ document.getElementById('math-open').addEventListener('click', () => {
   setPane('edit');
   const v = srcEl.value;
   const pos = srcEl.selectionStart ?? 0;
-  mathRange = null;
-  mathInsertAt = null;
+  mathAnchor = '';
+  mathReplacing = false;
   mathSrc = '';
   // The cursor inside an existing $...$ means "edit this one" — when the
   // deck's formulas are Typst-math, the only dialect this panel reads. In a
   // LaTeX deck the formula cannot be loaded, and a new one must not be
-  // dropped into the middle of it, so it goes right after instead.
+  // dropped into the middle of it, so it goes right after instead. The
+  // anchor is the matched *text*, not its offsets: the deck can be edited
+  // underneath the open panel, and text can be found again where an offset
+  // silently points somewhere else.
   const re = /\$([^$\n]+)\$/g;
   let m;
   while ((m = re.exec(v))) {
     if (pos >= m.index && pos <= m.index + m[0].length) {
+      mathAnchor = m[0];
       if (deckHasTypst(v)) {
-        mathRange = [m.index, m.index + m[0].length];
+        mathReplacing = true;
         mathSrc = m[1].trim();
-      } else {
-        mathInsertAt = m.index + m[0].length;
       }
       break;
     }
@@ -786,16 +843,28 @@ document.getElementById('math-insert').addEventListener('click', () => {
     // when the deck reads it, its LaTeX twin when the deck reads LaTeX.
     let text = `$${deckHasTypst(srcEl.value) ? mathSrc : mathLatex}$`;
     const v = srcEl.value;
-    let [from, to] = mathRange ??
-      (mathInsertAt !== null
-        ? [mathInsertAt, mathInsertAt]
-        : [srcEl.selectionStart ?? v.length, srcEl.selectionEnd ?? v.length]);
-    // A cursor that sits inside the frontmatter - or was never placed at all -
-    // must not drop a formula into the middle of the YAML. Go to the end.
-    const fm = /^---\r?\n[\s\S]*?\r?\n---/.exec(v);
-    if (!mathRange && fm && from < fm[0].length + 1) {
-      from = to = v.length;
-      if (!v.endsWith('\n\n')) text = (v.endsWith('\n') ? '\n' : '\n\n') + text;
+    let from;
+    let to;
+    // Find the formula the panel anchors to, wherever the deck's edits have
+    // pushed it since the panel opened.
+    const at = mathAnchor ? v.indexOf(mathAnchor) : -1;
+    if (at >= 0) {
+      if (mathReplacing) {
+        from = at;
+        to = at + mathAnchor.length;
+      } else {
+        from = to = at + mathAnchor.length;
+      }
+    } else {
+      from = srcEl.selectionStart ?? v.length;
+      to = srcEl.selectionEnd ?? v.length;
+      // A cursor inside the frontmatter — or never placed, or an anchor the
+      // edits deleted — must not drop a formula into the YAML. Go to the end.
+      const fm = /^---\r?\n[\s\S]*?\r?\n---/.exec(v);
+      if (fm && from < fm[0].length + 1) {
+        from = to = v.length;
+        if (!v.endsWith('\n\n')) text = (v.endsWith('\n') ? '\n' : '\n\n') + text;
+      }
     }
     srcEl.value = v.slice(0, from) + text + v.slice(to);
     srcEl.selectionStart = srcEl.selectionEnd = from + text.length;

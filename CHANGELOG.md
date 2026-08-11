@@ -121,11 +121,19 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   is **the typeset formula itself**: every element of the rendered
   mathematics carries the node it draws, so a finger on the denominator
   selects the denominator. Tap a node and give it a superscript, a fraction
-  bar, a root or an accent from the palette; **Move** relocates a node in
-  two taps (tap it, tap where it goes, pick shoulder/subscript/before/after)
-  — `a b c`, then b onto a's shoulder, is three taps. `▲` steps the
+  bar, a root or an accent from the palette; **drag** a symbol from the
+  palette — or any node of the formula itself — onto the formula, and where
+  it lands decides the slot: the top of a node is its shoulder, the bottom
+  its subscript, the sides its neighbours, and a hole takes what it is
+  given, with the slot previewed beside the finger before release — `a b c`,
+  then b dragged onto a, is one gesture. Typing in the entry places on
+  Enter or space; there is no Put and no Move button. `▲` steps the
   selection out to the enclosing node when a finger lands deeper than
-  intended. The formula lands in the Markdown as ordinary `$...$` text — a
+  intended. Deleting a container's only child leaves a visible hole to drop
+  into, rather than an empty `sqrt()` with nothing left to aim at. Editing
+  the deck text while the panel is open no longer corrupts the insert: the
+  panel anchors to the formula's text and finds it again, not to offsets
+  the edit just moved. The formula lands in the Markdown as ordinary `$...$` text — a
   deck edited this way is indistinguishable from one typed by hand. Opening the panel with the cursor inside an existing
   formula loads it for editing. **The panel adapts to the deck's dialect
   rather than flipping the deck**: into a `math: typst` deck it writes
