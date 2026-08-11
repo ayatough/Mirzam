@@ -507,6 +507,12 @@ pub struct SlideSource {
     pub loose: String,
     /// Speaker notes.
     pub notes: Vec<String>,
+    /// `<!-- theme: nord -->`: the palette this one slide is drawn in,
+    /// whatever the deck's own is. `None` means it inherits the deck's.
+    pub theme: Option<String>,
+    /// `<!-- mode: dark -->`: light or dark for this one slide, independent of
+    /// the deck and of the reader's `D` key.
+    pub mode: Option<String>,
     /// ```shape blocks; multiple blocks are concatenated.
     pub shapes: Vec<String>,
     /// ```connect blocks.
@@ -785,6 +791,14 @@ pub fn parse_slide(src: &str) -> SlideSource {
                 slide.notes.push(note);
                 continue;
             }
+            if let Some((key, value)) = parse_setting_comment(&comment) {
+                match key {
+                    "theme" => slide.theme = Some(value.to_string()),
+                    "mode" => slide.mode = Some(value.to_string()),
+                    _ => unreachable!("parse_setting_comment only returns known keys"),
+                }
+                continue;
+            }
             // Non-note comments stay in the body, hidden as HTML comments.
             slide.loose.push_str(&comment);
             slide.loose.push('\n');
@@ -818,6 +832,28 @@ fn parse_pane_open(rest: &str) -> Option<(String, String)> {
         .unwrap_or("")
         .to_string();
     Some((name, attrs))
+}
+
+/// A per-slide setting written as an HTML comment: `<!-- theme: nord -->`.
+///
+/// An HTML comment for the same reason a speaker note is one — a plain
+/// CommonMark reader shows nothing at all, so a slide that dresses itself
+/// differently still reads as ordinary Markdown on GitHub.
+///
+/// Only the keys listed here are settings; every other comment stays in the
+/// body as a comment, so an author's `<!-- TODO: rewrite this -->` is not
+/// quietly eaten by a parser looking for directives.
+fn parse_setting_comment(comment: &str) -> Option<(&'static str, String)> {
+    let inner = comment.strip_prefix("<!--")?;
+    let inner = inner.strip_suffix("-->").unwrap_or(inner).trim();
+    let (key, value) = inner.split_once(':')?;
+    let key = key.trim().to_ascii_lowercase();
+    let key = ["theme", "mode"].into_iter().find(|k| *k == key)?;
+    let value = value.trim();
+    if value.is_empty() {
+        return None;
+    }
+    Some((key, value.to_string()))
 }
 
 fn parse_note_comment(comment: &str) -> Option<String> {
@@ -1125,6 +1161,26 @@ loose text
         assert_eq!(s.connects.len(), 1);
         assert!(s.connects[0].contains("#x -> #y"));
         assert_eq!(s.notes, vec!["remember this"]);
+    }
+
+    #[test]
+    fn a_slide_can_set_its_own_theme_and_mode() {
+        let s = parse_slide("<!-- theme: wuwei -->\n<!-- mode: dark -->\n\n# Quiet\n");
+        assert_eq!(s.theme.as_deref(), Some("wuwei"));
+        assert_eq!(s.mode.as_deref(), Some("dark"));
+        // The setting is a comment, so nothing of it survives into the body.
+        assert!(!s.loose.contains("theme"));
+        assert!(s.loose.contains("# Quiet"));
+    }
+
+    /// Every other comment is the author's, and must come out the far side
+    /// unread — a directive parser that swallows `<!-- TODO -->` loses work.
+    #[test]
+    fn a_comment_that_is_not_a_setting_stays_in_the_body() {
+        let s = parse_slide("<!-- TODO: rewrite this -->\n<!-- theme: -->\n\ntext\n");
+        assert_eq!(s.theme, None);
+        assert!(s.loose.contains("<!-- TODO: rewrite this -->"));
+        assert!(s.loose.contains("<!-- theme: -->"));
     }
 
     #[test]

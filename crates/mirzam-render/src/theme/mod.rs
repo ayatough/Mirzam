@@ -5,8 +5,17 @@
 //!   token set for both light and dark mode ([C3] in `docs/workstreams.md`).
 //!   Every selector is wrapped in `:where()`, which contributes no
 //!   specificity: a deck's own `css:` overrides tokens with a plain `:root`
-//!   block, and `:root[data-theme="x"]` would otherwise outrank it no matter
+//!   block, and `[data-theme="x"]` would otherwise outrank it no matter
 //!   what order the stylesheets appear in.
+//!
+//!   The selectors are written against *any* element rather than `:root`,
+//!   because a theme is not only a property of the deck: a slide or a single
+//!   pane can carry `data-theme` of its own, and custom properties inherit, so
+//!   setting the token block on that element re-themes everything inside it.
+//!   The dark blocks therefore also have to answer "which mode is this element
+//!   in", which is the nearest `data-mode` above it — hence the
+//!   `:not([data-mode="light"] *)` guard, which keeps a pane pinned to light
+//!   from being pulled dark by the deck around it.
 //! - `base.css` — layout, typography, panes; everything that reads a token
 //!   rather than defining one, shared by every theme
 //! - `print.css` — overrides applied for PDF export
@@ -55,9 +64,16 @@ const THEMES: &[(&str, &str)] = &[
     ("solarized", include_str!("themes/solarized.css")),
     ("vscode", include_str!("themes/vscode.css")),
     ("mirzam", include_str!("themes/mirzam.css")),
+    ("wuwei", include_str!("themes/wuwei.css")),
 ];
 
-pub const THEME_NAMES: &[&str] = &["default", "nord", "solarized", "vscode", "mirzam"];
+pub const THEME_NAMES: &[&str] = &["default", "nord", "solarized", "vscode", "mirzam", "wuwei"];
+
+/// The name as a built-in theme, or `None`. The one place a theme name is
+/// checked, so a name reaching the markup is always one there are tokens for.
+pub fn known_theme(name: &str) -> Option<&'static str> {
+    THEME_NAMES.iter().find(|n| **n == name).copied()
+}
 
 /// Token CSS for a named theme. Unknown names fall back to `default`; call
 /// [`theme_warning`] first if the name came from frontmatter and an unknown
@@ -69,9 +85,74 @@ pub fn theme_tokens(name: &str) -> &'static str {
         .map_or(THEMES[0].1, |(_, css)| css)
 }
 
-/// Full CSS for a named theme: its tokens, then the shared layout rules.
-pub fn theme_css(name: &str) -> String {
-    format!("{}{}", theme_tokens(name), BASE_CSS)
+/// Full CSS for a page: the token set of every theme it uses, then the shared
+/// layout rules.
+///
+/// A deck carries the tokens of the themes it actually mentions, in the order
+/// given, so a deck that names none is no larger than it was before slides and
+/// panes could re-theme themselves. Repeats and unknown names are dropped;
+/// an empty list still yields `default`, because `base.css` reads tokens that
+/// have to come from somewhere.
+pub fn theme_css_for(names: &[&str]) -> String {
+    let mut out = String::new();
+    let mut seen: Vec<&str> = Vec::new();
+    for name in names {
+        let Some(name) = known_theme(name) else {
+            continue;
+        };
+        if seen.contains(&name) {
+            continue;
+        }
+        seen.push(name);
+        out.push_str(theme_tokens(name));
+    }
+    if seen.is_empty() {
+        out.push_str(theme_tokens("default"));
+    }
+    out.push_str(BASE_CSS);
+    out
+}
+
+/// The `data-theme`/`data-mode` attributes for an element *inside* the deck —
+/// a slide or a pane that asks for a palette of its own.
+///
+/// Silently drops anything that is not a built-in theme or a known mode, the
+/// same way [`theme_attrs`](crate::assemble_page) does for the deck: an
+/// element renders in the palette it inherits rather than failing the build.
+/// [`scope_warnings`] is what reports the dropped name, and is called where
+/// the slide is parsed rather than here.
+pub fn scope_attrs(theme: Option<&str>, mode: Option<&str>) -> String {
+    let mut out = String::new();
+    if let Some(name) = theme.and_then(known_theme) {
+        out.push_str(&format!(" data-theme=\"{name}\""));
+    }
+    if let Some(m) = normalize_mode(mode) {
+        out.push_str(&format!(" data-mode=\"{m}\""));
+    }
+    out
+}
+
+/// Warnings for a `theme=`/`mode=` pair that named something unknown, prefixed
+/// with `where` so the author is told which pane or slide to look at.
+pub fn scope_warnings(where_: &str, theme: Option<&str>, mode: Option<&str>) -> Vec<String> {
+    let mut out = Vec::new();
+    if let Some(name) = theme {
+        if known_theme(name).is_none() {
+            out.push(format!(
+                "{where_}: unknown theme `{name}`; keeping the surrounding theme. \
+                 Built-in themes: {}",
+                THEME_NAMES.join(", ")
+            ));
+        }
+    }
+    if let Some(m) = mode {
+        if normalize_mode(Some(m)).is_none() {
+            out.push(format!(
+                "{where_}: unknown mode `{m}`; expected `light` or `dark`"
+            ));
+        }
+    }
+    out
 }
 
 /// `None` when there is nothing to report (no theme requested, or a known
@@ -185,11 +266,11 @@ mod tests {
 
     #[test]
     fn theme_css_is_tokens_then_base() {
-        let css = theme_css("default");
+        let css = theme_css_for(&["default"]);
         // Order, not position: a sheet may open with a comment, and asserting
         // on the first characters made adding one to a theme look like a
         // regression in how the CSS is assembled.
-        let tokens = css.find(":where(:root[data-theme=\"default\"])");
+        let tokens = css.find(":where([data-theme=\"default\"])");
         let base = css.find("* { box-sizing: border-box; }");
         assert!(tokens.is_some() && base.is_some());
         assert!(
@@ -221,6 +302,59 @@ mod tests {
     #[test]
     fn unknown_theme_falls_back_to_default_css() {
         assert_eq!(theme_tokens("nope"), theme_tokens("default"));
+    }
+
+    /// A page carries the tokens of every theme it uses and no others: that is
+    /// what lets a pane switch palette, and what keeps a deck that switches
+    /// nothing the size it always was.
+    #[test]
+    fn a_page_carries_the_tokens_of_each_theme_it_uses() {
+        let css = theme_css_for(&["nord", "wuwei"]);
+        assert!(css.contains(":where([data-theme=\"nord\"])"));
+        assert!(css.contains(":where([data-theme=\"wuwei\"])"));
+        assert!(!css.contains(":where([data-theme=\"solarized\"])"));
+        // base.css once, after the tokens.
+        assert_eq!(css.matches("* { box-sizing: border-box; }").count(), 1);
+        assert!(
+            css.find(":where([data-theme=\"wuwei\"])") < css.find("* { box-sizing: border-box; }")
+        );
+    }
+
+    #[test]
+    fn theme_css_for_drops_repeats_and_unknown_names_and_never_ends_up_empty() {
+        let css = theme_css_for(&["nord", "nord", "nope"]);
+        assert_eq!(css.matches(":where([data-theme=\"nord\"])").count(), 1);
+        assert!(!css.contains("data-theme=\"nope\""));
+        // Nothing usable named: base.css still needs tokens to read.
+        assert!(theme_css_for(&["nope"]).contains(":where([data-theme=\"default\"])"));
+        assert!(theme_css_for(&[]).contains(":where([data-theme=\"default\"])"));
+    }
+
+    #[test]
+    fn scope_attrs_emits_only_what_it_recognises() {
+        assert_eq!(
+            scope_attrs(Some("nord"), Some("Dark")),
+            " data-theme=\"nord\" data-mode=\"dark\""
+        );
+        assert_eq!(scope_attrs(Some("wuwei"), None), " data-theme=\"wuwei\"");
+        // An unknown name leaves the element inheriting what surrounds it,
+        // rather than dropping it to `default` the way the deck's own theme
+        // does: a pane has something to inherit and a page does not.
+        assert_eq!(scope_attrs(Some("nope"), Some("sideways")), "");
+        assert_eq!(scope_attrs(None, None), "");
+    }
+
+    #[test]
+    fn scope_warnings_name_the_place_and_the_alternatives() {
+        assert!(scope_warnings("slide 2, pane `fig`", Some("nord"), Some("dark")).is_empty());
+        let w = scope_warnings("slide 2, pane `fig`", Some("nope"), None);
+        assert_eq!(w.len(), 1);
+        assert!(w[0].contains("pane `fig`"));
+        assert!(w[0].contains("nope"));
+        assert!(w[0].contains("wuwei"));
+        let w = scope_warnings("slide 2", None, Some("sideways"));
+        assert_eq!(w.len(), 1);
+        assert!(w[0].contains("light` or `dark"));
     }
 
     /// `default` and `mirzam` are the same palette under two names, so that a
@@ -400,15 +534,17 @@ mod tests {
     /// through each other until someone noticed.
     #[test]
     fn stylesheets_have_no_stray_comment_markers() {
-        for (name, css) in [
-            ("base.css", BASE_CSS),
-            ("print.css", PRINT_CSS),
-            ("themes/default.css", theme_tokens("default")),
-            ("themes/nord.css", theme_tokens("nord")),
-            ("themes/solarized.css", theme_tokens("solarized")),
-            ("themes/vscode.css", theme_tokens("vscode")),
-            ("themes/mirzam.css", theme_tokens("mirzam")),
-        ] {
+        // Built from THEMES rather than listed by hand, so a theme added later
+        // is covered without anyone remembering to add it here.
+        let sheets = [("base.css", BASE_CSS), ("print.css", PRINT_CSS)]
+            .into_iter()
+            .map(|(n, css)| (n.to_string(), css))
+            .chain(
+                THEMES
+                    .iter()
+                    .map(|(n, css)| (format!("themes/{n}.css"), *css)),
+            );
+        for (name, css) in sheets {
             // CSS comments do not nest: `/*` inside one is ordinary text, and
             // the first `*/` ends it. So the scan alternates strictly between
             // code and comment, and a `*/` found in *code* is the mistake.
@@ -564,15 +700,18 @@ mod contrast_tests {
     }
 
     fn light_selector(name: &str) -> String {
-        format!(":where(:root[data-theme=\"{name}\"]) {{")
+        format!(":where([data-theme=\"{name}\"]) {{")
     }
 
+    /// The *last* selector of the explicit-dark block, which is the one that
+    /// ends in ` {`; the block's other selector matches an element inside
+    /// something dark, and is checked by `dark_tokens_reach_a_nested_element`.
     fn dark_selector(name: &str) -> String {
-        format!(":where(:root[data-theme=\"{name}\"][data-mode=\"dark\"]) {{")
+        format!(":where([data-theme=\"{name}\"][data-mode=\"dark\"]) {{")
     }
 
     fn auto_dark_selector(name: &str) -> String {
-        format!(":where(:root[data-theme=\"{name}\"]:not([data-mode=\"light\"])) {{")
+        format!(":where([data-theme=\"{name}\"]:not([data-mode=\"light\"]):not([data-mode=\"light\"] *)) {{")
     }
 
     const ALL_TOKENS: &[&str] = &[
@@ -708,6 +847,48 @@ mod contrast_tests {
                 "{name}: the @media (prefers-color-scheme: dark) block must match \
                  the explicit [data-mode=\"dark\"] block exactly"
             );
+        }
+    }
+
+    /// A slide or a pane carries `data-theme` while the deck's `data-mode`
+    /// stays on `<html>`, so every theme needs a dark block that matches an
+    /// element *inside* something dark. Without it, a pane that switches
+    /// palette inside a dark deck comes out in that palette's light mode —
+    /// white paper in the middle of a dark slide.
+    #[test]
+    fn dark_tokens_reach_a_nested_element() {
+        for (name, css) in THEMES {
+            let nested = format!(
+                ":where([data-mode=\"dark\"] [data-theme=\"{name}\"]\
+                 :not([data-mode=\"light\"]):not([data-mode=\"light\"] *))"
+            );
+            assert!(
+                css.contains(&nested),
+                "{name}: no dark block matches a nested element"
+            );
+        }
+    }
+
+    /// The mirror of the above: a pane that pins itself to `mode=light` inside
+    /// a dark deck must not be dragged dark by the deck around it, which is
+    /// what the `:not([data-mode="light"] *)` guard on every dark selector is
+    /// for.
+    #[test]
+    fn a_theme_never_binds_its_tokens_to_the_root_alone() {
+        for (name, css) in THEMES {
+            assert!(
+                !css.contains(":root[data-theme="),
+                "{name}: tokens are pinned to :root, so a slide or pane cannot carry this theme"
+            );
+            for line in css.lines().filter(|l| l.contains("[data-mode=\"dark\"]")) {
+                assert!(
+                    line.contains(":not([data-mode=\"light\"] *)")
+                        || line.contains("[data-theme=\"{name}\"][data-mode=\"dark\"]")
+                        || line.trim().ends_with("[data-mode=\"dark\"]) {"),
+                    "{name}: `{}` can pull a pane pinned to light into dark",
+                    line.trim()
+                );
+            }
         }
     }
 

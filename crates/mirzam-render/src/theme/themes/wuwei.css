@@ -1,0 +1,88 @@
+/* wuwei — 無為, Laozi's "without contrivance".
+
+   A minimal theme: warm greys and nothing else. There is no accent colour in
+   the usual sense, because the point of the palette is that no element is
+   fighting for attention — a slide is paper and ink, and the emphasis comes
+   from what the words are, where they sit, and how much space is left around
+   them.
+
+   Two properties are deliberate rather than accidental:
+
+   - **Warm, not neutral.** Every grey is mixed towards the ink's own hue
+     (roughly 30-40° on the wheel), so the paper reads as paper rather than as
+     a switched-off screen. A pure `#808080` next to these looks blue.
+   - **Softer than the other built-ins.** Body text is around 9:1 against its
+     background, not the 12-14:1 a black-on-white theme reaches. That clears
+     the 4.5:1 the contrast test enforces with room to spare while staying
+     quiet enough to read for an hour; it is a low-contrast theme, not an
+     under-contrast one.
+
+   The six chart series are the hard part of a greyscale palette: without hue
+   to separate them they can only be told apart by lightness, and six steps of
+   lightness is more than an audience can hold. So each series keeps a
+   *whisper* of hue — taupe, sand, near-black, olive, rose, slate — all far
+   enough down in saturation to belong to the same grey family, and each is
+   spaced in lightness from its neighbours. A chart in this theme still wants
+   its labels; that is the trade the theme is making, not an oversight.
+
+   Dark mode is its own palette, not an inversion: the paper becomes warm
+   near-black, the ink warm bone, and each chart series is re-picked so it sits
+   the same distance off its new background. */
+
+:where([data-theme="wuwei"]) {
+  --mz-bg: #e6e1d8;
+  --mz-slide-bg: #faf8f4;
+  --mz-fg: #4a453e;
+  --mz-muted: #6e675d;
+  --mz-border: #ded8cf;
+  --mz-surface: #f1ede6;
+  --mz-shape-fill: #ece7de;
+  --mz-accent1: #6b5f52;
+  --mz-accent2: #8b8175;
+  --mz-chart3: #4f4a44;
+  --mz-chart4: #7d7a63;
+  --mz-chart5: #8a6f6a;
+  --mz-chart6: #5c6672;
+  --mz-danger-bg: #f6ece7;
+  --mz-danger-fg: #8c3a2e;
+  --mz-danger-border: #b06a5c;
+}
+@media (prefers-color-scheme: dark) {
+  :where([data-theme="wuwei"]:not([data-mode="light"]):not([data-mode="light"] *)) {
+    --mz-bg: #100e0c;
+    --mz-slide-bg: #1c1a17;
+    --mz-fg: #c9c3b8;
+    --mz-muted: #958d7f;
+    --mz-border: #35302a;
+    --mz-surface: #252220;
+    --mz-shape-fill: #262320;
+    --mz-accent1: #b8a892;
+    --mz-accent2: #98918a;
+    --mz-chart3: #d6cdbd;
+    --mz-chart4: #a3a081;
+    --mz-chart5: #b58e86;
+    --mz-chart6: #8a97a3;
+    --mz-danger-bg: #2b1b17;
+    --mz-danger-fg: #e0a094;
+    --mz-danger-border: #a4655a;
+  }
+}
+:where([data-mode="dark"] [data-theme="wuwei"]:not([data-mode="light"]):not([data-mode="light"] *)),
+:where([data-theme="wuwei"][data-mode="dark"]) {
+  --mz-bg: #100e0c;
+  --mz-slide-bg: #1c1a17;
+  --mz-fg: #c9c3b8;
+  --mz-muted: #958d7f;
+  --mz-border: #35302a;
+  --mz-surface: #252220;
+  --mz-shape-fill: #262320;
+  --mz-accent1: #b8a892;
+  --mz-accent2: #98918a;
+  --mz-chart3: #d6cdbd;
+  --mz-chart4: #a3a081;
+  --mz-chart5: #b58e86;
+  --mz-chart6: #8a97a3;
+  --mz-danger-bg: #2b1b17;
+  --mz-danger-fg: #e0a094;
+  --mz-danger-border: #a4655a;
+}

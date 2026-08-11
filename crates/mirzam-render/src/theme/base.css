@@ -53,6 +53,18 @@ section.slide { background: var(--mz-slide-bg); border-radius: inherit; }
 }
 /* A heading band that is drawn too short would silently clip its heading.
    Allow the text to stay legible instead, and let the author widen the band. */
+/* A pane in a palette of its own paints its own paper. The tokens are set on
+   the pane element, so without this the words would change colour and the
+   surface under them would stay the slide's — which reads as a bug rather than
+   as a second theme. It borrows `.card`'s shape for the same reason a pane
+   with a background image does: a differently-coloured rectangle needs an edge
+   to be a rectangle at all. */
+.pane[data-theme], .pane[data-mode] {
+  background: var(--mz-slide-bg);
+  color: var(--mz-fg);
+  border-radius: 8px;
+  padding: 18px 22px;
+}
 .pane-head, .pane-title { overflow: visible; }
 .pane > :first-child { margin-top: 0; }
 .pane > :last-child { margin-bottom: 0; }

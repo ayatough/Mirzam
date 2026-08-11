@@ -44,6 +44,7 @@ written.
 | `solarized` | Solarized |
 | `vscode` | VS Code Light+/Dark+ |
 | `mirzam` | Mirzam's own |
+| `wuwei` | warm greyscale |
 :::
 
 ::: pane how {valign=middle}
@@ -100,6 +101,48 @@ reload — which is usually what you want for something you are emailing to
 somebody.
 
 `D` only lasts for that reading session; it changes nothing on disk.
+:::
+
+---
+
+```pane
++--------------------------------------------+
+|                                            |
+|  head                                      |
++--------------------+-----------+-----------+
+|                    |           |           |
+|                    |           |           |
+|  src               |  day      |  night    |
+|                    |           |           |
+|                    |           |           |
++--------------------+-----------+-----------+
+```
+
+::: pane head
+[Per pane]{.eyebrow}
+## Two palettes on one slide
+:::
+
+::: pane src {.card valign=middle}
+```markdown
+::: pane day {theme=wuwei mode=light}
+Read at a desk.
+:::
+```
+
+- A whole slide asks in a comment: `<!-- theme: nord -->`
+- `theme=` alone follows the deck's mode; either may be given alone
+- A pane's theme beats its slide's, which beats the deck's
+:::
+
+::: pane day {theme=wuwei mode=light valign=middle}
+### Day
+Two palettes on one slide — this half is **wuwei** in light.
+:::
+
+::: pane night {theme=wuwei mode=dark valign=middle}
+### Night
+The same theme drawn again for dark, rather than inverted.
 :::
 
 ---

@@ -43,6 +43,10 @@ written.</p>
 <td><code>mirzam</code></td>
 <td>Mirzam's own</td>
 </tr>
+<tr>
+<td><code>wuwei</code></td>
+<td>warm greyscale</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -84,6 +88,29 @@ somebody.</p>
 </div>
 </section>
 <section class="slide" data-index="3">
+<div class="grid" style='grid-template-columns:20fr 11fr 11fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head head" "src day night"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Per pane</span></p>
+<h2>Two palettes on one slide</h2>
+</div>
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">::: pane day {theme=wuwei mode=light}
+Read at a desk.
+:::
+</code></pre>
+<ul>
+<li>A whole slide asks in a comment: <code>&lt;!-- theme: nord --&gt;</code></li>
+<li><code>theme=</code> alone follows the deck's mode; either may be given alone</li>
+<li>A pane's theme beats its slide's, which beats the deck's</li>
+</ul>
+</div>
+<div class="pane pane-day" data-pane="day" data-theme="wuwei" data-mode="light" style="grid-area:day;display:flex;flex-direction:column;justify-content:center"><h3>Day</h3>
+<p>Two palettes on one slide — this half is <strong>wuwei</strong> in light.</p>
+</div>
+<div class="pane pane-night" data-pane="night" data-theme="wuwei" data-mode="dark" style="grid-area:night;display:flex;flex-direction:column;justify-content:center"><h3>Night</h3>
+<p>The same theme drawn again for dark, rather than inverted.</p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="4">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src what"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Reference</span></p>
 <h2>Every frontmatter field</h2>
@@ -115,7 +142,7 @@ vars:
 </div>
 </div>
 </section>
-<section class="slide" data-index="4">
+<section class="slide" data-index="5">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src what"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Per element</span></p>
 <h2>Settings smaller than a deck</h2>
@@ -143,7 +170,7 @@ and the reason the syntax is this quiet.</em></p>
 </div>
 </div>
 </section>
-<section class="slide" data-index="5">
+<section class="slide" data-index="6">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src warn"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Custom CSS</span></p>
 <h2>Override the tokens, not the layout</h2>
@@ -170,7 +197,7 @@ deck to one mode. <code>D</code> then changes <code>data-mode</code> and nothing
 </div>
 </div>
 </section>
-<section class="slide" data-index="6">
+<section class="slide" data-index="7">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Custom CSS</span></p>
 <h2>Bullets are a choice, not a default</h2>
@@ -200,7 +227,7 @@ the browser adds none after one.</p>
 </div>
 </div>
 </section>
-<section class="slide" data-index="7">
+<section class="slide" data-index="8">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src what"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Overflow</span></p>
 <h2>When a slide has too much on it</h2>
@@ -224,7 +251,7 @@ cut something.</p>
 </div>
 </div>
 </section>
-<section class="slide" data-index="8">
+<section class="slide" data-index="9">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src what"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Math</span></p>
 <h2>A dialect for formulas</h2>
@@ -249,7 +276,7 @@ identical down to the font</li>
 </div>
 </div>
 </section>
-<section class="slide" data-index="9">
+<section class="slide" data-index="10">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:3fr 1fr;grid-template-areas:"main" "foot"'>
 <div class="pane pane-main" data-pane="main" style="grid-area:main;text-align:center;display:flex;flex-direction:column;justify-content:center"><h2>That is every setting</h2>
 <p>frontmatter · <code>{#id .class key=value}</code> · a stylesheet of your own</p>

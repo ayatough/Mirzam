@@ -8,6 +8,31 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- **A theme can now be smaller than a deck.** `theme=` and `mode=` are pane
+  attributes (`::: pane figure {theme=wuwei mode=dark}`) and slide settings
+  (`<!-- theme: nord -->`, an HTML comment, so a plain Markdown reader shows
+  nothing), alongside the deck-wide `theme:` they have always been. That is
+  what puts two palettes on one slide: the same screenshot in light and in
+  dark, a quotation on its own paper, a figure kept in the colours it was
+  drawn for. The palette is set on that element and custom properties
+  inherit, so everything inside it — headings, code, tables, chart series —
+  is drawn from the other theme's tokens, and a re-themed pane paints its own
+  background rather than leaving its words a different colour on the slide's
+  paper. Innermost wins: a pane's theme beats its slide's, which beats the
+  deck's. `theme=` alone still follows the deck's colour mode, so a re-themed
+  pane keeps flipping with `D`; `mode=` alone shows the surrounding theme's
+  other half and stays there. An unknown name is a warning naming the slide
+  and the pane, never a failed build, and that element simply keeps what it
+  inherited. A deck carries the tokens of the themes it actually names, so
+  none of this costs anything to a deck that uses one palette.
+- **A sixth built-in theme, `wuwei`.** Warm greyscale, minimal, and
+  deliberately low contrast: body text sits at about 9:1 against its paper
+  rather than the 12-14:1 a black-on-white theme reaches — quiet enough to
+  read for an hour, and still well clear of the 4.5:1 the contrast test
+  enforces. No accent colour; the six chart series keep a whisper of hue
+  (taupe, sand, near-black, olive, rose, slate) so they can be told apart
+  without leaving the grey family. Dark mode is drawn from scratch — warm
+  near-black paper, warm bone ink — not inverted from light.
 - **`mirzam export pdf` takes `--split`, `--theme`, `--css`, `--fit` and
   `--mode`, the same flags `build` does**, so a deck assembled with
   `--split h2` exports to PDF with the same slide breaks in one command

@@ -18,7 +18,7 @@
    the bare selector because that is what a reader whose system prefers light
    gets; a deck that wants dark everywhere writes `mode: dark`. */
 
-:where(:root[data-theme="default"]) {
+:where([data-theme="default"]) {
   --mz-bg: #e7eaf4;
   --mz-slide-bg: #ffffff;
   --mz-fg: #17203a;
@@ -37,7 +37,7 @@
   --mz-danger-border: #c96a78;
 }
 @media (prefers-color-scheme: dark) {
-  :where(:root[data-theme="default"]:not([data-mode="light"])) {
+  :where([data-theme="default"]:not([data-mode="light"]):not([data-mode="light"] *)) {
     --mz-bg: #05080f;
     --mz-slide-bg: #080c18;
     --mz-fg: #f4f6ff;
@@ -56,7 +56,8 @@
     --mz-danger-border: #c96a78;
   }
 }
-:where(:root[data-theme="default"][data-mode="dark"]) {
+:where([data-mode="dark"] [data-theme="default"]:not([data-mode="light"]):not([data-mode="light"] *)),
+:where([data-theme="default"][data-mode="dark"]) {
   --mz-bg: #05080f;
   --mz-slide-bg: #080c18;
   --mz-fg: #f4f6ff;

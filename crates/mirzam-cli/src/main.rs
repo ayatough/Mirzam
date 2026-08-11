@@ -454,6 +454,9 @@ fn build(input: &Path, args: &BuildArgs) -> Result<(), String> {
         live_version: None,
         custom_css: out.custom_css.clone(),
         debug_layout: args.debug_layout,
+        // A built deck is assembled in one pass, so it carries the palettes it
+        // actually uses and no more.
+        all_themes: false,
     };
     let html = mirzam_render::assemble_page(&out.meta, &out.sections, &opts);
 

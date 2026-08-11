@@ -87,6 +87,12 @@ pub struct PageOptions {
     /// Bakes the layout debug overlay on at load, instead of leaving it to the
     /// viewer's `L` key. For screenshotting a broken deck headlessly.
     pub debug_layout: bool,
+    /// Inlines every built-in theme's tokens, not only the ones this deck
+    /// currently uses. `serve` sets it: a slide that gains `<!-- theme: -->`
+    /// mid-edit is patched into a page whose `<head>` was assembled before
+    /// that theme existed in the deck, and the pane would come out in the
+    /// deck's palette until the next full reload.
+    pub all_themes: bool,
 }
 
 /// Whether any section contains math, deciding if the math font is bundled.
@@ -154,6 +160,28 @@ fn theme_attrs(meta: &DeckMeta) -> (&'static str, String) {
         None => String::new(),
     };
     (name, mode_attr)
+}
+
+/// Every built-in theme the page has to carry tokens for: the deck's own,
+/// then any a slide or a pane switched to.
+///
+/// Read back out of the rendered HTML, the way this file already decides
+/// whether to inline the animation runtime or the math font — a slide is
+/// rendered without knowing the deck it belongs to, so the assembled sections
+/// are where the answer is. A deck that merely *shows* the attribute in a code
+/// block costs a few hundred bytes of CSS nothing uses, which is the safe
+/// direction to be wrong in: the other one is a pane rendered in a palette the
+/// page never loaded.
+fn themes_used(meta: &DeckMeta, sections: &[String], all: bool) -> Vec<&'static str> {
+    let (deck, _) = theme_attrs(meta);
+    let mut used = vec![deck];
+    for name in theme::THEME_NAMES {
+        let needle = format!("data-theme=\"{name}\"");
+        if !used.contains(name) && (all || sections.iter().any(|s| s.contains(&needle))) {
+            used.push(name);
+        }
+    }
+    used
 }
 
 /// Assembles rendered sections into a complete HTML page with the viewer.
@@ -231,7 +259,7 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 </html>
 "#,
         title = inline::html_escape(title),
-        css = theme::theme_css(theme_name),
+        css = theme::theme_css_for(&themes_used(meta, sections, opts.all_themes)),
         custom_css = opts.custom_css.as_deref().unwrap_or(""),
         js = theme::VIEWER_JS,
         presenter_js = theme::PRESENTER_JS,
@@ -430,7 +458,7 @@ section.slide {{ width: {w}px; height: {h}px; }}
 </html>
 "#,
         title = inline::html_escape(title),
-        css = theme::theme_css(theme_name),
+        css = theme::theme_css_for(&themes_used(meta, sections, false)),
         print_css = theme::PRINT_CSS,
         fit = deck_fit_attr(meta),
         custom_css = custom_css.unwrap_or(""),
@@ -469,6 +497,25 @@ fn render_slide(
     math: MathDialect,
 ) -> String {
     let mut errors: Vec<String> = Vec::new();
+
+    // A palette this slide, or one pane of it, asks for. Checked here rather
+    // than where the attribute is written, so every unknown name is reported
+    // once, from the one place that knows which slide it is on; rendering then
+    // silently keeps what it inherits, exactly as the deck's own `theme:` does.
+    warnings.extend(theme::scope_warnings(
+        &format!("slide {}", index + 1),
+        slide.theme.as_deref(),
+        slide.mode.as_deref(),
+    ));
+    for pb in &slide.panes {
+        let attrs = parse_attrs(&pb.attrs);
+        warnings.extend(theme::scope_warnings(
+            &format!("slide {}, pane `{}`", index + 1, pb.name),
+            attrs.kv.get("theme").map(String::as_str),
+            attrs.kv.get("mode").map(String::as_str),
+        ));
+    }
+    let slide_theme = theme::scope_attrs(slide.theme.as_deref(), slide.mode.as_deref());
 
     // Resolve the layout.
     let grid: Option<GridSpec> = match &slide.layout {
@@ -565,7 +612,7 @@ fn render_slide(
     };
 
     format!(
-        "<section class=\"slide\" data-index=\"{index}\"{connect_attr}>\n{error_html}{body}{shapes_html}{anim_html}{annot_html}{effects_html}{notes_html}</section>\n"
+        "<section class=\"slide\" data-index=\"{index}\"{slide_theme}{connect_attr}>\n{error_html}{body}{shapes_html}{anim_html}{annot_html}{effects_html}{notes_html}</section>\n"
     )
 }
 
@@ -643,8 +690,15 @@ fn render_grid_slide(
             chart_files.extend(files);
         }
         let bg = background_layers(&attrs, errors);
+        // `theme=`/`mode=` on the pane: the palette is set on this element, so
+        // everything inside it reads the other theme's tokens. Unknown names
+        // are dropped here and reported in `render_slide`.
+        let pane_theme = theme::scope_attrs(
+            attrs.kv.get("theme").map(String::as_str),
+            attrs.kv.get("mode").map(String::as_str),
+        );
         panes_html.push_str(&format!(
-            "<div class=\"pane pane-{name}{extra_cls}{}\" data-pane=\"{name}\" style=\"{style}\">{}{body}{}</div>\n",
+            "<div class=\"pane pane-{name}{extra_cls}{}\" data-pane=\"{name}\"{pane_theme} style=\"{style}\">{}{body}{}</div>\n",
             bg.pane_class, bg.layers, bg.close
         ));
     }
@@ -860,8 +914,21 @@ fn render_single_pane_slide(
         .map(|c| format!(" {c}"))
         .collect::<String>();
     let bg = background_layers(&attrs, errors);
+    // A slide with no layout has one pane, so a `theme=` on any of its blocks
+    // is a statement about the whole slide; the first one that names a palette
+    // wins, the way the first background does.
+    let pane_theme = all
+        .iter()
+        .find_map(|a| {
+            let attrs = theme::scope_attrs(
+                a.kv.get("theme").map(String::as_str),
+                a.kv.get("mode").map(String::as_str),
+            );
+            (!attrs.is_empty()).then_some(attrs)
+        })
+        .unwrap_or_default();
     format!(
-        "<div class=\"grid\" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:\"main\"'>\n<div class=\"pane pane-main{extra_cls}{}\" data-pane=\"main\" style=\"grid-area:main\">{}{body}{}</div>\n</div>\n",
+        "<div class=\"grid\" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:\"main\"'>\n<div class=\"pane pane-main{extra_cls}{}\" data-pane=\"main\"{pane_theme} style=\"grid-area:main\">{}{body}{}</div>\n</div>\n",
         bg.pane_class, bg.layers, bg.close
     )
 }
@@ -883,6 +950,73 @@ mod tests {
             .contains("grid-template-areas:\"main main\" \"a b\""));
         assert!(out.html.contains("pane-a"));
         assert!(out.html.contains("hello"));
+    }
+
+    /// A pane in a theme of its own: the attribute lands on that pane and
+    /// nowhere else, and the page grows the tokens it now needs. Without the
+    /// second half the pane would ask for a palette the page never loaded and
+    /// come out in the deck's.
+    #[test]
+    fn a_pane_can_be_rendered_in_another_theme() {
+        let slide = parse_slide(
+            "```pane\n+---+---+\n| a | b |\n+---+---+\n```\n\n\
+             ::: pane a {theme=wuwei mode=dark}\nquiet\n:::\n\n::: pane b\nloud\n:::\n",
+        );
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(out.warnings.is_empty(), "{:?}", out.warnings);
+        assert!(out
+            .html
+            .contains("data-pane=\"a\" data-theme=\"wuwei\" data-mode=\"dark\""));
+        assert!(out.html.contains("data-pane=\"b\" style="));
+        assert!(out.html.contains(":where([data-theme=\"wuwei\"])"));
+        assert!(out.html.contains(":where([data-theme=\"default\"])"));
+        assert!(!out.html.contains(":where([data-theme=\"nord\"])"));
+    }
+
+    /// The same at slide scope, written as an HTML comment so a plain
+    /// CommonMark reader shows nothing at all.
+    #[test]
+    fn a_slide_can_be_rendered_in_another_theme() {
+        let slide = parse_slide("<!-- theme: nord -->\n\n# Cold\n");
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(out.warnings.is_empty(), "{:?}", out.warnings);
+        assert!(out
+            .html
+            .contains("<section class=\"slide\" data-index=\"0\" data-theme=\"nord\">"));
+        assert!(out.html.contains(":where([data-theme=\"nord\"])"));
+        // The deck around it is untouched.
+        assert!(out
+            .html
+            .contains("<html lang=\"en\" data-theme=\"default\">"));
+    }
+
+    /// A typo names no palette, so the pane keeps the one it inherits — and
+    /// the author is told, with the slide and the pane in the message.
+    #[test]
+    fn an_unknown_scoped_theme_warns_and_changes_nothing() {
+        let slide = parse_slide(
+            "```pane\n+---+\n| a |\n+---+\n```\n\n::: pane a {theme=nope}\nhello\n:::\n",
+        );
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert_eq!(out.warnings.len(), 1);
+        assert!(out.warnings[0].contains("slide 1, pane `a`"));
+        assert!(out.warnings[0].contains("nope"));
+        assert!(!out.html.contains("data-theme=\"nope\""));
+        assert!(out.html.contains("data-pane=\"a\" style="));
+    }
+
+    /// `serve` patches one slide into a page whose `<head>` is older than the
+    /// edit, so the preview carries every palette rather than only today's.
+    #[test]
+    fn all_themes_inlines_every_palette() {
+        let opts = PageOptions {
+            all_themes: true,
+            ..Default::default()
+        };
+        let html = assemble_page(&DeckMeta::default(), &[], &opts);
+        for name in THEME_NAMES {
+            assert!(html.contains(&format!(":where([data-theme=\"{name}\"])")));
+        }
     }
 
     #[test]

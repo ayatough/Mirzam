@@ -1,4 +1,4 @@
-:where(:root[data-theme="nord"]) {
+:where([data-theme="nord"]) {
   --mz-bg: #2e3440;
   --mz-slide-bg: #eceff4;
   --mz-fg: #2e3440;
@@ -17,7 +17,7 @@
   --mz-danger-border: #bf616a;
 }
 @media (prefers-color-scheme: dark) {
-  :where(:root[data-theme="nord"]:not([data-mode="light"])) {
+  :where([data-theme="nord"]:not([data-mode="light"]):not([data-mode="light"] *)) {
     --mz-bg: #2e3440;
     --mz-slide-bg: #3b4252;
     --mz-fg: #eceff4;
@@ -36,7 +36,8 @@
     --mz-danger-border: #bf616a;
   }
 }
-:where(:root[data-theme="nord"][data-mode="dark"]) {
+:where([data-mode="dark"] [data-theme="nord"]:not([data-mode="light"]):not([data-mode="light"] *)),
+:where([data-theme="nord"][data-mode="dark"]) {
   --mz-bg: #2e3440;
   --mz-slide-bg: #3b4252;
   --mz-fg: #eceff4;

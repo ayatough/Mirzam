@@ -90,3 +90,32 @@ Same hues, enough ink to be seen.
 also chart series 2, and two violets side by side in a bar chart is a chart that
 has stopped saying anything; it takes the brand's cyan, and the second violet
 becomes series 6, far from the first.
+
+## `wuwei`
+
+Ours, and not a translation of anything: a greyscale palette drawn for this
+project rather than borrowed from a published one, so there is nothing to
+credit but the intent.
+
+The name is Laozi's 無為 — *wu wei*, acting without contrivance. It is the
+theme for a deck that does not want to be looked at, only read: warm greys,
+no accent colour, and body text at roughly 9:1 against its background rather
+than the 12-14:1 a black-on-white theme reaches. Low contrast is the point,
+and the WCAG floor (4.5:1 for text, 3:1 for chart marks, checked by
+`every_theme_and_mode_meets_wcag_contrast`) is the line it stays comfortably
+above while getting there.
+
+Two decisions worth writing down:
+
+- **Warm, not neutral.** Every grey is mixed towards the ink's own hue rather
+  than sitting on the r=g=b axis. A neutral grey next to these reads as cold,
+  and the paper stops looking like paper.
+- **Chart series keep a whisper of hue.** Six series with only lightness to
+  separate them is more than an audience can hold, so each series is nudged
+  towards a different hue — taupe, sand, near-black, olive, rose, slate — at a
+  saturation low enough to stay in the same family, and spaced in lightness
+  from its neighbours. A chart in this theme wants its labels; that is the
+  trade the palette makes deliberately.
+
+Dark mode is drawn from scratch, not inverted: warm near-black paper, warm bone
+ink, and each series re-picked for its new background.

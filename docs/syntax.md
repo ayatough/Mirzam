@@ -109,9 +109,10 @@ Ordinary Markdown goes here.
 :::
 ```
 
-Pane attributes: `align=left|center|right`, `valign=middle|bottom`, and any extra
-`.class` names your stylesheet defines. Content that is not assigned to a pane
-flows into `main`, or the first pane if there is none.
+Pane attributes: `align=left|center|right`, `valign=middle|bottom`,
+`theme=`/`mode=` ([a palette for one pane](#a-theme-smaller-than-a-deck)), and
+any extra `.class` names your stylesheet defines. Content that is not assigned
+to a pane flows into `main`, or the first pane if there is none.
 
 ### Background images
 
@@ -991,6 +992,7 @@ theme: nord
 | `solarized` | [Solarized](https://ethanschoonover.com/solarized/), MIT |
 | `vscode` | VS Code Light+/Dark+, MIT |
 | `mirzam` | Mirzam's own palette, from [the brand sheet](brand/palette.md) |
+| `wuwei` | ours — warm greyscale, minimal, deliberately low contrast |
 
 An unknown `theme:` name is a warning, not a build failure, and falls back to
 `default`. See
@@ -1014,6 +1016,56 @@ Every built-in theme defines both a light and a dark palette. Which one shows:
 3. `D` in the viewer, which toggles for that reading session only.
 4. Otherwise, the reader's `prefers-color-scheme` - a deck with no explicit
    `mode:` just follows the system, live, with no reload.
+
+### A theme smaller than a deck
+
+`theme:` and `mode:` are the deck's, and a slide or a single pane can answer
+differently. A pane in a theme of its own is how you put two palettes on one
+slide — the same screenshot in light and in dark, a quotation on its own paper,
+one figure in the palette it was designed for.
+
+On a pane, as attributes:
+
+```markdown
+::: pane before {theme=wuwei mode=light}
+The quiet version.
+:::
+
+::: pane after {theme=wuwei mode=dark}
+The same words, after dark.
+:::
+```
+
+On a whole slide, as an HTML comment — the same form as a speaker note, and
+invisible in a plain Markdown reader for the same reason:
+
+```markdown
+<!-- theme: nord -->
+<!-- mode: dark -->
+
+# One cold slide in a warm deck
+```
+
+The rules:
+
+- Either attribute can be given alone. `theme=` with no `mode=` follows the
+  deck's mode, so a re-themed pane still flips with `D`; `mode=` with no
+  `theme=` shows the surrounding theme's other half, and stays there.
+- The palette is set **on that element**, and custom properties inherit, so
+  everything inside it — headings, code, tables, chart series — is drawn from
+  the other theme's tokens.
+- A re-themed pane paints its own background and rounds its corners, because a
+  patch of another palette needs an edge to read as one.
+- Nesting resolves inwards: a pane's theme beats its slide's, which beats the
+  deck's.
+- An unknown name is a warning naming the slide and the pane, and that element
+  simply keeps what it inherited. A deck never fails to build over a palette.
+- Only **built-in** themes can be named this way. A `css:` stylesheet of your
+  own is loaded once for the whole page; to re-theme one pane with your own
+  colours, set the tokens under a class and put the class on the pane.
+
+A deck carries the tokens of the themes it actually names and no others, so
+none of this costs anything to a deck that uses one palette.
 
 ### Custom CSS
 
