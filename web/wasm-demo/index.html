@@ -67,21 +67,14 @@
   #math-preview .math-error { color: var(--red); font-family: ui-monospace, monospace; font-size: 14px; }
   #math-src { display: block; text-align: center; padding: 0 14px 8px; color: var(--muted); background: var(--bg);
     font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; overflow-x: auto; white-space: nowrap; }
-  #math-boxes { padding: 10px 12px; overflow: auto; text-align: center; }
+  /* The tap surface: the typeset formula itself, one element per node. */
+  #math-boxes { padding: 12px; overflow: auto; text-align: center; }
+  #math-boxes math { font-size: 30px; }
+  #math-boxes [data-path] { cursor: pointer; border-radius: 4px; padding: 1px 2px; }
+  #math-boxes [data-path].sel { background: rgba(155,140,255,.22); outline: 1.5px solid var(--accent); }
+  #math-boxes [data-path].movesrc { background: rgba(192,183,255,.12); outline: 1.5px dashed var(--accent-2); }
+  #math-boxes .mph { color: var(--muted); }
   .mhint { color: var(--muted); font-size: 13px; }
-  .mn {
-    display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;
-    min-width: 30px; min-height: 36px; padding: 2px 5px; margin: 2px;
-    border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font-size: 17px;
-  }
-  .mn.sel { border-color: var(--accent); background: rgba(155,140,255,.18); }
-  .mn.ph { border-style: dashed; color: var(--muted); min-width: 34px; }
-  .mn .mrow { display: inline-flex; align-items: center; }
-  .mfrac { display: inline-flex; flex-direction: column; align-items: stretch; }
-  .mfrac > .bar { height: 1.5px; background: var(--muted); margin: 2px 1px; }
-  .mscripts { display: inline-flex; flex-direction: column; justify-content: space-between; margin-left: 2px; }
-  .mscripts .mn { min-height: 26px; min-width: 24px; font-size: 13px; }
-  .mcall-name { color: var(--accent-2); font-size: 13px; margin-right: 2px; }
   #math-err { color: var(--red); font-size: 12px; padding: 0 14px; }
   #math-err:empty { display: none; }
   #math-note { font-size: 12px; color: var(--muted); padding: 4px 14px; display: flex; gap: 8px; align-items: center; }
@@ -158,6 +151,8 @@ Write Markdown. A --- on its own line starts a slide."></textarea>
     <div class="row">
       <input id="math-entry" placeholder="x  42  alpha  sin(x) …" autocomplete="off">
       <button type="button" id="math-put">Put</button>
+      <button type="button" id="math-move">Move</button>
+      <button type="button" id="math-parent" title="Select the enclosing node">▲</button>
       <button type="button" id="math-del">⌫</button>
     </div>
   </div>
@@ -459,6 +454,9 @@ let mathRange = null; // [start, end] of the $...$ being edited, or null
 let mathInsertAt = null; // insertion offset override (after a LaTeX formula)
 let mathLatex = '';  // the same formula as LaTeX, for LaTeX-dialect decks
 let mathTree = [];
+let mathSurface = ''; // the tap surface: MathML with data-path on every node
+let moveFrom = null;  // the path being moved, while Move is armed
+let movePendingTo = null; // the tapped destination, while the slot is chosen
 
 // Spellings the boxes show as the glyph the reader will get.
 const GLYPHS = {
@@ -491,19 +489,66 @@ function refreshMath(state) {
   mathSrc = res.src;
   mathLatex = res.latex ?? '';
   mathTree = res.tree;
+  mathSurface = res.emathml ?? '';
   mathPreview.innerHTML = res.mathml || '<span class="mhint">—</span>';
   const typst = deckHasTypst(srcEl.value);
   mathSrcEl.textContent = mathSrc ? `$${typst ? mathSrc : mathLatex}$` : '';
   if (mathSel && !nodeAtPath(mathTree, mathSel)) mathSel = null;
-  mathBoxes.innerHTML = '';
+  renderSurface();
+  renderNote(typst);
+}
+
+// The tap surface is the typeset formula itself: every element carries the
+// path of the node it draws, so a finger on the rendered mathematics names
+// a node — no proxy boxes in between.
+function renderSurface() {
   if (!mathTree.length) {
     mathBoxes.innerHTML = '<span class="mhint">Tap a symbol below, or type in the box and press Put</span>';
-  } else {
-    mathBoxes.appendChild(rowOf(mathTree, []));
+    return;
+  }
+  mathBoxes.innerHTML = mathSurface;
+  if (mathSel) {
+    mathBoxes.querySelector(`[data-path="${mathSel.join(',')}"]`)?.classList.add('sel');
+  }
+  if (moveFrom) {
+    mathBoxes.querySelector(`[data-path="${moveFrom.join(',')}"]`)?.classList.add('movesrc');
+  }
+}
+
+function renderNote(typst) {
+  mathNote.innerHTML = '';
+  // While a move is armed the note is its prompt.
+  if (moveFrom) {
+    if (movePendingTo) {
+      mathNote.append('Put it: ');
+      for (const [label, slot] of [['x²', 'sup'], ['x₂', 'sub'], ['⇤ before', 'before'], ['after ⇥', 'after']]) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = label;
+        b.addEventListener('click', () => {
+          const op = { op: 'move', from: moveFrom, to: movePendingTo, slot };
+          moveFrom = null;
+          movePendingTo = null;
+          applyMath(op, () => null);
+        });
+        mathNote.appendChild(b);
+      }
+    } else {
+      mathNote.append('Moving — tap where it goes. ');
+    }
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.textContent = 'Cancel';
+    cancel.addEventListener('click', () => {
+      moveFrom = null;
+      movePendingTo = null;
+      refreshMath();
+    });
+    mathNote.appendChild(cancel);
+    return;
   }
   // The panel adapts to the deck's dialect rather than flipping the deck:
   // flipping would break every LaTeX formula already in it.
-  mathNote.innerHTML = '';
   if (!typst) {
     if (/\$[^$\n]+\$/.test(srcEl.value)) {
       mathNote.append('This deck’s math is LaTeX, so the formula will be inserted as LaTeX. Re-editing it here needs a `math: typst` deck.');
@@ -518,67 +563,27 @@ function refreshMath(state) {
   }
 }
 
-function rowOf(children, base) {
-  const row = document.createElement('span');
-  row.className = 'mrow';
-  children.forEach((n, i) => row.appendChild(boxNode(n, [...base, i])));
-  return row;
-}
-
-function boxNode(n, path) {
-  const el = document.createElement('span');
-  el.className = 'mn' + (n.ph ? ' ph' : '');
-  el.dataset.path = path.join(',');
-  if (mathSel && path.join(',') === mathSel.join(',')) el.classList.add('sel');
-  if (n.ph) {
-    el.textContent = '□';
-  } else if (n.k === 'frac') {
-    const f = document.createElement('span');
-    f.className = 'mfrac';
-    f.appendChild(boxNode(n.c[0], [...path, 0]));
-    const bar = document.createElement('span');
-    bar.className = 'bar';
-    f.appendChild(bar);
-    f.appendChild(boxNode(n.c[1], [...path, 1]));
-    el.appendChild(f);
-  } else if (n.k === 'script') {
-    el.appendChild(boxNode(n.c[0], [...path, 0]));
-    const col = document.createElement('span');
-    col.className = 'mscripts';
-    // Children order is base, then sub if present, then sup.
-    const subIdx = n.sub ? 1 : -1;
-    const supIdx = n.sup ? 1 + (n.sub ? 1 : 0) : -1;
-    if (supIdx > 0) col.appendChild(boxNode(n.c[supIdx], [...path, supIdx]));
-    if (subIdx > 0) col.appendChild(boxNode(n.c[subIdx], [...path, subIdx]));
-    el.appendChild(col);
-  } else if (n.k === 'call') {
-    const name = document.createElement('span');
-    name.className = 'mcall-name';
-    name.textContent = glyph(n.t);
-    el.appendChild(name);
-    el.appendChild(rowOf(n.c, path));
-  } else if (n.k === 'paren') {
-    el.append('(');
-    el.appendChild(rowOf(n.c, path));
-    el.append(')');
-  } else if (n.c && n.c.length) {
-    el.appendChild(rowOf(n.c, path));
-  } else {
-    el.textContent = glyph(n.t ?? '');
+// One listener for the whole surface: the deepest element with a path under
+// the finger is the node. Tapping the empty space beside the formula clears
+// the selection, so the next Put grows the formula at the end.
+mathBoxes.addEventListener('click', (e) => {
+  const hit = e.target.closest('[data-path]');
+  if (!hit || !mathBoxes.contains(hit)) {
+    if (!moveFrom) {
+      mathSel = null;
+      renderSurface();
+    }
+    return;
   }
-  el.addEventListener('click', (e) => {
-    e.stopPropagation();
-    mathSel = path;
-    refreshMath();
-  });
-  return el;
-}
-
-// Tapping the empty space beside the boxes clears the selection, so the next
-// Put grows the formula at the end instead of replacing something.
-mathBoxes.addEventListener('click', () => {
-  mathSel = null;
-  refreshMath();
+  const path = hit.dataset.path.split(',').map(Number);
+  if (moveFrom) {
+    movePendingTo = path;
+    renderSurface();
+    renderNote(deckHasTypst(srcEl.value));
+    return;
+  }
+  mathSel = path;
+  renderSurface();
 });
 
 function applyMath(op, selectAfter) {
@@ -588,15 +593,30 @@ function applyMath(op, selectAfter) {
   refreshMath(res);
 }
 
-// Placing something: fill the selected hole, or grow the formula at the end.
+// Placing something. The context decides what a selection means for it:
+// a hole is filled; a node in a sequence is continued after (that is what
+// typing left to right is); a node in a fixed slot — a denominator, an
+// exponent — is replaced, because "after" does not exist there.
 function put(text) {
   if (!text) return;
-  const sel = mathSel && nodeAtPath(mathTree, mathSel);
-  if (sel && sel.ph) {
-    applyMath({ op: 'replace', path: mathSel, src: text }, () => mathSel);
-  } else {
+  if (!mathSel) {
     applyMath({ op: 'append', src: text }, (res) => [res.tree.length - 1]);
+    return;
   }
+  const node = nodeAtPath(mathTree, mathSel);
+  if (node && node.ph) {
+    applyMath({ op: 'replace', path: mathSel, src: text }, () => mathSel);
+    return;
+  }
+  const parent = mathSel.slice(0, -1);
+  const index = mathSel[mathSel.length - 1] + 1;
+  const res = JSON.parse(math_apply(mathSrc, JSON.stringify({ op: 'insert', parent, index, src: text })));
+  if (res.ok) {
+    mathSel = [...parent, index];
+    refreshMath(res);
+    return;
+  }
+  applyMath({ op: 'replace', path: mathSel, src: text }, () => mathSel);
 }
 
 // Structure needs somewhere to go: the selection, or a fresh hole at the end.
@@ -671,6 +691,35 @@ mathEntry.addEventListener('keydown', (e) => {
 document.getElementById('math-del').addEventListener('click', () => {
   if (!mathSel) return;
   applyMath({ op: 'delete', path: mathSel }, () => null);
+});
+
+// Move: arm with a selection, tap the destination, choose the slot. The
+// deletion and the placement are one wasm-side operation, so the paths a
+// finger chose stay meaningful.
+document.getElementById('math-move').addEventListener('click', () => {
+  if (moveFrom) {
+    moveFrom = null;
+    movePendingTo = null;
+    refreshMath();
+    return;
+  }
+  if (!mathSel) {
+    mathErr.textContent = 'Select what to move first.';
+    return;
+  }
+  moveFrom = mathSel;
+  mathSel = null;
+  movePendingTo = null;
+  refreshMath();
+});
+
+// A finger always lands on the deepest node; this steps the selection out to
+// the thing that contains it — the whole fraction rather than its numerator.
+document.getElementById('math-parent').addEventListener('click', () => {
+  if (mathSel && mathSel.length > 1) {
+    mathSel = mathSel.slice(0, -1);
+    renderSurface();
+  }
 });
 
 function deckHasTypst(v) {

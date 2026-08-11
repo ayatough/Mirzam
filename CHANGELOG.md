@@ -19,12 +19,16 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - **A formula panel in the browser editor: tap and place, not type.** The
   letters of a formula are easy to type on a phone; the structure — what is a
   subscript, what sits over what — is what costs keystrokes. The **Math**
-  button opens a panel that builds a formula by touch: place letters and
-  symbols, tap a box to select it, and give it a superscript, a fraction bar,
-  a root or an accent from the palette. The formula is previewed as real
-  MathML while it is built, and lands in the Markdown as ordinary `$...$`
-  Typst-math text — a deck edited this way is indistinguishable from one
-  typed by hand. Opening the panel with the cursor inside an existing
+  button opens a panel that builds a formula by touch — and the tap surface
+  is **the typeset formula itself**: every element of the rendered
+  mathematics carries the node it draws, so a finger on the denominator
+  selects the denominator. Tap a node and give it a superscript, a fraction
+  bar, a root or an accent from the palette; **Move** relocates a node in
+  two taps (tap it, tap where it goes, pick shoulder/subscript/before/after)
+  — `a b c`, then b onto a's shoulder, is three taps. `▲` steps the
+  selection out to the enclosing node when a finger lands deeper than
+  intended. The formula lands in the Markdown as ordinary `$...$` text — a
+  deck edited this way is indistinguishable from one typed by hand. Opening the panel with the cursor inside an existing
   formula loads it for editing. **The panel adapts to the deck's dialect
   rather than flipping the deck**: into a `math: typst` deck it writes
   Typst-math (re-editable later), into a LaTeX deck it writes the same
