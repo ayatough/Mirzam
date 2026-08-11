@@ -11,7 +11,7 @@ single HTML file or a PDF.
 
 **[See the decks running →](https://ayatough.github.io/Mirzam/)**
 
-[Quick start](docs/quickstart.md) · [Syntax](docs/syntax.md) · [Layout guide](docs/layout.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](CONTRIBUTING.md) · [Development](docs/development.md) · [Brand](docs/brand/README.md) · [Agents](AGENTS.md) · [日本語](docs/ja/README.md)
+[Quick start](docs/quickstart.md) · [Syntax](docs/syntax.md) · [Layout guide](docs/layout.md) · [Troubleshooting](docs/troubleshooting.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](CONTRIBUTING.md) · [Development](docs/development.md) · [Brand](docs/brand/README.md) · [Agents](AGENTS.md) · [日本語](docs/ja/README.md)
 
 <a href="https://www.buymeacoffee.com/qython" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-violet.png" alt="Buy Me a Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
@@ -152,6 +152,9 @@ Press `/` for the full list, including the effect keys this particular deck
 binds. On a phone, swipe to turn the page, swipe up for notes, and two-finger
 tap for the same sheet — the long press is left alone, because that is how you
 select text.
+
+A slide that doesn't fit, markup that shows up as literal text, or a build
+warning you don't recognise — see [docs/troubleshooting.md](docs/troubleshooting.md).
 
 ### In your editor
 

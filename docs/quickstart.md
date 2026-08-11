@@ -197,6 +197,8 @@ you drew, row heights from the number of lines.
   plain Markdown parser shows instead
 - **[Layout guide](layout.md)** — sizing panes, what to do when content does not
   fit, keeping arrows out of the text
+- **[Troubleshooting](troubleshooting.md)** — a slide that doesn't fit, markup
+  showing as literal text, the current PDF steps, and every build warning
 - **[The examples](../examples/)** — six numbered decks that teach the markup in
   order, starting at [`01-start.md`](../examples/01-start.md), plus
   [`seminar.md`](../examples/seminar.md), a research talk with math, a quoted

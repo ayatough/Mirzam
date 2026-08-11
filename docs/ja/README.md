@@ -8,7 +8,7 @@
 > このディレクトリは日本語話者向けの補助資料です。**正式なドキュメントは英語版**で、
 > 使い方は英語版だけで完結します。翻訳が古い場合は英語版が正です。
 >
-> [README](../../README.md) · [クイックスタート](quickstart.md) · [記法](../syntax.md) · [アーキテクチャ](../architecture.md) · [ロードマップ](../roadmap.md) · [開発ガイド](../development.md) · [ブランド](../brand/README.md)
+> [README](../../README.md) · [クイックスタート](quickstart.md) · [記法](../syntax.md) · [困ったときは](../troubleshooting.md) · [アーキテクチャ](../architecture.md) · [ロードマップ](../roadmap.md) · [開発ガイド](../development.md) · [ブランド](../brand/README.md)
 
 ## 一言でいうと
 
@@ -67,11 +67,41 @@ code --install-extension editors/vscode/mirzam-preview-*.vsix
 | `{{ price * 12 }}` | 変数と計算 | ただの文字 |
 | `![[file.md]]` | ファイル分割 | 画像風リンク(Obsidian では埋め込み) |
 | ` ```toc ` | 見出しから目次を自動生成(リンク・現在地表示つき) | コードブロック |
+| `$...$`、`$$...$$` | 数式(既定は LaTeX) | ただの文字 |
 | `<!-- next -->` | そのペインだけを次スライドへ送る(他のペインは静止) | 非表示 |
 | `<!-- note: -->` | スピーカーノート | 非表示 |
 
 **設計上の約束**: 拡張記法はすべて、素の CommonMark パーサで読んでも壊れません
 (GitHub や Obsidian でそのまま読める)。これはテストで機械的に保証しています。
+
+**v0.3.0 の新機能から二つ**: 数式は既定で LaTeX ですが、フロントマターに
+`math: typst` と書くと同じ `$...$` が [Typst 風の数式構文](../syntax.md#typst-flavoured-math)
+になります(`sum_(i=1)^n i`、`sqrt(x)` のように、バックスラッシュなしで書けます)。
+また `.small` `.big` `.huge`(サイズ)、`.muted` `.accent` `.accent2` `.danger`(色)、
+`.box`(枠付き)という組み込みクラスが、テーマや `css:` を指定しなくても
+`{.big .accent}` のように使えます([詳細](../syntax.md#attributes))。
+
+### 記法リファレンスの章対照表
+
+[記法リファレンス](../syntax.md)は英語版が正なので翻訳していませんが、1,000 行を超える
+ため、目当ての章まで直接飛べるよう対応表を置きます。
+
+| 内容 | 英語版の章 |
+|---|---|
+| デッキとスライド(フロントマター、スライドの区切り方、ファイル分割、スピーカーノート) | [Deck and slides](../syntax.md#deck-and-slides) |
+| レイアウト(`pane` グリッド、`::: pane`、背景画像) | [Layout](../syntax.md#layout) |
+| インライン記法(見出し・属性・強調・数式・変数・メディア) | [Inline syntax](../syntax.md#inline-syntax) |
+| グラフ(`chart` ブロック) | [Charts](../syntax.md#charts) |
+| 図形(`shape` ブロック — **スライド直下でのみ解釈される**) | [Shapes](../syntax.md#shapes) |
+| コネクタ(`connect` ブロック) | [Connectors](../syntax.md#connectors) |
+| 収まらないときの対処(`--fit shrink`、`<!-- next -->`) | [When a slide has too much on it](../syntax.md#when-a-slide-has-too-much-on-it) |
+| 目次(`toc` ブロック) | [Table of contents](../syntax.md#table-of-contents) |
+| 脚注(`[^key]` — **定義は参照と同じスライドに書く**) | [Citations](../syntax.md#citations) |
+| 演出(`effects` ブロック) | [Presentation effects](../syntax.md#presentation-effects) |
+| 注釈(`annotate` ブロック) | [Annotations](../syntax.md#annotations) |
+| アニメーション(`anim` ブロック) | [Animations](../syntax.md#animations) |
+| ビューア操作・発表者ウィンドウ | [Driving the viewer](../syntax.md#driving-the-viewer) |
+| テーマ(`theme:`、`css:`、`mode:`) | [Theming](../syntax.md#theming) |
 
 ## サンプル
 
