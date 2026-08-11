@@ -266,6 +266,7 @@ dependencies = [
  "mirzam-layout",
  "mirzam-shape",
  "mirzam-syntax",
+ "mirzam-tmath",
  "regex",
 ]
 
@@ -276,6 +277,13 @@ version = "0.2.0"
 [[package]]
 name = "mirzam-syntax"
 version = "0.2.0"
+
+[[package]]
+name = "mirzam-tmath"
+version = "0.2.0"
+dependencies = [
+ "math-core",
+]
 
 [[package]]
 name = "mirzam-wasm"

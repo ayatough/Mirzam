@@ -70,17 +70,13 @@ there is. The model column follows from that:
 | W16 | Showing the thing working: demo recording, themes gallery | C | — | — | |
 | W17 | A theme per slide | B | — | — | |
 | W18 | Carrying an element from one slide to the next | S | — | W2 | |
-| W5 | Typst-flavoured math | A | Sonnet | — | deferred |
+| W5 | Typst-flavoured math | A | Sonnet | — | ✅ |
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
 
 ### What is deferred, and why
 
-Neither is cancelled; both are off the critical path to a tool people present
-with every week.
+Not cancelled; off the critical path to a tool people present with every week.
 
-- **W5 (Typst math).** LaTeX already renders correctly through MathML, and the
-  decks that need it are being written today. A second front end is a
-  convenience for authors who dislike LaTeX, not a capability the deck lacks.
 - **W8 (drag an annotation back into the Markdown).** The most expensive stream
   in the plan — an edit channel, byte-range rewriting, conflict handling — and
   the one whose absence hurts least, because the editing surface people
@@ -850,9 +846,9 @@ the elements that are moving and kept for everything else; and going *backwards*
 has to be as good as going forwards, which is where most implementations of this
 give up.
 
-## W5 — Typst-flavoured math (deferred)
+## W5 — Typst-flavoured math ✅
 
-**Difficulty A · Sonnet · deferred, see the table above**
+**Difficulty A · Sonnet · landed**
 
 LaTeX is hard to write from memory; Typst's math syntax is not. Support it as an
 alternative front end.
@@ -879,6 +875,17 @@ a golden corpus of expression pairs (Typst source, expected MathML) and make it
 the crate's test suite.
 
 **Owns:** `crates/mirzam-tmath`, the math dispatch in `mirzam-render/src/inline.rs`.
+
+**Landed as specified**, with two things the corpus found that the plan did not
+predict: braces around a script base are not neutral in LaTeX (`{\sum}_a^b`
+loses its movable limits and `{e}^x` shifts the spacing of the operator before
+it, so the emitter braces only composite bases), and `sin(x)/x` requires
+function names to glue to their argument list before `/` binds, or the fraction
+takes the parens and leaves `sin` behind. The corpus compares MathML — Typst
+source lowered and rendered, against the LaTeX a person would have written by
+hand — which is what caught both. One deliberate deviation: the dialect is part
+of the render cache key, because flipping `math:` changes every formula while
+changing no slide's source text.
 
 ## W6 — Annotations on images and charts ✅
 

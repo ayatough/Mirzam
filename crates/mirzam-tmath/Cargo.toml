@@ -1,0 +1,14 @@
+[package]
+name = "mirzam-tmath"
+description = "Typst-flavoured math syntax, lowered to LaTeX"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+
+[dev-dependencies]
+# The corpus test proves each lowered expression survives the same LaTeX ->
+# MathML converter the renderer uses; the crate itself never needs it.
+math-core = "0.7"

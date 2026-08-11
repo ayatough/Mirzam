@@ -1,9 +1,10 @@
 <section class="slide" data-index="0">
 <div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
 <div class="pane pane-main" data-pane="main" style="grid-area:main"><h1 class="title-slide">Theming and settings</h1>
-<p>Every knob a deck has, and the order they are read in. This deck sets two of
+<p>Every knob a deck has, and the order they are read in. This deck sets three of
 them on itself: <code>theme: mirzam</code> for the palette, <code>css: themes/mirzam.css</code> for
-the typography on top of it.</p>
+the typography on top of it, and <code>math: typst</code> for how its one formula is
+written.</p>
 </div>
 </div>
 <aside class="notes"><p>Press D. The whole deck flips, because the stylesheet defines both modes.</p>
@@ -97,6 +98,7 @@ css: themes/mirzam.css
 split: h2
 transition: fade 240ms
 fit: shrink
+math: typst
 vars:
   seats: 8
 ---
@@ -107,6 +109,7 @@ vars:
 <li><code>css:</code> is resolved <strong>relative to the deck file</strong></li>
 <li><code>split:</code> starts a slide at every heading of that level</li>
 <li><code>transition:</code> is the deck-wide page turn; a slide can override its half</li>
+<li><code>math:</code> picks the formula syntax, <code>latex</code> (the default) or <code>typst</code></li>
 <li><code>vars:</code> are substituted with <code>{{ }}</code>, and arithmetic works: <code>{{ seats * 12 }}</code></li>
 </ul>
 </div>
@@ -192,6 +195,31 @@ cut something.</p>
 </div>
 </section>
 <section class="slide" data-index="7">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src what"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Math</span></p>
+<h2>A dialect for formulas</h2>
+</div>
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-yaml">---
+math: typst
+---
+</code></pre>
+<pre><code class="language-markdown">$x = (-b pm sqrt(b^2 - 4a c))/(2a)$
+</code></pre>
+<p>Which renders as:</p>
+<p><math><mi>x</mi><mo>=</mo><mfrac><mrow><mo lspace="0" rspace="0">−</mo><mi>b</mi><mo lspace="0" rspace="0">±</mo><msqrt><mrow><msup><mi>b</mi><mn>2</mn></msup><mo lspace="0" rspace="0">−</mo><mn>4</mn><mi>a</mi><mi>c</mi></mrow></msqrt></mrow><mrow><mn>2</mn><mi>a</mi></mrow></mfrac></math></p>
+</div>
+<div class="pane pane-what" data-pane="what" style="grid-area:what;display:flex;flex-direction:column;justify-content:center"><ul>
+<li>Typst's math syntax, without the backslashes: <code>a/b</code> is a fraction, <code>sqrt()</code>
+is a root, Greek goes by name — <code>alpha</code>, <code>Omega</code></li>
+<li>Per <strong>deck</strong>, not per formula; the default is <code>latex</code>, so every existing
+deck reads as it always did</li>
+<li>Both dialects render to MathML through the same path, so the result is
+identical down to the font</li>
+</ul>
+</div>
+</div>
+</section>
+<section class="slide" data-index="8">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:3fr 1fr;grid-template-areas:"main" "foot"'>
 <div class="pane pane-main" data-pane="main" style="grid-area:main;text-align:center;display:flex;flex-direction:column;justify-content:center"><h2>That is every setting</h2>
 <p>frontmatter · <code>{#id .class key=value}</code> · a stylesheet of your own</p>

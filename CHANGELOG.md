@@ -26,6 +26,16 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   sitting on the front page as equals.
 
 ### Added
+- **Typst-flavoured math: `math: typst` in frontmatter.** LaTeX is hard to
+  write from memory; Typst's `sum_(i=1)^n i = (n(n+1))/2` is not. The setting
+  switches what `$...$` holds for the whole deck — fractions with `/`, `sqrt()`
+  without backslashes, Greek by name, `mat()` and `cases()`, `"upright text"`,
+  `&` alignment and `#` escapes. It is a subset parser of our own
+  (`mirzam-tmath`) that lowers to LaTeX and renders through the existing MathML
+  path, not a dependency on Typst itself. The default stays `latex`, so no
+  existing deck changes; a formula outside the subset shows its source in red
+  like any broken formula. `docs/syntax.md` has the full table, and the theming
+  deck shows it on a slide.
 - **`examples/02-writing.md` is the reference for writing a slide**, rebuilt
   around what a reader actually asks: a contents page, headings, the marks for
   a phrase, colour and size, quotes and asides and code, four kinds of list,

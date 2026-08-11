@@ -208,6 +208,10 @@ impl Renderer {
         };
         warnings.extend(mirzam_render::theme_warning(meta.theme.as_deref()));
         warnings.extend(mirzam_render::mode_warning(meta.mode.as_deref()));
+        let math = meta.math_dialect().unwrap_or_else(|w| {
+            warnings.push(w);
+            mirzam_core::MathDialect::default()
+        });
         // There is no current directory in WASM, so the base is an empty path.
         let body = mirzam_syntax::expand_includes(body, Path::new(""), &MapFiles(&self.files));
         let vars = meta.var_table();
@@ -219,7 +223,7 @@ impl Renderer {
             .enumerate()
             .map(|(i, src)| {
                 let slide = mirzam_syntax::parse_slide(src);
-                let out = mirzam_render::render_slide_html_with(&slide, i, &assets);
+                let out = mirzam_render::render_slide_html_with(&slide, i, &assets, math);
                 warnings.extend(out.warnings);
                 out.html
             })

@@ -17,6 +17,7 @@ keep changing.
 | ASCII pane layout, pane attributes | Done |
 | Variables and arithmetic | Done |
 | Math (LaTeX → MathML) | Done |
+| Typst-flavoured math syntax (`math: typst`) | Done |
 | Charts from inline CSV or `.csv` files | Done |
 | Shapes and live-routed connectors | Done |
 | Video and GIF | Done |
@@ -40,7 +41,6 @@ keep changing.
 | Carrying an element from one slide to the next | Next |
 | Demo recording and a generated themes gallery | Next |
 | Dragging an annotation back into the Markdown | Next |
-| Typst-flavoured math syntax | Later |
 | Plugins, PPTX export | Later |
 
 Each of those has a brief — what it is for, what is not free about it, and where

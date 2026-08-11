@@ -4,13 +4,15 @@ author: Mirzam
 aspect: "16:9"
 theme: mirzam
 css: themes/mirzam.css
+math: typst
 ---
 
 # Theming and settings {.title-slide}
 
-Every knob a deck has, and the order they are read in. This deck sets two of
+Every knob a deck has, and the order they are read in. This deck sets three of
 them on itself: `theme: mirzam` for the palette, `css: themes/mirzam.css` for
-the typography on top of it.
+the typography on top of it, and `math: typst` for how its one formula is
+written.
 
 <!-- note: Press D. The whole deck flips, because the stylesheet defines both modes. -->
 
@@ -132,6 +134,7 @@ css: themes/mirzam.css
 split: h2
 transition: fade 240ms
 fit: shrink
+math: typst
 vars:
   seats: 8
 ---
@@ -143,6 +146,7 @@ vars:
 - `css:` is resolved **relative to the deck file**
 - `split:` starts a slide at every heading of that level
 - `transition:` is the deck-wide page turn; a slide can override its half
+- `math:` picks the formula syntax, `latex` (the default) or `typst`
 - `vars:` are substituted with `{{ }}`, and arithmetic works: `{{ seats * 12 }}`
 :::
 
@@ -285,6 +289,51 @@ one for a deck you are still editing, where you want to see the overflow and
 cut something.
 
 *`node scripts/check-layout.mjs` finds them either way.*
+:::
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|  src             |  what           |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Math]{.eyebrow}
+## A dialect for formulas
+:::
+
+::: pane src {.card valign=middle}
+```yaml
+---
+math: typst
+---
+```
+
+```markdown
+$x = (-b pm sqrt(b^2 - 4a c))/(2a)$
+```
+
+Which renders as:
+
+$x = (-b pm sqrt(b^2 - 4a c))/(2a)$
+:::
+
+::: pane what {valign=middle}
+- Typst's math syntax, without the backslashes: `a/b` is a fraction, `sqrt()`
+  is a root, Greek goes by name — `alpha`, `Omega`
+- Per **deck**, not per formula; the default is `latex`, so every existing
+  deck reads as it always did
+- Both dialects render to MathML through the same path, so the result is
+  identical down to the font
 :::
 
 ---

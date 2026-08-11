@@ -12,7 +12,8 @@ mod toc;
 
 pub use assets::{AssetSource, FsAssets};
 pub use charts::render_charts_in;
-pub use inline::{parse_attrs, preprocess, render_markdown};
+pub use inline::{parse_attrs, preprocess, preprocess_math, render_markdown};
+pub use mirzam_core::MathDialect;
 pub use theme::{contrast_ratio, mode_warning, theme_warning, THEME_NAMES};
 pub use toc::resolve_deck;
 
@@ -37,9 +38,16 @@ pub struct RenderedSlide {
 }
 
 /// Renders one slide to `<section>` HTML; this is the unit `serve` updates.
-/// Assets are resolved from the filesystem.
-pub fn render_slide_html(slide: &SlideSource, index: usize, asset_dir: &Path) -> RenderedSlide {
-    render_slide_html_with(slide, index, &assets::FsAssets(asset_dir))
+/// Assets are resolved from the filesystem. `math` is the deck's `math:`
+/// dialect — a property of the deck, passed in because a slide is rendered
+/// without knowing the deck it belongs to.
+pub fn render_slide_html(
+    slide: &SlideSource,
+    index: usize,
+    asset_dir: &Path,
+    math: MathDialect,
+) -> RenderedSlide {
+    render_slide_html_with(slide, index, &assets::FsAssets(asset_dir), math)
 }
 
 /// Variant with pluggable asset resolution; WASM hosts inject their own table.
@@ -47,12 +55,20 @@ pub fn render_slide_html_with(
     slide: &SlideSource,
     index: usize,
     asset_source: &dyn AssetSource,
+    math: MathDialect,
 ) -> RenderedSlide {
     let mut warnings = Vec::new();
     let mut assets_used = Vec::new();
     // Charts are rendered first: they may pull in CSV data through the same
     // asset source, and their SVG output must not be scanned for asset URLs.
-    let html = render_slide(slide, index, &mut warnings, asset_source, &mut assets_used);
+    let html = render_slide(
+        slide,
+        index,
+        &mut warnings,
+        asset_source,
+        &mut assets_used,
+        math,
+    );
     let html = assets::embed_assets(&html, asset_source, &mut warnings, &mut assets_used);
     RenderedSlide {
         html,
@@ -428,9 +444,13 @@ pub fn render_deck(meta: &DeckMeta, slides: &[SlideSource], asset_dir: &Path) ->
     let mut warnings = Vec::new();
     warnings.extend(theme_warning(meta.theme.as_deref()));
     warnings.extend(mode_warning(meta.mode.as_deref()));
+    let math = meta.math_dialect().unwrap_or_else(|w| {
+        warnings.push(w);
+        MathDialect::default()
+    });
     let mut sections = Vec::with_capacity(slides.len());
     for (i, slide) in slides.iter().enumerate() {
-        let rendered = render_slide_html(slide, i, asset_dir);
+        let rendered = render_slide_html(slide, i, asset_dir, math);
         warnings.extend(rendered.warnings);
         sections.push(rendered.html);
     }
@@ -446,6 +466,7 @@ fn render_slide(
     warnings: &mut Vec<String>,
     asset_source: &dyn AssetSource,
     chart_files: &mut Vec<std::path::PathBuf>,
+    math: MathDialect,
 ) -> String {
     let mut errors: Vec<String> = Vec::new();
 
@@ -462,8 +483,18 @@ fn render_slide(
     };
 
     let mut body = match &grid {
-        Some(g) => render_grid_slide(g, slide, index, &mut errors, asset_source, chart_files),
-        None => render_single_pane_slide(slide, index, &mut errors, asset_source, chart_files),
+        Some(g) => render_grid_slide(
+            g,
+            slide,
+            index,
+            &mut errors,
+            asset_source,
+            chart_files,
+            math,
+        ),
+        None => {
+            render_single_pane_slide(slide, index, &mut errors, asset_source, chart_files, math)
+        }
     };
 
     // shape blocks become a static SVG layer in page coordinates, scaling with the slide.
@@ -545,6 +576,7 @@ fn render_grid_slide(
     errors: &mut Vec<String>,
     asset_source: &dyn AssetSource,
     chart_files: &mut Vec<std::path::PathBuf>,
+    math: MathDialect,
 ) -> String {
     let names = grid.pane_names();
     let mut panes_html = String::new();
@@ -603,7 +635,7 @@ fn render_grid_slide(
         }
         let content = toc::extract(&content, errors);
         let (content, chart_blocks) = charts::extract(&content);
-        let mut body = render_markdown(&preprocess(&content));
+        let mut body = render_markdown(&preprocess_math(&content, math));
         if !chart_blocks.is_empty() {
             let (with_charts, files) =
                 charts::render_charts_in(&body, &chart_blocks, index, asset_source, errors);
@@ -792,6 +824,7 @@ fn render_single_pane_slide(
     errors: &mut Vec<String>,
     asset_source: &dyn AssetSource,
     chart_files: &mut Vec<std::path::PathBuf>,
+    math: MathDialect,
 ) -> String {
     let mut content = slide.loose.clone();
     // Without a layout, `::: pane` blocks are simply concatenated.
@@ -801,7 +834,7 @@ fn render_single_pane_slide(
     }
     let content = toc::extract(&content, errors);
     let (content, chart_blocks) = charts::extract(&content);
-    let mut body = render_markdown(&preprocess(&content));
+    let mut body = render_markdown(&preprocess_math(&content, math));
     if !chart_blocks.is_empty() {
         let (with_charts, files) =
             charts::render_charts_in(&body, &chart_blocks, index, asset_source, errors);

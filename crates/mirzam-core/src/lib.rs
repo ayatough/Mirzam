@@ -32,7 +32,19 @@ pub struct DeckMeta {
     /// Panes opt in individually with `{fit=shrink}`; this is the same thing
     /// said once for the whole deck.
     pub fit: Option<String>,
+    /// Which syntax `$...$` holds: `latex` (the default) or `typst`.
+    /// Per deck, not per formula — a deck reads as one language.
+    pub math: Option<String>,
     pub vars: BTreeMap<String, serde_yaml::Value>,
+}
+
+/// The syntax math is written in. Every dialect renders through the same
+/// LaTeX -> MathML path; this only chooses the front end.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum MathDialect {
+    #[default]
+    Latex,
+    Typst,
 }
 
 impl DeckMeta {
@@ -41,6 +53,19 @@ impl DeckMeta {
         match self.aspect.as_deref() {
             Some("4:3") => (1024, 768),
             _ => (1280, 720),
+        }
+    }
+
+    /// The math front end `math:` asks for. `Err` carries a warning for an
+    /// unrecognised value; the deck still renders, with the default.
+    pub fn math_dialect(&self) -> Result<MathDialect, String> {
+        match self.math.as_deref().map(str::trim) {
+            None | Some("latex") => Ok(MathDialect::Latex),
+            Some("typst") => Ok(MathDialect::Typst),
+            Some(other) => Err(format!(
+                "math: unknown dialect `{other}`; `latex` and `typst` are supported, \
+                 rendering as latex"
+            )),
         }
     }
 

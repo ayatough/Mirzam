@@ -1,7 +1,9 @@
 //! Preprocessing applied to the Markdown inside a pane:
 //! - Attribute syntax `{#id .class k=v}` on headings, images and spans becomes raw HTML
-//! - Math `$...$` / `$$...$$` is converted to MathML at build time
+//! - Math `$...$` / `$$...$$` is converted to MathML at build time; the deck's
+//!   `math:` frontmatter chooses whether the source is LaTeX or Typst
 
+use mirzam_core::MathDialect;
 use regex::Regex;
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
@@ -117,15 +119,20 @@ fn map_fence_segments(src: &str, f: impl Fn(&str) -> String) -> String {
     out
 }
 
+/// [`preprocess_math`] with the default LaTeX math front end.
+pub fn preprocess(src: &str) -> String {
+    preprocess_math(src, MathDialect::Latex)
+}
+
 /// Preprocesses Markdown into Markdown-with-raw-HTML.
 /// Math runs first so TeX such as `\sqrt[3]{x}` is not mistaken for the
 /// `[...]{...}` span attribute syntax.
-pub fn preprocess(src: &str) -> String {
+pub fn preprocess_math(src: &str, math: MathDialect) -> String {
     // `$$...$$` can span lines, so block math is handled per fence-free segment.
-    let src = map_fence_segments(src, block_math);
+    let src = map_fence_segments(src, |s| block_math(s, math));
     // As can `<picture>`, which is usually written across four.
     let src = map_fence_segments(&src, picture_modes);
-    let src = map_outside_fences(&src, inline_math);
+    let src = map_outside_fences(&src, |l| inline_math(l, math));
     let src = map_outside_fences(&src, heading_attrs);
     let src = map_outside_fences(&src, image_attrs);
     map_outside_fences(&src, span_attrs)
@@ -443,21 +450,21 @@ fn span_attrs(line: &str) -> String {
 }
 
 /// Converts `$$...$$` (which may span lines) to block MathML.
-fn block_math(segment: &str) -> String {
+fn block_math(segment: &str, math: MathDialect) -> String {
     static BLOCK: OnceLock<Regex> = OnceLock::new();
     let b = re(&BLOCK, r"\$\$([^$]+)\$\$");
     b.replace_all(segment, |c: &regex::Captures| {
-        math_html(c[1].trim(), math_core::MathDisplay::Block)
+        math_html(c[1].trim(), math_core::MathDisplay::Block, math)
     })
     .into_owned()
 }
 
 /// Converts `$...$` to inline MathML.
-fn inline_math(line: &str) -> String {
+fn inline_math(line: &str, math: MathDialect) -> String {
     static INLINE: OnceLock<Regex> = OnceLock::new();
     let i = re(&INLINE, r"\$([^$\n]+)\$");
     i.replace_all(line, |c: &regex::Captures| {
-        math_html(c[1].trim(), math_core::MathDisplay::Inline)
+        math_html(c[1].trim(), math_core::MathDisplay::Inline, math)
     })
     .into_owned()
 }
@@ -470,22 +477,33 @@ fn math_converter() -> &'static math_core::LatexToMathML {
     })
 }
 
-/// LaTeX to MathML. On failure the TeX source is shown in an error span.
-fn math_html(tex: &str, display: math_core::MathDisplay) -> String {
-    match math_converter().convert_with_local_state(tex, display) {
+/// Math source to MathML. A Typst formula is lowered to LaTeX first; both
+/// dialects then share one converter. On failure the source is shown in an
+/// error span — the source as the author wrote it, whichever step failed.
+fn math_html(src: &str, display: math_core::MathDisplay, math: MathDialect) -> String {
+    let tex = match math {
+        MathDialect::Latex => src.to_string(),
+        MathDialect::Typst => match mirzam_tmath::to_latex(src) {
+            Ok(tex) => tex,
+            Err(e) => return math_error(src, &e.to_string(), display),
+        },
+    };
+    match math_converter().convert_with_local_state(&tex, display) {
         Ok(r) => r.mathml,
-        Err(e) => {
-            let cls = match display {
-                math_core::MathDisplay::Block => "math-error math-block",
-                math_core::MathDisplay::Inline => "math-error",
-            };
-            format!(
-                "<span class=\"{cls}\" title=\"{}\">{}</span>",
-                html_escape(&e.to_string()),
-                html_escape(tex)
-            )
-        }
+        Err(e) => math_error(src, &e.to_string(), display),
     }
+}
+
+fn math_error(shown: &str, error: &str, display: math_core::MathDisplay) -> String {
+    let cls = match display {
+        math_core::MathDisplay::Block => "math-error math-block",
+        math_core::MathDisplay::Inline => "math-error",
+    };
+    format!(
+        "<span class=\"{cls}\" title=\"{}\">{}</span>",
+        html_escape(error),
+        html_escape(shown)
+    )
 }
 
 /// Renders Markdown inline, stripping the wrapping `<p>`.
@@ -651,6 +669,35 @@ mod tests {
         let out = preprocess("$\\frac{1$\n");
         assert!(out.contains("math-error"));
         assert!(out.contains("\\frac{1"));
+    }
+
+    #[test]
+    fn typst_math_renders_to_mathml() {
+        let out = preprocess_math(
+            "inline $alpha/2$ and $$sum_(i=1)^n i$$\n",
+            MathDialect::Typst,
+        );
+        assert_eq!(out.matches("<math").count(), 2, "{out}");
+        assert!(out.contains("mfrac"), "{out}");
+        assert!(out.contains('α'), "{out}");
+        assert!(!out.contains("math-error"), "{out}");
+    }
+
+    #[test]
+    fn broken_typst_math_shows_its_own_source() {
+        let out = preprocess_math("$sqrt(x$\n", MathDialect::Typst);
+        assert!(out.contains("math-error"), "{out}");
+        // The Typst source, not the intermediate LaTeX.
+        assert!(out.contains("sqrt(x"), "{out}");
+        assert!(out.contains("typst math"), "{out}");
+    }
+
+    #[test]
+    fn the_default_dialect_is_latex() {
+        assert_eq!(
+            preprocess("$E=mc^2$\n"),
+            preprocess_math("$E=mc^2$\n", MathDialect::Latex)
+        );
     }
 
     #[test]

@@ -100,6 +100,13 @@ pub fn build_deck_with(
     warnings.extend(mirzam_render::theme_warning(meta.theme.as_deref()));
     warnings.extend(mirzam_render::mode_warning(meta.mode.as_deref()));
 
+    // A typo in `math:` renders the deck as LaTeX rather than failing, but
+    // must say so — otherwise every formula just turns into an error span.
+    let math = meta.math_dialect().unwrap_or_else(|w| {
+        warnings.push(w);
+        mirzam_core::MathDialect::default()
+    });
+
     // A transition that does not parse leaves the deck with plain cuts, which
     // is the right outcome for a typo in a decoration - but say so, because
     // otherwise it looks like the feature is broken.
@@ -203,8 +210,10 @@ pub fn build_deck_with(
 
     for (i, part) in parts.iter().enumerate() {
         let slide_src = &part.text;
-        // The cache key includes the slide index, since data-index is baked into the HTML.
-        let key = slide_hash(slide_src, i);
+        // The cache key includes the slide index, since data-index is baked
+        // into the HTML — and the math dialect, since the same `$...$` source
+        // renders differently under a different frontmatter `math:`.
+        let key = slide_hash(slide_src, i, math);
         let mut html = match cache.get(&key).filter(|e| e.is_fresh()) {
             Some(entry) => {
                 for (p, _) in &entry.assets {
@@ -214,7 +223,7 @@ pub fn build_deck_with(
             }
             None => {
                 let slide = mirzam_syntax::parse_slide(slide_src);
-                let out = mirzam_render::render_slide_html(&slide, i, &base_dir);
+                let out = mirzam_render::render_slide_html(&slide, i, &base_dir, math);
                 let from = origin(part.from);
                 warnings.extend(out.warnings.into_iter().map(|w| format!("{w}{from}")));
                 let assets: Vec<(PathBuf, Option<SystemTime>)> =
@@ -259,7 +268,7 @@ pub fn build_deck_with(
         let live_keys: std::collections::HashSet<u64> = parts
             .iter()
             .enumerate()
-            .map(|(i, p)| slide_hash(&p.text, i))
+            .map(|(i, p)| slide_hash(&p.text, i, math))
             .collect();
         cache.retain(|k, _| live_keys.contains(k));
     }
@@ -296,10 +305,11 @@ fn mtime(path: &Path) -> Option<SystemTime> {
     std::fs::metadata(path).and_then(|m| m.modified()).ok()
 }
 
-fn slide_hash(src: &str, index: usize) -> u64 {
+fn slide_hash(src: &str, index: usize, math: mirzam_core::MathDialect) -> u64 {
     let mut h = std::collections::hash_map::DefaultHasher::new();
     src.hash(&mut h);
     index.hash(&mut h);
+    math.hash(&mut h);
     h.finish()
 }
 

@@ -299,6 +299,52 @@ browser. Decks containing math bundle the STIX Two Math font (~540 KB) so they
 render identically on machines without one installed. If a formula fails to
 convert, its source is shown in red with the error in the tooltip.
 
+#### Typst-flavoured math
+
+LaTeX is hard to write from memory; [Typst's math syntax] is not. Setting
+`math: typst` in frontmatter switches what `$...$` and `$$...$$` hold — for
+the whole deck, so a deck reads as one language. The default is `latex`, and
+every existing deck renders exactly as it always did.
+
+```markdown
+---
+math: typst
+---
+
+The roots are $x = (-b pm sqrt(b^2 - 4a c))/(2a)$, and
+
+$$
+sum_(i=1)^n i = (n(n+1))/2
+$$
+```
+
+The supported surface, all lowered to LaTeX and rendered through the same
+MathML path:
+
+| Form | Written as |
+|---|---|
+| Fractions | `a/b` — binds the adjacent term; `(a + b)/c` groups without printing the parens |
+| Scripts | `x^2`, `x_(i+1)`, `x_i^2`, `x^-1` |
+| Roots | `sqrt(x)`, `root(3, x)` |
+| Bars | `abs(x)`, `norm(v)` |
+| Big operators | `sum_(i=1)^n`, `product`, `integral_0^oo`, `lim_(x -> 0)` |
+| Greek | by name: `alpha`, `pi`, `Omega` — following Typst's glyphs, so `epsilon` is ε |
+| Functions | `sin`, `cos`, `log`, `min`, … set upright, gluing to their `(...)` |
+| Arrows and relations | `->` `=>` `<-` `!=` `<=` `>=`, `in`, `subset`, `union`, `approx`, … |
+| Symbols | `infinity` (or `oo`), `partial`, `nabla`, `hbar`, `times`, `pm`, `dots`, `...` |
+| Matrices | `mat(1, 2; 3, 4)` — `,` separates cells, `;` rows |
+| Cases | `cases(x^2 &"if" x > 0, 0 &"otherwise")` |
+| Text | `"km/h"` renders upright, spaces kept |
+| Alignment | `&` lines up equations, `\` breaks the line |
+| Escapes | `#` strips the next character of its meaning: `a #/ b` is a slash, not a fraction |
+
+It is a deliberate subset — a parser of our own rather than a dependency on
+Typst, whose own math goes through its layout engine to SVG, not MathML. A
+formula using something outside the subset shows its source in red, the same
+way a broken LaTeX formula does.
+
+[Typst's math syntax]: https://typst.app/docs/reference/math/
+
 ### Media
 
 ```markdown
