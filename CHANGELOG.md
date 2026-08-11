@@ -143,6 +143,22 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   nobody typed.
 - Lists carried a browser's blank line above and below — right for a page,
   wasteful on a slide, where three of them cost a bullet's worth of height.
+- **A `--split h2` deck lost its heading rule.** `examples/themes/*.css` drop
+  the built-in full-width border under an `h2` and draw a short violet rule
+  instead — but scoped to `.pane-head h2`, which the sample decks all have and a
+  split document never does, since every slide it makes is one `main` pane. So
+  the README published as a deck got the removal and not the replacement. The
+  rule is on `h2` now: "one violet rule per section heading" was never a claim
+  about what the pane is called. A centred heading gets it centred, which the
+  narrower selector had never had to handle.
+- **`mirzam build --mode light|dark`**, the sibling `--theme`, `--css` and
+  `--fit` already had. A stylesheet may rest in either mode — `themes/mirzam.css`
+  is dark by default and says so in its header — but nothing in the CSS tells the
+  renderer which, and an unset mode means "follow the reader's machine". A
+  dark-resting deck left unset therefore painted dark while every per-mode asset
+  in it picked its *light* copy, which is how the README deck ended up with a
+  light pipeline diagram on a dark slide. The deck that most needs this is the
+  one that cannot carry frontmatter at all.
 - **The pipeline diagram was dark whatever it was sitting on.** It was the one
   brand asset with no light twin — `docs/brand/README.md` said so, in the row
   describing it — so the README read as a deck put a black slab in the middle of

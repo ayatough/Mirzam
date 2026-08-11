@@ -65,6 +65,13 @@ fn main() -> ExitCode {
                             _ => return usage("--fit takes shrink"),
                         }
                     }
+                    "--mode" => {
+                        i += 1;
+                        match args.get(i).map(String::as_str) {
+                            Some(m @ ("light" | "dark")) => opts.mode = Some(m.to_string()),
+                            _ => return usage("--mode takes light or dark"),
+                        }
+                    }
                     "--split" => {
                         i += 1;
                         match args.get(i).map(String::as_str) {
@@ -222,7 +229,8 @@ fn help_text() -> String {
         r#"
 Usage:
   mirzam build <input.md> [-o <out_dir>] [--split h1|h2|h3] [--theme <name>]
-               [--css <file>] [--fit shrink] [--base-url <url>] [--debug-layout]
+               [--css <file>] [--fit shrink] [--mode light|dark]
+               [--base-url <url>] [--debug-layout]
   mirzam serve <input.md> [-p <port>]
   mirzam export pdf <input.md> [-o <out.pdf>] [--chromium <bin>]
 
@@ -235,6 +243,10 @@ Usage:
           --fit shrink scales an overfull pane's text down instead of clipping
           it, which is what a section of prose that was never written to be a
           slide usually needs
+          --mode pins the deck to light or dark. Leave it off and the deck
+          follows the reader's machine - which is wrong for a stylesheet that
+          rests in one mode, because every per-mode image in the deck would
+          then pick its copy by a rule the stylesheet is ignoring
           --base-url is where the input file's directory lives once published,
           so links to other documents still resolve from the deck's own path
           --debug-layout bakes on the pane outline overlay, for screenshotting
@@ -264,6 +276,8 @@ struct BuildArgs {
     css: Option<PathBuf>,
     /// Overrides frontmatter `fit:`.
     fit: Option<String>,
+    /// Overrides frontmatter `mode:`.
+    mode: Option<String>,
 }
 
 impl Default for BuildArgs {
@@ -276,6 +290,7 @@ impl Default for BuildArgs {
             theme: None,
             css: None,
             fit: None,
+            mode: None,
         }
     }
 }
@@ -294,6 +309,15 @@ fn build(input: &Path, args: &BuildArgs) -> Result<(), String> {
     }
     if let Some(fit) = &args.fit {
         out.meta.fit = Some(fit.clone());
+    }
+    // `--mode` matters most for the deck that cannot say it any other way. A
+    // stylesheet may rest in either mode - `examples/themes/mirzam.css` is dark
+    // by default and says so - but nothing in the CSS tells the renderer which,
+    // and an unset mode means "follow the reader's machine". So a dark-resting
+    // deck left unset paints dark while every per-mode asset in it, a
+    // `<picture>` or a `bg-light=`/`bg-dark=` pane, shows its light copy.
+    if let Some(mode) = &args.mode {
+        out.meta.mode = Some(mode.clone());
     }
     if let Some(path) = &args.css {
         // Unreadable frontmatter `css:` is a warning, because the deck is still

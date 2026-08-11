@@ -119,7 +119,7 @@ h3 { font-weight: 500; letter-spacing: -0.01em; color: var(--mz-fg); }
 
 /* A short violet rule under a section heading, in place of a full-width border:
    the signature colour, spent once per slide. */
-.pane-head h2::after {
+h2::after {
   content: "";
   display: block;
   width: 56px;
@@ -128,6 +128,14 @@ h3 { font-weight: 500; letter-spacing: -0.01em; color: var(--mz-fg); }
   border-radius: 2px;
   background: var(--mirzam-rule);
 }
+/* A centred heading needs its rule centred under it. The rule is a 56px block,
+   so on `align=center` it would otherwise sit at the pane's left edge with the
+   words in the middle — which is what broadening the selector past `.pane-head`
+   first produced on the closing slides. `text-align` cannot move a block box;
+   the auto margins can. */
+:is(.center, [style*="text-align:center"]) h2::after { margin-inline: auto; }
+:is(.right, [style*="text-align:right"]) h2::after { margin-inline: auto 0; }
+
 
 .grid { padding: 48px 64px; gap: 24px; }
 

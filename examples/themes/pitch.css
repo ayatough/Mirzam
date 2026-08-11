@@ -124,7 +124,7 @@ h2 {
   padding-bottom: 0;
 }
 /* A short accent rule under section headings instead of a full-width border */
-.pane-head h2::after {
+h2::after {
   content: "";
   display: block;
   width: 64px;
@@ -133,6 +133,14 @@ h2 {
   border-radius: 2px;
   background: linear-gradient(90deg, var(--aurora-rule-a), var(--aurora-rule-b));
 }
+/* A centred heading needs its rule centred under it. The rule is a 56px block,
+   so on `align=center` it would otherwise sit at the pane's left edge with the
+   words in the middle — which is what broadening the selector past `.pane-head`
+   first produced on the closing slides. `text-align` cannot move a block box;
+   the auto margins can. */
+:is(.center, [style*="text-align:center"]) h2::after { margin-inline: auto; }
+:is(.right, [style*="text-align:right"]) h2::after { margin-inline: auto 0; }
+
 h3 { font-weight: 500; color: var(--mz-accent1); letter-spacing: -0.01em; }
 p, li { color: var(--aurora-body); }
 strong { color: var(--aurora-strong); }

@@ -48,7 +48,7 @@ done
 # viewer simply cuts them off - which is the worst outcome for the deck whose
 # whole claim is that an unedited document becomes a deck.
 ./target/release/mirzam build README.md -o "$OUT/decks/readme" --split h2 \
-  --theme mirzam --css examples/themes/mirzam.css --fit shrink \
+  --theme mirzam --css examples/themes/mirzam.css --fit shrink --mode dark \
   --base-url "$REPO_BLOB/"
 
 # The browser editor: the same Rust core compiled to WebAssembly, so someone
