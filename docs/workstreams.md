@@ -71,7 +71,7 @@ there is. The model column follows from that:
 | W17 | A theme per slide | B | — | — | |
 | W18 | Carrying an element from one slide to the next | S | — | W2 | |
 | W5 | Typst-flavoured math | A | Sonnet | — | ✅ |
-| W19 | Structural math editing: tap and place, not type | S | Fable | W5 | 1–3 ✅ |
+| W19 | Structural math editing: tap and place, not type | S | Fable | W5 | ✅ |
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
 
 ### What is deferred, and why
@@ -946,8 +946,22 @@ editor-built tree (`a_(b^c)` must equal the tree the editor assembled, not
 that tree wrapped in a group); and scripting a fraction parenthesises it in
 the *operation*, because `(a/b)^2` is writable and `Script{Frac}` is not —
 the tree is kept inside what the syntax can say, which is what keeps
-"indistinguishable from a deck typed by hand" true. Step 4, the boxes, is
-where the UI starts.
+"indistinguishable from a deck typed by hand" true.
+
+**Steps 4–5 landed as the Math panel in the browser editor.** The wasm side
+exposes exactly two calls — `math_state` and `math_apply` — and the JS keeps
+no model: every tap sends one operation, gets back new source, a tree for
+the boxes and MathML for the preview. Selection taught the design two
+things: placing something selects it (so "type x, tap x²" needs no
+intermediate tap), and tapping a selected box must *not* toggle it off, or
+the flow above breaks — clearing selection is what the empty space beside
+the boxes is for. Insertion guards the frontmatter: a cursor that never
+moved sits at offset 0, and a formula must not land inside the YAML. What
+v1 does not do, knowingly: no drag-and-drop (tap-select then tap-place
+covers the flows drag was imagined for), no in-place editing of matrix
+cells (the boxes show them; the entry field writes `mat(...)` whole), and
+no editing for `math: latex` decks — the panel writes the dialect it
+writes, and offers to set it.
 
 **Where it stops.** It lives in this repository — the AST layer in
 `mirzam-tmath`, bindings in `mirzam-wasm`, the component under `web/` —

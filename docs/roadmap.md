@@ -37,10 +37,10 @@ keep changing.
 | Per-pane continuation (`<!-- next -->`) | Done |
 | Contents page generated from headings | Done |
 | Browser editor (WebAssembly), prebuilt binaries | Done |
+| Structural math editing (the Math panel in the browser editor) | Done |
 | A theme per slide | Next |
 | Carrying an element from one slide to the next | Next |
 | Demo recording and a generated themes gallery | Next |
-| Structural math editing (tap and place, not type) | Next |
 | Dragging an annotation back into the Markdown | Next |
 | Plugins, PPTX export | Later |
 

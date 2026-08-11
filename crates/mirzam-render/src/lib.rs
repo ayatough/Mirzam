@@ -12,7 +12,7 @@ mod toc;
 
 pub use assets::{AssetSource, FsAssets};
 pub use charts::render_charts_in;
-pub use inline::{parse_attrs, preprocess, preprocess_math, render_markdown};
+pub use inline::{parse_attrs, preprocess, preprocess_math, render_markdown, render_math};
 pub use mirzam_core::MathDialect;
 pub use theme::{contrast_ratio, mode_warning, theme_warning, THEME_NAMES};
 pub use toc::resolve_deck;

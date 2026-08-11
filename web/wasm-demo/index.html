@@ -49,12 +49,60 @@
   #warnings:empty { display: none; }
   #tabs { display: none; gap: 6px; }
 
+  /* ---- The math panel: tap and place, not type ---- */
+  #math-panel {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+    display: none; flex-direction: column; max-height: 78%;
+    background: var(--surface); border-top: 2px solid var(--accent);
+    box-shadow: 0 -12px 32px rgba(0,0,0,.45);
+  }
+  #math-panel.open { display: flex; }
+  #math-head { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+  #math-head .stat { font-size: 13px; color: var(--fg); font-weight: 600; }
+  #math-preview {
+    padding: 10px 14px 4px; min-height: 52px; overflow-x: auto; text-align: center;
+    background: var(--bg);
+  }
+  #math-preview math { font-size: 26px; }
+  #math-preview .math-error { color: var(--red); font-family: ui-monospace, monospace; font-size: 14px; }
+  #math-src { display: block; text-align: center; padding: 0 14px 8px; color: var(--muted); background: var(--bg);
+    font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; overflow-x: auto; white-space: nowrap; }
+  #math-boxes { padding: 10px 12px; overflow: auto; text-align: center; }
+  .mhint { color: var(--muted); font-size: 13px; }
+  .mn {
+    display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;
+    min-width: 30px; min-height: 36px; padding: 2px 5px; margin: 2px;
+    border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font-size: 17px;
+  }
+  .mn.sel { border-color: var(--accent); background: rgba(155,140,255,.18); }
+  .mn.ph { border-style: dashed; color: var(--muted); min-width: 34px; }
+  .mn .mrow { display: inline-flex; align-items: center; }
+  .mfrac { display: inline-flex; flex-direction: column; align-items: stretch; }
+  .mfrac > .bar { height: 1.5px; background: var(--muted); margin: 2px 1px; }
+  .mscripts { display: inline-flex; flex-direction: column; justify-content: space-between; margin-left: 2px; }
+  .mscripts .mn { min-height: 26px; min-width: 24px; font-size: 13px; }
+  .mcall-name { color: var(--accent-2); font-size: 13px; margin-right: 2px; }
+  #math-err { color: var(--red); font-size: 12px; padding: 0 14px; }
+  #math-err:empty { display: none; }
+  #math-note { font-size: 12px; color: var(--muted); padding: 4px 14px; display: flex; gap: 8px; align-items: center; }
+  #math-note:empty { display: none; }
+  #math-note button { font-size: 12px; padding: 3px 8px; }
+  #math-pal { padding: 6px 10px 10px; border-top: 1px solid var(--line); overflow-y: auto; }
+  #math-pal .row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+  #math-pal button { min-width: 42px; min-height: 40px; font-size: 16px; padding: 4px 8px; }
+  #math-entry {
+    flex: 1; min-width: 120px; font: inherit; font-size: 16px; padding: 6px 10px;
+    background: var(--raised); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; outline: none;
+  }
+  #math-entry:focus { border-color: var(--accent); }
+
   /* On a phone there is no room for two columns, so the two halves take turns.
      Everything else - the build, the download - is identical. */
   @media (max-width: 820px) {
     #tabs { display: flex; }
     main { flex-direction: column; }
-    textarea { width: 100%; height: 100%; resize: none; border-right: 0; }
+    /* 16px, because iOS Safari force-zooms the page into any smaller input. */
+    textarea { width: 100%; height: 100%; resize: none; border-right: 0; font-size: 16px; }
     body[data-pane="preview"] textarea { display: none; }
     body[data-pane="edit"] #preview { display: none; }
   }
@@ -73,6 +121,7 @@
   <button type="button" id="sample">Sample</button>
   <label class="btn">Open .md<input type="file" id="open" accept=".md,.markdown,text/markdown,text/plain"></label>
   <label class="btn">Add image<input type="file" id="add-img" accept="image/*" multiple></label>
+  <button type="button" id="math-open">Math</button>
   <button type="button" id="save-md">Save .md</button>
   <button type="button" id="save-html" class="primary">Download deck</button>
 </header>
@@ -88,8 +137,34 @@ Write Markdown. A --- on its own line starts a slide."></textarea>
 </main>
 <div id="warnings"></div>
 
+<!-- The math panel: the formula is built by touch, held as Typst-math text,
+     and lands in the Markdown as ordinary $...$ - indistinguishable from a
+     formula typed by hand. -->
+<div id="math-panel">
+  <div id="math-head">
+    <span class="stat">Formula</span>
+    <span class="spacer"></span>
+    <button type="button" id="math-cancel">Cancel</button>
+    <button type="button" id="math-insert" class="primary">Insert</button>
+  </div>
+  <div id="math-preview"></div>
+  <code id="math-src"></code>
+  <div id="math-boxes"></div>
+  <div id="math-err"></div>
+  <div id="math-note"></div>
+  <div id="math-pal">
+    <div class="row" id="math-structs"></div>
+    <div class="row" id="math-syms"></div>
+    <div class="row">
+      <input id="math-entry" placeholder="x  42  alpha  sin(x) …" autocomplete="off">
+      <button type="button" id="math-put">Put</button>
+      <button type="button" id="math-del">⌫</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
-import init, { Renderer } from './pkg/mirzam_wasm.js';
+import init, { Renderer, math_state, math_apply } from './pkg/mirzam_wasm.js';
 
 const SAMPLE = `---
 title: My deck
@@ -364,6 +439,291 @@ const setPane = (which) => {
 };
 document.getElementById('tab-edit').addEventListener('click', () => setPane('edit'));
 document.getElementById('tab-preview').addEventListener('click', () => setPane('preview'));
+
+// ---- The math panel ----
+// The formula is Typst-math text and nothing else: every tap goes to the
+// wasm side as one operation, which parses, edits the tree, and prints the
+// text back. The JS here keeps no model - it renders what it is handed.
+const mathPanel = document.getElementById('math-panel');
+const mathPreview = document.getElementById('math-preview');
+const mathSrcEl = document.getElementById('math-src');
+const mathBoxes = document.getElementById('math-boxes');
+const mathErr = document.getElementById('math-err');
+const mathNote = document.getElementById('math-note');
+const mathEntry = document.getElementById('math-entry');
+
+let mathSrc = '';    // the formula being built
+let mathSel = null;  // selected path (array of child indices), or null
+let mathRange = null; // [start, end] of the $...$ being edited, or null
+let mathTree = [];
+
+// Spellings the boxes show as the glyph the reader will get.
+const GLYPHS = {
+  alpha:'α', beta:'β', gamma:'γ', delta:'δ', epsilon:'ε', theta:'θ', lambda:'λ',
+  mu:'μ', nu:'ν', pi:'π', rho:'ρ', sigma:'σ', tau:'τ', phi:'φ', psi:'ψ', omega:'ω',
+  Gamma:'Γ', Delta:'Δ', Theta:'Θ', Lambda:'Λ', Pi:'Π', Sigma:'Σ', Phi:'Φ', Psi:'Ψ', Omega:'Ω',
+  infinity:'∞', oo:'∞', partial:'∂', nabla:'∇', hbar:'ℏ', sum:'Σ', product:'Π',
+  integral:'∫', 'integral.cont':'∮', times:'×', dot:'⋅', 'dot.op':'⋅', pm:'±',
+  '->':'→', '=>':'⇒', '<-':'←', '!=':'≠', '<=':'≤', '>=':'≥', 'subset.eq':'⊆',
+  in:'∈', 'in.not':'∉', subset:'⊂', union:'∪', sect:'∩', approx:'≈', dots:'…', '...':'…',
+  sqrt:'√', abs:'|·|', norm:'‖·‖', hat:'ˆ', arrow:'⃗', ddot:'¨', tilde:'˜',
+  bb:'𝔹', cal:'𝓒', overline:'‾', underline:'_', mat:'⊞', cases:'{', vec:'⟨⟩',
+};
+const glyph = (t) => GLYPHS[t] ?? t;
+
+function nodeAtPath(tree, path) {
+  let list = tree, node = null;
+  for (const i of path) {
+    node = list[i];
+    if (!node) return null;
+    list = node.c || [];
+  }
+  return node;
+}
+
+function refreshMath(state) {
+  const res = state ?? JSON.parse(math_state(mathSrc));
+  if (!res.ok) { mathErr.textContent = res.error; return; }
+  mathErr.textContent = '';
+  mathSrc = res.src;
+  mathTree = res.tree;
+  mathPreview.innerHTML = res.mathml || '<span class="mhint">—</span>';
+  mathSrcEl.textContent = mathSrc ? `$${mathSrc}$` : '';
+  if (mathSel && !nodeAtPath(mathTree, mathSel)) mathSel = null;
+  mathBoxes.innerHTML = '';
+  if (!mathTree.length) {
+    mathBoxes.innerHTML = '<span class="mhint">Tap a symbol below, or type in the box and press Put</span>';
+  } else {
+    mathBoxes.appendChild(rowOf(mathTree, []));
+  }
+  mathNote.innerHTML = '';
+  if (!deckHasTypst(srcEl.value)) {
+    mathNote.append('This panel writes Typst math — the deck needs `math: typst` in frontmatter. ');
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = 'Set it';
+    b.addEventListener('click', () => { setTypstFrontmatter(); refreshMath(); });
+    mathNote.appendChild(b);
+  }
+}
+
+function rowOf(children, base) {
+  const row = document.createElement('span');
+  row.className = 'mrow';
+  children.forEach((n, i) => row.appendChild(boxNode(n, [...base, i])));
+  return row;
+}
+
+function boxNode(n, path) {
+  const el = document.createElement('span');
+  el.className = 'mn' + (n.ph ? ' ph' : '');
+  el.dataset.path = path.join(',');
+  if (mathSel && path.join(',') === mathSel.join(',')) el.classList.add('sel');
+  if (n.ph) {
+    el.textContent = '□';
+  } else if (n.k === 'frac') {
+    const f = document.createElement('span');
+    f.className = 'mfrac';
+    f.appendChild(boxNode(n.c[0], [...path, 0]));
+    const bar = document.createElement('span');
+    bar.className = 'bar';
+    f.appendChild(bar);
+    f.appendChild(boxNode(n.c[1], [...path, 1]));
+    el.appendChild(f);
+  } else if (n.k === 'script') {
+    el.appendChild(boxNode(n.c[0], [...path, 0]));
+    const col = document.createElement('span');
+    col.className = 'mscripts';
+    // Children order is base, then sub if present, then sup.
+    const subIdx = n.sub ? 1 : -1;
+    const supIdx = n.sup ? 1 + (n.sub ? 1 : 0) : -1;
+    if (supIdx > 0) col.appendChild(boxNode(n.c[supIdx], [...path, supIdx]));
+    if (subIdx > 0) col.appendChild(boxNode(n.c[subIdx], [...path, subIdx]));
+    el.appendChild(col);
+  } else if (n.k === 'call') {
+    const name = document.createElement('span');
+    name.className = 'mcall-name';
+    name.textContent = glyph(n.t);
+    el.appendChild(name);
+    el.appendChild(rowOf(n.c, path));
+  } else if (n.k === 'paren') {
+    el.append('(');
+    el.appendChild(rowOf(n.c, path));
+    el.append(')');
+  } else if (n.c && n.c.length) {
+    el.appendChild(rowOf(n.c, path));
+  } else {
+    el.textContent = glyph(n.t ?? '');
+  }
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    mathSel = path;
+    refreshMath();
+  });
+  return el;
+}
+
+// Tapping the empty space beside the boxes clears the selection, so the next
+// Put grows the formula at the end instead of replacing something.
+mathBoxes.addEventListener('click', () => {
+  mathSel = null;
+  refreshMath();
+});
+
+function applyMath(op, selectAfter) {
+  const res = JSON.parse(math_apply(mathSrc, JSON.stringify(op)));
+  if (!res.ok) { mathErr.textContent = res.error; return; }
+  if (selectAfter) mathSel = selectAfter(res);
+  refreshMath(res);
+}
+
+// Placing something: fill the selected hole, or grow the formula at the end.
+function put(text) {
+  if (!text) return;
+  const sel = mathSel && nodeAtPath(mathTree, mathSel);
+  if (sel && sel.ph) {
+    applyMath({ op: 'replace', path: mathSel, src: text }, () => mathSel);
+  } else {
+    applyMath({ op: 'append', src: text }, (res) => [res.tree.length - 1]);
+  }
+}
+
+// Structure needs somewhere to go: the selection, or a fresh hole at the end.
+function structure(op) {
+  const run = (path) => {
+    if (op.kind === 'call') {
+      applyMath({ op: 'call', name: op.name, path }, () => path);
+    } else {
+      // Select the slot the operation opened, so the next tap fills it.
+      applyMath({ op: op.kind, path }, (res) => {
+        const node = nodeAtPath(res.tree, path);
+        if (!node) return path;
+        if (op.kind === 'frac') return [...path, 1];
+        if (op.kind === 'sub') return [...path, 1];
+        return [...path, 1 + (node.sub ? 1 : 0)]; // sup sits after sub
+      });
+    }
+  };
+  if (mathSel) {
+    run(mathSel);
+  } else {
+    // Nothing selected: start from a hole so the shape appears first.
+    const res = JSON.parse(math_apply(mathSrc, JSON.stringify({ op: 'append', src: '' })));
+    if (!res.ok) { mathErr.textContent = res.error; return; }
+    mathSrc = res.src;
+    mathTree = res.tree;
+    run([res.tree.length - 1]);
+  }
+}
+
+const STRUCTS = [
+  { label: 'a/b', kind: 'frac' },
+  { label: 'x²', kind: 'sup' },
+  { label: 'x₂', kind: 'sub' },
+  { label: '√', kind: 'call', name: 'sqrt' },
+  { label: '|x|', kind: 'call', name: 'abs' },
+  { label: 'x̂', kind: 'call', name: 'hat' },
+  { label: 'v⃗', kind: 'call', name: 'arrow' },
+  { label: 'ẋ', kind: 'call', name: 'dot' },
+];
+for (const s of STRUCTS) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = s.label;
+  b.title = s.kind === 'call' ? s.name : s.kind;
+  b.addEventListener('click', () => structure(s));
+  document.getElementById('math-structs').appendChild(b);
+}
+
+const SYMS = ['alpha', 'beta', 'pi', 'theta', 'lambda', 'omega', 'infinity', 'partial',
+  'sum', 'integral', '->', '=>', '!=', '<=', '>=', 'dot', 'pm', 'times', '=', '+', '-'];
+for (const s of SYMS) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = glyph(s);
+  b.title = s;
+  b.addEventListener('click', () => put(s));
+  document.getElementById('math-syms').appendChild(b);
+}
+
+document.getElementById('math-put').addEventListener('click', () => {
+  put(mathEntry.value.trim());
+  mathEntry.value = '';
+});
+mathEntry.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    put(mathEntry.value.trim());
+    mathEntry.value = '';
+  }
+});
+document.getElementById('math-del').addEventListener('click', () => {
+  if (!mathSel) return;
+  applyMath({ op: 'delete', path: mathSel }, () => null);
+});
+
+function deckHasTypst(v) {
+  const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(v);
+  return !!(m && /^math:\s*typst\s*$/m.exec(m[1]));
+}
+
+// `math: typst` is a per-deck switch, so the panel offers to flip it rather
+// than silently inserting text the deck would read as LaTeX.
+function setTypstFrontmatter() {
+  const v = srcEl.value;
+  const m = /^---\r?\n([\s\S]*?\r?\n)---/.exec(v);
+  srcEl.value = m
+    ? v.slice(0, m.index + 4) + 'math: typst\n' + v.slice(m.index + 4)
+    : '---\nmath: typst\n---\n\n' + v;
+  localStorage.setItem('mirzam-src', srcEl.value);
+  fullRender(srcEl.value);
+}
+
+document.getElementById('math-open').addEventListener('click', () => {
+  setPane('edit');
+  const v = srcEl.value;
+  const pos = srcEl.selectionStart ?? 0;
+  mathRange = null;
+  mathSrc = '';
+  // The cursor inside an existing $...$ means "edit this one".
+  const re = /\$([^$\n]+)\$/g;
+  let m;
+  while ((m = re.exec(v))) {
+    if (pos >= m.index && pos <= m.index + m[0].length) {
+      mathRange = [m.index, m.index + m[0].length];
+      mathSrc = m[1].trim();
+      break;
+    }
+  }
+  mathSel = null;
+  mathPanel.classList.add('open');
+  refreshMath();
+});
+
+function closeMath() {
+  mathPanel.classList.remove('open');
+}
+document.getElementById('math-cancel').addEventListener('click', closeMath);
+
+document.getElementById('math-insert').addEventListener('click', () => {
+  if (mathSrc.trim()) {
+    let text = `$${mathSrc}$`;
+    const v = srcEl.value;
+    let [from, to] = mathRange ?? [srcEl.selectionStart ?? v.length, srcEl.selectionEnd ?? v.length];
+    // A cursor that sits inside the frontmatter - or was never placed at all -
+    // must not drop a formula into the middle of the YAML. Go to the end.
+    const fm = /^---\r?\n[\s\S]*?\r?\n---/.exec(v);
+    if (!mathRange && fm && from < fm[0].length + 1) {
+      from = to = v.length;
+      if (!v.endsWith('\n\n')) text = (v.endsWith('\n') ? '\n' : '\n\n') + text;
+    }
+    srcEl.value = v.slice(0, from) + text + v.slice(to);
+    srcEl.selectionStart = srcEl.selectionEnd = from + text.length;
+    localStorage.setItem('mirzam-src', srcEl.value);
+    fullRender(srcEl.value);
+  }
+  closeMath();
+});
 
 // An empty deck has nothing to preview, so the editor is where the work is.
 // On a phone the panes take turns and the page opens on the preview, which

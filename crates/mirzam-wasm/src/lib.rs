@@ -15,6 +15,8 @@
 //! const changed = JSON.parse(r.render_changed(source)); // changed slides only
 //! ```
 
+mod math;
+
 use mirzam_render::AssetSource;
 use mirzam_syntax::FileProvider;
 use std::cell::RefCell;

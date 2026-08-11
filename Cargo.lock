@@ -293,6 +293,7 @@ dependencies = [
  "mirzam-layout",
  "mirzam-render",
  "mirzam-syntax",
+ "mirzam-tmath",
  "serde_json",
  "wasm-bindgen",
 ]

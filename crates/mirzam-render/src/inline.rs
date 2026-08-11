@@ -494,6 +494,18 @@ fn math_html(src: &str, display: math_core::MathDisplay, math: MathDialect) -> S
     }
 }
 
+/// Renders one formula on its own — MathML, or the error span a deck would
+/// show. For hosts that preview a formula outside any slide, such as the
+/// browser editor's math panel.
+pub fn render_math(src: &str, math: MathDialect, block: bool) -> String {
+    let display = if block {
+        math_core::MathDisplay::Block
+    } else {
+        math_core::MathDisplay::Inline
+    };
+    math_html(src.trim(), display, math)
+}
+
 fn math_error(shown: &str, error: &str, display: math_core::MathDisplay) -> String {
     let cls = match display {
         math_core::MathDisplay::Block => "math-error math-block",

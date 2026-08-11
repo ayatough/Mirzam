@@ -7,7 +7,25 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- **A formula panel in the browser editor: tap and place, not type.** The
+  letters of a formula are easy to type on a phone; the structure — what is a
+  subscript, what sits over what — is what costs keystrokes. The **Math**
+  button opens a panel that builds a formula by touch: place letters and
+  symbols, tap a box to select it, and give it a superscript, a fraction bar,
+  a root or an accent from the palette. The formula is previewed as real
+  MathML while it is built, and lands in the Markdown as ordinary `$...$`
+  Typst-math text — a deck edited this way is indistinguishable from one
+  typed by hand. Opening the panel with the cursor inside an existing
+  formula loads it for editing. The panel offers to set `math: typst` when
+  the deck lacks it, since that is the dialect it writes. Underneath, the
+  same tree the renderer parses is exposed to the page (`math_state` /
+  `math_apply` in the WASM bindings), so every tap is one edit operation and
+  the text stays the single source of truth.
+- Text areas in the browser editor hold 16px type on phones, because iOS
+  Safari force-zooms the page into any smaller input the moment it is
+  focused — which read as "editing is broken on a phone" while being,
+  precisely, a font size.
 
 ## [0.3.0] - 2026-08-11
 
