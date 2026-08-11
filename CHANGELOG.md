@@ -92,9 +92,11 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   hidden, so a screen reader still reports the state.
 - **A term list stacked the definition under its term**, which turned four
   entries into eight lines on a slide with room for four. The definition sits
-  beside the term now, with every definition in one column, so a glossary reads
-  down the page and a definition that wraps lines up under itself rather than
-  under the term.
+  beside the term now, the way Typst sets one: it follows immediately rather
+  than lining up in a column with its neighbours, since a column has to be as
+  wide as the longest term and one long entry maroons every short one from its
+  own definition. A definition that wraps gets a hanging indent instead, so its
+  second line clears the terms above it.
 - Lists carried a browser's blank line above and below — right for a page,
   wasteful on a slide, where three of them cost a bullet's worth of height.
 - Publishing a release left the *previous* one on the front page. Cutting a

@@ -190,20 +190,31 @@ ins { text-decoration: underline; text-decoration-thickness: 2px; text-underline
    made a reader's screen reader announce a data grid and put a rule between a
    word and its meaning.
 
-   The definition sits *beside* the term, not under it. A glossary is read as
+   The definition sits *beside* the term, not under it — a glossary is read as
    `Apple: a red fruit`, and stacking the two turned four entries into eight
-   lines on a slide with room for four. The grid keeps every definition in one
-   column, so a definition that wraps lines up under itself rather than under
-   the term; the term column is capped so one long term cannot squeeze the rest
-   into a ribbon. */
+   lines on a slide with room for four.
+
+   It follows the definition immediately rather than lining up in a column, the
+   way Typst sets its term lists. A column has to be as wide as the longest
+   term, so one long entry opens a gap after every short one and `Apple:` ends
+   up marooned from `a red fruit`. What a wrapped definition needs is not
+   alignment with its neighbours but a hanging indent: the list carries the
+   indent and each term is pulled back out of it, so a continuation line clears
+   the terms above it. */
 dl {
-  display: grid; grid-template-columns: fit-content(38%) 1fr;
-  column-gap: .55em; row-gap: .25em;
   margin: .55em 0; font-size: 1.35em; line-height: 1.65;
+  padding-left: 2em;
 }
-dt { grid-column: 1; font-weight: 600; color: var(--mz-accent1); }
+dt {
+  display: inline; margin-left: -2em; margin-right: .4em;
+  font-weight: 600; color: var(--mz-accent1);
+}
 dt::after { content: ":"; }
-dd { grid-column: 2; margin: 0; color: var(--mz-fg); }
+dd { display: inline; margin: 0; color: var(--mz-fg); }
+/* The pair is inline so the definition sits beside its term, which leaves
+   nothing to end the entry — a block box would have done it. */
+dd::after { content: "\A"; white-space: pre; }
+dl > dd:last-child::after { content: none; }
 
 /* Emphasis by size and colour, for the places bold is not enough and a
    stylesheet of your own is too much. Every one takes a theme token, so they
@@ -499,10 +510,13 @@ html.mz-awake #controls { opacity: 1; pointer-events: auto; }
 #keys dl {
   margin: 0; display: grid; grid-template-columns: auto 1fr;
   gap: 6px 14px; align-items: baseline;
-  font-size: inherit; /* the slide's term list is 1.35em; the overlay is chrome */
+  /* The slide's term list is a hanging-indented run of inline pairs at 1.35em.
+     The overlay is chrome: a two-column grid at the panel's own size. */
+  font-size: inherit; padding-left: 0;
 }
 #keys dt { margin: 0; }
 #keys dt::after { content: none; } /* `←  previous`, not `←: previous` */
+#keys dd::after { content: none; } /* the grid ends each row already */
 #keys dd { margin: 0; color: var(--mz-ui-dim); }
 #keys kbd {
   display: inline-block; min-width: 1.2em; text-align: center;

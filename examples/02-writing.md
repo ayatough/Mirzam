@@ -283,7 +283,7 @@ Term list
 : Its meaning, beside it.
 
 Another
-: Definitions line up.
+: Never under it.
 :::
 
 ---

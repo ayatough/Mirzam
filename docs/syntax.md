@@ -244,8 +244,8 @@ Term
 | `:tada:` | 🎉 | literal `:tada:` |
 | a line, then `: definition` | a term list | the two lines, as written |
 
-A term list sets the definition **beside** its term rather than under it, and
-holds every definition to one column, so a glossary reads down the page:
+A term list sets the definition **beside** its term rather than under it, the
+way Typst sets one:
 
 ```markdown
 Apple
@@ -255,9 +255,15 @@ Orange
 : A mandarin.
 ```
 
-The term column is capped at 38% of the width — one long term wraps inside its
-own column rather than squeezing every definition into a ribbon — and a
-definition that wraps lines up under itself, not under the term.
+```
+Apple: A red fruit.
+Orange: A mandarin.
+```
+
+The definition follows immediately rather than lining up in a column with its
+neighbours — a column has to be as wide as the longest term, so one long entry
+maroons every short one from its own definition. A definition that wraps is
+given a hanging indent instead, so its second line clears the terms above it.
 
 **Underline is `++`, not `__`.** Some editors take double underscores for an
 underline; CommonMark and GFM both read them as **bold**, and Mirzam's whole
