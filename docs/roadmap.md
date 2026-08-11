@@ -41,6 +41,7 @@ keep changing.
 | A theme per slide | Next |
 | Carrying an element from one slide to the next | Next |
 | Demo recording and a generated themes gallery | Next |
+| Seeing what the syntax renders as: per-slide source, editor deep links, caret follow | Next |
 | Dragging an annotation back into the Markdown | Next |
 | Plugins, PPTX export | Later |
 

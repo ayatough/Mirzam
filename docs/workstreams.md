@@ -70,6 +70,7 @@ there is. The model column follows from that:
 | W16 | Showing the thing working: demo recording, themes gallery | C | — | — | |
 | W17 | A theme per slide | B | — | — | |
 | W18 | Carrying an element from one slide to the next | S | — | W2 | |
+| W20 | Seeing what the syntax renders as | B | — | W7 | |
 | W5 | Typst-flavoured math | A | Sonnet | — | ✅ |
 | W19 | Structural math editing: tap and place, not type | S | Fable | W5 | ✅ |
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
@@ -847,6 +848,121 @@ outlives both; the deck's own page-turn effect must be suppressed for exactly
 the elements that are moving and kept for everything else; and going *backwards*
 has to be as good as going forwards, which is where most implementations of this
 give up.
+
+## W20 — Seeing what the syntax renders as
+
+**Difficulty B · not started**
+
+The syntax reference shows every form as text. What it never shows is what that
+text becomes — a reader has to build the deck to find out, which is exactly the
+step someone reading a syntax reference has not taken yet. The sample decks do
+show it, but from the other side: they render the result and, on the few slides
+where it mattered enough to hand-build, put the source beside it in a second
+pane (`examples/04-components.md`). That pairing is maintained by hand today,
+which is why only some slides have it.
+
+Almost all of the machinery is already here, in three places that have never
+been connected:
+
+- **The source map (W7).** `split_slides_spanned` gives each slide its offset in
+  the document, and `SourceMap` carries that back through transclusion and
+  variable substitution to a file and a byte range.
+- **The rendered anchors.** Every slide is `<section class="slide"
+  data-index="N">` and every pane is `data-pane="name"`, and the viewer exposes
+  `__mirzamGoto(index)` — which is how the VS Code preview already follows the
+  cursor (`editors/vscode/media/preview.js`, driven by `slideIndexAtLine` in
+  `extension.js`).
+- **The browser editor.** `/try/` is the same core as WebAssembly, with a
+  textarea, a preview and the Math panel. It has no way in from a link and no
+  idea where the caret is.
+
+So this stream is wiring, not construction. Three parts, each of which lands and
+is useful on its own; take them in order, because each one makes the next
+smaller.
+
+### Part 1 — a deck can show its own source
+
+`mirzam build --with-source` embeds each slide's Markdown in the slide, and the
+viewer toggles it with `S` (free; `N`, `P`, `F`, `D`, `L` are taken) plus a row
+in the cheat sheet's Display group. The payload goes in
+`<script type="text/markdown" class="mz-src">` inside the `<section>`, matching
+how `mz-anim` and `mz-fx` already ride along.
+
+This is the part that pays for itself immediately: it makes every sample deck
+on the site self-documenting, and it retires the hand-built source panes rather
+than asking someone to write more of them.
+
+What is not free:
+
+- **Off by default, and it has to stay off.** A deck built by a user is
+  something they present and email; their source is not part of it. The site
+  build turns the flag on, nobody else has to think about it.
+- **`</script>` in the source.** A deck that documents Mirzam syntax is exactly
+  the deck whose text contains closing tags. Escape on the way in, unescape on
+  the way out, and test it with a slide that contains one.
+- **Print and PDF.** The panel is chrome; `print.css` must drop it, or an
+  exported deck grows a page of Markdown per slide.
+
+### Part 2 — the docs link into the editor
+
+The prose stays on GitHub — `scripts/build-site.sh` says why, and it is still
+right: no Jekyll runs on the published directory, so a copied `syntax.md` never
+becomes a page. That rules out embedding anything in the reference. What
+survives GitHub's renderer is a link, so a link is what the docs get.
+
+Two forms, and the first should be the common one:
+
+- `/try/?deck=04-components#s=7` — open a sample deck at a named slide. Short,
+  readable in the prose, and stable. It needs the site build to copy
+  `examples/*.md` into `/try/examples/` alongside the rendered decks; that is
+  one line, and the editor already knows how to load Markdown.
+- `/try/#src=<deflate-raw + base64url>` — a self-contained snippet, for a form
+  that no sample deck happens to show. `CompressionStream` is in every target
+  browser, so this needs no dependency. Use it sparingly: the URL is a blob of
+  noise in the middle of a sentence, and the docs are read as text.
+
+If the first form is the default, the reference gains one short link per chapter
+rather than one per code block, which is the difference between a document that
+reads better and one that reads worse.
+
+### Part 3 — the caret and the preview agree
+
+In `/try/`, moving the caret reveals the slide it is in; clicking a slide in the
+preview puts the caret at that slide's start. Slide granularity, both ways.
+
+Do not copy `slideIndexAtLine` out of the extension. The rule it implements —
+`---` splits a slide unless it is inside a fence or it is the frontmatter — is
+the parser's rule, and two copies of it will drift. Expose it once from
+`mirzam-wasm` (`slide_at_offset(source, offset) -> usize`, beside the existing
+`outline` and `render_slide`) and let both the extension and the browser editor
+call it. That is a small crate change that also makes the extension's copy
+deletable.
+
+The reverse direction needs the slide's offset in the document, which
+`SlideSpan` already carries; going further than that means asking the wasm layer
+for spans, so keep the surface to what a caret actually needs.
+
+### Where this stops
+
+- **Slide granularity, not element.** Mapping individual blocks back to source
+  lines would mean threading a line number through every renderer, a
+  `data-src-line` on everything, and a rewrite of every golden snapshot — for
+  almost no gain, because a slide *is* a screenful. If the follow behaviour ever
+  feels too coarse, the next step is panes, which are already named in the
+  output; lines are not the next step after that either.
+- **No editor library.** The textarea is why `/try/` loads fast and works on a
+  phone, which is the whole claim the page makes. Syntax highlighting costs more
+  than every part above put together; measure the demand after this ships.
+- **No writing back.** Nothing here edits a deck from the preview side. That is
+  W8, it is still deferred, and this stream deliberately does not approach it:
+  everything above is read-only, which is what makes it Difficulty B while W8 is
+  S.
+
+**Owns:** `web/wasm-demo/`, `scripts/build-site.sh`, the `S` binding in
+`crates/mirzam-render/src/theme/viewer.js`, `--with-source` in `mirzam-cli`, and
+one added function in `crates/mirzam-wasm`. Touches `docs/syntax.md` for the
+links. No new markup, so `BLOCK_KINDS` and the CommonMark compatibility test are
+not involved.
 
 ## W5 — Typst-flavoured math ✅
 
