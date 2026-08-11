@@ -74,6 +74,31 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - Task lists (`- [ ]`) are documented. They have worked all along and appeared
   in no sample and no reference, which is the kind of gap this release exists
   to close.
+- **Three shapes for a term list, because which one is right is a per-list
+  question and a renderer that picks for you is wrong a third of the time.**
+  `{.terms-aligned}` on the pane holds every definition to one column, for
+  definitions meant to be read against each other; `{.terms-stacked}` puts the
+  definition on its own line and indents it, for definitions long enough that
+  the term reads as a heading over them; the default sets the definition beside
+  its term. Underneath, `--mz-terms-hang` (`0` turns the hanging indent off),
+  `--mz-terms-gap` and `--mz-terms-col` tune all three, and are settable on a
+  pane, a deck or a theme — each is read as a `var()` fallback rather than
+  declared on the `dl`, because a default written onto the element would beat
+  the value it should be inheriting. No new markup: pane classes already pass
+  through, so this is a stylesheet and a slide.
+- **The list marker is a choice now.** Bullets are most of what a slide is made
+  of, and the kind of bullet was whatever the browser settled on.
+  `--mz-bullet`, `--mz-bullet-2`, `--mz-bullet-3`, `--mz-number`,
+  `--mz-number-2`, `--mz-number-3` and `--mz-marker` take anything
+  `list-style-type` does — `square`, `upper-roman`, `decimal-leading-zero`,
+  `none`, or a quoted string like `"→  "`. Each depth reads its own property and
+  defaults to what the browser would have drawn, so a deck that asks for a dash
+  at the top level keeps the hollow circle beneath it instead of flattening
+  three depths into one mark. A string marker carries its own trailing space,
+  which the reference says out loud because the browser adds none and `"→"`
+  otherwise sits flush against the first word. Footnotes are pinned to
+  `decimal`: their marker has to match the `[^a]` citing them, and a citation is
+  always a numeral.
 - **A `<picture>` that picks art by colour scheme follows the deck, not the
   machine.** The markup every README uses so its logo survives GitHub's dark
   theme is rewritten at build time into one image per mode, switched the way
@@ -108,9 +133,14 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   hidden, so a screen reader still reports the state.
 - **A term list stacked the definition under its term**, which turned four
   entries into eight lines on a slide with room for four. The definition sits
-  beside the term now, with every definition in one column, so a glossary reads
-  down the page and a definition that wraps lines up under itself rather than
-  under the term.
+  beside the term now, the way Typst sets one: it follows immediately rather
+  than lining up in a column with its neighbours, since a column has to be as
+  wide as the longest term and one long entry maroons every short one from its
+  own definition. A definition that wraps gets a hanging indent instead, so its
+  second line clears the terms above it. No colon is drawn between the two: the
+  `:` is how a definition line is *written*, the way `-` starts a bullet, and a
+  renderer that echoes its own syntax back puts punctuation on the slide that
+  nobody typed.
 - Lists carried a browser's blank line above and below — right for a page,
   wasteful on a slide, where three of them cost a bullet's worth of height.
 - Publishing a release left the *previous* one on the front page. Cutting a

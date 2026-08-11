@@ -47,7 +47,7 @@ current: true
 - `current` marks the section you are inside
 :::
 
-::: pane out {valign=middle}
+::: pane out {valign=middle fit=shrink}
 ```toc
 from: 2
 depth: 2
@@ -283,8 +283,60 @@ Term list
 : Its meaning, beside it.
 
 Another
-: Definitions line up.
+: Never under it.
 :::
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++----------+------------+------------+
+|          |            |            |
+|          |            |            |
+|  one     |  two       |  three     |
+|          |            |            |
+|          |            |            |
++----------+------------+------------+
+```
+
+::: pane head
+[Lists]{.eyebrow}
+## One term list, three shapes
+:::
+
+::: pane one
+### Default
+Apple
+: A red fruit.
+
+A longer term
+: A meaning long enough to wrap onto a second line.
+:::
+
+::: pane two {.terms-aligned}
+### `.terms-aligned`
+Apple
+: A red fruit.
+
+A longer term
+: A meaning long enough to wrap onto a second line.
+:::
+
+::: pane three {.terms-stacked}
+### `.terms-stacked`
+Apple
+: A red fruit.
+
+A longer term
+: A meaning long enough to wrap onto a second line.
+:::
+
+<!-- note: The classes go on the pane, not the list: `::: pane two
+{.terms-aligned}`. Aligned is for definitions meant to be read against each
+other; stacked is for definitions long enough that the term reads as a heading
+over them. -->
 
 ---
 

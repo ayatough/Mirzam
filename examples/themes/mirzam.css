@@ -178,3 +178,13 @@ p code, li code { background: var(--mirzam-code-bg); color: var(--mz-accent1); }
 
 .title-slide { font-size: 3.4em; font-weight: 300; letter-spacing: -0.03em; }
 section.slide:has(.title-slide) p { color: var(--mz-muted); }
+
+/* The list-marker dials, applied to one pane of the theming deck so the slide
+   shows the effect rather than only the CSS that would cause it. A string
+   marker carries its own trailing space — the browser adds none. */
+.markers {
+  --mz-bullet: "→  ";
+  --mz-bullet-2: "·  ";
+  --mz-number: upper-roman;
+  --mz-marker: var(--mz-accent2);
+}

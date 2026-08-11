@@ -138,6 +138,25 @@ li { margin: .25em 0; }
    the point above it. */
 ul, ol { margin: .55em 0; }
 li > :is(ul, ol) { margin: .15em 0 0; }
+
+/* The marker. Bullets are most of what a slide is made of, so the kind of
+   bullet is a real choice rather than a preference to be settled once in the
+   renderer. `list-style-type` takes a keyword — `square`, `upper-roman`,
+   `none` — or a quoted string, so `--mz-bullet: "—"` and `--mz-bullet: "→"`
+   are bullets too.
+   Each depth reads its own dial, defaulting to what the browser would have
+   done. Setting one level therefore leaves the others alone: a deck that asks
+   for a dash at the top level keeps the hollow circle underneath it, rather
+   than flattening three depths into one indistinguishable mark. */
+ul { list-style-type: var(--mz-bullet, disc); }
+ul ul { list-style-type: var(--mz-bullet-2, circle); }
+ul ul ul { list-style-type: var(--mz-bullet-3, square); }
+ol { list-style-type: var(--mz-number, decimal); }
+ol ol { list-style-type: var(--mz-number-2, decimal); }
+ol ol ol { list-style-type: var(--mz-number-3, decimal); }
+/* The marker takes the text colour by default, which is often not what a slide
+   wants: a bullet is punctuation, not a word. */
+li::marker { color: var(--mz-marker, currentColor); }
 /* Those sizes are `em`, so a list inside a list multiplied them — 1.35 × 1.35 —
    and the qualification under a point came out half again as large as the point
    it qualified. Anything nested in an item is already at the list's size. */
@@ -190,20 +209,65 @@ ins { text-decoration: underline; text-decoration-thickness: 2px; text-underline
    made a reader's screen reader announce a data grid and put a rule between a
    word and its meaning.
 
-   The definition sits *beside* the term, not under it. A glossary is read as
-   `Apple: a red fruit`, and stacking the two turned four entries into eight
-   lines on a slide with room for four. The grid keeps every definition in one
-   column, so a definition that wraps lines up under itself rather than under
-   the term; the term column is capped so one long term cannot squeeze the rest
-   into a ribbon. */
+   The definition sits *beside* the term, not under it — a glossary is read as
+   one entry per line, and stacking the two turned four entries into eight lines
+   on a slide with room for four.
+
+   It follows the definition immediately rather than lining up in a column, the
+   way Typst sets its term lists. A column has to be as wide as the longest
+   term, so one long entry opens a gap after every short one and `Apple` ends
+   up marooned from `a red fruit`. What a wrapped definition needs is not
+   alignment with its neighbours but a hanging indent: the list carries the
+   indent and each term is pulled back out of it, so a continuation line clears
+   the terms above it.
+
+   Which of the three is right is a per-list question, not a house style, so
+   `.terms-aligned` and `.terms-stacked` go on the pane. Three lengths are the
+   dials underneath, and each is read with its default as a `var()` fallback
+   rather than declared on the `dl` — a value set on the pane, the deck or the
+   theme has to win, and a declaration on the element itself beats anything it
+   would otherwise inherit. `--mz-terms-hang: 0` turns the hanging indent off. */
 dl {
-  display: grid; grid-template-columns: fit-content(38%) 1fr;
-  column-gap: .55em; row-gap: .25em;
   margin: .55em 0; font-size: 1.35em; line-height: 1.65;
+  padding-left: var(--mz-terms-hang, 2em);
 }
-dt { grid-column: 1; font-weight: 600; color: var(--mz-accent1); }
-dt::after { content: ":"; }
-dd { grid-column: 2; margin: 0; color: var(--mz-fg); }
+/* No colon is drawn after the term. The `:` is how a definition line is
+   written — the marker, like the `-` of a bullet — and a renderer that echoes
+   its own syntax back is putting punctuation the author never typed into the
+   slide. Weight, colour and the gap separate the two. */
+dt {
+  display: inline;
+  margin-left: calc(-1 * var(--mz-terms-hang, 2em));
+  margin-right: var(--mz-terms-gap, .6em);
+  font-weight: 600; color: var(--mz-accent1);
+}
+dd { display: inline; margin: 0; color: var(--mz-fg); }
+/* The pair is inline so the definition sits beside its term, which leaves
+   nothing to end the entry — a block box would have done it. */
+dd::after { content: "\A"; white-space: pre; }
+dl > dd:last-child::after { content: none; }
+
+/* `.terms-aligned` on the pane: every definition in one column. Worth the gap
+   after the short terms when the definitions are meant to be read against each
+   other rather than each against its own term. The column is capped so one long
+   term cannot squeeze the rest into a ribbon; `--mz-terms-col` moves the cap. */
+.terms-aligned dl {
+  display: grid; grid-template-columns: fit-content(var(--mz-terms-col, 38%)) 1fr;
+  column-gap: var(--mz-terms-gap, .6em); row-gap: .25em;
+  padding-left: 0;
+}
+.terms-aligned dt { grid-column: 1; margin: 0; }
+.terms-aligned dd { grid-column: 2; }
+.terms-aligned dd::after { content: none; } /* the grid ends each row */
+
+/* `.terms-stacked` on the pane: the definition starts on its own line, indented
+   under the term. For definitions long enough that the term reads as a heading
+   over them rather than as the first words of the same sentence. */
+.terms-stacked dl { padding-left: 0; }
+.terms-stacked dt { display: block; margin: .4em 0 0; }
+.terms-stacked dt:first-child { margin-top: 0; }
+.terms-stacked dd { display: block; margin-left: var(--mz-terms-hang, 2em); }
+.terms-stacked dd::after { content: none; } /* a block box ends the entry */
 
 /* Emphasis by size and colour, for the places bold is not enough and a
    stylesheet of your own is too much. Every one takes a theme token, so they
@@ -276,7 +340,9 @@ section.footnotes {
   margin-top: 1.1em; padding-top: .5em;
   border-top: 1px solid var(--mz-border);
 }
-section.footnotes ol { margin: 0; padding-left: 1.4em; }
+/* Numbered whatever the deck sets `--mz-number` to: a footnote's marker has to
+   match the `[^a]` that cites it, and the citation is always a numeral. */
+section.footnotes ol { margin: 0; padding-left: 1.4em; list-style-type: decimal; }
 section.footnotes li { font-size: .78em; line-height: 1.45; color: var(--mz-muted); margin: .15em 0; }
 /* A DOI is one unbreakable word wider than the column it sits in; without
    this it overflows horizontally no matter how small the type gets, which
@@ -499,10 +565,12 @@ html.mz-awake #controls { opacity: 1; pointer-events: auto; }
 #keys dl {
   margin: 0; display: grid; grid-template-columns: auto 1fr;
   gap: 6px 14px; align-items: baseline;
-  font-size: inherit; /* the slide's term list is 1.35em; the overlay is chrome */
+  /* The slide's term list is a hanging-indented run of inline pairs at 1.35em.
+     The overlay is chrome: a two-column grid at the panel's own size. */
+  font-size: inherit; padding-left: 0;
 }
 #keys dt { margin: 0; }
-#keys dt::after { content: none; } /* `←  previous`, not `←: previous` */
+#keys dd::after { content: none; } /* the grid ends each row already */
 #keys dd { margin: 0; color: var(--mz-ui-dim); }
 #keys kbd {
   display: inline-block; min-width: 1.2em; text-align: center;

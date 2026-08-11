@@ -171,6 +171,36 @@ deck to one mode. <code>D</code> then changes <code>data-mode</code> and nothing
 </div>
 </section>
 <section class="slide" data-index="6">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Custom CSS</span></p>
+<h2>Bullets are a choice, not a default</h2>
+</div>
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-css">.markers {
+  --mz-bullet: &quot;→  &quot;;
+  --mz-bullet-2: &quot;·  &quot;;
+  --mz-number: upper-roman;
+  --mz-marker: var(--mz-accent2);
+}
+</code></pre>
+<p>A quoted string is a marker too — and <strong>carries its own trailing space</strong>, since
+the browser adds none after one.</p>
+</div>
+<div class="pane pane-out markers" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><ul>
+<li>A point, and under it
+<ul>
+<li>a qualification</li>
+</ul>
+</li>
+</ul>
+<ol>
+<li>Write the deck</li>
+<li>Build it</li>
+</ol>
+<p><span class="small">Each depth reads its own dial, so the level under this one keeps its own mark.</span></p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="7">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src what"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Overflow</span></p>
 <h2>When a slide has too much on it</h2>
@@ -194,7 +224,7 @@ cut something.</p>
 </div>
 </div>
 </section>
-<section class="slide" data-index="7">
+<section class="slide" data-index="8">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src what"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Math</span></p>
 <h2>A dialect for formulas</h2>
@@ -219,7 +249,7 @@ identical down to the font</li>
 </div>
 </div>
 </section>
-<section class="slide" data-index="8">
+<section class="slide" data-index="9">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:3fr 1fr;grid-template-areas:"main" "foot"'>
 <div class="pane pane-main" data-pane="main" style="grid-area:main;text-align:center;display:flex;flex-direction:column;justify-content:center"><h2>That is every setting</h2>
 <p>frontmatter · <code>{#id .class key=value}</code> · a stylesheet of your own</p>

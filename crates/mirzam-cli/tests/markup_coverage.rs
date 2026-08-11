@@ -169,3 +169,76 @@ fn every_listed_mark_appears_in_a_sample_deck() {
         "these are documented but no deck under examples/ shows them: {missing:?}"
     );
 }
+
+/// The pane classes that reshape a term list, held to the same three
+/// conditions as a mark: styled, documented, shown.
+///
+/// They are not marks — nothing new is written in the Markdown, the class rides
+/// on the pane — so they cannot live in `MARKS`, whose test renders a fragment.
+/// The failure they are exposed to is the same one, though: a class that only
+/// the stylesheet knows about is a feature nobody can find. Three modes exist
+/// because which one is right is a per-list question, and a renderer that picks
+/// for you is wrong a third of the time.
+const TERM_MODES: &[&str] = &["terms-aligned", "terms-stacked"];
+
+#[test]
+fn every_term_list_mode_is_styled_documented_and_shown() {
+    let css = std::fs::read_to_string(repo_root().join("crates/mirzam-render/src/theme/base.css"))
+        .expect("base.css");
+    let doc = std::fs::read_to_string(repo_root().join("docs/syntax.md")).expect("docs/syntax.md");
+    let decks: String = std::fs::read_dir(repo_root().join("examples"))
+        .expect("examples/")
+        .filter_map(Result::ok)
+        .filter(|e| e.path().extension().is_some_and(|x| x == "md"))
+        .filter_map(|e| std::fs::read_to_string(e.path()).ok())
+        .collect();
+
+    for mode in TERM_MODES {
+        assert!(
+            css.contains(&format!(".{mode} dl")),
+            "base.css does not style `.{mode}`"
+        );
+        assert!(
+            doc.contains(mode),
+            "docs/syntax.md never mentions `.{mode}`"
+        );
+        assert!(
+            decks.contains(&format!("{{.{mode}}}")),
+            "no deck under examples/ shows `{{.{mode}}}`"
+        );
+    }
+}
+
+/// Every presentation dial, held to the pattern that makes it a dial at all.
+///
+/// A default written straight onto the element would beat the value a pane or a
+/// theme sets, so each is read as a `var()` fallback instead. The difference is
+/// invisible until somebody tries to override one, which is exactly the kind of
+/// thing that rots — the term-list dials were declared on `dl` first, and
+/// nothing about the rendering said so.
+#[test]
+fn every_presentation_dial_is_read_with_its_default_as_a_fallback() {
+    let css = std::fs::read_to_string(repo_root().join("crates/mirzam-render/src/theme/base.css"))
+        .expect("base.css");
+    for (dial, default) in [
+        ("--mz-terms-hang", "2em"),
+        ("--mz-terms-gap", ".6em"),
+        ("--mz-terms-col", "38%"),
+        ("--mz-bullet", "disc"),
+        ("--mz-bullet-2", "circle"),
+        ("--mz-bullet-3", "square"),
+        ("--mz-number", "decimal"),
+        ("--mz-number-2", "decimal"),
+        ("--mz-number-3", "decimal"),
+        ("--mz-marker", "currentColor"),
+    ] {
+        assert!(
+            css.contains(&format!("var({dial}, {default})")),
+            "`{dial}` should be read as `var({dial}, {default})`"
+        );
+        assert!(
+            !css.contains(&format!("  {dial}:")),
+            "`{dial}` is declared on an element; a pane or theme could not override it"
+        );
+    }
+}

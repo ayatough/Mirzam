@@ -244,8 +244,8 @@ Term
 | `:tada:` | 🎉 | literal `:tada:` |
 | a line, then `: definition` | a term list | the two lines, as written |
 
-A term list sets the definition **beside** its term rather than under it, and
-holds every definition to one column, so a glossary reads down the page:
+A term list sets the definition **beside** its term rather than under it, the
+way Typst sets one:
 
 ```markdown
 Apple
@@ -255,9 +255,81 @@ Orange
 : A mandarin.
 ```
 
-The term column is capped at 38% of the width — one long term wraps inside its
-own column rather than squeezing every definition into a ribbon — and a
-definition that wraps lines up under itself, not under the term.
+```
+Apple   A red fruit.
+Orange  A mandarin.
+```
+
+**No colon is drawn.** The `:` is how a definition line is written — the marker,
+the way `-` starts a bullet — and a renderer that echoes its own syntax back
+puts punctuation on the slide that the author never typed. Weight, colour and
+the gap separate the term from its meaning.
+
+The definition follows immediately rather than lining up in a column with its
+neighbours — a column has to be as wide as the longest term, so one long entry
+maroons every short one from its own definition. A definition that wraps is
+given a hanging indent instead, so its second line clears the terms above it.
+
+Which shape is right is a per-list question rather than a house style, so two
+classes on the **pane** change it:
+
+| On the pane | The list becomes |
+|---|---|
+| *(nothing)* | `Apple   A red fruit.` — the definition beside the term, wrapping to a hanging indent |
+| `{.terms-aligned}` | every definition in one column, for definitions meant to be read against each other |
+| `{.terms-stacked}` | the definition on its own line, indented, for definitions long enough that the term reads as a heading |
+
+```markdown
+::: pane glossary {.terms-aligned}
+Apple
+: A red fruit.
+:::
+```
+
+Three lengths tune all three shapes, and can be set on the pane, the deck or a
+theme:
+
+| Custom property | Default | Sets |
+|---|---|---|
+| `--mz-terms-hang` | `2em` | the hanging indent — `0` turns it off, and it is also the stacked indent |
+| `--mz-terms-gap` | `.6em` | the space between a term and its definition |
+| `--mz-terms-col` | `38%` | the widest the term column may get under `.terms-aligned` |
+
+### The list marker
+
+Bullets are most of what a slide is made of, so the kind of bullet is a choice
+rather than something the renderer settles for you. Six more custom properties,
+set the same three places:
+
+| Custom property | Default | Sets |
+|---|---|---|
+| `--mz-bullet` | `disc` | the top-level bullet |
+| `--mz-bullet-2` | `circle` | the bullet one level in |
+| `--mz-bullet-3` | `square` | the bullet two levels in |
+| `--mz-number` | `decimal` | the top-level number |
+| `--mz-number-2` | `decimal` | the number one level in |
+| `--mz-number-3` | `decimal` | the number two levels in |
+| `--mz-marker` | the text colour | the colour of every marker |
+
+Each takes anything `list-style-type` does: a keyword (`square`, `upper-roman`,
+`lower-alpha`, `decimal-leading-zero`, `none`) or a quoted string.
+
+```css
+.plan {
+  --mz-bullet: "→  ";
+  --mz-number: upper-roman;
+  --mz-marker: var(--mz-accent2);
+}
+```
+
+**A string marker carries its own trailing space.** The browser adds none after
+one, so `"→"` sets the arrow flush against the first word; `"→  "` is what you
+want. Keywords are spaced for you.
+
+Each depth reads its own property, so setting `--mz-bullet` changes the top
+level and leaves the hollow circle under it alone. Footnote numbering ignores
+all of this — its marker has to match the `[^a]` that cites it, and a citation
+is always a numeral.
 
 **Underline is `++`, not `__`.** Some editors take double underscores for an
 underline; CommonMark and GFM both read them as **bold**, and Mirzam's whole
