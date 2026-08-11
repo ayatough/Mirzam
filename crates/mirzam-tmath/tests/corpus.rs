@@ -140,6 +140,36 @@ fn corpus_matches_handwritten_latex() {
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }
 
+/// The printer's round-trip property, over every expression the corpus
+/// knows: printing a tree and parsing it back reproduces the tree, and the
+/// printed source lowers to the same LaTeX. This is what lets every edit
+/// operation write text through one printer instead of inventing its own.
+#[test]
+fn print_round_trips_the_whole_corpus() {
+    let mut failures = Vec::new();
+    for (typst, _) in CORPUS {
+        let tree = mirzam_tmath::parse(typst).expect("corpus entries parse");
+        let printed = mirzam_tmath::print(&tree);
+        match mirzam_tmath::parse(&printed) {
+            Ok(reparsed) if reparsed == tree => {}
+            Ok(_) => failures.push(format!(
+                "`{typst}` printed as `{printed}`, which parses to a different tree"
+            )),
+            Err(e) => failures.push(format!(
+                "`{typst}` printed as `{printed}`, which does not parse: {e}"
+            )),
+        }
+        let direct = mirzam_tmath::to_latex(typst).expect("corpus entries lower");
+        let via_print = mirzam_tmath::to_latex(&printed).unwrap_or_default();
+        if direct != via_print {
+            failures.push(format!(
+                "`{typst}` changes meaning through the printer:\n  direct:    {direct}\n  via print: {via_print}"
+            ));
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n\n"));
+}
+
 /// A parse error must never panic and must carry a message the error span can
 /// show; a lowering that parses must never produce LaTeX that fails to
 /// convert.
@@ -168,6 +198,12 @@ fn everything_that_parses_converts() {
                 .expect("default math config");
             conv.convert_with_local_state(&lowered, math_core::MathDisplay::Inline)
                 .unwrap_or_else(|e| panic!("`{src}` lowered to `{lowered}` which failed: {e}"));
+            // The oddballs must round-trip through the printer too.
+            let tree = mirzam_tmath::parse(src).expect("lowering implies parsing");
+            let printed = mirzam_tmath::print(&tree);
+            let reparsed = mirzam_tmath::parse(&printed)
+                .unwrap_or_else(|e| panic!("`{src}` printed as `{printed}` which fails: {e}"));
+            assert_eq!(reparsed, tree, "`{src}` printed as `{printed}`");
         }
     }
 }

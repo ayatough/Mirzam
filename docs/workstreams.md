@@ -71,7 +71,7 @@ there is. The model column follows from that:
 | W17 | A theme per slide | B | — | — | |
 | W18 | Carrying an element from one slide to the next | S | — | W2 | |
 | W5 | Typst-flavoured math | A | Sonnet | — | ✅ |
-| W19 | Structural math editing: tap and place, not type | S | — | W5 | |
+| W19 | Structural math editing: tap and place, not type | S | Fable | W5 | 1–3 ✅ |
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
 
 ### What is deferred, and why
@@ -935,6 +935,18 @@ The order of work, which is also its dependency order:
 Steps 1–3 are crate work with no UI decisions in them, checkable by tests,
 and worth doing even if the UI stalls: spans sharpen every parse error, and
 the printer is what any future tool that *writes* math needs.
+
+**Steps 1–3 landed.** `parse` exposes the spanned tree, `print` writes it
+back, `edit` holds the operations, and the corpus now carries the round-trip
+property. Two things the property test decided that the plan had left open:
+a parenthesised group of exactly one thing normalises to that thing at
+parse time, or a reparse of printed output could never reproduce an
+editor-built tree (`a_(b^c)` must equal the tree the editor assembled, not
+that tree wrapped in a group); and scripting a fraction parenthesises it in
+the *operation*, because `(a/b)^2` is writable and `Script{Frac}` is not —
+the tree is kept inside what the syntax can say, which is what keeps
+"indistinguishable from a deck typed by hand" true. Step 4, the boxes, is
+where the UI starts.
 
 **Where it stops.** It lives in this repository — the AST layer in
 `mirzam-tmath`, bindings in `mirzam-wasm`, the component under `web/` —
