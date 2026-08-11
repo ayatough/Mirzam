@@ -507,6 +507,11 @@ text    #cap   at(72%, 88%) "95% hit rate" .small
 - Edges for endpoints: `.n`, `.s`, `.e`, `.w`, `.c`.
 - Colors: `@accent1`, `@accent2`, `@shape-fill`, … resolve to theme variables, so
   shapes follow a theme change. Literal CSS colors also work.
+- **A ```shape``` block only parses at slide top level**, the same as `pane` and
+  `connect` — written inside a `::: pane`, the fence is just Markdown to
+  `comrak`, so it renders as an ordinary code block instead of the SVG layer
+  it asked for. `mirzam build` warns when this happens (`--strict` fails the
+  build on it), but the fix is to move the block out of the pane.
 
 ## Connectors
 
@@ -678,6 +683,15 @@ A bare DOI or arXiv URL becomes a link on its own. See
 [`examples/seminar.md`](../examples/seminar.md) for the shape of a reading-group
 talk: a figure quoted from the paper, annotated and pointed at from the prose,
 with its citation at the foot of the same slide.
+
+**The `[^key]: …` definition has to be on the same slide as its `[^key]`
+reference** — each slide renders on its own, so a definition left on another
+slide (or, in a grid layout, a pane other than the reference's own) never
+reaches it. Nothing catches this at the Markdown level: a reference with no
+matching definition is just left as literal `[^key]` text, which reads as a
+typo rather than a broken feature. `mirzam build` warns when this happens
+(`--strict` fails the build on it), so the fix is to move the definition onto
+the citing slide rather than to hunt for what silently did not link.
 
 ## Presentation effects
 

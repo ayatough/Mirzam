@@ -8,6 +8,7 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- **Three silent degradations now warn at build time, and `mirzam build --strict` fails on any warning (for CI)**: a `shape` block written inside a `::: pane` (shape only parses at slide top level, so it rendered as a plain code block with nothing said about it), a footnote reference with no `[^key]:` definition on the same slide (left as literal bracket text), and a `connect` endpoint id matching no text anchor, shape, or chart element on the slide (no arrow drawn, and only the browser-side checker used to notice). Every one of these still renders exactly as before — this only adds the warning.
 - **`mirzam export pdf` takes `--split`, `--theme`, `--css`, `--fit` and
   `--mode`, the same flags `build` does**, so a deck assembled with
   `--split h2` exports to PDF with the same slide breaks in one command

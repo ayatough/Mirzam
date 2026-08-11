@@ -35,6 +35,7 @@ fn main() -> ExitCode {
                         }
                     }
                     "--debug-layout" => opts.debug_layout = true,
+                    "--strict" => opts.strict = true,
                     arg => match parse_deck_flag(&args, &mut i, &mut opts.deck) {
                         Some(Ok(())) => {}
                         Some(Err(e)) => return usage(&e),
@@ -221,7 +222,7 @@ Usage:
   mirzam new <file.md> [--empty]
   mirzam build <input.md> [-o <out_dir>] [--split h1|h2|h3] [--theme <name>]
                [--css <file>] [--fit shrink] [--mode light|dark]
-               [--base-url <url>] [--debug-layout]
+               [--base-url <url>] [--debug-layout] [--strict]
   mirzam serve <input.md> [-p <port>]
   mirzam export pdf <input.md> [-o <out.pdf>] [--split h1|h2|h3]
                [--theme <name>] [--css <file>] [--fit shrink]
@@ -256,13 +257,19 @@ Usage:
   --debug-layout bakes on the pane outline overlay, for screenshotting a
           broken deck (toggle it live in the viewer with the L key instead;
           build only)
+  --strict exits non-zero when the build produced any warnings - a shape
+          block inside a pane, a footnote with no definition on its slide, a
+          connect endpoint that matches nothing - so CI can catch a silent
+          degradation instead of shipping it. The deck still builds either
+          way; only the exit code changes (build only)
 
 Examples:
   mirzam new deck.md
   mirzam build examples/01-start.md -o out
   mirzam serve examples/04-components.md
   mirzam build README.md --split h2 -o out
-  mirzam export pdf README.md --split h2 -o out.pdf"#
+  mirzam export pdf README.md --split h2 -o out.pdf
+  mirzam build deck.md --strict"#
     )
 }
 
@@ -380,6 +387,11 @@ fn is_markdown_path(path: &Path) -> bool {
 struct BuildArgs {
     out_dir: PathBuf,
     debug_layout: bool,
+    /// `--strict`: fail the build (non-zero exit) if it produced any
+    /// warnings, for a CI gate that catches a silent degradation - a
+    /// shape in a pane, an unresolved footnote, a connector to nowhere -
+    /// before it ships. The deck still builds; only the exit code changes.
+    strict: bool,
     base_url: Option<String>,
     deck: DeckArgs,
 }
@@ -389,6 +401,7 @@ impl Default for BuildArgs {
         Self {
             out_dir: PathBuf::from("out"),
             debug_layout: false,
+            strict: false,
             base_url: None,
             deck: DeckArgs::default(),
         }
@@ -472,6 +485,13 @@ fn build(input: &Path, args: &BuildArgs) -> Result<(), String> {
     );
     for w in &out.warnings {
         println!("  ⚠ {w}");
+    }
+    if args.strict && !out.warnings.is_empty() {
+        return Err(format!(
+            "--strict: {} warning{} reported",
+            out.warnings.len(),
+            if out.warnings.len() == 1 { "" } else { "s" }
+        ));
     }
     Ok(())
 }

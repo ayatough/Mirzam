@@ -5,6 +5,7 @@ mod anim;
 mod annot;
 mod assets;
 mod charts;
+mod connect;
 mod effects;
 mod inline;
 mod theme;
@@ -470,6 +471,12 @@ fn render_slide(
 ) -> String {
     let mut errors: Vec<String> = Vec::new();
 
+    // A `shape` fence only parses at slide top level - `mirzam_syntax::parse_slide`
+    // never looks for one inside a `::: pane` body, so it reaches `comrak` as
+    // an ordinary fence and renders as a literal code block. The render is
+    // unchanged; this only says so.
+    warn_shape_in_pane(index, slide, warnings);
+
     // Resolve the layout.
     let grid: Option<GridSpec> = match &slide.layout {
         Some(src) => match parse_grid(src) {
@@ -497,6 +504,10 @@ fn render_slide(
         }
     };
 
+    // A `[^key]` with no definition on this slide is left as literal text by
+    // comrak rather than becoming a link - say so, once per key.
+    warn_unresolved_footnotes(index, &body, warnings);
+
     // shape blocks become a static SVG layer in page coordinates, scaling with the slide.
     let mut shapes_html = String::new();
     if !slide.shapes.is_empty() {
@@ -518,6 +529,26 @@ fn render_slide(
         for e in &doc.errors {
             errors.push(format!("slide {}: {e}", index + 1));
         }
+        // An endpoint that matches nothing draws no arrow; only the
+        // browser-side checker used to notice. Same warning rule as anim/
+        // annotate - the connector is still emitted exactly as written.
+        // Marks an `annotate` block on this slide will draw (an id it names
+        // with `id=`) resolve too, even though nothing in the static HTML
+        // shows them yet - the viewer draws the overlay only once it lays
+        // the slide out.
+        let annot_ids: Vec<String> = slide
+            .annots
+            .iter()
+            .flat_map(|src| mirzam_annot::parse(src).items)
+            .filter_map(|item| item.id)
+            .collect();
+        connect::validate(
+            index,
+            &doc,
+            &format!("{body}{shapes_html}"),
+            &annot_ids,
+            warnings,
+        );
         if !doc.connectors.is_empty() {
             connect_attr = format!(
                 " data-connectors=\"{}\"",
@@ -567,6 +598,86 @@ fn render_slide(
     format!(
         "<section class=\"slide\" data-index=\"{index}\"{connect_attr}>\n{error_html}{body}{shapes_html}{anim_html}{annot_html}{effects_html}{notes_html}</section>\n"
     )
+}
+
+/// Warns about every `::: pane` whose body opens a real `shape` fence: shape
+/// only parses at slide top level, so this one reaches `comrak` untouched
+/// and renders as a plain code block instead of the SVG layer it asked for.
+fn warn_shape_in_pane(index: usize, slide: &SlideSource, warnings: &mut Vec<String>) {
+    for pb in &slide.panes {
+        if pane_body_opens_a_shape_fence(&pb.body) {
+            warnings.push(format!(
+                "slide {}: pane `{}` contains a `shape` block, but shape only \
+                 renders at slide top level - it will show as a code block",
+                index + 1,
+                pb.name
+            ));
+        }
+    }
+}
+
+/// Whether `body` (a pane's raw Markdown) opens a real, exactly-three-backtick
+/// `shape` fence outside any other fence. A longer fence quotes the block as
+/// an example instead of using it - the same rule `mirzam_syntax::parse_slide`
+/// applies for the fences it does recognise, at slide top level.
+fn pane_body_opens_a_shape_fence(body: &str) -> bool {
+    let mut open_fence: Option<usize> = None;
+    for line in body.lines() {
+        let t = line.trim();
+        match open_fence {
+            Some(open) if mirzam_syntax::closes_fence(t, open) => open_fence = None,
+            Some(_) => {}
+            None => {
+                if let Some(open) = mirzam_syntax::fence_len(t) {
+                    if open == 3 && t[open..].trim() == "shape" {
+                        return true;
+                    }
+                    open_fence = Some(open);
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Warns about every `[^key]` left as literal text after rendering: `comrak`
+/// only turns a reference into a link when its `[^key]:` definition is in the
+/// same source it rendered, so a definition elsewhere - another slide, or (in
+/// a grid layout) another pane - leaves the bracket text sitting on the page.
+/// Skips `<pre>`/`<code>`, which is how a deck shows the syntax itself as an
+/// example without it being mistaken for a real, broken reference.
+fn warn_unresolved_footnotes(index: usize, body: &str, warnings: &mut Vec<String>) {
+    let text = strip_code_regions(body);
+    let mut seen = std::collections::BTreeSet::new();
+    for cap in footnote_ref_regex().captures_iter(&text) {
+        let key = &cap[1];
+        if seen.insert(key.to_string()) {
+            warnings.push(format!(
+                "slide {}: footnote reference `[^{key}]` has no definition on this slide",
+                index + 1
+            ));
+        }
+    }
+}
+
+fn strip_code_regions(html: &str) -> String {
+    let no_pre = pre_regex().replace_all(html, "");
+    code_regex().replace_all(&no_pre, "").into_owned()
+}
+
+fn pre_regex() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| Regex::new(r"(?s)<pre\b[^>]*>.*?</pre>").expect("static regex"))
+}
+
+fn code_regex() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| Regex::new(r"(?s)<code\b[^>]*>.*?</code>").expect("static regex"))
+}
+
+fn footnote_ref_regex() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| Regex::new(r"\[\^([A-Za-z0-9_-]+)\]").expect("static regex"))
 }
 
 fn render_grid_slide(
@@ -1206,6 +1317,87 @@ mod tests {
         let meta = DeckMeta::default();
         let out = render_deck(&meta, &[slide], Path::new("."));
         assert!(out.warnings.iter().any(|w| w.contains("zzz")));
+    }
+
+    #[test]
+    fn a_shape_block_inside_a_pane_warns_but_still_renders_as_a_code_block() {
+        let slide =
+            parse_slide("::: pane main\n```shape\nrect #r at(10%, 10%) size(20%, 20%)\n```\n:::\n");
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(
+            out.warnings
+                .iter()
+                .any(|w| w.contains("pane `main`") && w.contains("shape") && w.contains("slide 1")),
+            "{:?}",
+            out.warnings
+        );
+        // The constraint stays a warning only: the fence still degrades to an
+        // ordinary code block exactly as it did before.
+        assert!(out.html.contains("language-shape"));
+    }
+
+    #[test]
+    fn a_shape_block_at_slide_top_level_does_not_warn() {
+        let slide = parse_slide("```shape\nrect #r at(10%, 10%) size(20%, 20%)\n```\n");
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(!out.warnings.iter().any(|w| w.contains("shape")));
+    }
+
+    #[test]
+    fn a_shape_fence_quoted_inside_a_longer_fence_does_not_warn() {
+        // A four-backtick fence quotes the block as an example, the same rule
+        // the top-level parser applies - so this must not be mistaken for the
+        // real thing.
+        let slide = parse_slide(
+            "::: pane main\n````markdown\n```shape\nrect #r at(0,0) size(1,1)\n```\n````\n:::\n",
+        );
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(!out.warnings.iter().any(|w| w.contains("shape")));
+    }
+
+    #[test]
+    fn an_undefined_footnote_reference_warns() {
+        let slide = parse_slide("A claim[^missing].\n");
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(
+            out.warnings
+                .iter()
+                .any(|w| w.contains("[^missing]") && w.contains("slide 1")),
+            "{:?}",
+            out.warnings
+        );
+        // Degradation is unchanged: the bracket text is still exactly what
+        // a plain Markdown reader (and this reader) shows.
+        assert!(out.html.contains("[^missing]"));
+    }
+
+    #[test]
+    fn a_footnote_defined_on_the_same_slide_does_not_warn() {
+        let slide = parse_slide("A claim[^a].\n\n[^a]: The source.\n");
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(!out.warnings.iter().any(|w| w.contains("footnote")));
+        assert!(out.html.contains("footnote-ref"));
+    }
+
+    #[test]
+    fn a_footnote_reference_quoted_in_a_code_block_does_not_warn() {
+        // Showing the syntax itself as an example must not be mistaken for a
+        // real, broken reference.
+        let slide = parse_slide("```markdown\nSee[^x].\n```\n");
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(!out.warnings.iter().any(|w| w.contains("footnote")));
+    }
+
+    #[test]
+    fn repeating_the_same_missing_key_warns_once() {
+        let slide = parse_slide("First[^a] and again[^a].\n");
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert_eq!(
+            out.warnings.iter().filter(|w| w.contains("[^a]")).count(),
+            1,
+            "{:?}",
+            out.warnings
+        );
     }
 
     #[test]
