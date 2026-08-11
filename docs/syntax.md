@@ -244,6 +244,21 @@ Term
 | `:tada:` | 🎉 | literal `:tada:` |
 | a line, then `: definition` | a term list | the two lines, as written |
 
+A term list sets the definition **beside** its term rather than under it, and
+holds every definition to one column, so a glossary reads down the page:
+
+```markdown
+Apple
+: A red fruit.
+
+Orange
+: A mandarin.
+```
+
+The term column is capped at 38% of the width — one long term wraps inside its
+own column rather than squeezing every definition into a ribbon — and a
+definition that wraps lines up under itself, not under the term.
+
 **Underline is `++`, not `__`.** Some editors take double underscores for an
 underline; CommonMark and GFM both read them as **bold**, and Mirzam's whole
 premise is that the same file renders on GitHub. Taking `__` would mean a
@@ -253,7 +268,11 @@ deck — with no way to warn, since `__bold__` is perfectly valid markup.
 Typing the emoji character directly always worked and still does; the
 shortcode is for the keyboards that make that hard.
 
-Task lists work too — `- [ ]` and `- [x]` — and always have.
+Task lists work too — `- [ ]` and `- [x]` — and always have. Mirzam draws the
+box itself rather than leaving the browser's: the native one is about 13px
+whatever the type around it does, and takes its colour from the operating
+system, which is the one mark on a slide that would not follow the theme or
+`D`.
 
 ### Variables and arithmetic
 

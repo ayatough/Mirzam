@@ -138,6 +138,27 @@ async function checkDeck(page, file) {
           }
         }
 
+        // Type sizes are written in `em`, which multiplies down a nesting: a
+        // list inside a list shipped at 1.35 x 1.35, so the qualification under
+        // a point was half again as large as the point. It reads as a styling
+        // choice rather than a bug, which is why it survived a release — so
+        // measure it rather than trusting the stylesheet.
+        for (const el of sec.querySelectorAll("li li, li p, dd p, li dd")) {
+          const parent = el.parentElement.closest("li, dd");
+          if (!parent) continue;
+          const inner = parseFloat(getComputedStyle(el).fontSize);
+          const outer = parseFloat(getComputedStyle(parent).fontSize);
+          if (inner > outer + 0.5) {
+            const pane = el.closest(".pane");
+            issues.push({
+              kind: "nesting",
+              pane: (pane?.className.match(/pane-([\w-]+)/) || [])[1] || "-",
+              detail: `nested <${el.tagName.toLowerCase()}> is ${inner.toFixed(1)}px inside a ${outer.toFixed(1)}px parent`,
+            });
+            break;
+          }
+        }
+
         // An annotation whose anchor has been renamed is dropped just as
         // quietly, and costs more: the sentence still says "the circled bar".
         const missing = window.MZAnnot ? window.MZAnnot.missing(sec) : 0;

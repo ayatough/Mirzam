@@ -132,6 +132,39 @@ h2 {
 h3 { font-size: 1.3em; color: var(--mz-accent1); }
 p, li { font-size: 1.35em; line-height: 1.65; }
 li { margin: .25em 0; }
+/* A browser puts a blank line above and below a list, which is right for a page
+   and wasteful on a slide — three of them cost a bullet's worth of height. A
+   list nested in an item keeps its tight spacing: the qualification belongs to
+   the point above it. */
+ul, ol { margin: .55em 0; }
+li > :is(ul, ol) { margin: .15em 0 0; }
+/* Those sizes are `em`, so a list inside a list multiplied them — 1.35 × 1.35 —
+   and the qualification under a point came out half again as large as the point
+   it qualified. Anything nested in an item is already at the list's size. */
+:is(li, dd) :is(p, li, dl, dt, dd) { font-size: 1em; }
+
+/* A task list. comrak writes it as an ordinary `<li>` with a checkbox inside,
+   so the bullet stayed and every line carried two markers for one idea. The
+   native box is also ~13px whatever the type around it does, and takes its
+   colour from the operating system — the one mark on a slide that would not
+   move when the theme or the mode did. So the input keeps the state for a
+   screen reader, and the item draws the box. */
+li:has(> input[type="checkbox"]) { list-style: none; position: relative; }
+li > input[type="checkbox"] { position: absolute; opacity: 0; }
+li:has(> input[type="checkbox"])::before {
+  content: ""; position: absolute; left: -1.4em; top: .4em;
+  box-sizing: border-box; width: .76em; height: .76em;
+  border: 2px solid var(--mz-muted); border-radius: 3px;
+}
+li:has(> input[type="checkbox"]:checked)::before {
+  background: var(--mz-accent1); border-color: var(--mz-accent1);
+}
+li:has(> input[type="checkbox"]:checked)::after {
+  content: ""; position: absolute; left: -1.15em; top: .54em;
+  width: .18em; height: .38em;
+  border: solid var(--mz-bg); border-width: 0 .14em .14em 0;
+  transform: rotate(45deg);
+}
 strong { color: var(--mz-accent1); }
 a { color: var(--mz-accent1); }
 
@@ -155,10 +188,22 @@ ins { text-decoration: underline; text-decoration-thickness: 2px; text-underline
 
 /* A term and its definition. Slides faked this with a two-column table, which
    made a reader's screen reader announce a data grid and put a rule between a
-   word and its meaning. */
-dl { margin: .4em 0; }
-dt { font-weight: 600; color: var(--mz-accent1); margin-top: .5em; }
-dd { margin: .1em 0 0 1.2em; color: var(--mz-fg); }
+   word and its meaning.
+
+   The definition sits *beside* the term, not under it. A glossary is read as
+   `Apple: a red fruit`, and stacking the two turned four entries into eight
+   lines on a slide with room for four. The grid keeps every definition in one
+   column, so a definition that wraps lines up under itself rather than under
+   the term; the term column is capped so one long term cannot squeeze the rest
+   into a ribbon. */
+dl {
+  display: grid; grid-template-columns: fit-content(38%) 1fr;
+  column-gap: .55em; row-gap: .25em;
+  margin: .55em 0; font-size: 1.35em; line-height: 1.65;
+}
+dt { grid-column: 1; font-weight: 600; color: var(--mz-accent1); }
+dt::after { content: ":"; }
+dd { grid-column: 2; margin: 0; color: var(--mz-fg); }
 
 /* Emphasis by size and colour, for the places bold is not enough and a
    stylesheet of your own is too much. Every one takes a theme token, so they
@@ -454,8 +499,10 @@ html.mz-awake #controls { opacity: 1; pointer-events: auto; }
 #keys dl {
   margin: 0; display: grid; grid-template-columns: auto 1fr;
   gap: 6px 14px; align-items: baseline;
+  font-size: inherit; /* the slide's term list is 1.35em; the overlay is chrome */
 }
 #keys dt { margin: 0; }
+#keys dt::after { content: none; } /* `←  previous`, not `←: previous` */
 #keys dd { margin: 0; color: var(--mz-ui-dim); }
 #keys kbd {
   display: inline-block; min-width: 1.2em; text-align: center;

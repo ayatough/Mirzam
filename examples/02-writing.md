@@ -263,6 +263,9 @@ fn main() {
 
 Term
 : What it means.
+
+Another
+: And its meaning.
 ```
 :::
 
@@ -277,7 +280,10 @@ Term
 - [ ] and always have
 
 Term list
-: A term and its meaning, without a table pretending to be one.
+: Its meaning, beside it.
+
+Another
+: Definitions line up.
 :::
 
 ---

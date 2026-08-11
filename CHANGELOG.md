@@ -77,6 +77,26 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   shipped; it now checks that every button in the cluster is bound.
 
 ### Fixed
+- **A list inside a list came out bigger than the list.** Type sizes are written
+  in `em`, which multiplies down a nesting, so `p, li { font-size: 1.35em }` made
+  the qualification under a point 1.35 × 1.35 — half again as large as the point
+  it qualified. It reads as a styling choice rather than a bug, which is how it
+  survived a release; `check-layout.mjs` now measures every nested item against
+  its parent, so it cannot come back quietly.
+- **A task list showed a bullet *and* a checkbox** — two markers for one idea,
+  because comrak writes `- [x]` as an ordinary `<li>` with an `<input>` inside
+  and nothing dropped the marker. The box is now drawn by the stylesheet: it
+  scales with the type around it and takes the accent colour, where the native
+  one is ~13px whatever the slide does and is coloured by the operating system —
+  the one mark that would not move when the theme or `D` did. The input stays,
+  hidden, so a screen reader still reports the state.
+- **A term list stacked the definition under its term**, which turned four
+  entries into eight lines on a slide with room for four. The definition sits
+  beside the term now, with every definition in one column, so a glossary reads
+  down the page and a definition that wraps lines up under itself rather than
+  under the term.
+- Lists carried a browser's blank line above and below — right for a page,
+  wasteful on a slide, where three of them cost a bullet's worth of height.
 - Publishing a release left the *previous* one on the front page. Cutting a
   release pushes the version bump and then tags it, so the Pages run that CI
   triggers for that commit starts before the tag exists and rebuilds the root
