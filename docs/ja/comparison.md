@@ -100,6 +100,49 @@ PDF 出力、watch / プレビューのループ。
   実レンダリングして、ペインのはみ出し・重なり・死んだコネクタ / 注釈参照で CI を
   落とす — レイアウトと参照がコードではなく構造化データだから成立するチェック。
 
+## 周辺の地図
+
+Marp と Touying が最も近い隣人ですが、この分野は混み合っています。残りの顔ぶれを、
+同じ問い — 視覚はどこに住むのか — に当てはめて素描します。
+
+- **[Slidev](https://github.com/slidevjs/slidev)** (Vue、非常に活発) は注視すべき
+  第三のツール。賭けは「視覚は *Web フロントエンドスタック* に住む」— Markdown の
+  スライドに Vue コンポーネントを埋め込め、コード差分アニメーション
+  (shiki-magic-move)、`@vueuse/motion` によるモーション、描き込み、カメラ付き録画、
+  PDF/PNG/PPTX/SPA 出力を持つ。野心の面では Mirzam に最も近く (開発者向け、
+  モーション、プレゼンター機能)、依存の面では最も遠い: デッキは Node/Vite
+  プロジェクトであり、レイアウトは Markdown 内の HTML/CSS、Vue コンポーネントだらけの
+  ソースは他の場所ではもう文書として読めない。
+- **[reveal.js](https://revealjs.com/)** はこの分野の多くがコンパイル先とする基盤。
+  最も深いプラグイン・アニメーション制御を持つ HTML フレームワークで、代価は
+  HTML を書くこと (またはその中の Markdown) と、周辺ツールを自前で抱えること。
+- **[Quarto](https://quarto.org/docs/presentations/)** (とその前身の Pandoc/Beamer)
+  は *文書ツールチェーン* 族の代表: 1 つのソースが論文にもサイトにもスライドにも
+  なり、チャートは実行可能な R/Python セルが生成する。Mirzam の「文書→デッキ」と
+  「データ」の物語に最も近い隣人 — ただし科学出版の側から接近しており、
+  ツールチェーンは重く、実際のレンダラは reveal.js や PowerPoint。
+- **Touying の Typst 兄弟** — [Polylux](https://typst.app/universe/package/polylux/)、
+  [presentate](https://typst.app/universe/package/presentate/)、
+  [typslides](https://typst.app/universe/package/typslides/)、
+  [slipst](https://typst.app/universe/package/slipst/) — は Touying と同じ賭けを
+  別のトレードオフで共有する。現状最も完成度が高いのは Touying。
+- **デザインファーストな Markdown アプリ** — [Deckset](https://www.deckset.com/) と
+  [iA Presenter](https://ia.net/presenter) (どちらも macOS、商用) — は Markdown を
+  受け取るが、視覚を CSS でもコードでも文書でもなく「厳選された組み込みデザイン」に
+  置く。出力は磨かれているが、レイアウトモデルは閉じている。
+- **[Obsidian Advanced Slides](https://github.com/MSzturc/obsidian-advanced-slides)**
+  などのプラグインは、vault の中からノートを reveal.js で発表する — 「手元のノートが
+  そのまま発表になってほしい」層が実在する証拠であり、`--split h2` が狙うのと
+  同じ観客。
+- **ターミナル発表ツール** — [presenterm](https://github.com/mfontanini/presenterm)
+  (Rust、活発。コード実行、Mermaid/Typst の画像レンダリング、PDF/HTML 出力)、
+  `slides`、`patat`、`lookatme` — は視覚をどこにも置かない: ターミナルが会場。
+  隣接した観客、別の部屋。
+- **AI デッキ生成** — Gamma、Tome、[Presenton](https://presenton.ai/)、研究系の
+  PPTAgent など — はプロンプトから WYSIWYG のデッキを生成する。競っているのは
+  生成であって「レビュー可能な単一の真実」ではない。むしろ、エージェントが
+  *テキストとして書け*、CI が検証できるデッキの価値を裏づける存在。
+
 ## Mirzam の差別化ポイント
 
 他の二者が空けている場所 — 断定ではなく方向性として、短く:

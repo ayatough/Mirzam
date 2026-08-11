@@ -109,6 +109,54 @@ handout. Divergence points:
   dead connector/annotation references — checks that only exist because
   layout and references are structured data rather than code.
 
+## The wider field
+
+Marp and Touying are the two nearest neighbors, but the space is crowded. A
+sketch of the rest, each placed against the same question — where do the
+visuals live?
+
+- **[Slidev](https://github.com/slidevjs/slidev)** (Vue, very active) is the
+  third tool worth watching closely. Its bet: the visuals live in the *web
+  frontend stack* — Markdown slides that can embed Vue components, with
+  code-diff animation (shiki-magic-move), motion via `@vueuse/motion`,
+  drawing, camera recording, and PDF/PNG/PPTX/SPA export. It is the closest
+  to Mirzam in ambition (developer focus, motion, presenter tooling) and the
+  farthest in dependencies: a deck is a Node/Vite project, layout is
+  HTML/CSS in the Markdown, and a source full of Vue components no longer
+  reads as a document anywhere else.
+- **[reveal.js](https://revealjs.com/)** is the substrate much of the field
+  compiles to: an HTML framework with the deepest plugin and animation
+  control, at the price of writing HTML (or Markdown inside it) and owning
+  the surrounding tooling yourself.
+- **[Quarto](https://quarto.org/docs/presentations/)** (and Pandoc/Beamer
+  before it) represents the *document-toolchain* family: one source that
+  becomes a paper, a site, or slides, with charts produced by executable
+  R/Python cells. It is the nearest neighbor to Mirzam's document→deck and
+  data stories — approached from the scientific-publishing side, with a
+  heavyweight toolchain and reveal.js/PowerPoint as the actual renderers.
+- **Typst siblings of Touying** — [Polylux](https://typst.app/universe/package/polylux/),
+  [presentate](https://typst.app/universe/package/presentate/),
+  [typslides](https://typst.app/universe/package/typslides/),
+  [slipst](https://typst.app/universe/package/slipst/) — share Touying's bet
+  with different trade-offs; Touying remains the most complete of them.
+- **Design-first Markdown apps** — [Deckset](https://www.deckset.com/) and
+  [iA Presenter](https://ia.net/presenter) (both macOS, commercial) — take
+  Markdown in but put the visuals in curated built-in design, not in CSS,
+  code, or the document. Polished output, closed layout model.
+- **[Obsidian Advanced Slides](https://github.com/MSzturc/obsidian-advanced-slides)**
+  and similar plugins present notes from inside a vault via reveal.js —
+  evidence that "my existing notes should present themselves" is a real
+  audience, the same one `--split h2` serves.
+- **Terminal presenters** — [presenterm](https://github.com/mfontanini/presenterm)
+  (Rust, active; code execution, Mermaid/Typst rendered to images, PDF/HTML
+  export), `slides`, `patat`, `lookatme` — put the visuals nowhere: the
+  terminal is the venue. Adjacent audience, different room.
+- **AI deck generators** — Gamma, Tome, [Presenton](https://presenton.ai/),
+  research systems like PPTAgent — generate WYSIWYG decks from prompts. They
+  compete on generation, not on being a reviewable source of truth; if
+  anything they strengthen the case for a deck an agent can *write as text*
+  and CI can verify.
+
 ## Differentiation points for Mirzam
 
 Where Mirzam occupies space the other two have left open — kept short, since
