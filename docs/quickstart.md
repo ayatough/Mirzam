@@ -73,6 +73,7 @@ mirzam build deck.md -o out          # one self-contained HTML file
 mirzam export pdf deck.md -o deck.pdf
 mirzam build notes.md --split h2     # any document becomes a deck, unedited
 mirzam export pdf notes.md --split h2 --theme mirzam -o notes.pdf
+mirzam check deck.md                 # clipped panes, unresolved connectors, and the rest
 ```
 
 `export pdf` takes the same `--split`, `--theme`, `--css`, `--fit` and `--mode`
@@ -80,6 +81,14 @@ as `build`, so a deck assembled with one of those flags exports to PDF with
 the same slides in one command — there is no need to `build` first. It always
 reads the Markdown source, never a built `out/index.html`: pass it the `.md`
 file.
+
+`check` builds the deck and renders it with headless Chromium to catch what a
+build's own warnings cannot: content clipped by its pane, an unresolved
+connector, an animation left mid-entrance, the layout debug overlay baked in —
+a slide that renders, just wrong. It takes the same deck-shaping flags `build`
+does, so a `--split` deck is checked as it would actually publish, and exits
+non-zero when it finds something, for a CI gate that doesn't need `cargo` or a
+browser-automation library installed.
 
 `new` writes a starter deck — frontmatter, a title slide and a slide break, the
 shape shown under [Your first deck](#your-first-deck) — and never overwrites a

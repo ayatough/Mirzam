@@ -477,9 +477,12 @@ mod tests {
         }
     }
 
-    /// `scripts/check-layout.mjs` is the only thing that can see a mark that
-    /// was not drawn or an element left in its entrance state, and it can only
-    /// see them by asking the runtime. Rename either of these and the checker
+    /// `crates/mirzam-cli/src/check.js` is the only thing that can see a mark
+    /// that was not drawn or an element left in its entrance state, and it can
+    /// only see them by asking the runtime. Both `scripts/check-layout.mjs`
+    /// (Playwright, for CI) and `mirzam check` (a headless Chromium process)
+    /// load that one file rather than keeping their own copy, so it alone is
+    /// the contract to check here. Rename either of these and the checker
     /// goes quiet — passing every deck, catching nothing — so the names are
     /// part of the contract rather than an implementation detail.
     #[test]
@@ -492,7 +495,7 @@ mod tests {
             ANIM_JS.contains("armed(sec, step)"),
             "anim.js no longer reports elements left in their initial state"
         );
-        let checker = include_str!("../../../../scripts/check-layout.mjs");
+        let checker = include_str!("../../../mirzam-cli/src/check.js");
         assert!(
             checker.contains("MZAnnot.missing("),
             "the checker stopped asking"

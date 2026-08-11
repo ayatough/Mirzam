@@ -5,6 +5,8 @@
 //!   mirzam build <input.md> [-o <out_dir>]
 //!   mirzam serve <input.md> [-p <port>]
 
+mod check;
+
 use mirzam_cli::{pipeline, scaffold, serve};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -147,6 +149,41 @@ fn main() -> ExitCode {
             });
             run(export_pdf(&input, &out_path, chromium.as_deref(), &deck))
         }
+        Some("check") => {
+            let mut input: Option<PathBuf> = None;
+            let mut opts = check::CheckArgs::default();
+            let mut i = 1;
+            while i < args.len() {
+                match args[i].as_str() {
+                    "--base-url" => {
+                        i += 1;
+                        match args.get(i) {
+                            Some(u) => opts.base_url = Some(u.clone()),
+                            None => return usage("--base-url requires a URL"),
+                        }
+                    }
+                    "--debug-layout" => opts.debug_layout = true,
+                    "--chromium" => {
+                        i += 1;
+                        match args.get(i) {
+                            Some(p) => opts.chromium = Some(p.clone()),
+                            None => return usage("--chromium requires an executable path"),
+                        }
+                    }
+                    arg => match parse_deck_flag(&args, &mut i, &mut opts.deck) {
+                        Some(Ok(())) => {}
+                        Some(Err(e)) => return usage(&e),
+                        None if input.is_none() => input = Some(PathBuf::from(arg)),
+                        None => return usage(&format!("unknown argument: {arg}")),
+                    },
+                }
+                i += 1;
+            }
+            let Some(input) = input else {
+                return usage("an input file is required");
+            };
+            run(check::check(&input, &opts))
+        }
         Some("--version" | "-V") => {
             println!("mirzam {}", env!("CARGO_PKG_VERSION"));
             ExitCode::SUCCESS
@@ -165,7 +202,7 @@ fn main() -> ExitCode {
 /// `mirzam server` instead of `mirzam serve` should not read as "your file is
 /// wrong"; it should name the mistake.
 fn unknown_command(given: &str) -> String {
-    const COMMANDS: [&str; 4] = ["new", "build", "serve", "export"];
+    const COMMANDS: [&str; 5] = ["new", "build", "serve", "export", "check"];
     let close = COMMANDS
         .iter()
         .map(|c| (edit_distance(given, c), *c))
@@ -227,6 +264,9 @@ Usage:
   mirzam export pdf <input.md> [-o <out.pdf>] [--split h1|h2|h3]
                [--theme <name>] [--css <file>] [--fit shrink]
                [--mode light|dark] [--chromium <bin>]
+  mirzam check <input.md> [--split h1|h2|h3] [--theme <name>] [--css <file>]
+               [--fit shrink] [--mode light|dark] [--base-url <url>]
+               [--debug-layout] [--chromium <bin>]
 
   new     write a deck to start from - frontmatter, a title slide and a
           slide break - or, with --empty, a blank file to type into.
@@ -236,6 +276,14 @@ Usage:
   export  render a PDF with headless Chromium (also honors MIRZAM_CHROMIUM).
           Takes a Markdown source, not a built `out/index.html` - re-parsing
           already-rendered HTML as Markdown would silently lose the deck
+  check   build the deck, then render it with headless Chromium (also honors
+          MIRZAM_CHROMIUM) and report every slide with content clipped by its
+          pane, panes overflowing into a neighbour, a nested list sized wrong,
+          an unresolved connector, an unplayed animation, or the layout debug
+          overlay baked in. Exits non-zero on any of them, so CI - or a
+          binary install with no cargo, no playwright-core, no repository -
+          can catch what a build's own warnings cannot: a slide that renders,
+          just wrong
 
   --split starts a new slide at every heading of that level, which turns an
           ordinary document into a deck without editing it. `build` and
@@ -253,10 +301,11 @@ Usage:
           pick its copy by a rule the stylesheet is ignoring
   --base-url is where the input file's directory lives once published, so
           links to other documents still resolve from the deck's own path
-          (build only)
+          (build and check)
   --debug-layout bakes on the pane outline overlay, for screenshotting a
-          broken deck (toggle it live in the viewer with the L key instead;
-          build only)
+          broken deck (toggle it live in the viewer with the L key instead).
+          `check` reports it baked on, since it is meant for screenshotting a
+          broken deck, not for publishing (build and check)
   --strict exits non-zero when the build produced any warnings - a shape
           block inside a pane, a footnote with no definition on its slide, a
           connect endpoint that matches nothing - so CI can catch a silent
@@ -269,7 +318,8 @@ Examples:
   mirzam serve examples/04-components.md
   mirzam build README.md --split h2 -o out
   mirzam export pdf README.md --split h2 -o out.pdf
-  mirzam build deck.md --strict"#
+  mirzam build deck.md --strict
+  mirzam check deck.md --split h2"#
     )
 }
 
@@ -586,6 +636,7 @@ mod tests {
         assert!(unknown_command("nwe").contains("did you mean `new`?"));
         assert!(unknown_command("buidl").contains("did you mean `build`?"));
         assert!(unknown_command("exprot").contains("did you mean `export`?"));
+        assert!(unknown_command("chek").contains("did you mean `check`?"));
     }
 
     #[test]

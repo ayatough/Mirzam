@@ -142,6 +142,7 @@ mirzam build deck.md -o out          # single self-contained HTML
 mirzam build README.md --split h2    # any document becomes a deck, unedited
 mirzam serve deck.md                 # live preview at localhost:4321
 mirzam export pdf deck.md -o deck.pdf
+mirzam check deck.md                 # clipped panes, unresolved connectors, and the rest
 ```
 
 In the viewer: `←` `→` to navigate (and to step through a slide's animation),

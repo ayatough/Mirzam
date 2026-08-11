@@ -8,6 +8,7 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- **`mirzam check <deck.md>`: the layout checker without `cargo`, `playwright-core`, or a checkout.** `scripts/check-layout.mjs` catches a clipped pane, an unresolved connector, an animation left mid-entrance, the debug overlay baked in — but needed all three, so a binary install never had it. `check` builds the deck and drives the exact same in-page check (now shared between both tools as `crates/mirzam-cli/src/check.js`, not duplicated) through a one-shot headless Chromium process instead of a kept-open browser tab, takes the same deck-shaping flags `build` does, and exits non-zero on anything it finds — a CI gate that doesn't need the repository.
 - **Three silent degradations now warn at build time, and `mirzam build --strict` fails on any warning (for CI)**: a `shape` block written inside a `::: pane` (shape only parses at slide top level, so it rendered as a plain code block with nothing said about it), a footnote reference with no `[^key]:` definition on the same slide (left as literal bracket text), and a `connect` endpoint id matching no text anchor, shape, or chart element on the slide (no arrow drawn, and only the browser-side checker used to notice). Every one of these still renders exactly as before — this only adds the warning.
 - **`mirzam export pdf` takes `--split`, `--theme`, `--css`, `--fit` and
   `--mode`, the same flags `build` does**, so a deck assembled with
