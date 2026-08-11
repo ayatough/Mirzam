@@ -20,9 +20,17 @@ name: Pages
 # commit finishes before the tag exists - and the root, which is built from the
 # newest tag, gets rebuilt from the release before last. The first v0.2.0 deploy
 # put v0.1.0 back on the front page exactly that way.
+#
+# `release: published` alone does not cover it. A release cut by dispatching the
+# Release workflow is created by `gh` with `GITHUB_TOKEN`, and GitHub does not
+# let an event raised by that token start another workflow - the loop guard that
+# also stops Release restarting itself. So the release event never arrives, and
+# v0.3.0 published with v0.2.0 still on the front page. Watching the Release
+# workflow finish is what catches both routes: `workflow_run` fires on the run
+# itself, not on the token that made the release inside it.
 on:
   workflow_run:
-    workflows: ["CI"]
+    workflows: ["CI", "Release"]
     types: [completed]
     branches: ["main"]
   release:
