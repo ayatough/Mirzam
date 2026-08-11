@@ -16,6 +16,27 @@ Markdown parser still renders as readable text — that rule is enforced by
 | Transclusion `![[file.md]]` | An image-like link (Obsidian embeds it) |
 | Speaker notes `<!-- note: ... -->` | Nothing; it is an HTML comment |
 
+## Chapters
+
+This file runs long; jump straight to the one you need.
+
+| Chapter | Covers |
+|---|---|
+| [Deck and slides](#deck-and-slides) | Frontmatter, how a document splits into slides, speaker notes |
+| [Layout](#layout) | The `pane` grid and `::: pane` — see also the dedicated [layout guide](layout.md) |
+| [Inline syntax](#inline-syntax) | Plain CommonMark on a slide, headings, `{#id .class}` attributes, the marks a slide reaches for (`==highlight==`, term lists, …), variables, transclusion |
+| [Charts](#charts) | The `chart` block: types, CSV data, per-mark ids for `connect` |
+| [Shapes](#shapes) | The `shape` block — **slide top level only**, drawn on a layer above the panes |
+| [Connectors](#connectors) | The `connect` block: arrows between text anchors, shapes and chart marks |
+| [When a slide has too much on it](#when-a-slide-has-too-much-on-it) | `--fit shrink`, `<!-- next -->`, and when to just make another pane |
+| [Table of contents](#table-of-contents) | The `toc` block — an agenda slide that links to itself |
+| [Citations](#citations) | Footnotes with `[^key]` — **the definition must be on the same slide as the reference** |
+| [Presentation effects](#presentation-effects) | The `effects` block: flourishes bound to a key, fired while presenting |
+| [Annotations](#annotations) | The `annotate` block: circle, underline, box, arrow, pointing at a live element |
+| [Animations](#animations) | The `anim` block: entrances, click steps, exits |
+| [Driving the viewer](#driving-the-viewer) | Keyboard shortcuts, presenter mode, the `/` shortcut sheet |
+| [Theming](#theming) | `theme:`, `css:`, `mode:`, [a theme on one pane](#a-theme-smaller-than-a-deck), and the tokens a stylesheet sets |
+
 ## Deck and slides
 
 ### Frontmatter
@@ -508,6 +529,11 @@ text    #cap   at(72%, 88%) "95% hit rate" .small
 - Edges for endpoints: `.n`, `.s`, `.e`, `.w`, `.c`.
 - Colors: `@accent1`, `@accent2`, `@shape-fill`, … resolve to theme variables, so
   shapes follow a theme change. Literal CSS colors also work.
+- **A ```shape``` block only parses at slide top level**, the same as `pane` and
+  `connect` — written inside a `::: pane`, the fence is just Markdown to
+  `comrak`, so it renders as an ordinary code block instead of the SVG layer
+  it asked for. `mirzam build` warns when this happens (`--strict` fails the
+  build on it), but the fix is to move the block out of the pane.
 
 ## Connectors
 
@@ -679,6 +705,15 @@ A bare DOI or arXiv URL becomes a link on its own. See
 [`examples/seminar.md`](../examples/seminar.md) for the shape of a reading-group
 talk: a figure quoted from the paper, annotated and pointed at from the prose,
 with its citation at the foot of the same slide.
+
+**The `[^key]: …` definition has to be on the same slide as its `[^key]`
+reference** — each slide renders on its own, so a definition left on another
+slide (or, in a grid layout, a pane other than the reference's own) never
+reaches it. Nothing catches this at the Markdown level: a reference with no
+matching definition is just left as literal `[^key]` text, which reads as a
+typo rather than a broken feature. `mirzam build` warns when this happens
+(`--strict` fails the build on it), so the fix is to move the definition onto
+the citing slide rather than to hunt for what silently did not link.
 
 ## Presentation effects
 

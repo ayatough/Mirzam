@@ -335,7 +335,7 @@ pub fn fence_len(trimmed: &str) -> Option<usize> {
 }
 
 /// Whether `trimmed` closes a fence opened with `open` backticks.
-fn closes_fence(trimmed: &str, open: usize) -> bool {
+pub fn closes_fence(trimmed: &str, open: usize) -> bool {
     match fence_len(trimmed) {
         Some(n) => n >= open && trimmed.chars().all(|c| c == '`'),
         None => false,

@@ -6,15 +6,24 @@
 //   node scripts/check-layout.mjs --build examples/pitch.md examples/04-components.md
 //
 // Exits non-zero when any deck has a violation, so CI can gate on it.
+//
+// The check itself - what counts as clipped, overlapping, an unresolved
+// connector - lives in one place, `crates/mirzam-cli/src/check.js`, loaded
+// below and run in the page exactly as `mirzam check` runs it. This file is
+// the CI-only, Playwright-driven way to reach that same check; a binary
+// install reaches it through `mirzam check` instead, without Node or
+// playwright-core. Keep the two in sync by editing only the shared file.
 
 import { chromium } from "playwright-core";
 import { execFileSync } from "child_process";
-import { existsSync, mkdtempSync } from "fs";
+import { existsSync, mkdtempSync, readFileSync } from "fs";
 import { tmpdir } from "os";
-import { join, resolve, basename } from "path";
+import { fileURLToPath } from "url";
+import { join, resolve, basename, dirname } from "path";
 
 const CHROMIUM = process.env.MIRZAM_CHROMIUM || undefined;
-const TOLERANCE = 2; // px of sub-pixel slack before calling it an overflow
+const REPO_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+const CHECK_JS = readFileSync(join(REPO_ROOT, "crates", "mirzam-cli", "src", "check.js"), "utf8");
 
 function buildDecks(sources) {
   const out = [];
@@ -28,187 +37,17 @@ function buildDecks(sources) {
   return out;
 }
 
-/** Collects layout problems for every slide of one deck. */
+/** Collects layout problems for every slide of one deck, via the shared check. */
 async function checkDeck(page, file) {
   await page.goto("file://" + resolve(file));
-  await page.waitForTimeout(400);
-  const count = await page.$$eval("section.slide", (s) => s.length);
-
-  const problems = [];
-
-  // `--debug-layout` is for screenshotting a broken deck, not for publishing.
-  // Baked on, it tints every pane pink for the audience, and the only way to
-  // notice is to look — so look, once, before measuring anything.
-  if (await page.evaluate(() => document.documentElement.classList.contains("mz-debug"))) {
-    problems.push({
-      slide: 1,
-      kind: "debug",
-      pane: "-",
-      detail: "the layout debug overlay is baked into this build (--debug-layout)",
-    });
-  }
-
-  for (let i = 0; i < count; i++) {
-    await page.evaluate((n) => window.__mirzamGoto && window.__mirzamGoto(n), i);
-    // Measure the slide the audience ends on, not the one it starts as. An
-    // element revealed on the third click can overflow its pane, and a
-    // connector pointing at an annotation cannot be routed until that
-    // annotation has been drawn — the state a reader without JavaScript, and
-    // the PDF, both see.
-    await page.evaluate(() => {
-      const sec = document.querySelector("section.slide.active");
-      const n = Math.max(
-        window.MZAnim && sec ? window.MZAnim.steps(sec) : 0,
-        window.MZAnnot && sec ? window.MZAnnot.steps(sec) : 0
-      );
-      for (let s = 0; s < n; s++) {
-        dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" }));
-      }
-    });
-    // Measuring while an entrance is still running would read the animation,
-    // not the slide it lands on. Waiting on the animations themselves beats
-    // guessing a duration, since a deck can set its own.
-    await page
-      .waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running"), null, {
-        timeout: 2000,
-      })
-      .catch(() => {});
-    await page.waitForTimeout(120);
-    const found = await page.evaluate(
-      ([index, tol]) => {
-        const sec = document.querySelector(`section.slide[data-index="${index}"]`);
-        if (!sec) return [];
-        const issues = [];
-        const panes = [...sec.querySelectorAll(".pane")];
-
-        for (const pane of panes) {
-          const name = (pane.className.match(/pane-([\w-]+)/) || [])[1] || "?";
-          // Content taller or wider than the pane is clipped by overflow:hidden,
-          // which is exactly the "the heading disappeared" failure.
-          //
-          // A background pane deliberately overflows: the photo is scaled up so
-          // its blurred edges stay off screen. Measure the content wrapper
-          // against the pane's content box instead, so the decoration is
-          // ignored but clipped text is still caught.
-          const wrap = pane.querySelector(":scope > .mz-bg-content");
-          let overY, overX;
-          if (wrap) {
-            const cs = getComputedStyle(pane);
-            const pad = (a, b) => parseFloat(cs[a]) + parseFloat(cs[b]);
-            overY = wrap.scrollHeight - (pane.clientHeight - pad("paddingTop", "paddingBottom"));
-            overX = wrap.scrollWidth - (pane.clientWidth - pad("paddingLeft", "paddingRight"));
-          } else {
-            overY = pane.scrollHeight - pane.clientHeight;
-            overX = pane.scrollWidth - pane.clientWidth;
-          }
-          if (overY > tol) {
-            issues.push({
-              kind: "clipped",
-              pane: name,
-              detail: `content is ${Math.round(overY)}px taller than the pane`,
-            });
-          }
-          if (overX > tol) {
-            issues.push({
-              kind: "clipped",
-              pane: name,
-              detail: `content is ${Math.round(overX)}px wider than the pane`,
-            });
-          }
-          // Panes allowed to overflow (headings) must not run into a neighbour.
-          if (getComputedStyle(pane).overflow === "visible") {
-            const r = pane.getBoundingClientRect();
-            const bottom = [...pane.children].reduce(
-              (m, c) => Math.max(m, c.getBoundingClientRect().bottom),
-              r.top
-            );
-            for (const other of panes) {
-              if (other === pane) continue;
-              const o = other.getBoundingClientRect();
-              const overlapX = Math.min(r.right, o.right) - Math.max(r.left, o.left);
-              if (overlapX > 0 && bottom - o.top > tol && r.top < o.top) {
-                issues.push({
-                  kind: "overlap",
-                  pane: name,
-                  detail: `overflows ${Math.round(bottom - o.top)}px into pane below`,
-                });
-                break;
-              }
-            }
-          }
-        }
-
-        // Type sizes are written in `em`, which multiplies down a nesting: a
-        // list inside a list shipped at 1.35 x 1.35, so the qualification under
-        // a point was half again as large as the point. It reads as a styling
-        // choice rather than a bug, which is why it survived a release — so
-        // measure it rather than trusting the stylesheet.
-        for (const el of sec.querySelectorAll("li li, li p, dd p, li dd")) {
-          const parent = el.parentElement.closest("li, dd");
-          if (!parent) continue;
-          const inner = parseFloat(getComputedStyle(el).fontSize);
-          const outer = parseFloat(getComputedStyle(parent).fontSize);
-          if (inner > outer + 0.5) {
-            const pane = el.closest(".pane");
-            issues.push({
-              kind: "nesting",
-              pane: (pane?.className.match(/pane-([\w-]+)/) || [])[1] || "-",
-              detail: `nested <${el.tagName.toLowerCase()}> is ${inner.toFixed(1)}px inside a ${outer.toFixed(1)}px parent`,
-            });
-            break;
-          }
-        }
-
-        // An annotation whose anchor has been renamed is dropped just as
-        // quietly, and costs more: the sentence still says "the circled bar".
-        const missing = window.MZAnnot ? window.MZAnnot.missing(sec) : 0;
-        if (missing) {
-          issues.push({
-            kind: "annotation",
-            pane: "-",
-            detail: `${missing} annotation(s) not drawn (unknown id?)`,
-          });
-        }
-
-        // The resting-state rule: once a track has played, its elements hold
-        // the slide's final state. One still holding its entrance state is
-        // invisible to everybody — including the PDF, which never steps.
-        const armed = window.MZAnim ? window.MZAnim.armed(sec, window.MZAnim.steps(sec)) : 0;
-        if (armed) {
-          issues.push({
-            kind: "animation",
-            pane: "-",
-            detail: `${armed} element(s) left in their initial state after the last step`,
-          });
-        }
-
-        // A connector whose endpoint could not be resolved is silently dropped;
-        // report the count so a typo in an id does not go unnoticed.
-        if (sec.dataset.connectors) {
-          const declared = JSON.parse(sec.dataset.connectors);
-          const drawn = sec.querySelectorAll("svg.mz-connect path").length;
-          if (drawn < declared.length) {
-            issues.push({
-              kind: "connector",
-              pane: "-",
-              detail: `${declared.length - drawn} connector(s) not drawn (unknown id?)`,
-            });
-          }
-        }
-        return issues;
-      },
-      [i, TOLERANCE]
-    );
-    for (const f of found) problems.push({ slide: i + 1, ...f });
-  }
-  return { count, problems };
+  // `mzRunCheck` (from CHECK_JS) does its own waiting - images, fonts, click
+  // steps, animations - so nothing here has to.
+  return page.evaluate((src) => new Function(`${src}\nreturn mzRunCheck();`)(), CHECK_JS);
 }
 
 const args = process.argv.slice(2);
 const decks =
-  args[0] === "--build"
-    ? buildDecks(args.slice(1))
-    : args.map((f) => ({ label: basename(f), file: f }));
+  args[0] === "--build" ? buildDecks(args.slice(1)) : args.map((f) => ({ label: basename(f), file: f }));
 
 if (decks.length === 0) {
   console.error("usage: node scripts/check-layout.mjs [--build] <deck...>");
