@@ -8,6 +8,13 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- **`mirzam export pdf` takes `--split`, `--theme`, `--css`, `--fit` and
+  `--mode`, the same flags `build` does**, so a deck assembled with
+  `--split h2` exports to PDF with the same slide breaks in one command
+  instead of two. It also now refuses anything but a `.md` source: pointing
+  it at a built `out/index.html` used to "succeed" with a title-only PDF,
+  silently dropping the whole deck, because the HTML was re-parsed as
+  Markdown. That is an error now, and says the right command to run instead.
 - **A formula panel in the browser editor: tap and place, not type.** The
   letters of a formula are easy to type on a phone; the structure — what is a
   subscript, what sits over what — is what costs keystrokes. The **Math**

@@ -34,57 +34,13 @@ fn main() -> ExitCode {
                             None => return usage("--base-url requires a URL"),
                         }
                     }
-                    "--theme" => {
-                        i += 1;
-                        // A flag is typed, not authored, so an unknown name is
-                        // a typo to report rather than something to fall back
-                        // from: silently rendering in `default` is exactly what
-                        // the flag was reached for to avoid.
-                        match args.get(i) {
-                            Some(name) if mirzam_render::THEME_NAMES.contains(&name.as_str()) => {
-                                opts.theme = Some(name.clone());
-                            }
-                            _ => {
-                                return usage(&format!(
-                                    "--theme takes one of: {}",
-                                    mirzam_render::THEME_NAMES.join(", ")
-                                ));
-                            }
-                        }
-                    }
-                    "--css" => {
-                        i += 1;
-                        match args.get(i) {
-                            Some(p) => opts.css = Some(PathBuf::from(p)),
-                            None => return usage("--css requires a stylesheet path"),
-                        }
-                    }
-                    "--fit" => {
-                        i += 1;
-                        match args.get(i).map(String::as_str) {
-                            Some("shrink") => opts.fit = Some("shrink".to_string()),
-                            _ => return usage("--fit takes shrink"),
-                        }
-                    }
-                    "--mode" => {
-                        i += 1;
-                        match args.get(i).map(String::as_str) {
-                            Some(m @ ("light" | "dark")) => opts.mode = Some(m.to_string()),
-                            _ => return usage("--mode takes light or dark"),
-                        }
-                    }
-                    "--split" => {
-                        i += 1;
-                        match args.get(i).map(String::as_str) {
-                            Some("h1") => opts.split = Some(1),
-                            Some("h2") => opts.split = Some(2),
-                            Some("h3") => opts.split = Some(3),
-                            _ => return usage("--split takes h1, h2 or h3"),
-                        }
-                    }
                     "--debug-layout" => opts.debug_layout = true,
-                    other if input.is_none() => input = Some(PathBuf::from(other)),
-                    other => return usage(&format!("unknown argument: {other}")),
+                    arg => match parse_deck_flag(&args, &mut i, &mut opts.deck) {
+                        Some(Ok(())) => {}
+                        Some(Err(e)) => return usage(&e),
+                        None if input.is_none() => input = Some(PathBuf::from(arg)),
+                        None => return usage(&format!("unknown argument: {arg}")),
+                    },
                 }
                 i += 1;
             }
@@ -140,6 +96,7 @@ fn main() -> ExitCode {
             let mut input: Option<PathBuf> = None;
             let mut out_path: Option<PathBuf> = None;
             let mut chromium: Option<String> = None;
+            let mut deck = DeckArgs::default();
             let mut i = 2;
             while i < args.len() {
                 match args[i].as_str() {
@@ -157,14 +114,29 @@ fn main() -> ExitCode {
                             None => return usage("--chromium requires an executable path"),
                         }
                     }
-                    other if input.is_none() => input = Some(PathBuf::from(other)),
-                    other => return usage(&format!("unknown argument: {other}")),
+                    arg => match parse_deck_flag(&args, &mut i, &mut deck) {
+                        Some(Ok(())) => {}
+                        Some(Err(e)) => return usage(&e),
+                        None if input.is_none() => input = Some(PathBuf::from(arg)),
+                        None => return usage(&format!("unknown argument: {arg}")),
+                    },
                 }
                 i += 1;
             }
             let Some(input) = input else {
                 return usage("an input file is required");
             };
+            // `out/index.html` re-parsed as Markdown "succeeds" with a
+            // title-only PDF - a silent loss of the whole deck. Refusing
+            // anything but `.md` here turns that into an error that says the
+            // right command, instead of a PDF nobody would think to check.
+            if !is_markdown_path(&input) {
+                return usage(&format!(
+                    "export pdf expects a Markdown source, not {} - point it at the deck itself: \
+                     `mirzam export pdf deck.md --split h2 --theme <name> ...`",
+                    input.display()
+                ));
+            }
             let out_path = out_path.unwrap_or_else(|| {
                 input
                     .with_extension("pdf")
@@ -172,7 +144,7 @@ fn main() -> ExitCode {
                     .map(PathBuf::from)
                     .unwrap_or_else(|| PathBuf::from("deck.pdf"))
             });
-            run(export_pdf(&input, &out_path, chromium.as_deref()))
+            run(export_pdf(&input, &out_path, chromium.as_deref(), &deck))
         }
         Some("--version" | "-V") => {
             println!("mirzam {}", env!("CARGO_PKG_VERSION"));
@@ -251,47 +223,57 @@ Usage:
                [--css <file>] [--fit shrink] [--mode light|dark]
                [--base-url <url>] [--debug-layout]
   mirzam serve <input.md> [-p <port>]
-  mirzam export pdf <input.md> [-o <out.pdf>] [--chromium <bin>]
+  mirzam export pdf <input.md> [-o <out.pdf>] [--split h1|h2|h3]
+               [--theme <name>] [--css <file>] [--fit shrink]
+               [--mode light|dark] [--chromium <bin>]
 
   new     write a deck to start from - frontmatter, a title slide and a
           slide break - or, with --empty, a blank file to type into.
           An existing file is never overwritten
   build   write <out_dir>/index.html, a single file with the viewer embedded
-          --split starts a new slide at every heading of that level, which
-          turns an ordinary document into a deck without editing it
-          --theme and --css override the deck's frontmatter, so a document
-          that carries none still gets an identity: --theme takes a built-in
-          palette, --css a stylesheet with the type and furniture as well
-          --fit shrink scales an overfull pane's text down instead of clipping
-          it, which is what a section of prose that was never written to be a
-          slide usually needs
-          --mode pins the deck to light or dark. Leave it off and the deck
-          follows the reader's machine - which is wrong for a stylesheet that
-          rests in one mode, because every per-mode image in the deck would
-          then pick its copy by a rule the stylesheet is ignoring
-          --base-url is where the input file's directory lives once published,
-          so links to other documents still resolve from the deck's own path
-          --debug-layout bakes on the pane outline overlay, for screenshotting
-          a broken deck (toggle it live in the viewer with the L key instead)
   serve   development server with hot reload (default port 4321)
-  export  render a PDF with headless Chromium (also honors MIRZAM_CHROMIUM)
+  export  render a PDF with headless Chromium (also honors MIRZAM_CHROMIUM).
+          Takes a Markdown source, not a built `out/index.html` - re-parsing
+          already-rendered HTML as Markdown would silently lose the deck
+
+  --split starts a new slide at every heading of that level, which turns an
+          ordinary document into a deck without editing it. `build` and
+          `export pdf` take it the same way, so a deck assembled with --split
+          exports to PDF with the same slide breaks in one command
+  --theme and --css override the deck's frontmatter, so a document that
+          carries none still gets an identity: --theme takes a built-in
+          palette, --css a stylesheet with the type and furniture as well
+  --fit shrink scales an overfull pane's text down instead of clipping it,
+          which is what a section of prose that was never written to be a
+          slide usually needs
+  --mode  pins the deck to light or dark. Leave it off and the deck follows
+          the reader's machine - which is wrong for a stylesheet that rests
+          in one mode, because every per-mode image in the deck would then
+          pick its copy by a rule the stylesheet is ignoring
+  --base-url is where the input file's directory lives once published, so
+          links to other documents still resolve from the deck's own path
+          (build only)
+  --debug-layout bakes on the pane outline overlay, for screenshotting a
+          broken deck (toggle it live in the viewer with the L key instead;
+          build only)
 
 Examples:
   mirzam new deck.md
   mirzam build examples/01-start.md -o out
   mirzam serve examples/04-components.md
-  mirzam build README.md --split h2 -o out"#
+  mirzam build README.md --split h2 -o out
+  mirzam export pdf README.md --split h2 -o out.pdf"#
     )
 }
 
-/// Everything `mirzam build` was asked for. A struct rather than a row of
-/// positional arguments, so adding a flag cannot silently pass it in the wrong
-/// slot.
-struct BuildArgs {
-    out_dir: PathBuf,
+/// Flags that shape the deck itself, as opposed to where it lands. `build`
+/// and `export pdf` both render a deck from the same Markdown source - one to
+/// HTML, one to PDF - so these must parse, and mean, exactly the same thing
+/// for both. Kept in one struct so a flag added to one command cannot drift
+/// out of step with the other.
+#[derive(Default)]
+struct DeckArgs {
     split: Option<u8>,
-    debug_layout: bool,
-    base_url: Option<String>,
     /// Overrides frontmatter `theme:`.
     theme: Option<String>,
     /// Overrides frontmatter `css:`. Resolved against the working directory,
@@ -303,17 +285,112 @@ struct BuildArgs {
     mode: Option<String>,
 }
 
+/// Tries to consume one of `DeckArgs`' flags at `args[*i]`. On a match,
+/// advances `*i` to the flag's value and returns `Some` - `Err` holding the
+/// usage message for a missing or invalid value. Returns `None` when
+/// `args[*i]` is none of these flags, so the caller's own flags (`-o`,
+/// `--base-url`, `--chromium`, ...) still get a turn at it.
+fn parse_deck_flag(
+    args: &[String],
+    i: &mut usize,
+    opts: &mut DeckArgs,
+) -> Option<Result<(), String>> {
+    match args[*i].as_str() {
+        "--theme" => {
+            *i += 1;
+            // A flag is typed, not authored, so an unknown name is a typo to
+            // report rather than something to fall back from: silently
+            // rendering in `default` is exactly what the flag was reached
+            // for to avoid.
+            match args.get(*i) {
+                Some(name) if mirzam_render::THEME_NAMES.contains(&name.as_str()) => {
+                    opts.theme = Some(name.clone());
+                    Some(Ok(()))
+                }
+                _ => Some(Err(format!(
+                    "--theme takes one of: {}",
+                    mirzam_render::THEME_NAMES.join(", ")
+                ))),
+            }
+        }
+        "--css" => {
+            *i += 1;
+            match args.get(*i) {
+                Some(p) => {
+                    opts.css = Some(PathBuf::from(p));
+                    Some(Ok(()))
+                }
+                None => Some(Err("--css requires a stylesheet path".to_string())),
+            }
+        }
+        "--fit" => {
+            *i += 1;
+            match args.get(*i).map(String::as_str) {
+                Some("shrink") => {
+                    opts.fit = Some("shrink".to_string());
+                    Some(Ok(()))
+                }
+                _ => Some(Err("--fit takes shrink".to_string())),
+            }
+        }
+        "--mode" => {
+            *i += 1;
+            match args.get(*i).map(String::as_str) {
+                Some(m @ ("light" | "dark")) => {
+                    opts.mode = Some(m.to_string());
+                    Some(Ok(()))
+                }
+                _ => Some(Err("--mode takes light or dark".to_string())),
+            }
+        }
+        "--split" => {
+            *i += 1;
+            match args.get(*i).map(String::as_str) {
+                Some("h1") => {
+                    opts.split = Some(1);
+                    Some(Ok(()))
+                }
+                Some("h2") => {
+                    opts.split = Some(2);
+                    Some(Ok(()))
+                }
+                Some("h3") => {
+                    opts.split = Some(3);
+                    Some(Ok(()))
+                }
+                _ => Some(Err("--split takes h1, h2 or h3".to_string())),
+            }
+        }
+        _ => None,
+    }
+}
+
+/// Whether `path` looks like a Markdown source - `export pdf`'s only valid
+/// input. Case-insensitive, since a filesystem that accepted `Deck.MD` to
+/// write it should not refuse to read it back.
+fn is_markdown_path(path: &Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("md"))
+}
+
+/// Everything `mirzam build` was asked for. A struct rather than a row of
+/// positional arguments, so adding a flag cannot silently pass it in the wrong
+/// slot.
+struct BuildArgs {
+    out_dir: PathBuf,
+    debug_layout: bool,
+    base_url: Option<String>,
+    deck: DeckArgs,
+}
+
 impl Default for BuildArgs {
     fn default() -> Self {
         Self {
             out_dir: PathBuf::from("out"),
-            split: None,
             debug_layout: false,
             base_url: None,
-            theme: None,
-            css: None,
-            fit: None,
-            mode: None,
+            deck: DeckArgs::default(),
         }
     }
 }
@@ -331,19 +408,17 @@ fn new_deck(path: &Path, empty: bool) -> Result<(), String> {
     Ok(())
 }
 
-fn build(input: &Path, args: &BuildArgs) -> Result<(), String> {
-    let t0 = Instant::now();
-    let mut cache = HashMap::new();
-    let mut out =
-        pipeline::build_deck_with(input, &mut cache, args.split, args.base_url.as_deref())?;
-
+/// Applies `--theme`/`--css`/`--fit`/`--mode` on top of the deck's own
+/// frontmatter. Shared by `build` and `export pdf`, which render the same
+/// deck to different formats and so must resolve these identically.
+fn apply_deck_overrides(out: &mut pipeline::BuildOutput, deck: &DeckArgs) -> Result<(), String> {
     // `--theme` and `--css` override the frontmatter, which is what lets a
     // document carrying none - a README published as a deck - still be given
     // an identity without editing the document to get one.
-    if let Some(name) = &args.theme {
+    if let Some(name) = &deck.theme {
         out.meta.theme = Some(name.clone());
     }
-    if let Some(fit) = &args.fit {
+    if let Some(fit) = &deck.fit {
         out.meta.fit = Some(fit.clone());
     }
     // `--mode` matters most for the deck that cannot say it any other way. A
@@ -352,10 +427,10 @@ fn build(input: &Path, args: &BuildArgs) -> Result<(), String> {
     // and an unset mode means "follow the reader's machine". So a dark-resting
     // deck left unset paints dark while every per-mode asset in it, a
     // `<picture>` or a `bg-light=`/`bg-dark=` pane, shows its light copy.
-    if let Some(mode) = &args.mode {
+    if let Some(mode) = &deck.mode {
         out.meta.mode = Some(mode.clone());
     }
-    if let Some(path) = &args.css {
+    if let Some(path) = &deck.css {
         // Unreadable frontmatter `css:` is a warning, because the deck is still
         // a deck without it. An unreadable `--css` is an error: it is the whole
         // reason this invocation exists, and a wrong path would otherwise
@@ -365,6 +440,15 @@ fn build(input: &Path, args: &BuildArgs) -> Result<(), String> {
                 .map_err(|e| format!("cannot read {}: {e}", path.display()))?,
         );
     }
+    Ok(())
+}
+
+fn build(input: &Path, args: &BuildArgs) -> Result<(), String> {
+    let t0 = Instant::now();
+    let mut cache = HashMap::new();
+    let mut out =
+        pipeline::build_deck_with(input, &mut cache, args.deck.split, args.base_url.as_deref())?;
+    apply_deck_overrides(&mut out, &args.deck)?;
 
     let opts = mirzam_render::PageOptions {
         live_version: None,
@@ -392,10 +476,16 @@ fn build(input: &Path, args: &BuildArgs) -> Result<(), String> {
     Ok(())
 }
 
-fn export_pdf(input: &Path, out_path: &Path, chromium: Option<&str>) -> Result<(), String> {
+fn export_pdf(
+    input: &Path,
+    out_path: &Path,
+    chromium: Option<&str>,
+    deck: &DeckArgs,
+) -> Result<(), String> {
     let t0 = Instant::now();
     let mut cache = HashMap::new();
-    let out = pipeline::build_deck(input, &mut cache)?;
+    let mut out = pipeline::build_deck_with(input, &mut cache, deck.split, None)?;
+    apply_deck_overrides(&mut out, deck)?;
     let html =
         mirzam_render::assemble_print_page(&out.meta, &out.sections, out.custom_css.as_deref());
     for w in &out.warnings {
@@ -489,5 +579,55 @@ mod tests {
     fn edit_distance_handles_non_ascii() {
         assert_eq!(edit_distance("ビルド", "build"), 5);
         assert_eq!(edit_distance("serve", "serve"), 0);
+    }
+
+    #[test]
+    fn only_dot_md_is_a_valid_export_input() {
+        assert!(is_markdown_path(Path::new("deck.md")));
+        assert!(is_markdown_path(Path::new("deck.MD")));
+        assert!(!is_markdown_path(Path::new("out/index.html")));
+        assert!(!is_markdown_path(Path::new("deck")));
+    }
+
+    #[test]
+    fn parse_deck_flag_shares_split_theme_css_fit_mode() {
+        let args: Vec<String> = [
+            "--split", "h2", "--theme", "nord", "--css", "x.css", "--fit", "shrink", "--mode",
+            "dark",
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect();
+        let mut opts = DeckArgs::default();
+        let mut i = 0;
+        while i < args.len() {
+            assert!(matches!(
+                parse_deck_flag(&args, &mut i, &mut opts),
+                Some(Ok(()))
+            ));
+            i += 1;
+        }
+        assert_eq!(opts.split, Some(2));
+        assert_eq!(opts.theme.as_deref(), Some("nord"));
+        assert_eq!(opts.css.as_deref(), Some(Path::new("x.css")));
+        assert_eq!(opts.fit.as_deref(), Some("shrink"));
+        assert_eq!(opts.mode.as_deref(), Some("dark"));
+    }
+
+    #[test]
+    fn parse_deck_flag_ignores_flags_it_does_not_own() {
+        let args: Vec<String> = ["-o", "out"].into_iter().map(String::from).collect();
+        let mut opts = DeckArgs::default();
+        let mut i = 0;
+        assert!(parse_deck_flag(&args, &mut i, &mut opts).is_none());
+    }
+
+    #[test]
+    fn parse_deck_flag_reports_a_bad_value() {
+        let args: Vec<String> = ["--split", "h9"].into_iter().map(String::from).collect();
+        let mut opts = DeckArgs::default();
+        let mut i = 0;
+        let err = parse_deck_flag(&args, &mut i, &mut opts);
+        assert!(matches!(err, Some(Err(e)) if e.contains("--split takes")));
     }
 }
