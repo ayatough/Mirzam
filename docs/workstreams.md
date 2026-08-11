@@ -697,8 +697,9 @@ Moving it back would be a rename with no reader-visible benefit.
 
 **Landed.** The mark, wordmark, icon, hero images, palette and pipeline diagram
 are in `docs/brand/`; `examples/themes/mirzam.css` carries the identity as a
-deck theme, and `pitch.css` was redrawn in the same palette, so every published
-sample deck now looks like Mirzam. `assets.rs` gained `srcset` inlining, needed
+deck theme and every published sample deck names it. (`pitch.css` was redrawn in
+the same palette at the time; it has since been deleted, having become a copy of
+`mirzam.css` differing only in numbers nobody had chosen.) `assets.rs` gained `srcset` inlining, needed
 so a `<picture>` offering a light and a dark wordmark still makes a
 self-contained deck.
 

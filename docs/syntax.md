@@ -227,6 +227,11 @@ Every colour here is a theme token, so it moves with the palette and survives
 value picked against a white slide is the one thing that cannot follow the
 deck into dark mode.
 
+**A `[span]{...}` has to fit on one source line.** The transform runs line by
+line, so a span whose text is wrapped across two lines is left alone and the
+brackets and braces reach the slide as literal characters. Rewrap the sentence,
+or split it into two spans.
+
 ### Marks beyond CommonMark
 
 ```markdown
