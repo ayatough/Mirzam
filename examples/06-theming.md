@@ -148,6 +148,144 @@ The same theme drawn again for dark, rather than inverted.
 ---
 
 ```pane
++--------------------------------------------------+
+|  head                                            |
++----------------+----------------+----------------+
+|                |                |                |
+|  one           |  two           |  three         |
+|                |                |                |
++----------------+----------------+----------------+
+|                |                |                |
+|  four          |  five          |  six           |
+|                |                |                |
++----------------+----------------+----------------+
+```
+
+::: pane head
+[Gallery]{.eyebrow} **Six palettes, in light** — every pane below is one slide
+of one deck, each drawn in a different theme.
+:::
+
+::: pane one {theme=default mode=light valign=middle}
+[default]{.eyebrow}
+
+Ink on paper, [a link](https://example.com), **bold**.
+
+[What a deck that asks for nothing gets.]{.small}
+:::
+
+::: pane two {theme=nord mode=light valign=middle}
+[nord]{.eyebrow}
+
+Cool blues on snow, [a link](https://example.com), **bold**.
+
+[The Nord palette, arctic and even.]{.small}
+:::
+
+::: pane three {theme=solarized mode=light valign=middle}
+[solarized]{.eyebrow}
+
+Warm paper, [a link](https://example.com), **bold**.
+
+[Tuned for reading for a long time.]{.small}
+:::
+
+::: pane four {theme=vscode mode=light valign=middle}
+[vscode]{.eyebrow}
+
+Editor colours, [a link](https://example.com), **bold**.
+
+[Light+ and Dark+, for a deck about code.]{.small}
+:::
+
+::: pane five {theme=mirzam mode=light valign=middle}
+[mirzam]{.eyebrow}
+
+Violet and cyan, [a link](https://example.com), **bold**.
+
+[The project's own identity.]{.small}
+:::
+
+::: pane six {theme=wuwei mode=light valign=middle}
+[wuwei]{.eyebrow}
+
+Warm greyscale, [a link](https://example.com), **bold**.
+
+[No accent colour, and quiet on purpose.]{.small}
+:::
+
+---
+
+```pane
++--------------------------------------------------+
+|  head                                            |
++----------------+----------------+----------------+
+|                |                |                |
+|  one           |  two           |  three         |
+|                |                |                |
++----------------+----------------+----------------+
+|                |                |                |
+|  four          |  five          |  six           |
+|                |                |                |
++----------------+----------------+----------------+
+```
+
+::: pane head
+[Gallery]{.eyebrow} **The same six, after dark** — each theme's other half,
+written out rather than derived by inverting the first.
+:::
+
+::: pane one {theme=default mode=dark valign=middle}
+[default]{.eyebrow}
+
+Ink on paper, [a link](https://example.com), **bold**.
+
+[What a deck that asks for nothing gets.]{.small}
+:::
+
+::: pane two {theme=nord mode=dark valign=middle}
+[nord]{.eyebrow}
+
+Cool blues on slate, [a link](https://example.com), **bold**.
+
+[The Nord palette, arctic and even.]{.small}
+:::
+
+::: pane three {theme=solarized mode=dark valign=middle}
+[solarized]{.eyebrow}
+
+Deep teal, [a link](https://example.com), **bold**.
+
+[Tuned for reading for a long time.]{.small}
+:::
+
+::: pane four {theme=vscode mode=dark valign=middle}
+[vscode]{.eyebrow}
+
+Editor colours, [a link](https://example.com), **bold**.
+
+[Light+ and Dark+, for a deck about code.]{.small}
+:::
+
+::: pane five {theme=mirzam mode=dark valign=middle}
+[mirzam]{.eyebrow}
+
+Violet and cyan, [a link](https://example.com), **bold**.
+
+[The project's own identity.]{.small}
+:::
+
+::: pane six {theme=wuwei mode=dark valign=middle}
+[wuwei]{.eyebrow}
+
+Warm greyscale, [a link](https://example.com), **bold**.
+
+[No accent colour, and quiet on purpose.]{.small}
+:::
+
+---
+
+```pane
 +------------------------------------+
 |                                    |
 |  head                              |

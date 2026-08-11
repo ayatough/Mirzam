@@ -62,6 +62,10 @@ section.slide { background: var(--mz-slide-bg); border-radius: inherit; }
 .pane[data-theme], .pane[data-mode] {
   background: var(--mz-slide-bg);
   color: var(--mz-fg);
+  /* Its own edge, in its own palette. Without it a pane whose paper happens to
+     match the slide's — the same theme in the same mode, one theme's dark
+     against another's — reads as a hole rather than as a sample. */
+  border: 1px solid var(--mz-border);
   border-radius: 8px;
   padding: 18px 22px;
 }
