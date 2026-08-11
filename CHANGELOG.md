@@ -134,6 +134,15 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   shipped; it now checks that every button in the cluster is bound.
 
 ### Fixed
+- **A second tab of the browser editor could undo your writing.** The draft is
+  one `localStorage` slot shared by every tab of the site, and the editor wrote
+  it again on `beforeunload` — so a tab left open on an older copy overwrote the
+  newer one on the way out, silently and after the fact. Nothing is written on
+  unload now: typing, adding an image, opening a file, New and Sample all save
+  as they happen, so the only thing that write could still save was something
+  older. It leaves the tabs unsynchronised rather than destructive — a tab that
+  is already open still shows what it loaded, and picks up the current draft
+  when it reloads.
 - **A deck with no slides said nothing about it.** An empty file, or one whose
   content never made it past the frontmatter, built successfully and opened as
   a blank page — the same picture as a failure, with no way to tell which. The

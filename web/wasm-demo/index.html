@@ -348,8 +348,14 @@ document.getElementById('sample').addEventListener('click', () => {
   replaceSource(SAMPLE, 'Replace your draft with the sample deck? Your draft is only in this browser — Save .md first if you want to keep it.');
 });
 
-// Nothing is uploaded anywhere, so the draft in localStorage is the only copy.
-addEventListener('beforeunload', () => localStorage.setItem('mirzam-src', srcEl.value));
+// Nothing is uploaded anywhere, so the draft in localStorage is the only copy -
+// which is also why nothing is written on unload. Every path that changes the
+// source has already saved it (typing, adding an image, opening a file, New,
+// Sample), so a write here could only ever save something *older* than what is
+// stored: localStorage is one slot shared by every tab, and a tab still holding
+// yesterday's draft would overwrite today's on the way out. On a phone that tab
+// is closed by the system rather than by the author, so the loss arrives
+// unprompted.
 
 const setPane = (which) => {
   document.body.dataset.pane = which;
