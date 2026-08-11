@@ -2,7 +2,7 @@
 title: Mirzam Component Gallery
 author: Mirzam
 aspect: "16:9"
-css: themes/pitch.css
+css: themes/mirzam.css
 mode: dark
 transition: fade 240ms
 vars:

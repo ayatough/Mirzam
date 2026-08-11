@@ -1025,7 +1025,7 @@ of whichever `theme:` is selected, built-in or default:
 }
 ```
 
-See [`examples/themes/pitch.css`](../examples/themes/pitch.css) for a complete
+See [`examples/themes/mirzam.css`](../examples/themes/mirzam.css) for a complete
 theme, including utility classes such as `.card`, `.metric` and `.eyebrow` that
 the sample decks use.
 

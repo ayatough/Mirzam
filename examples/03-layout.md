@@ -2,7 +2,7 @@
 title: Mirzam Layout Cookbook
 author: Mirzam
 aspect: "16:9"
-css: themes/pitch.css
+css: themes/mirzam.css
 ---
 
 # Layout cookbook {.title-slide}

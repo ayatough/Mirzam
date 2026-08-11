@@ -2,7 +2,7 @@
 title: Mirzam - Motion
 author: Mirzam
 aspect: "16:9"
-css: themes/pitch.css
+css: themes/mirzam.css
 transition: slide-left 320ms
 ---
 

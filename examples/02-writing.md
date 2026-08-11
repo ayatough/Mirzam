@@ -2,7 +2,7 @@
 title: Mirzam - Writing a slide
 author: Mirzam
 aspect: "16:9"
-css: themes/pitch.css
+css: themes/mirzam.css
 ---
 
 # Writing a slide {.title-slide}

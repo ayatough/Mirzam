@@ -51,7 +51,8 @@
   /* Named shades of this theme's own, so the rules below can point at a token
      rather than a literal - a literal is a colour with no second mode. */
   --mirzam-code-bg: #11192D;
-  --mirzam-rule: #9B8CFF;
+  --mirzam-rule-a: #6557D9;
+  --mirzam-rule-b: #C0B7FF;
 }
 
 :root[data-mode="light"] {
@@ -81,7 +82,8 @@
   --mz-danger-border: #C96A78;
 
   --mirzam-code-bg: #EEF0F7;
-  --mirzam-rule: #6557D9;
+  --mirzam-rule-a: #6557D9;
+  --mirzam-rule-b: #8B7CFF;
 }
 
 /* Type. The faces are named but not fetched: a deck is one self-contained file
@@ -118,15 +120,16 @@ h2 {
 h3 { font-weight: 500; letter-spacing: -0.01em; color: var(--mz-fg); }
 
 /* A short violet rule under a section heading, in place of a full-width border:
-   the signature colour, spent once per slide. */
+   the signature colour, spent once per slide. It runs deep violet to pale, so
+   the mark reads as drawn rather than as a border that happens to be short. */
 h2::after {
   content: "";
   display: block;
-  width: 56px;
-  height: 3px;
-  margin-top: 12px;
+  width: 64px;
+  height: 4px;
+  margin-top: 14px;
   border-radius: 2px;
-  background: var(--mirzam-rule);
+  background: linear-gradient(90deg, var(--mirzam-rule-a), var(--mirzam-rule-b));
 }
 /* A centred heading needs its rule centred under it. The rule is a 56px block,
    so on `align=center` it would otherwise sit at the pane's left edge with the
@@ -160,11 +163,13 @@ p code, li code { background: var(--mirzam-code-bg); color: var(--mz-accent1); }
   margin-bottom: .4em;
 }
 
-/* The same class names the sample decks use, so this theme can be dropped into
-   a deck written for `pitch.css` without a number quietly shrinking back to
-   body size - at the identity's own volume, though. pitch.css is the one that
-   shouts. A metric is the other place the 300 weight belongs: it is display
-   type by any measure. */
+/* Every sample deck's furniture, because there is one stylesheet now. There
+   used to be a second - `pitch.css` - holding the same twelve palette tokens to
+   the character and differing only in numbers nobody had chosen: a 64px rule
+   against 56, 26px grid gap against 24, an eyebrow at .85em against .82. Two
+   copies of one identity drifting apart is not two themes.
+   A metric is the other place the 300 weight belongs: it is display type by any
+   measure. */
 .metric {
   font-size: 3.2em; font-weight: 300; line-height: 1;
   letter-spacing: -0.04em; color: var(--mz-fg);

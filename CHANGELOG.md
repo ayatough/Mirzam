@@ -143,6 +143,17 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   nobody typed.
 - Lists carried a browser's blank line above and below — right for a page,
   wasteful on a slide, where three of them cost a bullet's worth of height.
+- **One sample stylesheet, not two.** `examples/themes/pitch.css` was described
+  as `mirzam.css` "with a sales deck's furniture on top"; it had in fact become a
+  full copy — identical in all twelve palette tokens, to the character — that
+  differed only in numbers nobody had chosen: a 64px heading rule against 56, 4px
+  tall against 3, a 26px grid gap against 24, an eyebrow at `.85em` against
+  `.82em`. Two copies of one identity drifting apart is not two themes, and the
+  file named for the pitch deck was setting the look of five reference decks. It
+  is deleted; every sample deck now names `themes/mirzam.css`. The gradient rule
+  is the one thing carried over rather than dropped — deep violet to pale reads
+  as a mark that was drawn, where a flat bar reads as a border that happens to be
+  short.
 - **A `--split h2` deck lost its heading rule.** `examples/themes/*.css` drop
   the built-in full-width border under an `h2` and draw a short violet rule
   instead — but scoped to `.pane-head h2`, which the sample decks all have and a

@@ -121,7 +121,7 @@ fn include_and_assets_are_tracked_for_watching() {
         .collect();
     assert!(names.contains(&"pitch.md".to_string()));
     assert!(
-        names.contains(&"pitch.css".to_string()),
+        names.contains(&"mirzam.css".to_string()),
         "custom stylesheet is missing from the watch set: {names:?}"
     );
     assert!(

@@ -2,7 +2,7 @@
 title: Mirzam - Slides that live in your repo
 author: Mirzam
 aspect: "16:9"
-css: themes/pitch.css
+css: themes/mirzam.css
 mode: dark
 transition: slide-left 320ms
 vars:

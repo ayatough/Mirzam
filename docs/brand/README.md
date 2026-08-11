@@ -125,12 +125,13 @@ gets — so there light comes first and dark arrives through
 `prefers-color-scheme`. A deck that wants dark on every machine writes
 `mode: dark`.
 
-[`examples/themes/mirzam.css`](../../examples/themes/mirzam.css) is the palette
-and the type ladder and nothing else;
-[`examples/themes/pitch.css`](../../examples/themes/pitch.css) is the same thing
-with a sales deck's furniture on top — oversized metrics, card panes — and is
-what the published sample decks use. Either can be dropped in place of the
-other: both define `.card`, `.metric` and `.eyebrow`.
+[`examples/themes/mirzam.css`](../../examples/themes/mirzam.css) is the palette,
+the type ladder and the sample decks' furniture — `.card`, `.metric`,
+`.eyebrow` — and every published sample deck uses it. There was a second file,
+`pitch.css`, described here as "the same thing with a sales deck's furniture on
+top"; it had in fact grown into a full copy, identical in all twelve palette
+tokens and differing only in numbers nobody had chosen. One identity does not
+need two stylesheets.
 
 Three things differ from the tables above, each for a reason a web page does not
 have:

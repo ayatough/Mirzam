@@ -131,6 +131,18 @@ same core.
 **Richer data.** Column aggregation in tables, more chart types, and `mermaid` /
 `d2` diagram blocks as plugins rather than built-ins.
 
+**More themes, custom themes, and slide masters.** There is one sample
+stylesheet now — `examples/themes/mirzam.css` — because the second, `pitch.css`,
+turned out to be a copy of it that had drifted rather than a second identity.
+That is the right floor to build from, not the ceiling. What is wanted above it:
+a gallery of built-in themes worth choosing between; a documented contract for
+writing one, so a custom theme is a supported artefact rather than a stylesheet
+that happens to override the right tokens; and **slide masters** — named slide
+shapes a deck can instantiate (`title`, `section`, `two-up`, `quote`) instead of
+redrawing the same ASCII pane block on every slide that has the same shape. A
+master is where a theme stops being colour and type and starts being layout,
+which is also why it needs the scope below to exist first.
+
 **A scope between the deck and the pane.** Presentation dials — `--mz-terms-*`,
 `--mz-bullet`, `--mz-number` — can be set on a theme or a deck, and overridden on
 a single pane. Nothing sits in between, so a run of slides that wants one
