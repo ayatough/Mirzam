@@ -78,6 +78,44 @@ const CORPUS: &[(&str, &str)] = &[
     ("x approx 3.14", r"x\approx 3.14"),
     ("p equiv q", r"p\equiv q"),
     ("a pm b", r"a\pm b"),
+    // Dotted variants.
+    ("A subset.eq B", r"A\subseteq B"),
+    ("x in.not A", r"x\notin A"),
+    ("arrow(v) dot.op arrow(w)", r"\vec{v}\cdot \vec{w}"),
+    ("x_1, dots.h, x_n", r"x_{1},\dots,x_{n}"),
+    (
+        "integral.cont E dot.op d arrow(l)",
+        r"\oint E\cdot d\vec{l}",
+    ),
+    // Accents and letter styles.
+    ("m ddot(x) = - k x", r"m\ddot{x}=-kx"),
+    ("hat(H) psi = E psi", r"\hat{H}\psi =E\psi"),
+    ("x in bb(R)^n", r"x\in \mathbb{R}^{n}"),
+    ("cal(L) = T - V", r"\mathcal{L}=T-V"),
+    ("macron(z) z = abs(z)^2", r"\bar{z}z=\left|z\right|^{2}"),
+    // Vectors, binomials, floors.
+    ("vec(1, 2)", r"\begin{pmatrix}1\\ 2\end{pmatrix}"),
+    (
+        "binom(n, k) = n!/(k! (n-k)!)",
+        r"\binom{n}{k}=\frac{n!}{k!\left(n-k\right)!}",
+    ),
+    (
+        "floor(x) <= x <= ceil(x)",
+        r"\left\lfloor x\right\rfloor \leq x\leq \left\lceil x\right\rceil",
+    ),
+    // Delimited matrices, braces, custom operators.
+    (
+        "mat(delim: \"[\", 1, 2; 3, 4)",
+        r"\begin{bmatrix}1 & 2\\ 3 & 4\end{bmatrix}",
+    ),
+    (
+        "underbrace(a + b, \"total\")",
+        r"\underbrace{a+b}_{\text{total}}",
+    ),
+    (
+        "op(\"argmax\")_theta f(theta)",
+        r"\operatorname{argmax}_{\theta }f\left(\theta \right)",
+    ),
 ];
 
 #[test]

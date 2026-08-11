@@ -324,16 +324,20 @@ MathML path:
 | Form | Written as |
 |---|---|
 | Fractions | `a/b` — binds the adjacent term; `(a + b)/c` groups without printing the parens |
-| Scripts | `x^2`, `x_(i+1)`, `x_i^2`, `x^-1` |
+| Scripts | `x^2`, `x_(i+1)`, `x_i^2`, `x^-1`; `'` and `!` stay with their base |
 | Roots | `sqrt(x)`, `root(3, x)` |
-| Bars | `abs(x)`, `norm(v)` |
-| Big operators | `sum_(i=1)^n`, `product`, `integral_0^oo`, `lim_(x -> 0)` |
-| Greek | by name: `alpha`, `pi`, `Omega` — following Typst's glyphs, so `epsilon` is ε |
-| Functions | `sin`, `cos`, `log`, `min`, … set upright, gluing to their `(...)` |
-| Arrows and relations | `->` `=>` `<-` `!=` `<=` `>=`, `in`, `subset`, `union`, `approx`, … |
-| Symbols | `infinity` (or `oo`), `partial`, `nabla`, `hbar`, `times`, `pm`, `dots`, `...` |
-| Matrices | `mat(1, 2; 3, 4)` — `,` separates cells, `;` rows |
+| Bars and fences | `abs(x)`, `norm(v)`, `floor(x)`, `ceil(x)` |
+| Big operators | `sum_(i=1)^n`, `product`, `integral_0^oo` and `integral.double`/`.triple`/`.cont`, `union.big`, `lim_(x -> 0)` |
+| Greek | by name: `alpha`, `pi`, `Omega` — following Typst's glyphs, so `epsilon` is ε and `epsilon.alt` is ϵ |
+| Accents | `hat(x)`, `dot(x)`, `ddot(x)`, `tilde(x)`, `macron(x)`, `arrow(v)`, `overline(x)`, `underline(x)` |
+| Letter styles | `bb(R)`, `cal(F)`, `frak(g)`, `bold(v)`, `upright(d)`, `sans(A)`, `mono(m)` |
+| Functions | `sin`, `cos`, `log`, `min`, … set upright, gluing to their `(...)`; `op("argmax")` for one the tables lack |
+| Arrows and relations | `->` `=>` `<-` `!=` `<=` `>=`, `in`, `subset`, `union`, `approx`, and dotted variants: `subset.eq`, `in.not`, `arrow.l.r`, … |
+| Symbols | `infinity` (or `oo`), `partial`, `nabla`, `hbar`, `times`, `dot`, `pm`, `and`, `or`, `dots`, `...`, `dots.c` |
+| Matrices | `mat(1, 2; 3, 4)` — `,` separates cells, `;` rows; `mat(delim: "[", …)` picks the brackets |
+| Vectors | `vec(1, 2)` is a column; `binom(n, k)` a binomial |
 | Cases | `cases(x^2 &"if" x > 0, 0 &"otherwise")` |
+| Braces | `underbrace(a + b, "label")`, `overbrace`, `cancel(x)` |
 | Text | `"km/h"` renders upright, spaces kept |
 | Alignment | `&` lines up equations, `\` breaks the line |
 | Escapes | `#` strips the next character of its meaning: `a #/ b` is a slash, not a fraction |
@@ -341,7 +345,9 @@ MathML path:
 It is a deliberate subset — a parser of our own rather than a dependency on
 Typst, whose own math goes through its layout engine to SVG, not MathML. A
 formula using something outside the subset shows its source in red, the same
-way a broken LaTeX formula does.
+way a broken LaTeX formula does — including an unknown dotted name or an
+unknown word used like a function, which refuse to render rather than quietly
+becoming a run of italic letters that merely resembles the formula.
 
 [Typst's math syntax]: https://typst.app/docs/reference/math/
 

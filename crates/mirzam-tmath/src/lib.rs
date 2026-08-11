@@ -9,14 +9,25 @@
 //!
 //! This is a subset parser, deliberately: depending on Typst itself would pull
 //! its whole layout engine into crates that must compile to `wasm32`, and its
-//! output is SVG, not MathML. The v1 surface:
+//! output is SVG, not MathML. The surface:
 //!
 //! - `a/b` fractions, `^` and `_` scripts, with `(...)` grouping
-//! - `sqrt(x)`, `root(3, x)`, `abs(x)`, `norm(x)`
-//! - `mat(1, 2; 3, 4)` and `cases(x &"if" y, ...)`
-//! - named symbols: Greek letters, `sum`, `product`, `integral`, `infinity`, …
-//! - operators `->` `=>` `!=` `<=` `>=` and word relations `in`, `subset`, …
+//! - `sqrt(x)`, `root(3, x)`, `abs(x)`, `norm(x)`, `floor(x)`, `ceil(x)`,
+//!   `binom(n, k)`, `cancel(x)`
+//! - `mat(1, 2; 3, 4)` with `delim:`, `vec(1, 2)`, `cases(x &"if" y, ...)`
+//! - accents `hat` `tilde` `dot` `ddot` `macron` `overline` `underline`
+//!   `arrow`, letter styles `bb` `cal` `frak` `bold` `upright` `sans` `mono`
+//! - named symbols: Greek letters with `.alt` variants, `sum`, `product`,
+//!   `integral` and its `.double`/`.triple`/`.cont` variants, `infinity`, …
+//! - operators `->` `=>` `!=` `<=` `>=`, word relations `in`, `subset` and
+//!   dotted variants `subset.eq`, `in.not`, `dot.op`, `arrow.l.r`, …
+//! - `underbrace(x, "label")`, `overbrace`, `op("argmax")`
 //! - `"literal text"`, `&` alignment with `\` line breaks, `#` escapes
+//!
+//! Anything outside the subset is a parse error, shown as a red span with
+//! this parser's message — never a silently different formula. That is why
+//! unknown dotted names and unknown words used like functions refuse to
+//! render as a run of letters.
 
 /// Why a formula failed to parse. The renderer shows the source with this
 /// message in the tooltip, the same way a broken LaTeX formula is shown.
@@ -144,13 +155,28 @@ fn lex(src: &str) -> Result<Vec<Tok>, Error> {
             }
             _ if c.is_alphabetic() => {
                 let mut w = String::new();
-                while let Some(&l) = chars.peek() {
-                    if l.is_alphabetic() {
-                        w.push(l);
-                        chars.next();
-                    } else {
-                        break;
+                loop {
+                    while let Some(&l) = chars.peek() {
+                        if l.is_alphabetic() {
+                            w.push(l);
+                            chars.next();
+                        } else {
+                            break;
+                        }
                     }
+                    // A dotted variant name — `subset.eq`, `dots.c` — is one
+                    // word. Read as anything else it would silently render as
+                    // the base symbol, a stray dot and some letters.
+                    if chars.peek() == Some(&'.') {
+                        let mut ahead = chars.clone();
+                        ahead.next();
+                        if ahead.peek().is_some_and(|l| l.is_alphabetic()) {
+                            w.push('.');
+                            chars.next();
+                            continue;
+                        }
+                    }
+                    break;
                 }
                 tokens.push(Tok::Word(w));
             }
@@ -219,8 +245,25 @@ enum Node {
     Root(Vec<Node>, Vec<Node>),
     Abs(Vec<Node>),
     Norm(Vec<Node>),
-    /// Rows of cells: `mat(1, 2; 3, 4)`.
-    Matrix(Vec<Vec<Vec<Node>>>),
+    /// One argument inside one wrapping command: accents, letter styles,
+    /// `cancel`.
+    Wrap(&'static str, Vec<Node>),
+    /// Content between a fixed delimiter pair: `floor`, `ceil`.
+    Fenced(&'static str, &'static str, Vec<Node>),
+    Binom(Vec<Node>, Vec<Node>),
+    /// `op("argmax")`: an upright operator the tables do not know.
+    Op(String),
+    /// `underbrace(x, "label")` and `overbrace`.
+    Brace {
+        cmd: &'static str,
+        /// Which side the label attaches to: `_` below, `^` above.
+        attach: &'static str,
+        content: Vec<Node>,
+        label: Option<Vec<Node>>,
+    },
+    /// Rows of cells in a delimited environment: `mat(1, 2; 3, 4)`,
+    /// `vec(1, 2)`.
+    Matrix(&'static str, Vec<Vec<Vec<Node>>>),
     /// Rows, each split on `&`: `cases(x &"if" y, ...)`.
     Cases(Vec<Vec<Vec<Node>>>),
     /// `&`, meaningful at the top level and inside `cases`.
@@ -285,32 +328,69 @@ fn word_symbol(w: &str) -> Option<&'static str> {
         "Chi" => "X",
         "Psi" => "\\Psi",
         "Omega" => "\\Omega",
+        // Greek, dotted variants: the glyph the other name does not give.
+        "epsilon.alt" => "\\epsilon",
+        "phi.alt" => "\\phi",
+        "theta.alt" => "\\vartheta",
+        "rho.alt" => "\\varrho",
+        "pi.alt" => "\\varpi",
+        "sigma.alt" => "\\varsigma",
         // Big operators.
         "sum" => "\\sum",
         "product" => "\\prod",
         "integral" => "\\int",
+        "integral.double" => "\\iint",
+        "integral.triple" => "\\iiint",
+        "integral.cont" => "\\oint",
+        "union.big" => "\\bigcup",
+        "sect.big" | "inter.big" => "\\bigcap",
         // Symbols.
         "infinity" | "oo" => "\\infty",
         "partial" | "diff" => "\\partial",
         "nabla" => "\\nabla",
-        "hbar" => "\\hbar",
-        "dots" => "\\dots",
+        "hbar" | "planck.reduce" => "\\hbar",
+        "dots" | "dots.h" => "\\dots",
+        "dots.c" => "\\cdots",
+        "dots.v" => "\\vdots",
+        "dots.down" => "\\ddots",
         "times" => "\\times",
+        "times.circle" => "\\otimes",
+        "plus.circle" => "\\oplus",
+        "plus.minus" | "pm" => "\\pm",
+        "minus.plus" | "mp" => "\\mp",
         "div" => "\\div",
+        // Bare `dot` is the multiplication dot; `dot(x)` is the accent.
+        "dot" | "dot.op" => "\\cdot",
         "emptyset" | "nothing" => "\\emptyset",
         "forall" => "\\forall",
         "exists" => "\\exists",
+        "and" => "\\wedge",
+        "or" => "\\vee",
+        "not" => "\\neg",
+        // Arrows. `->` and `=>` also lex directly.
+        "arrow" | "arrow.r" => "\\rightarrow",
+        "arrow.l" => "\\leftarrow",
+        "arrow.r.double" => "\\Rightarrow",
+        "arrow.l.double" => "\\Leftarrow",
+        "arrow.l.r" => "\\leftrightarrow",
+        "arrow.l.r.double" => "\\Leftrightarrow",
+        "arrow.r.long" => "\\longrightarrow",
         // Relations.
         "in" => "\\in",
+        "in.not" => "\\notin",
         "subset" => "\\subset",
+        "subset.eq" => "\\subseteq",
         "supset" => "\\supset",
+        "supset.eq" => "\\supseteq",
         "union" => "\\cup",
         "sect" | "inter" => "\\cap",
         "approx" => "\\approx",
         "equiv" => "\\equiv",
         "prop" => "\\propto",
-        "pm" => "\\pm",
-        "mp" => "\\mp",
+        "tilde.op" => "\\sim",
+        "lt.eq" => "\\leq",
+        "gt.eq" => "\\geq",
+        "eq.not" => "\\neq",
         // Upright function names.
         "sin" => "\\sin",
         "cos" => "\\cos",
@@ -337,8 +417,51 @@ fn word_symbol(w: &str) -> Option<&'static str> {
     })
 }
 
-/// Names that take parenthesised arguments.
-const CALL_FUNCS: [&str; 6] = ["sqrt", "root", "mat", "cases", "abs", "norm"];
+/// Names that take parenthesised arguments when followed by `(`.
+fn is_call_word(w: &str) -> bool {
+    matches!(
+        w,
+        "sqrt"
+            | "root"
+            | "mat"
+            | "cases"
+            | "abs"
+            | "norm"
+            | "vec"
+            | "binom"
+            | "floor"
+            | "ceil"
+            | "op"
+            | "underbrace"
+            | "overbrace"
+            | "cancel"
+    ) || wrap_command(w).is_some()
+}
+
+/// Accents and letter styles: one argument, one wrapping LaTeX command.
+/// `arrow(v)` is the vector accent; `vec()` is Typst's column vector.
+fn wrap_command(w: &str) -> Option<&'static str> {
+    Some(match w {
+        // Accents.
+        "hat" => "\\hat",
+        "tilde" => "\\tilde",
+        "dot" => "\\dot",
+        "ddot" => "\\ddot",
+        "macron" => "\\bar",
+        "overline" => "\\overline",
+        "underline" => "\\underline",
+        "arrow" => "\\vec",
+        // Letter styles.
+        "bb" => "\\mathbb",
+        "cal" => "\\mathcal",
+        "frak" => "\\mathfrak",
+        "bold" => "\\mathbf",
+        "upright" => "\\mathrm",
+        "sans" => "\\mathsf",
+        "mono" => "\\mathtt",
+        _ => return None,
+    })
+}
 
 /// Upright function names, which glue to a following `(...)` argument list.
 fn is_function_word(w: &str) -> bool {
@@ -428,9 +551,12 @@ impl Parser {
         let mut sup: Option<Box<Node>> = None;
         loop {
             match self.peek() {
-                Some(Tok::Ch('\'')) if sub.is_none() && sup.is_none() => {
+                // Primes and factorials belong to their base, so `n!/2` is a
+                // fraction of n-factorial. (`!=` already lexed as one token.)
+                Some(Tok::Ch(p @ ('\'' | '!'))) if sub.is_none() && sup.is_none() => {
+                    let p = *p;
                     self.pos += 1;
-                    base = Node::Seq(vec![base, Node::Ch('\'')]);
+                    base = Node::Seq(vec![base, Node::Ch(p)]);
                 }
                 Some(Tok::Ch('^')) => {
                     self.pos += 1;
@@ -508,19 +634,22 @@ impl Parser {
 
     /// A word is a call, a known symbol, a variable, or — unknown and longer
     /// than one letter — a run of variables, which is what LaTeX would have
-    /// made of the same letters.
+    /// made of the same letters. A name that would render as something other
+    /// than what the author meant — a dotted variant this parser does not
+    /// know, or an unknown word used like a function — is an error instead:
+    /// a red span is honest, quietly wrong glyphs are not.
     fn word(&mut self, w: String) -> Result<Node, Error> {
-        if CALL_FUNCS.contains(&w.as_str()) {
-            if self.peek() != Some(&Tok::Ch('(')) {
-                return err(format!("`{w}` needs parenthesised arguments"));
-            }
+        let called = self.peek() == Some(&Tok::Ch('('));
+        // `dot` and `arrow` are both a symbol and an accent; the argument
+        // list is what distinguishes `a dot b` from `dot(x)`.
+        if called && is_call_word(&w) {
             self.pos += 1;
             return self.call(&w);
         }
         if let Some(sym) = word_symbol(&w) {
             // `sin(x)/x` is the fraction of sin(x) by x: a function name glues
             // to its argument list, so `/`, `^` and `_` treat them as one.
-            if is_function_word(&w) && self.peek() == Some(&Tok::Ch('(')) {
+            if called && is_function_word(&w) {
                 self.pos += 1;
                 let inner = self.sequence(&[')'])?;
                 if !self.eat(')') {
@@ -530,16 +659,58 @@ impl Parser {
             }
             return Ok(Node::Sym(sym));
         }
+        if is_call_word(&w) {
+            return err(format!("`{w}` needs parenthesised arguments"));
+        }
         let mut letters = w.chars();
         if let (Some(first), None) = (letters.next(), letters.next()) {
             return Ok(Node::Ident(first));
         }
+        if w.contains('.') {
+            return err(format!("unknown symbol `{w}`"));
+        }
+        if called {
+            return err(format!("unknown function `{w}`"));
+        }
         Ok(Node::Seq(w.chars().map(Node::Ident).collect()))
+    }
+
+    /// `mat`'s `delim:` named argument, when the next tokens are one. Only
+    /// recognised at the head of the argument list, so a stray ratio like
+    /// `mat(a : b)` still parses as content.
+    fn mat_delim(&mut self) -> Result<&'static str, Error> {
+        if !(self.peek() == Some(&Tok::Word("delim".into()))
+            && self.tokens.get(self.pos + 1) == Some(&Tok::Ch(':')))
+        {
+            return Ok("pmatrix");
+        }
+        self.pos += 2;
+        let Some(Tok::Str(s)) = self.next() else {
+            return err("`delim:` takes a quoted delimiter, e.g. `delim: \"[\"`");
+        };
+        let env = match s.as_str() {
+            "(" => "pmatrix",
+            "[" => "bmatrix",
+            "{" => "Bmatrix",
+            "|" => "vmatrix",
+            "||" => "Vmatrix",
+            other => return err(format!("`delim:` does not know `{other}`")),
+        };
+        // The delimiter may be the only argument, or be followed by the cells.
+        if !self.eat(',') && self.peek() != Some(&Tok::Ch(')')) {
+            return err("`delim:` must be followed by `,` and the matrix cells");
+        }
+        Ok(env)
     }
 
     /// Arguments of `name(...)`, split on `,` and `;`, the opening paren
     /// already consumed.
     fn call(&mut self, name: &str) -> Result<Node, Error> {
+        let delim = if name == "mat" {
+            self.mat_delim()?
+        } else {
+            "pmatrix"
+        };
         let mut rows: Vec<Vec<Vec<Node>>> = vec![Vec::new()];
         loop {
             let arg = self.sequence(&[',', ';', ')'])?;
@@ -554,6 +725,12 @@ impl Parser {
         let mut args: Vec<Vec<Node>> = rows.concat();
         let argc = args.len();
         let one = |args: &mut Vec<Vec<Node>>| args.remove(0);
+        if let Some(cmd) = wrap_command(name) {
+            if argc != 1 {
+                return err(format!("`{name}` takes one argument"));
+            }
+            return Ok(Node::Wrap(cmd, one(&mut args)));
+        }
         Ok(match name {
             "sqrt" if argc == 1 => Node::Sqrt(one(&mut args)),
             "root" if argc == 2 => {
@@ -562,13 +739,50 @@ impl Parser {
             }
             "abs" if argc == 1 => Node::Abs(one(&mut args)),
             "norm" if argc == 1 => Node::Norm(one(&mut args)),
-            "mat" => Node::Matrix(rows),
+            "floor" if argc == 1 => {
+                Node::Fenced("\\left\\lfloor", "\\right\\rfloor", one(&mut args))
+            }
+            "ceil" if argc == 1 => Node::Fenced("\\left\\lceil", "\\right\\rceil", one(&mut args)),
+            "cancel" if argc == 1 => Node::Wrap("\\cancel", one(&mut args)),
+            "binom" if argc == 2 => {
+                let n = one(&mut args);
+                Node::Binom(n, one(&mut args))
+            }
+            // An upright word the tables do not know: `op("argmax")`.
+            "op" => match (argc, args.pop()) {
+                (1, Some(arg)) => match arg.as_slice() {
+                    [Node::Text(s)] => Node::Op(s.clone()),
+                    _ => return err("`op` takes a quoted name, e.g. `op(\"argmax\")`"),
+                },
+                _ => return err("`op` takes a quoted name, e.g. `op(\"argmax\")`"),
+            },
+            "underbrace" | "overbrace" if argc == 1 || argc == 2 => {
+                let content = one(&mut args);
+                let label = args.pop();
+                let (cmd, attach) = if name == "underbrace" {
+                    ("\\underbrace", "_")
+                } else {
+                    ("\\overbrace", "^")
+                };
+                Node::Brace {
+                    cmd,
+                    attach,
+                    content,
+                    label,
+                }
+            }
+            // A column vector; `mat` covers anything wider.
+            "vec" => Node::Matrix(delim, args.into_iter().map(|e| vec![e]).collect()),
+            "mat" => Node::Matrix(delim, rows),
             // Each `cases` argument is one row, its cells split on `&`.
             "cases" => Node::Cases(args.into_iter().map(split_on_align).collect()),
             "sqrt" => return err("`sqrt` takes one argument; `root(n, x)` takes the index first"),
             "root" => return err("`root` takes two arguments: `root(n, x)`"),
-            "abs" | "norm" => return err(format!("`{name}` takes one argument")),
-            _ => unreachable!("only CALL_FUNCS reach here"),
+            "binom" => return err("`binom` takes two arguments: `binom(n, k)`"),
+            "underbrace" | "overbrace" => {
+                return err(format!("`{name}` takes the content and an optional label"))
+            }
+            _ => return err(format!("`{name}` takes one argument")),
         })
     }
 }
@@ -641,6 +855,7 @@ fn emit(node: &Node) -> String {
                 Node::Sym(cmd) => cmd.to_string(),
                 Node::Ident(c) | Node::Ch(c) => c.to_string(),
                 Node::Num(n) if n.chars().count() == 1 => n.clone(),
+                one @ (Node::Op(_) | Node::Wrap(..)) => emit(one),
                 other => format!("{{{}}}", emit(other)),
             };
             if let Some(b) = sub {
@@ -655,7 +870,23 @@ fn emit(node: &Node) -> String {
         Node::Root(n, x) => format!("\\sqrt[{}]{{{}}}", emit_seq(n), emit_seq(x)),
         Node::Abs(x) => format!("\\left|{}\\right|", emit_seq(x)),
         Node::Norm(x) => format!("\\left\\|{}\\right\\|", emit_seq(x)),
-        Node::Matrix(rows) => {
+        Node::Wrap(cmd, x) => format!("{cmd}{{{}}}", emit_seq(x)),
+        Node::Fenced(open, close, x) => format!("{open} {} {close}", emit_seq(x)),
+        Node::Binom(n, k) => format!("\\binom{{{}}}{{{}}}", emit_seq(n), emit_seq(k)),
+        Node::Op(name) => format!("\\operatorname{{{}}}", escape_text(name)),
+        Node::Brace {
+            cmd,
+            attach,
+            content,
+            label,
+        } => {
+            let mut s = format!("{cmd}{{{}}}", emit_seq(content));
+            if let Some(l) = label {
+                s.push_str(&format!("{attach}{{{}}}", emit_seq(l)));
+            }
+            s
+        }
+        Node::Matrix(env, rows) => {
             let body = rows
                 .iter()
                 .map(|row| {
@@ -666,7 +897,7 @@ fn emit(node: &Node) -> String {
                 })
                 .collect::<Vec<_>>()
                 .join(" \\\\ ");
-            format!("\\begin{{pmatrix}}{body}\\end{{pmatrix}}")
+            format!("\\begin{{{env}}}{body}\\end{{{env}}}")
         }
         Node::Cases(rows) => {
             let body = rows
@@ -817,5 +1048,73 @@ mod tests {
         assert!(to_latex("a)").is_err());
         assert!(to_latex("root(3)").is_err());
         assert!(to_latex("sqrt x").is_err());
+    }
+
+    #[test]
+    fn dotted_variants_map() {
+        assert_eq!(latex("A subset.eq B"), "A \\subseteq B");
+        assert_eq!(latex("x in.not A"), "x \\notin A");
+        assert_eq!(latex("a dot.op b"), "a \\cdot b");
+        assert_eq!(latex("1, 2, dots.c"), "1 , 2 , \\cdots");
+        assert_eq!(latex("integral.cont"), "\\oint");
+    }
+
+    #[test]
+    fn accents_and_styles() {
+        assert_eq!(latex("dot(x)"), "\\dot{x}");
+        assert_eq!(latex("ddot(x) + hat(p)"), "\\ddot{x} + \\hat{p}");
+        assert_eq!(latex("arrow(v)"), "\\vec{v}");
+        assert_eq!(latex("bb(R)"), "\\mathbb{R}");
+        assert_eq!(latex("cal(F)"), "\\mathcal{F}");
+        // Bare `dot` is still the multiplication dot.
+        assert_eq!(latex("a dot b"), "a \\cdot b");
+        // And bare `arrow` the arrow.
+        assert_eq!(latex("a arrow b"), "a \\rightarrow b");
+    }
+
+    #[test]
+    fn vectors_binomials_floors() {
+        assert_eq!(latex("vec(1, 2)"), "\\begin{pmatrix}1 \\\\ 2\\end{pmatrix}");
+        assert_eq!(latex("binom(n, k)"), "\\binom{n}{k}");
+        assert_eq!(latex("floor(x)"), "\\left\\lfloor x \\right\\rfloor");
+        assert_eq!(latex("ceil(x)"), "\\left\\lceil x \\right\\rceil");
+    }
+
+    #[test]
+    fn matrix_delimiters() {
+        assert_eq!(
+            latex("mat(delim: \"[\", 1, 2; 3, 4)"),
+            "\\begin{bmatrix}1 & 2 \\\\ 3 & 4\\end{bmatrix}"
+        );
+        // A ratio at the head of a cell is content, not a named argument.
+        assert_eq!(latex("mat(a : b)"), "\\begin{pmatrix}a : b\\end{pmatrix}");
+        assert!(to_latex("mat(delim: \"<\", 1)").is_err());
+    }
+
+    #[test]
+    fn braces_and_custom_operators() {
+        assert_eq!(
+            latex("underbrace(a + b, \"total\")"),
+            "\\underbrace{a + b}_{\\text{total}}"
+        );
+        assert_eq!(latex("overbrace(x)"), "\\overbrace{x}");
+        assert_eq!(latex("op(\"argmax\")"), "\\operatorname{argmax}");
+        assert!(to_latex("op(x)").is_err());
+    }
+
+    #[test]
+    fn out_of_subset_is_loud_not_silently_wrong() {
+        // An unknown dotted name must not render as symbol-dot-letters.
+        let e = to_latex("subset.q").unwrap_err();
+        assert!(e.message.contains("subset.q"), "{e}");
+        // An unknown word used like a function must not render as letters.
+        let e = to_latex("spam(x)").unwrap_err();
+        assert!(e.message.contains("spam"), "{e}");
+        // An accent without its argument is told what it needs.
+        assert!(to_latex("hat x").is_err());
+        // But a bare unknown word is still a run of variables…
+        assert_eq!(latex("dx"), "d x");
+        // …and a single letter applied to parens is still juxtaposition.
+        assert_eq!(latex("f(x)"), "f \\left(x\\right)");
     }
 }

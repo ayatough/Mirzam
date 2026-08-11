@@ -887,6 +887,14 @@ hand — which is what caught both. One deliberate deviation: the dialect is par
 of the render cache key, because flipping `math:` changes every formula while
 changing no slide's source text.
 
+A second pass widened the surface past the v1 list — accents, letter styles,
+dotted symbol variants, `vec`/`binom`/`floor`/`ceil`, delimited matrices,
+`op()` — and changed the failure mode: an unknown dotted name (`subset.eq`
+before it was known) or an unknown word called like a function (`hat(x)`)
+used to render as the nearest letters, silently. Everything outside the
+subset is now a parse error shown in red, which is the same honesty the
+LaTeX path already had.
+
 ## W6 — Annotations on images and charts ✅
 
 **Difficulty S · Opus · landed**
