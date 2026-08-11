@@ -71,6 +71,7 @@ there is. The model column follows from that:
 | W17 | A theme per slide | B | — | — | |
 | W18 | Carrying an element from one slide to the next | S | — | W2 | |
 | W5 | Typst-flavoured math | A | Sonnet | — | ✅ |
+| W19 | Structural math editing: tap and place, not type | S | — | W5 | |
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
 
 ### What is deferred, and why
@@ -894,6 +895,57 @@ before it was known) or an unknown word called like a function (`hat(x)`)
 used to render as the nearest letters, silently. Everything outside the
 subset is now a parse error shown in red, which is the same honesty the
 LaTeX path already had.
+
+## W19 — Structural math editing: tap and place, not type
+
+**Difficulty S · after W5**
+
+`(-b pm sqrt(b^2 - 4a c))/(2a)` is kinder than the LaTeX it replaces, but it
+is still a line of punctuation — and punctuation is what phone keyboards are
+worst at. The observation behind this stream: the letters of a formula are
+easy to type anywhere; it is the *structure* — what is a subscript, what
+sits over what — that costs keystrokes. So let the author type `a b c` and
+place the structure by touch: select a node, tap superscript, drop the next
+piece into the slot that opens.
+
+The order of work, which is also its dependency order:
+
+1. **Spans.** Every `mirzam-tmath` AST node records the byte range of source
+   it came from. Selection in the editor is a node; a node is a range; a
+   range is something that can be replaced in text.
+2. **A printer.** AST → Typst-math source, the inverse of the parser. The
+   property that keeps it honest, over the whole corpus:
+   `parse(print(tree)) == tree`. Without this, every edit operation would
+   need its own way of writing text, and they would disagree.
+3. **Edit operations.** Wrap in a fraction, attach a script, insert a
+   symbol, delete a node — each one AST in, AST out, then the printer turns
+   the result back into text. Pure functions in the crate, tested without
+   any UI existing yet.
+4. **The editor draws its own boxes.** Not the MathML: hit-testing
+   `math-core`'s output would need a node identity that the LaTeX lowering
+   erases. MathQuill proved the other route years ago — the editor renders
+   its own nested HTML boxes, one per AST node, so selection and drop
+   targets *are* the tree. The true rendering, from the printed source
+   through the normal pipeline, sits beside it as the preview.
+5. **The output is text.** The editor emits a Typst-math string into the
+   Markdown and nothing else. A deck edited this way is indistinguishable
+   from a deck typed by hand, which is what keeps the editor optional and
+   the deck format plain.
+
+Steps 1–3 are crate work with no UI decisions in them, checkable by tests,
+and worth doing even if the UI stalls: spans sharpen every parse error, and
+the printer is what any future tool that *writes* math needs.
+
+**Where it stops.** It lives in this repository — the AST layer in
+`mirzam-tmath`, bindings in `mirzam-wasm`, the component under `web/` —
+because the editor and the grammar have to move together while the grammar
+is still growing. If it ever earns users outside Mirzam, extraction is
+mechanical, because the boundary is text in, text out. It edits the Typst
+dialect only: a `math: latex` deck does not get it, by design. And it is an
+editor, not an IME — no handwriting recognition, no guessing.
+
+**Owns:** spans, printer and edit operations in `mirzam-tmath`, their
+`mirzam-wasm` bindings, and the editor component under `web/`.
 
 ## W6 — Annotations on images and charts ✅
 
