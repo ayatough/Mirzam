@@ -256,9 +256,14 @@ Orange
 ```
 
 ```
-Apple: A red fruit.
-Orange: A mandarin.
+Apple   A red fruit.
+Orange  A mandarin.
 ```
+
+**No colon is drawn.** The `:` is how a definition line is written — the marker,
+the way `-` starts a bullet — and a renderer that echoes its own syntax back
+puts punctuation on the slide that the author never typed. Weight, colour and
+the gap separate the term from its meaning.
 
 The definition follows immediately rather than lining up in a column with its
 neighbours — a column has to be as wide as the longest term, so one long entry

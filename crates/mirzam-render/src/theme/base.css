@@ -191,8 +191,8 @@ ins { text-decoration: underline; text-decoration-thickness: 2px; text-underline
    word and its meaning.
 
    The definition sits *beside* the term, not under it — a glossary is read as
-   `Apple: a red fruit`, and stacking the two turned four entries into eight
-   lines on a slide with room for four.
+   one entry per line, and stacking the two turned four entries into eight lines
+   on a slide with room for four.
 
    It follows the definition immediately rather than lining up in a column, the
    way Typst sets its term lists. A column has to be as wide as the longest
@@ -205,11 +205,14 @@ dl {
   margin: .55em 0; font-size: 1.35em; line-height: 1.65;
   padding-left: 2em;
 }
+/* No colon is drawn after the term. The `:` is how a definition line is
+   written — the marker, like the `-` of a bullet — and a renderer that echoes
+   its own syntax back is putting punctuation the author never typed into the
+   slide. Weight, colour and the gap separate the two. */
 dt {
-  display: inline; margin-left: -2em; margin-right: .4em;
+  display: inline; margin-left: -2em; margin-right: .6em;
   font-weight: 600; color: var(--mz-accent1);
 }
-dt::after { content: ":"; }
 dd { display: inline; margin: 0; color: var(--mz-fg); }
 /* The pair is inline so the definition sits beside its term, which leaves
    nothing to end the entry — a block box would have done it. */
@@ -515,7 +518,6 @@ html.mz-awake #controls { opacity: 1; pointer-events: auto; }
   font-size: inherit; padding-left: 0;
 }
 #keys dt { margin: 0; }
-#keys dt::after { content: none; } /* `←  previous`, not `←: previous` */
 #keys dd::after { content: none; } /* the grid ends each row already */
 #keys dd { margin: 0; color: var(--mz-ui-dim); }
 #keys kbd {

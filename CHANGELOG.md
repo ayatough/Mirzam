@@ -96,7 +96,10 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   than lining up in a column with its neighbours, since a column has to be as
   wide as the longest term and one long entry maroons every short one from its
   own definition. A definition that wraps gets a hanging indent instead, so its
-  second line clears the terms above it.
+  second line clears the terms above it. No colon is drawn between the two: the
+  `:` is how a definition line is *written*, the way `-` starts a bullet, and a
+  renderer that echoes its own syntax back puts punctuation on the slide that
+  nobody typed.
 - Lists carried a browser's blank line above and below — right for a page,
   wasteful on a slide, where three of them cost a bullet's worth of height.
 - Publishing a release left the *previous* one on the front page. Cutting a
