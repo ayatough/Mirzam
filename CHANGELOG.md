@@ -28,7 +28,10 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   section still picks shapes with `<!-- layout: -->` and can carry frontmatter
   of its own so its author previews that section alone with the right shapes.
   Editing a shared shape then updates the slides that use it wherever they were
-  written, in one hot reload. Redrawing the same grid on the twelfth slide that has the same shape
+  written, in one hot reload. A section naming a *different* masters file is a
+  warning: that is the one case where ignoring a transcluded file's frontmatter
+  changes the slides rather than costing nothing, and when both sets share pane
+  names nothing else in a build would say so. Redrawing the same grid on the twelfth slide that has the same shape
   was the part of writing a deck nobody enjoyed, and it was also where decks
   drifted: two slides meant to match ended up a character apart. A slide that
   needs a different shape simply draws one — its own `pane` block always wins,

@@ -6,6 +6,7 @@ pub use expr::{eval_expr, Value};
 
 use serde::Deserialize;
 use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
 
 /// Deck settings declared in frontmatter.
 #[derive(Debug, Clone, Deserialize, Default)]
@@ -71,6 +72,45 @@ impl Default for Masters {
     fn default() -> Self {
         Masters::Inline(BTreeMap::new())
     }
+}
+
+impl Masters {
+    /// Whether a deck said nothing about masters at all.
+    pub fn is_empty(&self) -> bool {
+        matches!(self, Masters::Inline(m) if m.is_empty())
+    }
+
+    /// Whether these are the same shapes as `other`, given the directory each
+    /// was declared in — a path is relative to its own file, so the root's
+    /// `masters/deck.md` and a section's `../masters/deck.md` are one file.
+    ///
+    /// Used to tell a transcluded file that carries frontmatter so its author
+    /// can build it alone (the same shapes, said twice) from one that names
+    /// shapes the deck will never draw it on.
+    pub fn same_as(&self, dir: &Path, other: &Masters, other_dir: &Path) -> bool {
+        match (self, other) {
+            (Masters::File(a), Masters::File(b)) => resolve(dir, a) == resolve(other_dir, b),
+            (Masters::Inline(a), Masters::Inline(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+/// `dir/rel` with `.` and `..` folded away, so two spellings of one path
+/// compare equal without touching the filesystem — which the core cannot do,
+/// and which would answer differently for a file that is not there yet.
+fn resolve(dir: &Path, rel: &str) -> PathBuf {
+    let mut out = PathBuf::new();
+    for part in dir.join(rel).components() {
+        match part {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                out.pop();
+            }
+            other => out.push(other),
+        }
+    }
+    out
 }
 
 /// The syntax math is written in. Every dialect renders through the same
@@ -166,6 +206,46 @@ pub fn parse_meta(yaml: &str) -> Result<DeckMeta, String> {
     serde_yaml::from_str(yaml).map_err(|e| format!("failed to parse frontmatter: {e}"))
 }
 
+/// Warns about a transcluded file whose `masters:` names shapes the deck will
+/// never draw it on.
+///
+/// A transcluded file's frontmatter is ignored, which is deliberate and
+/// usually invisible — a section repeating the deck's own `masters:` so its
+/// author can build it alone is the pattern that setting is for, and it costs
+/// the deck nothing. Naming a *different* set is the case that is not a
+/// convenience: the section is drawn on shapes its author never previewed, and
+/// nothing else in a build would say so. Same pane names in both files and the
+/// only trace is proportions nobody compared.
+///
+/// `root_dir` and each file's own directory are needed because a `masters:`
+/// path is relative to the file that wrote it.
+pub fn transclusion_warnings(
+    root: &DeckMeta,
+    root_dir: &Path,
+    children: &[(PathBuf, String)],
+) -> Vec<String> {
+    let mut out = Vec::new();
+    for (path, yaml) in children {
+        let Ok(child) = parse_meta(yaml) else {
+            continue;
+        };
+        if child.masters.is_empty() {
+            continue;
+        }
+        let child_dir = path.parent().unwrap_or(Path::new(""));
+        if child.masters.same_as(child_dir, &root.masters, root_dir) {
+            continue;
+        }
+        out.push(format!(
+            "{}: its `masters:` names different shapes from the deck's; a \
+             transcluded file's frontmatter is not read, so these slides are \
+             drawn on the deck's masters, not the ones this file was previewed on",
+            path.display()
+        ));
+    }
+    out
+}
+
 /// Evaluates and substitutes `{{ ... }}` occurrences in `text`.
 /// Anything that fails to evaluate is left verbatim rather than dropped.
 pub fn substitute_vars(text: &str, vars: &BTreeMap<String, Value>) -> String {
@@ -249,6 +329,41 @@ mod tests {
         let none = DeckMeta::default();
         assert_eq!(none.masters_file(), None);
         assert!(none.inline_masters().unwrap().is_empty());
+    }
+
+    /// A `masters:` path is relative to the file that wrote it, so the root's
+    /// and a section's spellings of one file differ and still have to compare
+    /// equal — without asking the filesystem, which the core cannot do and
+    /// which would answer differently for a file nobody has written yet.
+    #[test]
+    fn two_spellings_of_one_masters_file_are_the_same_shapes() {
+        let root = parse_meta("masters: shapes/deck.md\n").unwrap();
+        let child = parse_meta("masters: ../shapes/deck.md\n").unwrap();
+        assert!(child
+            .masters
+            .same_as(Path::new("sections"), &root.masters, Path::new("")));
+
+        let other = parse_meta("masters: shapes/other.md\n").unwrap();
+        assert!(!other
+            .masters
+            .same_as(Path::new(""), &root.masters, Path::new("")));
+    }
+
+    #[test]
+    fn a_transcluded_file_is_only_reported_when_its_masters_differ() {
+        let root = parse_meta("masters: shapes/deck.md\n").unwrap();
+        let same = (
+            PathBuf::from("sections/a.md"),
+            "masters: ../shapes/deck.md\n".to_string(),
+        );
+        let differs = (
+            PathBuf::from("sections/b.md"),
+            "masters: ../shapes/own.md\n".to_string(),
+        );
+        let silent = (PathBuf::from("sections/c.md"), "title: C\n".to_string());
+        let out = transclusion_warnings(&root, Path::new(""), &[same, differs, silent]);
+        assert_eq!(out.len(), 1, "{out:?}");
+        assert!(out[0].contains("sections/b.md"), "{out:?}");
     }
 
     #[test]

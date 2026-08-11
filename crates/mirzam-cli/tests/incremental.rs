@@ -350,6 +350,74 @@ fn a_masters_file_that_is_not_there_warns_once_and_builds() {
     assert!(out.sections[1].contains("More."));
 }
 
+/// A section repeating the deck's own `masters:` so its author can build it
+/// alone is the pattern that setting exists for. It has to stay silent, or the
+/// warning would fire on every well-formed multi-file deck.
+#[test]
+fn a_section_naming_the_decks_own_masters_is_silent() {
+    let deck = TempDeck::new(
+        "masters-shared",
+        "---\ntitle: T\nmasters: shapes/deck.md\nlayout: body\n---\n\n![[sections/a.md]]\n",
+    );
+    std::fs::create_dir_all(deck.dir.join("shapes")).expect("shapes dir");
+    std::fs::create_dir_all(deck.dir.join("sections")).expect("sections dir");
+    std::fs::write(
+        deck.dir.join("shapes/deck.md"),
+        "## body\n\n```pane\n+-------+\n| head  |\n+-------+\n| main  |\n+-------+\n```\n",
+    )
+    .expect("write masters");
+    // `../shapes/deck.md` from `sections/` is the same file as `shapes/deck.md`
+    // from the root, and has to compare equal without touching the disk.
+    std::fs::write(
+        deck.dir.join("sections/a.md"),
+        "---\ntitle: A\nmasters: ../shapes/deck.md\nlayout: body\n---\n\n\
+         ::: pane head\n## H\n:::\n\n::: pane main\nWords.\n:::\n",
+    )
+    .expect("write section");
+    let mut cache = HashMap::new();
+    let out = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("build");
+    assert!(out.warnings.is_empty(), "{:?}", out.warnings);
+    assert!(out.sections[0].contains(r#"grid-template-areas:"head" "main""#));
+}
+
+/// The silent one. Same pane names in both files means every `::: pane` lands
+/// somewhere and nothing else in the build complains — the section is simply
+/// drawn at proportions its author never saw.
+#[test]
+fn a_section_naming_different_masters_warns() {
+    let deck = TempDeck::new(
+        "masters-conflict",
+        "---\ntitle: T\nmasters: parent.md\nlayout: body\n---\n\n![[a.md]]\n",
+    );
+    std::fs::write(
+        deck.dir.join("parent.md"),
+        "## body\n\n```pane\n+-------+\n| head  |\n+-------+\n| main  |\n| main  |\n+-------+\n```\n",
+    )
+    .expect("write parent masters");
+    std::fs::write(
+        deck.dir.join("child.md"),
+        "## body\n\n```pane\n+-------+\n| head  |\n| head  |\n+-------+\n| main  |\n+-------+\n```\n",
+    )
+    .expect("write child masters");
+    std::fs::write(
+        deck.dir.join("a.md"),
+        "---\ntitle: A\nmasters: child.md\nlayout: body\n---\n\n\
+         ::: pane head\n## H\n:::\n\n::: pane main\nWords.\n:::\n",
+    )
+    .expect("write section");
+    let mut cache = HashMap::new();
+    let out = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("build");
+    assert!(
+        out.warnings
+            .iter()
+            .any(|w| w.contains("a.md") && w.contains("frontmatter is not read")),
+        "{:?}",
+        out.warnings
+    );
+    // The deck's shapes are what it renders on, which is the point of saying so.
+    assert!(out.sections[0].contains("grid-template-rows:1fr 2fr"));
+}
+
 // ---- `<!-- next -->`: one pane carried on to the next slide ----
 
 /// A slide with `fig` holding still and `body` broken into `parts`.

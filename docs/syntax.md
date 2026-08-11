@@ -292,6 +292,19 @@ layout: body
 
 The path is relative to the file that declares it, which is why the root says
 `masters/deck.md` and a section one directory down says `../masters/deck.md`.
+Both spellings are the same file, and saying it twice costs nothing.
+
+Naming a **different** file there is a warning, because it is the one case
+where ignoring a transcluded file's frontmatter changes the slides rather than
+costing nothing: the section is drawn on the deck's shapes, not the ones its
+author previewed it on, and if the two sets share pane names nothing else in
+the build would ever say so.
+
+```
+⚠ sections/method.md: its `masters:` names different shapes from the deck's; a
+  transcluded file's frontmatter is not read, so these slides are drawn on the
+  deck's masters, not the ones this file was previewed on
+```
 
 Everything else behaves as one deck. Slide numbers run across the files, the
 footer is the root's, and `serve` watches the masters file along with every

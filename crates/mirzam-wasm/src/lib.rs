@@ -214,9 +214,24 @@ impl Renderer {
             warnings.push(w);
         }
         // There is no current directory in WASM, so the base is an empty path.
-        let body = mirzam_syntax::expand_includes(body, Path::new(""), &MapFiles(&self.files));
+        let expanded = mirzam_syntax::expand_includes_mapped(
+            body,
+            0,
+            Path::new(""),
+            Path::new(""),
+            &MapFiles(&self.files),
+            &mut Default::default(),
+        );
+        // Reported here as well as in the CLI: a section drawn on the deck's
+        // shapes rather than its own looks the same in both, and a preview
+        // that stayed quiet about it would be the place nobody found out.
+        warnings.extend(mirzam_core::transclusion_warnings(
+            &meta,
+            Path::new(""),
+            &expanded.frontmatter,
+        ));
         let vars = meta.var_table();
-        let body = substitute_outside_fences(&body, &vars);
+        let body = substitute_outside_fences(&expanded.text, &vars);
 
         let assets = MapAssets(&self.assets);
         let slide_srcs = mirzam_syntax::split_slides(&body);

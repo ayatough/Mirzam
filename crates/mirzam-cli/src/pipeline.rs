@@ -143,7 +143,7 @@ pub fn build_deck_with(
     // 2. Expand includes, collecting the files that were read and where every
     //    byte of the result came from.
     let body_offset = src.len() - body.len();
-    let (body, map) = mirzam_syntax::expand_includes_mapped(
+    let expanded = mirzam_syntax::expand_includes_mapped(
         body,
         body_offset,
         input,
@@ -151,6 +151,15 @@ pub fn build_deck_with(
         &mirzam_syntax::FsProvider,
         &mut files,
     );
+    // A transcluded file's frontmatter is ignored by design. Say so when one of
+    // them named masters the deck will not draw it on, which is the one case
+    // where ignoring it changes the slides rather than costing nothing.
+    warnings.extend(mirzam_core::transclusion_warnings(
+        &meta,
+        &base_dir,
+        &expanded.frontmatter,
+    ));
+    let (body, map) = (expanded.text, expanded.map);
 
     // 3. Substitute variables outside code fences. A variable change shows up
     //    as changed post-substitution source, so slide hashes pick it up.

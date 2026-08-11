@@ -61,7 +61,24 @@ pub fn expand_includes_tracked(
     provider: &dyn FileProvider,
     files: &mut BTreeSet<PathBuf>,
 ) -> String {
-    expand_includes_mapped(body, 0, Path::new(""), base_dir, provider, files).0
+    expand_includes_mapped(body, 0, Path::new(""), base_dir, provider, files).text
+}
+
+/// What expanding `![[…]]` produced, beyond the text itself.
+pub struct Expansion {
+    /// The assembled document.
+    pub text: String,
+    /// Where every byte of it came from.
+    pub map: SourceMap,
+    /// `(path, raw YAML)` for each transcluded file that declared frontmatter.
+    ///
+    /// A transcluded file's settings are *ignored* — the root's are the deck's
+    /// — and that is deliberate: it is what lets a section carry enough
+    /// frontmatter to be built on its own while costing the deck it belongs to
+    /// nothing. Which also makes it silent, so this is here for the caller to
+    /// notice when one of those settings would have changed the deck had it
+    /// been read.
+    pub frontmatter: Vec<(PathBuf, String)>,
 }
 
 /// Expands includes and records where every byte of the result came from.
@@ -79,10 +96,11 @@ pub fn expand_includes_mapped(
     base_dir: &Path,
     provider: &dyn FileProvider,
     files: &mut BTreeSet<PathBuf>,
-) -> (String, SourceMap) {
+) -> Expansion {
     let mut out = String::with_capacity(body.len());
     let mut map = SourceMap::default();
     let mut visited = BTreeSet::new();
+    let mut frontmatter = Vec::new();
     let root = map.intern(root);
     expand_includes_inner(
         body,
@@ -92,10 +110,15 @@ pub fn expand_includes_mapped(
         provider,
         &mut visited,
         files,
+        &mut frontmatter,
         &mut out,
         &mut map,
     );
-    (out, map)
+    Expansion {
+        text: out,
+        map,
+        frontmatter,
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -107,6 +130,7 @@ fn expand_includes_inner(
     provider: &dyn FileProvider,
     visited: &mut BTreeSet<PathBuf>,
     files: &mut BTreeSet<PathBuf>,
+    frontmatter: &mut Vec<(PathBuf, String)>,
     out: &mut String,
     map: &mut SourceMap,
 ) {
@@ -162,8 +186,12 @@ fn expand_includes_inner(
                     files.insert(path.clone());
                     // Frontmatter in included files is ignored — but its
                     // length still counts, or every offset in the child would
-                    // be short by it.
-                    let (_, child_body) = split_frontmatter(&content);
+                    // be short by it, and it is handed to the caller so a
+                    // setting that was silently dropped can be reported.
+                    let (fm, child_body) = split_frontmatter(&content);
+                    if let Some(yaml) = fm.filter(|y| !y.trim().is_empty()) {
+                        frontmatter.push((path.clone(), yaml.to_string()));
+                    }
                     let child_offset = content.len() - child_body.len();
                     let child_dir = path.parent().unwrap_or(base_dir).to_path_buf();
                     let child = map.intern(&path);
@@ -175,6 +203,7 @@ fn expand_includes_inner(
                         provider,
                         visited,
                         files,
+                        frontmatter,
                         out,
                         map,
                     );
@@ -1024,6 +1053,11 @@ mod tests {
     }
 
     fn mapped(body: &str, files: &[(&str, &str)]) -> (String, SourceMap) {
+        let e = expand(body, files);
+        (e.text, e.map)
+    }
+
+    fn expand(body: &str, files: &[(&str, &str)]) -> Expansion {
         let mut seen = BTreeSet::new();
         expand_includes_mapped(
             body,
@@ -1033,6 +1067,31 @@ mod tests {
             &Mem::new(files),
             &mut seen,
         )
+    }
+
+    /// A transcluded file's frontmatter is dropped from the text but handed to
+    /// the caller, which is the only way anything downstream can say that a
+    /// setting written there was ignored.
+    #[test]
+    fn a_transcluded_files_frontmatter_is_dropped_but_reported() {
+        let e = expand(
+            "![[a.md]]\n",
+            &[(
+                "a.md",
+                "---\ntitle: A\nmasters: shapes.md\n---\n\n## Section\n",
+            )],
+        );
+        assert!(!e.text.contains("masters:"));
+        assert!(e.text.contains("## Section"));
+        assert_eq!(e.frontmatter.len(), 1);
+        assert_eq!(e.frontmatter[0].0, PathBuf::from("a.md"));
+        assert!(e.frontmatter[0].1.contains("masters: shapes.md"));
+    }
+
+    #[test]
+    fn a_transcluded_file_without_frontmatter_reports_none() {
+        let e = expand("![[a.md]]\n", &[("a.md", "## Section\n")]);
+        assert!(e.frontmatter.is_empty());
     }
 
     /// What `lookup` says about the byte at `needle` inside the expanded text.
