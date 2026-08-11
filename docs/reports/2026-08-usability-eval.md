@@ -1,5 +1,10 @@
 # Third-party usability evaluation — August 2026
 
+> **Re-verified against v0.3.0** (see addendum at the end): the release
+> resolves several documentation and onboarding findings, but every problem
+> in "Reproduced problems" below still reproduces, and recommendations 1–3
+> remain open.
+
 Four first-time-user personas (subagents restricted to README, `docs/` and
 `examples/`) each built a deck with the prebuilt CLI, then reported on the
 experience. Every finished deck was then verified independently: rendered,
@@ -88,3 +93,35 @@ the `serve` startup message rated 4–5/5 for clarity. Expressiveness averaged
 stable-plus-`/next/` split and CI-gated deploy are sound; its weak points
 are prose docs living only as GitHub links and the `/try/` card vanishing
 silently when the WASM build fails.
+
+## Addendum: re-verified against v0.3.0 (2026-08-11)
+
+Each finding was re-run against a fresh `origin/main` build (`mirzam 0.3.0`)
+using the minimal cases above.
+
+**Resolved by v0.3.0:**
+
+- Typst math is promoted, documented, and renders (`math: typst` → MathML).
+- Built-in classes exist for the "styled aside / big number" need
+  (`.big`, `.huge`, `.box`, `.accent`, …), and `pitch.css` is gone — the
+  theme-class confusion this report described no longer arises in that form.
+- The one-line attribute-span limit is documented in the reference.
+- An empty deck now warns (`⚠ no slides: <file> is empty`).
+- `mirzam new` closes the missing-first-file gap.
+
+**Still reproduce, unchanged:**
+
+1. `shape` block inside `::: pane` → literal code block, no warning.
+2. Footnote definition on another slide → literal `[^key]`, no warning.
+3. `connect` to a nonexistent id → no warning, arrow silently absent.
+4. `export pdf` rejects `--split` (and `--theme`/`--fit`); a `--split` deck
+   still has no supported route to PDF.
+5. `export pdf out/index.html` still "succeeds" with a one-slide PDF.
+
+There is no `check` subcommand in v0.3.0. Recommendations 1–3 (warn on
+silent degradation + `--strict`; PDF parity + `.html` rejection;
+`mirzam check`) are the remaining implementation work; recommendation 4 is
+partly done (span limit documented, class catalogue improved via built-ins;
+still missing: the shape/footnote constraints, a PDF-flow doc, a FAQ, a
+`syntax.md` table of contents) and recommendation 5 (Japanese reach) is
+untouched.
