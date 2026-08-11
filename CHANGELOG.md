@@ -143,6 +143,17 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   nobody typed.
 - Lists carried a browser's blank line above and below — right for a page,
   wasteful on a slide, where three of them cost a bullet's worth of height.
+- **The pipeline diagram was dark whatever it was sitting on.** It was the one
+  brand asset with no light twin — `docs/brand/README.md` said so, in the row
+  describing it — so the README read as a deck put a black slab in the middle of
+  a white slide, and the landing page did the same. There is a light version
+  now, in the light palette from `docs/brand/palette.md`, and the pair is
+  referenced the way the wordmark already was. On the landing page it is a
+  background image rather than a `<picture>`, for the reason written beside the
+  wordmark: `prefers-color-scheme` can only ask the operating system, so the
+  page's own switch would have turned everything dark except the diagram. A deck
+  needs no such care — the build rewrites a `<picture>` into one image per mode
+  and follows `D`.
 - Publishing a release left the *previous* one on the front page. Cutting a
   release pushes the version bump and then tags it, so the Pages run that CI
   triggers for that commit starts before the tag exists and rebuilds the root

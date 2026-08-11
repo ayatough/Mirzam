@@ -127,6 +127,7 @@ try {
     --l-btn-bg:#6557D9; --l-btn-bg-hover:#5347B8; --l-btn-ink:#FFFFFF;
     --l-hero: url("brand/mirzam-hero-light.webp");
     --l-wordmark: url("brand/mirzam-wordmark-light.svg");
+    --l-workflow: url("brand/mirzam-concept-workflow-light.svg");
     --l-code-bg:#EEF0F7; --l-shadow: 0 1px 2px rgba(23,32,58,.06), 0 8px 24px rgba(23,32,58,.06);
     --l-lead-weight: 300;
     /* The switch shows where it takes you, not where you are, so the glyph and
@@ -138,6 +139,7 @@ try {
     --d-btn-bg:#9B8CFF; --d-btn-bg-hover:#C0B7FF; --d-btn-ink:#080C18;
     --d-hero: url("brand/mirzam-hero-dark.webp");
     --d-wordmark: url("brand/mirzam-wordmark-dark.svg");
+    --d-workflow: url("brand/mirzam-concept-workflow-dark.svg");
     --d-code-bg:#11192D; --d-shadow: none;
     /* Light type on a dark ground reads a step thinner than it measures. */
     --d-lead-weight: 400;
@@ -147,7 +149,7 @@ try {
     --muted:var(--l-muted); --line:var(--l-line);
     --accent:var(--l-accent); --accent-2:var(--l-accent-2); --cyan:var(--l-cyan);
     --btn-bg:var(--l-btn-bg); --btn-bg-hover:var(--l-btn-bg-hover); --btn-ink:var(--l-btn-ink);
-    --hero:var(--l-hero); --wordmark:var(--l-wordmark);
+    --hero:var(--l-hero); --wordmark:var(--l-wordmark); --workflow:var(--l-workflow);
     --code-bg:var(--l-code-bg); --shadow:var(--l-shadow);
     --lead-weight:var(--l-lead-weight); --switch:var(--l-switch);
   }
@@ -162,7 +164,7 @@ try {
       --muted:var(--d-muted); --line:var(--d-line);
       --accent:var(--d-accent); --accent-2:var(--d-accent-2); --cyan:var(--d-cyan);
       --btn-bg:var(--d-btn-bg); --btn-bg-hover:var(--d-btn-bg-hover); --btn-ink:var(--d-btn-ink);
-      --hero:var(--d-hero); --wordmark:var(--d-wordmark);
+      --hero:var(--d-hero); --wordmark:var(--d-wordmark); --workflow:var(--d-workflow);
       --code-bg:var(--d-code-bg); --shadow:var(--d-shadow);
       --lead-weight:var(--d-lead-weight); --switch:var(--d-switch);
     }
@@ -172,7 +174,7 @@ try {
     --muted:var(--d-muted); --line:var(--d-line);
     --accent:var(--d-accent); --accent-2:var(--d-accent-2); --cyan:var(--d-cyan);
     --btn-bg:var(--d-btn-bg); --btn-bg-hover:var(--d-btn-bg-hover); --btn-ink:var(--d-btn-ink);
-    --hero:var(--d-hero); --wordmark:var(--d-wordmark);
+    --hero:var(--d-hero); --wordmark:var(--d-wordmark); --workflow:var(--d-workflow);
     --code-bg:var(--d-code-bg); --shadow:var(--d-shadow);
     --lead-weight:var(--d-lead-weight); --switch:var(--d-switch);
   }
@@ -211,6 +213,15 @@ try {
   .wordmark {
     width: min(340px, 78vw); aspect-ratio: 340 / 135;
     background: var(--wordmark) left center / contain no-repeat;
+  }
+  /* The pipeline diagram, for the same reason and by the same means. As an
+     <img> inside a <picture> it followed `prefers-color-scheme`, which can only
+     ask the operating system — so the switch turned the page dark and left a
+     white diagram sitting in it. A deck build rewrites a <picture> to follow
+     the deck's own mode; this page is plain HTML and has to say it itself. */
+  .workflow {
+    width: 100%; aspect-ratio: 1400 / 420; margin-top: 26px; border-radius: 14px;
+    background: var(--workflow) center / contain no-repeat;
   }
 
   /* The switch, in the corner the eye reaches last. */
@@ -360,7 +371,7 @@ try {
   <h2>How it works</h2>
   <p>Four stages, all at build time. The charts are SVG, the math is MathML, the
   images are inlined — the deck is one file you can email.</p>
-  <p><img src="brand/mirzam-concept-workflow.svg" alt="Markdown becomes an ASCII layout, then real components, then a self-contained HTML or PDF deck" style="width:100%;height:auto;border-radius:14px;margin-top:26px"></p>
+  <div class="workflow" role="img" aria-label="Markdown becomes an ASCII layout, then real components, then a self-contained HTML or PDF deck"></div>
 
   <h2>Write one</h2>
   <p>Nothing to install: the editor below runs the same Rust core in your browser
