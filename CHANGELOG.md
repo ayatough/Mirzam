@@ -58,6 +58,18 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - Task lists (`- [ ]`) are documented. They have worked all along and appeared
   in no sample and no reference, which is the kind of gap this release exists
   to close.
+- **Three shapes for a term list, because which one is right is a per-list
+  question and a renderer that picks for you is wrong a third of the time.**
+  `{.terms-aligned}` on the pane holds every definition to one column, for
+  definitions meant to be read against each other; `{.terms-stacked}` puts the
+  definition on its own line and indents it, for definitions long enough that
+  the term reads as a heading over them; the default sets the definition beside
+  its term. Underneath, `--mz-terms-hang` (`0` turns the hanging indent off),
+  `--mz-terms-gap` and `--mz-terms-col` tune all three, and are settable on a
+  pane, a deck or a theme — each is read as a `var()` fallback rather than
+  declared on the `dl`, because a default written onto the element would beat
+  the value it should be inheriting. No new markup: pane classes already pass
+  through, so this is a stylesheet and a slide.
 - **A `<picture>` that picks art by colour scheme follows the deck, not the
   machine.** The markup every README uses so its logo survives GitHub's dark
   theme is rewritten at build time into one image per mode, switched the way

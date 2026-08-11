@@ -270,6 +270,31 @@ neighbours — a column has to be as wide as the longest term, so one long entry
 maroons every short one from its own definition. A definition that wraps is
 given a hanging indent instead, so its second line clears the terms above it.
 
+Which shape is right is a per-list question rather than a house style, so two
+classes on the **pane** change it:
+
+| On the pane | The list becomes |
+|---|---|
+| *(nothing)* | `Apple   A red fruit.` — the definition beside the term, wrapping to a hanging indent |
+| `{.terms-aligned}` | every definition in one column, for definitions meant to be read against each other |
+| `{.terms-stacked}` | the definition on its own line, indented, for definitions long enough that the term reads as a heading |
+
+```markdown
+::: pane glossary {.terms-aligned}
+Apple
+: A red fruit.
+:::
+```
+
+Three lengths tune all three shapes, and can be set on the pane, the deck or a
+theme:
+
+| Custom property | Default | Sets |
+|---|---|---|
+| `--mz-terms-hang` | `2em` | the hanging indent — `0` turns it off, and it is also the stacked indent |
+| `--mz-terms-gap` | `.6em` | the space between a term and its definition |
+| `--mz-terms-col` | `38%` | the widest the term column may get under `.terms-aligned` |
+
 **Underline is `++`, not `__`.** Some editors take double underscores for an
 underline; CommonMark and GFM both read them as **bold**, and Mirzam's whole
 premise is that the same file renders on GitHub. Taking `__` would mean a

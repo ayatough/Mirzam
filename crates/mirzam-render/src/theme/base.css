@@ -196,21 +196,30 @@ ins { text-decoration: underline; text-decoration-thickness: 2px; text-underline
 
    It follows the definition immediately rather than lining up in a column, the
    way Typst sets its term lists. A column has to be as wide as the longest
-   term, so one long entry opens a gap after every short one and `Apple:` ends
+   term, so one long entry opens a gap after every short one and `Apple` ends
    up marooned from `a red fruit`. What a wrapped definition needs is not
    alignment with its neighbours but a hanging indent: the list carries the
    indent and each term is pulled back out of it, so a continuation line clears
-   the terms above it. */
+   the terms above it.
+
+   Which of the three is right is a per-list question, not a house style, so
+   `.terms-aligned` and `.terms-stacked` go on the pane. Three lengths are the
+   dials underneath, and each is read with its default as a `var()` fallback
+   rather than declared on the `dl` — a value set on the pane, the deck or the
+   theme has to win, and a declaration on the element itself beats anything it
+   would otherwise inherit. `--mz-terms-hang: 0` turns the hanging indent off. */
 dl {
   margin: .55em 0; font-size: 1.35em; line-height: 1.65;
-  padding-left: 2em;
+  padding-left: var(--mz-terms-hang, 2em);
 }
 /* No colon is drawn after the term. The `:` is how a definition line is
    written — the marker, like the `-` of a bullet — and a renderer that echoes
    its own syntax back is putting punctuation the author never typed into the
    slide. Weight, colour and the gap separate the two. */
 dt {
-  display: inline; margin-left: -2em; margin-right: .6em;
+  display: inline;
+  margin-left: calc(-1 * var(--mz-terms-hang, 2em));
+  margin-right: var(--mz-terms-gap, .6em);
   font-weight: 600; color: var(--mz-accent1);
 }
 dd { display: inline; margin: 0; color: var(--mz-fg); }
@@ -218,6 +227,28 @@ dd { display: inline; margin: 0; color: var(--mz-fg); }
    nothing to end the entry — a block box would have done it. */
 dd::after { content: "\A"; white-space: pre; }
 dl > dd:last-child::after { content: none; }
+
+/* `.terms-aligned` on the pane: every definition in one column. Worth the gap
+   after the short terms when the definitions are meant to be read against each
+   other rather than each against its own term. The column is capped so one long
+   term cannot squeeze the rest into a ribbon; `--mz-terms-col` moves the cap. */
+.terms-aligned dl {
+  display: grid; grid-template-columns: fit-content(var(--mz-terms-col, 38%)) 1fr;
+  column-gap: var(--mz-terms-gap, .6em); row-gap: .25em;
+  padding-left: 0;
+}
+.terms-aligned dt { grid-column: 1; margin: 0; }
+.terms-aligned dd { grid-column: 2; }
+.terms-aligned dd::after { content: none; } /* the grid ends each row */
+
+/* `.terms-stacked` on the pane: the definition starts on its own line, indented
+   under the term. For definitions long enough that the term reads as a heading
+   over them rather than as the first words of the same sentence. */
+.terms-stacked dl { padding-left: 0; }
+.terms-stacked dt { display: block; margin: .4em 0 0; }
+.terms-stacked dt:first-child { margin-top: 0; }
+.terms-stacked dd { display: block; margin-left: var(--mz-terms-hang, 2em); }
+.terms-stacked dd::after { content: none; } /* a block box ends the entry */
 
 /* Emphasis by size and colour, for the places bold is not enough and a
    stylesheet of your own is too much. Every one takes a theme token, so they

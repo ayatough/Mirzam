@@ -25,7 +25,7 @@ current: true
 <li><code>current</code> marks the section you are inside</li>
 </ul>
 </div>
-<div class="pane pane-out" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><nav class="mz-toc" data-current="1"><ol><li class="mz-toc-l2" data-slide="2" style="margin-left:0em"><a href="#3">Headings</a><span class="mz-toc-page">3</span></li><li class="mz-toc-l2" data-slide="2" style="margin-left:0em"><a href="#3">Two, a slide's own heading</a><span class="mz-toc-page">3</span></li><li class="mz-toc-l2" data-slide="3" style="margin-left:0em"><a href="#4">Marking a phrase</a><span class="mz-toc-page">4</span></li><li class="mz-toc-l2" data-slide="4" style="margin-left:0em"><a href="#5">Colour and size</a><span class="mz-toc-page">5</span></li><li class="mz-toc-l2" data-slide="5" style="margin-left:0em"><a href="#6">Quotes, asides and code</a><span class="mz-toc-page">6</span></li><li class="mz-toc-l2" data-slide="6" style="margin-left:0em"><a href="#7">Four kinds of list</a><span class="mz-toc-page">7</span></li><li class="mz-toc-l2" data-slide="7" style="margin-left:0em"><a href="#8">Tables and mathematics</a><span class="mz-toc-page">8</span></li><li class="mz-toc-l2" data-slide="8" style="margin-left:0em"><a href="#9">Emoji, footnotes and what you do not show</a><span class="mz-toc-page">9</span></li><li class="mz-toc-l2" data-slide="9" style="margin-left:0em"><a href="#10">Still Markdown</a><span class="mz-toc-page">10</span></li></ol></nav>
+<div class="pane pane-out mz-fit" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><nav class="mz-toc" data-current="1"><ol><li class="mz-toc-l2" data-slide="2" style="margin-left:0em"><a href="#3">Headings</a><span class="mz-toc-page">3</span></li><li class="mz-toc-l2" data-slide="2" style="margin-left:0em"><a href="#3">Two, a slide's own heading</a><span class="mz-toc-page">3</span></li><li class="mz-toc-l2" data-slide="3" style="margin-left:0em"><a href="#4">Marking a phrase</a><span class="mz-toc-page">4</span></li><li class="mz-toc-l2" data-slide="4" style="margin-left:0em"><a href="#5">Colour and size</a><span class="mz-toc-page">5</span></li><li class="mz-toc-l2" data-slide="5" style="margin-left:0em"><a href="#6">Quotes, asides and code</a><span class="mz-toc-page">6</span></li><li class="mz-toc-l2" data-slide="6" style="margin-left:0em"><a href="#7">Four kinds of list</a><span class="mz-toc-page">7</span></li><li class="mz-toc-l2" data-slide="7" style="margin-left:0em"><a href="#8">One term list, three shapes</a><span class="mz-toc-page">8</span></li><li class="mz-toc-l2" data-slide="8" style="margin-left:0em"><a href="#9">Tables and mathematics</a><span class="mz-toc-page">9</span></li><li class="mz-toc-l2" data-slide="9" style="margin-left:0em"><a href="#10">Emoji, footnotes and what you do not show</a><span class="mz-toc-page">10</span></li><li class="mz-toc-l2" data-slide="10" style="margin-left:0em"><a href="#11">Still Markdown</a><span class="mz-toc-page">11</span></li></ol></nav>
 </div>
 </div>
 </section>
@@ -166,6 +166,41 @@ Another
 </div>
 </section>
 <section class="slide" data-index="7">
+<div class="grid" style='grid-template-columns:10fr 12fr 12fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head head" "one two three"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Lists</span></p>
+<h2>One term list, three shapes</h2>
+</div>
+<div class="pane pane-one" data-pane="one" style="grid-area:one"><h3>Default</h3>
+<dl>
+<dt>Apple</dt>
+<dd>A red fruit.</dd>
+<dt>A longer term</dt>
+<dd>A meaning long enough to wrap onto a second line.</dd>
+</dl>
+</div>
+<div class="pane pane-two terms-aligned" data-pane="two" style="grid-area:two"><h3><code>.terms-aligned</code></h3>
+<dl>
+<dt>Apple</dt>
+<dd>A red fruit.</dd>
+<dt>A longer term</dt>
+<dd>A meaning long enough to wrap onto a second line.</dd>
+</dl>
+</div>
+<div class="pane pane-three terms-stacked" data-pane="three" style="grid-area:three"><h3><code>.terms-stacked</code></h3>
+<dl>
+<dt>Apple</dt>
+<dd>A red fruit.</dd>
+<dt>A longer term</dt>
+<dd>A meaning long enough to wrap onto a second line.</dd>
+</dl>
+</div>
+</div>
+<aside class="notes"><p>The classes go on the pane, not the list: <code>::: pane two {.terms-aligned}</code>. Aligned is for definitions meant to be read against each
+other; stacked is for definitions long enough that the term reads as a heading
+over them.</p>
+</aside>
+</section>
+<section class="slide" data-index="8">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "table math"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Data</span></p>
 <h2>Tables and mathematics</h2>
@@ -204,7 +239,7 @@ Another
 </div>
 </div>
 </section>
-<section class="slide" data-index="8">
+<section class="slide" data-index="9">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Aside</span></p>
 <h2>Emoji, footnotes and what you do not show</h2>
@@ -235,7 +270,7 @@ script: press <code>N</code>.</p>
 <aside class="notes"><p>This is a speaker note. The audience never sees it; the presenter window does.</p>
 </aside>
 </section>
-<section class="slide" data-index="9">
+<section class="slide" data-index="10">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:3fr 1fr;grid-template-areas:"main" "foot"'>
 <div class="pane pane-main" data-pane="main" style="grid-area:main;text-align:center;display:flex;flex-direction:column;justify-content:center"><h2>Still Markdown</h2>
 <p>Every mark above renders on GitHub. The four Mirzam adds — <code>==</code>, <code>++</code>,
