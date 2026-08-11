@@ -46,7 +46,7 @@ under [Regenerating](#regenerating).
 | `mirzam-hero-light.webp` / `mirzam-hero-dark.webp` | 1280×420 | The atmosphere art: a planet limb with the star flaring over it. Site hero, slide backgrounds, README banner. |
 | `mirzam-background-light.svg` / `-dark.svg` | 1600×900 | The same idea drawn as vectors — a few KB, edits in a text editor, scales to any size. Use it when the raster is too heavy or the crop is wrong. |
 | `mirzam-social-card.png` | 1200×630 | Open Graph / Twitter / Slack link preview. Generated, not hand-drawn. |
-| `mirzam-concept-workflow.svg` | 1400×420 | The pipeline diagram: Markdown → ASCII layout → components → HTML/PDF. Dark ground only. |
+| `mirzam-concept-workflow-light.svg`, `-dark.svg` | 1400×420 | The pipeline diagram: Markdown → ASCII layout → components → HTML/PDF. One per mode — reference the pair with `<picture>`, which a deck rewrites to follow `D` rather than the machine. |
 
 Behind text, the heroes need help: the flare in the lower left is bright enough
 to swallow body copy. In a deck, that is what `dim` and `scrim` are for:

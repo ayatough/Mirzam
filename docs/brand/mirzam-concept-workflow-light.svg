@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 420" role="img" aria-labelledby="title desc">
+  <title id="title">Mirzam workflow</title>
+  <desc id="desc">Markdown becomes an ASCII layout, real components, and a self-contained HTML or PDF deck.</desc>
+  <defs>
+    <style>
+      .label { font: 600 20px Inter, ui-sans-serif, system-ui, sans-serif; fill: #17203A; }
+      .sub { font: 400 15px Inter, ui-sans-serif, system-ui, sans-serif; fill: #68708A; }
+      .mono { font: 500 13px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #4A5270; }
+      .line { stroke: #6557D9; stroke-width: 2; fill: none; }
+      .box { fill: #EEF0F7; stroke: #D9DDEB; stroke-width: 2; }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6557D9"/>
+    </marker>
+  </defs>
+  <rect width="1400" height="420" rx="28" fill="#F7F8FC"/>
+  <g transform="translate(55 62)">
+    <rect class="box" width="220" height="240" rx="18"/>
+    <text x="28" y="42" class="label">Markdown</text>
+    <text x="28" y="70" class="sub">source in your repo</text>
+    <text x="28" y="120" class="mono" xml:space="preserve">::: pane main</text>
+    <text x="28" y="145" class="mono" xml:space="preserve">## Latency</text>
+    <text x="28" y="170" class="mono" xml:space="preserve">p95 dropped in</text>
+    <text x="28" y="195" class="mono" xml:space="preserve">[every region]</text>
+  </g>
+  <path d="M300 182 H365" class="line" marker-end="url(#arrow)"/>
+  <g transform="translate(390 62)">
+    <rect class="box" width="250" height="240" rx="18"/>
+    <text x="28" y="42" class="label">ASCII Layout</text>
+    <text x="28" y="70" class="sub">structure you can see</text>
+    <text x="28" y="122" class="mono" xml:space="preserve">+----------+------+</text>
+    <text x="28" y="150" class="mono" xml:space="preserve">|  main    |chart |</text>
+    <text x="28" y="178" class="mono" xml:space="preserve">|          |      |</text>
+    <text x="28" y="206" class="mono" xml:space="preserve">+----------+------+</text>
+  </g>
+  <path d="M665 182 H730" class="line" marker-end="url(#arrow)"/>
+  <g transform="translate(755 62)">
+    <rect class="box" width="250" height="240" rx="18"/>
+    <text x="28" y="42" class="label">Real Components</text>
+    <text x="28" y="70" class="sub">data stays connected</text>
+    <rect x="28" y="110" width="78" height="78" rx="8" fill="none" stroke="#6557D9" stroke-width="2"/>
+    <path d="M40 166 L60 142 L78 158 L94 132" fill="none" stroke="#8B7CFF" stroke-width="3"/>
+    <rect x="132" y="110" width="82" height="78" rx="8" fill="none" stroke="#4F8CC9" stroke-width="2"/>
+    <path d="M143 170 L160 145 L177 158 L201 126" fill="none" stroke="#4F8CC9" stroke-width="3"/>
+  </g>
+  <path d="M1030 182 H1095" class="line" marker-end="url(#arrow)"/>
+  <g transform="translate(1120 62)">
+    <rect class="box" width="225" height="240" rx="18"/>
+    <text x="28" y="42" class="label">HTML / PDF</text>
+    <text x="28" y="70" class="sub">self-contained output</text>
+    <rect x="32" y="108" width="160" height="96" rx="10" fill="#E4E8F2" stroke="#D9DDEB"/>
+    <path d="M54 178 H170" stroke="#6557D9" stroke-width="3"/>
+    <path d="M54 160 H128" stroke="#4F8CC9" stroke-width="5"/>
+    <circle cx="175" cy="126" r="5" fill="#8B7CFF"/>
+  </g>
+  <text x="55" y="350" class="sub">Write plain Markdown. Draw the layout. Get a deck you would actually present.</text>
+</svg>

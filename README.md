@@ -66,7 +66,10 @@ whenever the layout changes.
 
 ## How it works
 
-![Markdown becomes an ASCII layout, then real components, then a self-contained HTML or PDF deck](docs/brand/mirzam-concept-workflow.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/mirzam-concept-workflow-dark.svg">
+  <img src="docs/brand/mirzam-concept-workflow-light.svg" alt="Markdown becomes an ASCII layout, then real components, then a self-contained HTML or PDF deck">
+</picture>
 
 Four stages, all at build time. Nothing in the output phones home: the charts are
 SVG, the math is MathML, the images are inlined, and the deck is one file you can
