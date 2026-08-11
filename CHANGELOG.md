@@ -7,6 +7,10 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.3.0] - 2026-08-11
+
 ### Changed
 - **The default theme is Mirzam's own palette.** A deck that names no theme is
   the common case — a quick note, a README turned into slides, a sample showing
