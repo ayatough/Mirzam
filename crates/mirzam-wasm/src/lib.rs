@@ -223,6 +223,15 @@ impl Renderer {
         // The deck settings a slide cannot see from its own text: the math
         // dialect, the masters it can be drawn on, the footer it carries.
         let mut ctx = mirzam_render::DeckContext::new(&meta, slide_srcs.len());
+        // A masters file comes out of the host's table, the same place a
+        // transcluded `![[…]]` does — so the preview draws the deck on the
+        // same shapes the CLI does instead of falling back to single panes.
+        if let Some(rel) = meta.masters_file() {
+            let (masters, master_warnings) =
+                mirzam_syntax::load_masters(rel, Path::new(""), &MapFiles(&self.files));
+            ctx.masters = masters;
+            warnings.extend(master_warnings);
+        }
         for text in [&mut ctx.footer, &mut ctx.slide_number]
             .into_iter()
             .flatten()
@@ -307,6 +316,33 @@ mod tests {
         assert!(out.html.contains("Included heading"));
         assert!(out.html.contains("data:image/svg+xml;base64,QUJD"));
         assert_eq!(out.warnings, "[]");
+    }
+
+    /// The whole reason a masters file is read through `FileProvider` rather
+    /// than the filesystem: the browser has no filesystem, and a preview that
+    /// silently drew every slide as a single pane while the CLI drew the deck
+    /// correctly would be worse than either being wrong on its own.
+    #[test]
+    fn a_masters_file_comes_out_of_the_host_table() {
+        let mut r = Renderer::new();
+        r.set_files(
+            "{\"shapes.md\": \"## body\\n\\n```pane\\n+-------+\\n| head  |\\n+-------+\\n| main  |\\n+-------+\\n```\\n\"}",
+        )
+        .unwrap();
+        let out = r.render_page(
+            "---\ntitle: T\nmasters: shapes.md\nlayout: body\n---\n\n::: pane head\n# H\n:::\n",
+        );
+        assert!(out.html.contains(r#"grid-template-areas:"head" "main""#));
+        assert_eq!(out.warnings, "[]");
+    }
+
+    /// A host that did not supply the file gets a warning saying what the deck
+    /// will look like, not a silent fallback nobody can diagnose.
+    #[test]
+    fn a_masters_file_the_host_did_not_supply_warns() {
+        let r = Renderer::new();
+        let out = r.render_page("---\ntitle: T\nmasters: shapes.md\n---\n\n# H\n");
+        assert!(out.warnings.contains("single pane"), "{}", out.warnings);
     }
 
     #[test]

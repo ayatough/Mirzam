@@ -36,9 +36,8 @@ pub struct DeckMeta {
     /// Per deck, not per formula — a deck reads as one language.
     pub math: Option<String>,
     /// Named layouts a slide can be drawn on instead of carrying a `pane`
-    /// block of its own: the name, and the same ASCII art that block holds.
-    /// A slide picks one with `<!-- layout: name -->`.
-    pub masters: BTreeMap<String, String>,
+    /// block of its own. A slide picks one with `<!-- layout: name -->`.
+    pub masters: Masters,
     /// The master every slide takes when it neither draws a grid nor names
     /// one. A slide opts out of it with `<!-- layout: none -->`.
     pub layout: Option<String>,
@@ -50,6 +49,28 @@ pub struct DeckMeta {
     #[serde(rename = "slide-number", alias = "slide_number")]
     pub slide_number: Option<String>,
     pub vars: BTreeMap<String, serde_yaml::Value>,
+}
+
+/// Where a deck's named slide shapes come from.
+///
+/// Two forms because the drawings are big. A set worth sharing between decks —
+/// or one long enough that it pushes the first slide off the screen — belongs
+/// in a file of its own, where the ASCII sits in `pane` fences at column zero
+/// rather than indented inside a YAML block scalar. A deck with one shape it
+/// reuses can keep it in frontmatter and skip the second file.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+pub enum Masters {
+    /// `masters: masters.md`, resolved relative to the deck like `css:` is.
+    File(String),
+    /// `masters: {two-up: |…}`, written in the deck's own frontmatter.
+    Inline(BTreeMap<String, String>),
+}
+
+impl Default for Masters {
+    fn default() -> Self {
+        Masters::Inline(BTreeMap::new())
+    }
 }
 
 /// The syntax math is written in. Every dialect renders through the same
@@ -80,6 +101,25 @@ impl DeckMeta {
                 "math: unknown dialect `{other}`; `latex` and `typst` are supported, \
                  rendering as latex"
             )),
+        }
+    }
+
+    /// The masters file this deck names, if it names one rather than writing
+    /// its shapes inline. Reading it is the caller's job: the core has no
+    /// filesystem, and both hosts already carry a `FileProvider`.
+    pub fn masters_file(&self) -> Option<&str> {
+        match &self.masters {
+            Masters::File(path) => Some(path.as_str()),
+            Masters::Inline(_) => None,
+        }
+    }
+
+    /// Shapes written in the deck's own frontmatter; `None` when it names a
+    /// file instead.
+    pub fn inline_masters(&self) -> Option<&BTreeMap<String, String>> {
+        match &self.masters {
+            Masters::Inline(m) => Some(m),
+            Masters::File(_) => None,
         }
     }
 
@@ -191,6 +231,24 @@ mod tests {
         assert_eq!(meta("3").split_level(), Some(3));
         assert_eq!(meta("none").split_level(), None);
         assert_eq!(DeckMeta::default().split_level(), None);
+    }
+
+    /// One key, two forms: a string names a file, a mapping is the shapes
+    /// themselves. A deck that says neither has no masters and no complaint.
+    #[test]
+    fn masters_is_either_a_path_or_the_shapes_themselves() {
+        let file = parse_meta("masters: masters/cookbook.md\n").unwrap();
+        assert_eq!(file.masters_file(), Some("masters/cookbook.md"));
+        assert_eq!(file.inline_masters(), None);
+
+        let inline =
+            parse_meta("masters:\n  two-up: |\n    +---+\n    | a |\n    +---+\n").unwrap();
+        assert_eq!(inline.masters_file(), None);
+        assert!(inline.inline_masters().unwrap()["two-up"].contains("| a |"));
+
+        let none = DeckMeta::default();
+        assert_eq!(none.masters_file(), None);
+        assert!(none.inline_masters().unwrap().is_empty());
     }
 
     #[test]

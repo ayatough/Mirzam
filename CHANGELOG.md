@@ -8,12 +8,22 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
-- **Slide masters: draw a shape once, not once per slide.** `masters:` in
-  frontmatter names slide shapes — the same ASCII drawing a `pane` block holds,
-  read by the same parser — and a slide picks one with
-  `<!-- layout: two-up -->`, an HTML comment, so a plain Markdown reader still
-  shows nothing. `layout:` sets the deck's default for every slide that names
-  none. Redrawing the same grid on the twelfth slide that has the same shape
+- **Slide masters: draw a shape once, not once per slide.** `masters:` names
+  slide shapes — the same ASCII drawing a `pane` block holds, read by the same
+  parser — and a slide picks one with `<!-- layout: two-up -->`, an HTML
+  comment, so a plain Markdown reader still shows nothing. `layout:` sets the
+  deck's default for every slide that names none. The shapes normally live in
+  a Markdown file of their own, named like `css:` is
+  (`masters: masters/cookbook.md`): a heading names a master, the `pane` block
+  under it is the drawing, and the prose between them says what it is for. That
+  keeps ASCII art out of frontmatter, where it has to be indented inside a YAML
+  block scalar and pushes the first slide off the screen — and it lets several
+  decks share one set of shapes. A mapping written in frontmatter still works
+  for a deck with one or two. The file is read through the same `FileProvider`
+  a `![[…]]` transclusion uses, so the editor extension and the browser build
+  draw the deck on the same shapes the CLI does rather than falling back to
+  single panes, and it joins the watch set, so editing shared shapes re-renders
+  the decks on them. Redrawing the same grid on the twelfth slide that has the same shape
   was the part of writing a deck nobody enjoyed, and it was also where decks
   drifted: two slides meant to match ended up a character apart. A slide that
   needs a different shape simply draws one — its own `pane` block always wins,

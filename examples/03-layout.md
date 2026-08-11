@@ -3,29 +3,7 @@ title: Mirzam Layout Cookbook
 author: Mirzam
 aspect: "16:9"
 css: themes/mirzam.css
-masters:
-  contrast: |
-    +------------------------------------+
-    |                                    |
-    |  head                              |
-    +------------------+-----------------+
-    |                  |                 |
-    |                  |                 |
-    |  bad             |  good           |
-    |                  |                 |
-    |                  |                 |
-    +------------------+-----------------+
-  stated: |
-    +------------------------------------+
-    |                                    |
-    |  head                              |
-    +------------------------------------+
-    |                                    |
-    |                                    |
-    |  body                              |
-    |                                    |
-    |                                    |
-    +------------------------------------+
+masters: masters/cookbook.md
 ---
 
 # Layout cookbook {.title-slide}
@@ -369,15 +347,17 @@ This deck passes it in CI, which is the only reason to trust the rules above.
 
 ::: pane src {.card valign=middle}
 ```yaml
-masters:
-  contrast: |
-    +--------------+-------------+
-    |  head                      |
-    +--------------+-------------+
-    |              |             |
-    |  bad         |  good       |
-    |              |             |
-    +--------------+-------------+
+masters: masters/cookbook.md
+```
+
+```markdown
+## contrast
+
++--------------+-------------+
+|  head                      |
++--------------+-------------+
+|  bad         |  good       |
++--------------+-------------+
 ```
 
 ```markdown
@@ -386,15 +366,15 @@ masters:
 :::
 
 ::: pane out {valign=middle}
-Rules 2 and 6 draw no grid at all: both name `contrast`, and this slide's own
-drawing is here because it is the one shape the deck uses once.
+Rules 2 and 6 draw no grid at all: both name `contrast`, which lives in
+`examples/masters/cookbook.md`. A heading names a shape and the `pane` block
+under it is the drawing.
 
-A slide's own `pane` block always wins, so an exception needs no opt-out —
-and `<!-- layout: none -->` gives a title slide the whole surface back when the
-deck sets a default with `layout:`.
+A slide's own block always wins, so an exception needs no opt-out — and
+`<!-- layout: none -->` gives a title slide the whole surface back.
 
 The catch is names: the master fixes them, so `bad` and `good` are what every
-slide using it has to call its panes.
+slide using it calls its panes.
 :::
 
 <!-- note: The deck renders identically to the version that drew all three grids by hand. That is the test: a master is a shape moved, not a shape changed. -->

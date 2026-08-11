@@ -286,17 +286,20 @@ vars:
 
 ::: pane src {.card valign=middle}
 ```yaml
+masters: masters/cookbook.md
 layout: body
 footer: Internal
 slide-number: "{n} / {total}"
-masters:
-  body: |
-    +----------+
-    |  head    |
-    +----------+
-    |  main    |
-    |          |
-    +----------+
+```
+
+```markdown
+## body
+
++----------+
+|  head    |
++----------+
+|  main    |
++----------+
 ```
 
 ```markdown
@@ -306,7 +309,8 @@ masters:
 :::
 
 ::: pane what {valign=middle}
-- `masters:` names slide shapes — the same drawing a `pane` block holds
+- `masters:` is a Markdown file: a heading names a shape, the `pane` block
+  under it is the drawing. A mapping written here works for a short set
 - `layout:` picks the deck's default, `<!-- layout: -->` one slide's
 - A slide's own `pane` block always wins; `none` opts out
 - `footer:` and `slide-number:` draw on every slide **and in the PDF**

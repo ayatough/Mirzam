@@ -168,7 +168,16 @@ function collectResources(text, baseDir) {
   return { files, assets };
 }
 
-/** Targets of `![[a.md]]` and `![alt](path)`, excluding URLs and data URIs. */
+/**
+ * Targets of `![[a.md]]`, `![alt](path)` and frontmatter `masters:`, excluding
+ * URLs and data URIs.
+ *
+ * The masters file is here because the core reads it through the same
+ * `FileProvider` a transclusion uses, and in this host that provider is the
+ * table below. Miss it and the preview draws every slide as a single pane
+ * while the CLI draws the deck correctly — the kind of disagreement between
+ * the two that is worse than either being wrong.
+ */
 function references(source) {
   const out = [];
   const include = /^!\[\[([^\]]+)\]\]\s*$/gm;
@@ -181,7 +190,23 @@ function references(source) {
       out.push(p);
     }
   }
+  const masters = mastersFile(source);
+  if (masters) out.push(masters);
   return out;
+}
+
+/**
+ * The path in frontmatter `masters:`, or null when the deck writes its shapes
+ * inline (a mapping, so the value is empty and the drawings are indented
+ * under it) or names none.
+ */
+function mastersFile(source) {
+  const front = /^---\r?\n([\s\S]*?)\r?\n---\s*$/m.exec(source);
+  if (!front || front.index !== 0) return null;
+  const m = /^masters:[ \t]*(\S.*)$/m.exec(front[1]);
+  if (!m) return null;
+  const value = m[1].trim().replace(/^["']|["']$/g, "");
+  return value && !value.startsWith("{") ? value : null;
 }
 
 /** Matches the core's key format: a path relative to the deck. */

@@ -48,17 +48,10 @@ author: Your Name
 aspect: "16:9"        # or "4:3"
 css: themes/dark.css  # custom stylesheet, relative to this file
 transition: fade      # how pages turn; see Animations below
+masters: masters.md   # named slide shapes; see Slide masters below
 layout: body          # the master a slide takes when it draws no grid
 footer: Internal      # drawn on every slide, and in the PDF
 slide-number: "{n} / {total}"
-masters:              # named slide shapes; see Slide masters below
-  body: |
-    +--------+
-    |  head  |
-    +--------+
-    |  main  |
-    |        |
-    +--------+
 vars:
   product: Mirzam
   price: 1200
@@ -149,31 +142,68 @@ to a pane flows into `main`, or the first pane if there is none.
 ### Slide masters
 
 Most decks use three or four shapes over and over, and redrawing the same ASCII
-on every slide is the part nobody enjoys. Name the shapes once in frontmatter
-and slides pick one instead:
+on every slide is the part nobody enjoys. Name the shapes once, and slides pick
+one instead.
+
+The shapes usually go in a file of their own, named like `css:` is:
 
 ```yaml
 ---
-layout: body            # what a slide takes when it names nothing
+masters: masters/cookbook.md   # relative to this deck
+layout: body                   # what a slide takes when it names nothing
+---
+```
+
+That file is ordinary Markdown. A heading names a master, the `pane` block
+under it is the drawing, and the prose between them is where the master says
+what it is for:
+
+````markdown
+# Deck masters
+
+## two-up
+
+Two columns under a full-width heading band.
+
+```pane
++----------------+-----------------+
+|  head                            |
++----------------+-----------------+
+|                |                 |
+|  main          |  fig            |
+|                |                 |
++----------------+-----------------+
+```
+````
+
+A section with no `pane` block is not a master, which is what lets the file
+open with a title and an introduction. A longer fence quotes a drawing without
+defining it, the same rule a deck follows. A name defined twice is a warning,
+and the last one wins.
+
+[`examples/masters/cookbook.md`](../examples/masters/cookbook.md) is a working
+one; `examples/03-layout.md` is drawn on it.
+
+A short set can stay in frontmatter instead, as a mapping:
+
+```yaml
+---
 masters:
-  body: |
-    +----------------------------------+
-    |  head                            |
-    +----------------------------------+
-    |                                  |
-    |  main                            |
-    |                                  |
-    +----------------------------------+
   two-up: |
     +----------------+-----------------+
     |  head                            |
     +----------------+-----------------+
-    |                |                 |
     |  main          |  fig            |
     |                |                 |
     +----------------+-----------------+
 ---
 ```
+
+One key, two forms: a string is a path, a mapping is the shapes themselves.
+Prefer the file once there is more than one shape — the drawings have to be
+indented inside a YAML block scalar here, which is exactly what a `pane` fence
+in a file of its own avoids, and a set in a file can be shared by every deck
+beside it.
 
 A master's value is exactly the drawing a `pane` block holds, and it is read by
 exactly the same parser — everything in [the layout guide](layout.md) about
@@ -205,13 +235,14 @@ the reason.
 An unknown name is a warning naming the slide, never a failed build, and the
 slide keeps what it would have had without the name: its deck's default. An
 unknown `layout:` in frontmatter is reported once for the deck rather than once
-per slide.
+per slide. A masters file that cannot be read is a warning too, and the deck
+builds with every slide as a single pane — the warning says so, because
+"cannot read" on its own does not explain why the layouts vanished.
 
-Two things a master is not. It is **a shape, not content**: pane names come from
+One thing a master is not: it is **a shape, not content**. Pane names come from
 the drawing, so a deck's masters and its `::: pane` blocks have to agree on
 `head`/`main`/`fig`, and a name in one that is not in the other is the usual
-first mistake. And it is **per deck**: masters live in the deck's own
-frontmatter, so sharing a set across decks today means copying the block.
+first mistake.
 
 ### A footer and a slide number on every slide
 

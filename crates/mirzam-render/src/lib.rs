@@ -42,7 +42,9 @@ pub struct RenderResult {
 pub struct DeckContext {
     /// Which syntax `$...$` holds, from frontmatter `math:`.
     pub math: MathDialect,
-    /// Named layouts a slide can be drawn on, from frontmatter `masters:`.
+    /// Named layouts a slide can be drawn on. Either frontmatter `masters:`
+    /// written inline, or the file it named — resolved by the caller, which
+    /// is the half of this that needs a filesystem.
     pub masters: BTreeMap<String, String>,
     /// The master a slide takes when it neither draws a grid nor names one,
     /// from frontmatter `layout:`.
@@ -59,12 +61,16 @@ impl DeckContext {
     /// The context a deck's frontmatter describes. `total` is the number of
     /// slides *rendered*, which is what a slide number counts: a slide broken
     /// by `<!-- next -->` is several pages to the audience.
+    ///
+    /// A deck whose `masters:` names a file starts with none: reading it needs
+    /// a `FileProvider`, so the caller loads it with
+    /// [`mirzam_syntax::load_masters`] and assigns [`Self::masters`].
     pub fn new(meta: &DeckMeta, total: usize) -> Self {
         Self {
             // A bad dialect renders as LaTeX and is reported where the
             // frontmatter was parsed; there is no warning channel here.
             math: meta.math_dialect().unwrap_or_default(),
-            masters: meta.masters.clone(),
+            masters: meta.inline_masters().cloned().unwrap_or_default(),
             layout: meta.layout.clone(),
             footer: meta.footer.clone(),
             slide_number: meta.slide_number.clone(),
@@ -1837,12 +1843,15 @@ mod tests {
 
     /// A deck whose frontmatter defines masters, for the layout tests below.
     fn deck_with_masters() -> DeckMeta {
+        deck_defining("two-up", "+--------+--------+\n| head            |\n+--------+--------+\n| main   | fig    |\n+--------+--------+\n")
+    }
+
+    /// A deck with one master written inline.
+    fn deck_defining(name: &str, art: &str) -> DeckMeta {
         DeckMeta {
-            masters: [(
-                "two-up".to_string(),
-                "+--------+--------+\n| head            |\n+--------+--------+\n| main   | fig    |\n+--------+--------+\n".to_string(),
-            )]
-            .into(),
+            masters: mirzam_core::Masters::Inline(
+                [(name.to_string(), art.to_string())].into_iter().collect(),
+            ),
             ..DeckMeta::default()
         }
     }
@@ -1929,10 +1938,7 @@ mod tests {
 
     #[test]
     fn a_master_whose_art_does_not_parse_names_itself_in_the_error() {
-        let meta = DeckMeta {
-            masters: [("broken".to_string(), "| no borders |\n".to_string())].into(),
-            ..DeckMeta::default()
-        };
+        let meta = deck_defining("broken", "| no borders |\n");
         let slide = parse_slide("<!-- layout: broken -->\n\ntext\n");
         let out = render_deck(&meta, &[slide], Path::new("."));
         assert!(

@@ -184,24 +184,26 @@ vars:
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Reference</span></p>
 <h2>The four that repeat on every slide</h2>
 </div>
-<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-yaml">layout: body
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-yaml">masters: masters/cookbook.md
+layout: body
 footer: Internal
 slide-number: &quot;{n} / {total}&quot;
-masters:
-  body: |
-    +----------+
-    |  head    |
-    +----------+
-    |  main    |
-    |          |
-    +----------+
+</code></pre>
+<pre><code class="language-markdown">## body
+
++----------+
+|  head    |
++----------+
+|  main    |
++----------+
 </code></pre>
 <pre><code class="language-markdown">&lt;!-- layout: none --&gt;
 &lt;!-- chrome: none --&gt;
 </code></pre>
 </div>
 <div class="pane pane-what" data-pane="what" style="grid-area:what;display:flex;flex-direction:column;justify-content:center"><ul>
-<li><code>masters:</code> names slide shapes — the same drawing a <code>pane</code> block holds</li>
+<li><code>masters:</code> is a Markdown file: a heading names a shape, the <code>pane</code> block
+under it is the drawing. A mapping written here works for a short set</li>
 <li><code>layout:</code> picks the deck's default, <code>&lt;!-- layout: --&gt;</code> one slide's</li>
 <li>A slide's own <code>pane</code> block always wins; <code>none</code> opts out</li>
 <li><code>footer:</code> and <code>slide-number:</code> draw on every slide <strong>and in the PDF</strong></li>

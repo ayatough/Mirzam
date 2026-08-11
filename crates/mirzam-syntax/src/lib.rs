@@ -5,10 +5,11 @@
 //! - Slide splitting on `---` (ignored inside code fences)
 //! - Per-slide extraction: the `pane` layout block, `::: pane` divs,
 //!   `<!-- note: -->` comments, and the shape/connect/anim fenced blocks
+//! - Reading a masters file: named slide shapes a deck can be drawn on
 //! - A [`SourceMap`] from the expanded document back to the files it was
 //!   assembled from, so an offset in the deck names a place someone can edit
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 /// Abstraction over file reads; WASM hosts inject their own implementation.
@@ -821,6 +822,130 @@ pub fn parse_slide(src: &str) -> SlideSource {
     slide
 }
 
+/// Reads and parses the masters file a deck's `masters:` names.
+///
+/// Goes through [`FileProvider`] rather than `std::fs` for the reason every
+/// file read here does: the same call has to work in the CLI, where the
+/// provider is the filesystem, and in the browser, where it is a table the
+/// host supplies. A masters file resolved only in the CLI would leave the
+/// editor's preview drawing every slide as a single pane.
+///
+/// A file that cannot be read is a warning and an empty set, never an error:
+/// a deck does not fail to build over its furniture. The warning says what
+/// the deck will look like instead, because "cannot read" on its own does not
+/// explain why every slide suddenly lost its layout.
+pub fn load_masters(
+    rel: &str,
+    base_dir: &Path,
+    provider: &dyn FileProvider,
+) -> (BTreeMap<String, String>, Vec<String>) {
+    let src = match provider.read(&base_dir.join(rel)) {
+        Ok(src) => src,
+        Err(e) => {
+            return (
+                BTreeMap::new(),
+                vec![format!(
+                    "masters: {e}; slides that do not draw their own grid \
+                     render as a single pane"
+                )],
+            )
+        }
+    };
+    let (masters, warnings) = parse_masters(&src);
+    let mut warnings: Vec<String> = warnings
+        .into_iter()
+        .map(|w| format!("{rel}: {w}"))
+        .collect();
+    if masters.is_empty() && warnings.is_empty() {
+        warnings.push(format!(
+            "masters: {rel} defines none; a master is a heading with a `pane` \
+             block under it"
+        ));
+    }
+    (masters, warnings)
+}
+
+/// Parses a masters file: each heading names a master, and the ```pane block
+/// under it is that master's drawing.
+///
+/// Ordinary Markdown, which is the whole point of the file existing. The
+/// drawings sit in `pane` fences at column zero instead of indented inside a
+/// YAML block scalar, so the file reads as a document wherever Markdown is
+/// rendered — and the prose between a heading and its block is free, which is
+/// where a master says what it is for.
+///
+/// A section with no `pane` block is not a master. That is what lets the file
+/// open with a title and an introduction without either becoming one.
+pub fn parse_masters(src: &str) -> (BTreeMap<String, String>, Vec<String>) {
+    let mut out: BTreeMap<String, String> = BTreeMap::new();
+    let mut warnings = Vec::new();
+    let mut current: Option<String> = None;
+    let lines: Vec<&str> = src.lines().collect();
+    let mut i = 0;
+
+    while i < lines.len() {
+        let trimmed = lines[i].trim();
+        i += 1;
+
+        if let Some(open) = fence_len(trimmed) {
+            let info = trimmed[open..].trim().to_string();
+            let mut body = String::new();
+            while i < lines.len() {
+                let inner = lines[i];
+                i += 1;
+                if closes_fence(inner.trim(), open) {
+                    break;
+                }
+                body.push_str(inner);
+                body.push('\n');
+            }
+            // A longer fence quotes a drawing as an example rather than
+            // defining one — the same rule `parse_slide` applies to a deck.
+            if open > 3 || (info != "pane" && !info.starts_with("pane ")) {
+                continue;
+            }
+            match &current {
+                Some(name) => {
+                    if out.insert(name.clone(), body).is_some() {
+                        warnings.push(format!(
+                            "master `{name}` is defined more than once; the last one wins"
+                        ));
+                    }
+                }
+                None => warnings.push(
+                    "a `pane` block before the first heading has no name and is ignored".into(),
+                ),
+            }
+            continue;
+        }
+
+        if let Some(name) = heading_text(trimmed) {
+            current = Some(name.to_string());
+        }
+    }
+
+    (out, warnings)
+}
+
+/// The text of an ATX heading (`## two-up`), or `None` for any other line.
+///
+/// The heading's text is the master's name, verbatim: `<!-- layout: two-up -->`
+/// finds `## two-up`. Nothing is slugified, because a name that is not the one
+/// on screen is a name nobody can guess.
+fn heading_text(trimmed: &str) -> Option<&str> {
+    let hashes = trimmed.len() - trimmed.trim_start_matches('#').len();
+    if hashes == 0 || hashes > 6 {
+        return None;
+    }
+    let rest = &trimmed[hashes..];
+    // `#tag` is not a heading; `# ` is.
+    if !rest.starts_with(' ') {
+        return None;
+    }
+    let text = rest.trim().trim_end_matches('#').trim();
+    (!text.is_empty()).then_some(text)
+}
+
 /// Extracts the pane name and attributes from a `pane NAME {attrs}` opener.
 fn parse_pane_open(rest: &str) -> Option<(String, String)> {
     let rest = rest.strip_prefix("pane")?.trim();
@@ -1182,6 +1307,71 @@ loose text
         // The setting is a comment, so nothing of it survives into the body.
         assert!(!s.loose.contains("theme"));
         assert!(s.loose.contains("# Quiet"));
+    }
+
+    #[test]
+    fn a_masters_file_names_a_shape_per_heading() {
+        let (m, w) = parse_masters(
+            "# Deck masters\n\nProse nobody reads.\n\n\
+             ## two-up\n\nWhat it is for.\n\n\
+             ```pane\n+---+---+\n| a | b |\n+---+---+\n```\n\n\
+             ## solo\n\n```pane\n+---+\n| a |\n+---+\n```\n",
+        );
+        assert!(w.is_empty(), "{w:?}");
+        assert_eq!(m.keys().collect::<Vec<_>>(), vec!["solo", "two-up"]);
+        assert!(m["two-up"].contains("| a | b |"));
+    }
+
+    /// The file's own title and any section that only explains something must
+    /// not become a shape, or every masters file would define a broken one.
+    #[test]
+    fn a_heading_without_a_pane_block_is_not_a_master() {
+        let (m, w) = parse_masters("# Title\n\nWhy this file exists.\n\n## Notes\n\nMore prose.\n");
+        assert!(m.is_empty());
+        assert!(w.is_empty(), "{w:?}");
+    }
+
+    /// A masters file is documentation as much as data, so it has to be able
+    /// to show a drawing without defining it — the same longer-fence rule a
+    /// deck follows.
+    #[test]
+    fn a_longer_fence_quotes_a_drawing_instead_of_defining_one() {
+        let (m, _) =
+            parse_masters("## example\n\n````markdown\n```pane\n+---+\n| a |\n+---+\n```\n````\n");
+        assert!(m.is_empty());
+    }
+
+    #[test]
+    fn a_pane_block_before_any_heading_is_named_in_a_warning() {
+        let (m, w) = parse_masters("```pane\n+---+\n| a |\n+---+\n```\n");
+        assert!(m.is_empty());
+        assert!(w[0].contains("before the first heading"), "{w:?}");
+    }
+
+    #[test]
+    fn a_master_defined_twice_warns_and_the_last_one_wins() {
+        let (m, w) = parse_masters(
+            "## dup\n```pane\n+---+\n| a |\n+---+\n```\n\
+             ## dup\n```pane\n+---+\n| b |\n+---+\n```\n",
+        );
+        assert!(
+            w[0].contains("dup") && w[0].contains("more than once"),
+            "{w:?}"
+        );
+        assert!(m["dup"].contains("| b |"));
+    }
+
+    #[test]
+    fn a_missing_masters_file_warns_and_says_what_the_deck_will_look_like() {
+        struct NoFiles;
+        impl FileProvider for NoFiles {
+            fn read(&self, path: &Path) -> Result<String, String> {
+                Err(format!("cannot read {}", path.display()))
+            }
+        }
+        let (m, w) = load_masters("shapes.md", Path::new("."), &NoFiles);
+        assert!(m.is_empty());
+        assert!(w[0].contains("single pane"), "{w:?}");
     }
 
     #[test]

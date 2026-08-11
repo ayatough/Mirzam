@@ -90,11 +90,12 @@ conversion is a starting point, not a finished deck.
 ## Drawing the same shape once
 
 A deck that draws the same three or four grids on every slide should name them
-instead. `masters:` in frontmatter holds the drawings, `layout:` picks the
-deck's default, and `<!-- layout: two-up -->` picks another on one slide; the
-[syntax reference](syntax.md#slide-masters) has the resolution order. The
-drawing is the same drawing and goes through the same parser, so every rule on
-this page applies to a master exactly as it applies to a `pane` block.
+instead. `masters:` points at a Markdown file whose headings name the shapes,
+`layout:` picks the deck's default, and `<!-- layout: two-up -->` picks another
+on one slide; the [syntax reference](syntax.md#slide-masters) has the file
+format and the resolution order. The drawing is the same drawing and goes
+through the same parser, so every rule on this page applies to a master exactly
+as it applies to a `pane` block.
 
 Two consequences worth knowing before you convert a deck:
 

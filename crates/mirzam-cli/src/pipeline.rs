@@ -238,6 +238,16 @@ pub fn build_deck_with(
     // them. Variables are substituted here for the same reason they are in the
     // body: a footer is text the author wrote, and `{{ }}` works in it.
     let mut ctx = mirzam_render::DeckContext::new(&meta, parts.len());
+    // A `masters:` naming a file is read here rather than in the core, which
+    // has no filesystem. It joins the watch set, so editing the shared shapes
+    // re-renders the decks that use them.
+    if let Some(rel) = meta.masters_file() {
+        files.insert(base_dir.join(rel));
+        let (masters, master_warnings) =
+            mirzam_syntax::load_masters(rel, &base_dir, &mirzam_syntax::FsProvider);
+        ctx.masters = masters;
+        warnings.extend(master_warnings);
+    }
     for text in [&mut ctx.footer, &mut ctx.slide_number]
         .into_iter()
         .flatten()

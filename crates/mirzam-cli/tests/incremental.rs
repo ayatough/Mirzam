@@ -279,6 +279,71 @@ fn a_warning_names_the_file_the_slide_came_from() {
     );
 }
 
+// ---- `masters:` naming a file ----
+
+/// A deck drawn on a shared masters file, and the file beside it.
+fn deck_on_a_masters_file(dir_name: &str) -> TempDeck {
+    let deck = TempDeck::new(
+        dir_name,
+        "---\ntitle: T\nmasters: shapes.md\nlayout: body\n---\n\n\
+         ::: pane head\n## Heading\n:::\n\n::: pane main\nWords.\n:::\n",
+    );
+    std::fs::write(
+        deck.dir.join("shapes.md"),
+        "# Shapes\n\n## body\n\n```pane\n+-------+\n| head  |\n+-------+\n| main  |\n+-------+\n```\n",
+    )
+    .expect("write masters");
+    deck
+}
+
+#[test]
+fn a_deck_is_drawn_on_the_masters_file_it_names() {
+    let deck = deck_on_a_masters_file("masters-file");
+    let mut cache = HashMap::new();
+    let out = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("build");
+    assert!(out.warnings.is_empty(), "{:?}", out.warnings);
+    assert!(out.sections[0].contains(r#"grid-template-areas:"head" "main""#));
+    // In the watch set, so editing the shared shapes rebuilds the decks on them.
+    assert!(out.files.contains(&deck.dir.join("shapes.md")));
+}
+
+/// The masters file is part of the deck's input, so changing it has to reach
+/// the slides — a cache keyed on slide text alone would serve the old shape.
+#[test]
+fn editing_the_masters_file_re_renders_the_slides() {
+    let deck = deck_on_a_masters_file("masters-edit");
+    let mut cache = HashMap::new();
+    let first = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("build");
+    std::fs::write(
+        deck.dir.join("shapes.md"),
+        "## body\n\n```pane\n+-------+-------+\n| head  | main  |\n+-------+-------+\n```\n",
+    )
+    .expect("rewrite masters");
+    let second = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("rebuild");
+    assert_ne!(first.sections[0], second.sections[0]);
+    assert!(second.sections[0].contains(r#"grid-template-areas:"head main""#));
+}
+
+/// Losing the file loses every layout in the deck, which is a much louder
+/// failure than losing a stylesheet — so the warning has to say so.
+#[test]
+fn a_masters_file_that_is_not_there_warns_and_builds() {
+    let deck = TempDeck::new(
+        "masters-missing",
+        "---\ntitle: T\nmasters: gone.md\nlayout: body\n---\n\n::: pane main\nWords.\n:::\n",
+    );
+    let mut cache = HashMap::new();
+    let out = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("build");
+    assert!(
+        out.warnings
+            .iter()
+            .any(|w| w.contains("masters") && w.contains("single pane")),
+        "{:?}",
+        out.warnings
+    );
+    assert!(out.sections[0].contains("Words."));
+}
+
 // ---- `<!-- next -->`: one pane carried on to the next slide ----
 
 /// A slide with `fig` holding still and `body` broken into `parts`.
