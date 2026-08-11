@@ -70,6 +70,19 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   declared on the `dl`, because a default written onto the element would beat
   the value it should be inheriting. No new markup: pane classes already pass
   through, so this is a stylesheet and a slide.
+- **The list marker is a choice now.** Bullets are most of what a slide is made
+  of, and the kind of bullet was whatever the browser settled on.
+  `--mz-bullet`, `--mz-bullet-2`, `--mz-bullet-3`, `--mz-number`,
+  `--mz-number-2`, `--mz-number-3` and `--mz-marker` take anything
+  `list-style-type` does — `square`, `upper-roman`, `decimal-leading-zero`,
+  `none`, or a quoted string like `"→  "`. Each depth reads its own property and
+  defaults to what the browser would have drawn, so a deck that asks for a dash
+  at the top level keeps the hollow circle beneath it instead of flattening
+  three depths into one mark. A string marker carries its own trailing space,
+  which the reference says out loud because the browser adds none and `"→"`
+  otherwise sits flush against the first word. Footnotes are pinned to
+  `decimal`: their marker has to match the `[^a]` citing them, and a citation is
+  always a numeral.
 - **A `<picture>` that picks art by colour scheme follows the deck, not the
   machine.** The markup every README uses so its logo survives GitHub's dark
   theme is rewritten at build time into one image per mode, switched the way

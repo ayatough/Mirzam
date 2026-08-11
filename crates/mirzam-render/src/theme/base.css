@@ -138,6 +138,25 @@ li { margin: .25em 0; }
    the point above it. */
 ul, ol { margin: .55em 0; }
 li > :is(ul, ol) { margin: .15em 0 0; }
+
+/* The marker. Bullets are most of what a slide is made of, so the kind of
+   bullet is a real choice rather than a preference to be settled once in the
+   renderer. `list-style-type` takes a keyword — `square`, `upper-roman`,
+   `none` — or a quoted string, so `--mz-bullet: "—"` and `--mz-bullet: "→"`
+   are bullets too.
+   Each depth reads its own dial, defaulting to what the browser would have
+   done. Setting one level therefore leaves the others alone: a deck that asks
+   for a dash at the top level keeps the hollow circle underneath it, rather
+   than flattening three depths into one indistinguishable mark. */
+ul { list-style-type: var(--mz-bullet, disc); }
+ul ul { list-style-type: var(--mz-bullet-2, circle); }
+ul ul ul { list-style-type: var(--mz-bullet-3, square); }
+ol { list-style-type: var(--mz-number, decimal); }
+ol ol { list-style-type: var(--mz-number-2, decimal); }
+ol ol ol { list-style-type: var(--mz-number-3, decimal); }
+/* The marker takes the text colour by default, which is often not what a slide
+   wants: a bullet is punctuation, not a word. */
+li::marker { color: var(--mz-marker, currentColor); }
 /* Those sizes are `em`, so a list inside a list multiplied them — 1.35 × 1.35 —
    and the qualification under a point came out half again as large as the point
    it qualified. Anything nested in an item is already at the list's size. */
@@ -321,7 +340,9 @@ section.footnotes {
   margin-top: 1.1em; padding-top: .5em;
   border-top: 1px solid var(--mz-border);
 }
-section.footnotes ol { margin: 0; padding-left: 1.4em; }
+/* Numbered whatever the deck sets `--mz-number` to: a footnote's marker has to
+   match the `[^a]` that cites it, and the citation is always a numeral. */
+section.footnotes ol { margin: 0; padding-left: 1.4em; list-style-type: decimal; }
 section.footnotes li { font-size: .78em; line-height: 1.45; color: var(--mz-muted); margin: .15em 0; }
 /* A DOI is one unbreakable word wider than the column it sits in; without
    this it overflows horizontally no matter how small the type gets, which

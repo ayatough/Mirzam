@@ -209,17 +209,28 @@ fn every_term_list_mode_is_styled_documented_and_shown() {
     }
 }
 
-/// The dials under the modes. A default written straight onto `dl` would beat
-/// the value a pane or a theme sets, so each is read as a `var()` fallback —
-/// which is the whole reason they are overridable at all.
+/// Every presentation dial, held to the pattern that makes it a dial at all.
+///
+/// A default written straight onto the element would beat the value a pane or a
+/// theme sets, so each is read as a `var()` fallback instead. The difference is
+/// invisible until somebody tries to override one, which is exactly the kind of
+/// thing that rots — the term-list dials were declared on `dl` first, and
+/// nothing about the rendering said so.
 #[test]
-fn every_term_list_dial_is_read_with_its_default_as_a_fallback() {
+fn every_presentation_dial_is_read_with_its_default_as_a_fallback() {
     let css = std::fs::read_to_string(repo_root().join("crates/mirzam-render/src/theme/base.css"))
         .expect("base.css");
     for (dial, default) in [
         ("--mz-terms-hang", "2em"),
         ("--mz-terms-gap", ".6em"),
         ("--mz-terms-col", "38%"),
+        ("--mz-bullet", "disc"),
+        ("--mz-bullet-2", "circle"),
+        ("--mz-bullet-3", "square"),
+        ("--mz-number", "decimal"),
+        ("--mz-number-2", "decimal"),
+        ("--mz-number-3", "decimal"),
+        ("--mz-marker", "currentColor"),
     ] {
         assert!(
             css.contains(&format!("var({dial}, {default})")),

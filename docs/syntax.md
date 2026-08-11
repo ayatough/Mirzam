@@ -295,6 +295,42 @@ theme:
 | `--mz-terms-gap` | `.6em` | the space between a term and its definition |
 | `--mz-terms-col` | `38%` | the widest the term column may get under `.terms-aligned` |
 
+### The list marker
+
+Bullets are most of what a slide is made of, so the kind of bullet is a choice
+rather than something the renderer settles for you. Six more custom properties,
+set the same three places:
+
+| Custom property | Default | Sets |
+|---|---|---|
+| `--mz-bullet` | `disc` | the top-level bullet |
+| `--mz-bullet-2` | `circle` | the bullet one level in |
+| `--mz-bullet-3` | `square` | the bullet two levels in |
+| `--mz-number` | `decimal` | the top-level number |
+| `--mz-number-2` | `decimal` | the number one level in |
+| `--mz-number-3` | `decimal` | the number two levels in |
+| `--mz-marker` | the text colour | the colour of every marker |
+
+Each takes anything `list-style-type` does: a keyword (`square`, `upper-roman`,
+`lower-alpha`, `decimal-leading-zero`, `none`) or a quoted string.
+
+```css
+.plan {
+  --mz-bullet: "→  ";
+  --mz-number: upper-roman;
+  --mz-marker: var(--mz-accent2);
+}
+```
+
+**A string marker carries its own trailing space.** The browser adds none after
+one, so `"→"` sets the arrow flush against the first word; `"→  "` is what you
+want. Keywords are spaced for you.
+
+Each depth reads its own property, so setting `--mz-bullet` changes the top
+level and leaves the hollow circle under it alone. Footnote numbering ignores
+all of this — its marker has to match the `[^a]` that cites it, and a citation
+is always a numeral.
+
 **Underline is `++`, not `__`.** Some editors take double underscores for an
 underline; CommonMark and GFM both read them as **bold**, and Mirzam's whole
 premise is that the same file renders on GitHub. Taking `__` would mean a

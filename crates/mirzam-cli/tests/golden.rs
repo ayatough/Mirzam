@@ -72,7 +72,7 @@ fn example_slide_counts() {
         ("03-layout.md", 11),
         ("04-components.md", 16),
         ("05-motion.md", 9),
-        ("06-theming.md", 8),
+        ("06-theming.md", 9),
         ("pitch.md", 9),
         ("seminar.md", 11),
     ] {

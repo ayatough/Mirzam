@@ -130,6 +130,15 @@ same core.
 **Richer data.** Column aggregation in tables, more chart types, and `mermaid` /
 `d2` diagram blocks as plugins rather than built-ins.
 
+**A scope between the deck and the pane.** Presentation dials — `--mz-terms-*`,
+`--mz-bullet`, `--mz-number` — can be set on a theme or a deck, and overridden on
+a single pane. Nothing sits in between, so a run of slides that wants one
+treatment has to repeat the attribute on every pane in it, and a slide with three
+panes has to repeat it three times. What is missing is a way to attach attributes
+to a *slide*, and above that to a section, since `## ` headings already give a
+deck its outline. A slide has no attribute syntax at all today: `## Text {…}`
+attaches to the heading, not to the slide it opens.
+
 ## Open questions
 
 - **Nested layouts.** Whether a pane can contain its own pane grid, or whether the

@@ -248,6 +248,50 @@ Set every token in both blocks, or set none and let the theme do it.
 +------------------+-----------------+
 |                  |                 |
 |                  |                 |
+|  src             |  out            |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Custom CSS]{.eyebrow}
+## Bullets are a choice, not a default
+:::
+
+::: pane src {.card valign=middle}
+```css
+.markers {
+  --mz-bullet: "→  ";
+  --mz-bullet-2: "·  ";
+  --mz-number: upper-roman;
+  --mz-marker: var(--mz-accent2);
+}
+```
+
+A quoted string is a marker too — and **carries its own trailing space**, since
+the browser adds none after one.
+:::
+
+::: pane out {.markers valign=middle}
+- A point, and under it
+  - a qualification
+
+1. Write the deck
+2. Build it
+
+[Each depth reads its own dial, so the level under this one keeps its own mark.]{.small}
+:::
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
 |  src             |  what           |
 |                  |                 |
 |                  |                 |
