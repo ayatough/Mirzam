@@ -88,6 +88,13 @@ reports it and [the layout guide](layout.md) says what to do about it.
 The file is expanded in place, slide breaks included. Frontmatter in the included
 file is ignored, and circular includes are reported rather than followed.
 
+Put a `---` on each side of the include unless you mean the section to continue
+the slide before it: the file is pasted in where the line was, so without one
+its first slide joins its neighbour.
+
+Sections written by different people usually want the same slide shapes; see
+[masters across a deck split into several files](#masters-across-a-deck-split-into-several-files).
+
 ### Speaker notes
 
 ```markdown
@@ -243,6 +250,60 @@ One thing a master is not: it is **a shape, not content**. Pane names come from
 the drawing, so a deck's masters and its `::: pane` blocks have to agree on
 `head`/`main`/`fig`, and a name in one that is not in the other is the usual
 first mistake.
+
+#### Masters across a deck split into several files
+
+A deck assembled from [transcluded section files](#splitting-a-deck-across-files)
+is where a shared set of shapes earns the most, and it works — with one rule to
+know:
+
+**`masters:` goes in the root deck.** Only the root's frontmatter is read; a
+transcluded file's is ignored, the way it is for every other setting. Sections
+still pick shapes freely with `<!-- layout: two-up -->`, since that is a slide
+setting rather than a deck one.
+
+```yaml
+# deck.md — the root
+---
+masters: masters/deck.md
+layout: body
+---
+```
+
+```markdown
+<!-- sections/method.md -->
+<!-- layout: two-up -->
+
+::: pane fig
+…
+:::
+```
+
+A section file can still carry frontmatter of its own naming the same file, so
+its author can build and preview that section alone with the right shapes:
+
+```yaml
+# sections/method.md — ignored when transcluded, used when built directly
+---
+masters: ../masters/deck.md
+layout: body
+---
+```
+
+The path is relative to the file that declares it, which is why the root says
+`masters/deck.md` and a section one directory down says `../masters/deck.md`.
+
+Everything else behaves as one deck. Slide numbers run across the files, the
+footer is the root's, and `serve` watches the masters file along with every
+section — so editing a shared shape updates the slides that use it wherever
+they were written, in one hot reload.
+
+The coordination cost is the pane names: a master fixes them, so everyone
+writing a section has to call their panes what the shape calls them. A slide
+that names a master the root never declared is a warning saying which file it
+is in, and it says `(this deck defines none)` when the root has no `masters:`
+at all — which is the mistake this arrangement makes, and it is fixed in the
+root rather than in the section the warning points at.
 
 ### A footer and a slide number on every slide
 

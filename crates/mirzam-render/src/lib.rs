@@ -110,11 +110,17 @@ impl DeckContext {
         out
     }
 
-    /// `, known: a, b` — or nothing at all when the deck defines no masters,
-    /// since the list is only a help when there is something to have meant.
+    /// ` (known: a, b)`, to say what was probably meant.
+    ///
+    /// A deck that defines none says so instead, because that is a different
+    /// mistake with a different fix: not a typo in a name, but frontmatter
+    /// missing its `masters:`. It is the one a deck assembled from `![[…]]`
+    /// section files runs into — a section can name a master, but only the
+    /// root deck's frontmatter is read, so the shapes have to be declared
+    /// there however many files the slides come from.
     fn known_masters(&self) -> String {
         if self.masters.is_empty() {
-            return String::new();
+            return " (this deck defines none)".into();
         }
         format!(
             " (known: {})",
@@ -1933,6 +1939,24 @@ mod tests {
         );
         // Inherited means the deck's own master, so the slide still lays out.
         assert!(out.html.contains("pane-fig"));
+    }
+
+    /// A deck assembled from `![[…]]` section files reads only the root's
+    /// frontmatter, so a section naming a master the root never declared is
+    /// the mistake this workflow makes. "No master named `two-up`" alone
+    /// sends the author looking for a typo; the fix is a line of frontmatter
+    /// in a different file.
+    #[test]
+    fn a_deck_that_defines_no_masters_at_all_says_so() {
+        let slide = parse_slide("<!-- layout: two-up -->\n\ntext\n");
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(
+            out.warnings
+                .iter()
+                .any(|w| w.contains("two-up") && w.contains("this deck defines none")),
+            "{:?}",
+            out.warnings
+        );
     }
 
     /// Once for the deck, not once per slide: the same complaint on every

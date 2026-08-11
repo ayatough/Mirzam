@@ -23,7 +23,12 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   a `![[…]]` transclusion uses, so the editor extension and the browser build
   draw the deck on the same shapes the CLI does rather than falling back to
   single panes, and it joins the watch set, so editing shared shapes re-renders
-  the decks on them. Redrawing the same grid on the twelfth slide that has the same shape
+  the decks on them. A deck assembled from `![[…]]` section files declares
+  `masters:` in the root — only the root's frontmatter is read — while each
+  section still picks shapes with `<!-- layout: -->` and can carry frontmatter
+  of its own so its author previews that section alone with the right shapes.
+  Editing a shared shape then updates the slides that use it wherever they were
+  written, in one hot reload. Redrawing the same grid on the twelfth slide that has the same shape
   was the part of writing a deck nobody enjoyed, and it was also where decks
   drifted: two slides meant to match ended up a character apart. A slide that
   needs a different shape simply draws one — its own `pane` block always wins,
