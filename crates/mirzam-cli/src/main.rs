@@ -1,10 +1,11 @@
 //! The `mirzam` command line interface.
 //!
 //! Usage:
+//!   mirzam new <file.md> [--empty]
 //!   mirzam build <input.md> [-o <out_dir>]
 //!   mirzam serve <input.md> [-p <port>]
 
-use mirzam_cli::{pipeline, serve};
+use mirzam_cli::{pipeline, scaffold, serve};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -92,6 +93,23 @@ fn main() -> ExitCode {
             };
             run(build(&input, &opts))
         }
+        Some("new") => {
+            let mut path: Option<PathBuf> = None;
+            let mut empty = false;
+            let mut i = 1;
+            while i < args.len() {
+                match args[i].as_str() {
+                    "--empty" => empty = true,
+                    other if path.is_none() => path = Some(PathBuf::from(other)),
+                    other => return usage(&format!("unknown argument: {other}")),
+                }
+                i += 1;
+            }
+            let Some(path) = path else {
+                return usage("a file to create is required");
+            };
+            run(new_deck(&path, empty))
+        }
         Some("serve") => {
             let mut input: Option<PathBuf> = None;
             let mut port: u16 = 4321;
@@ -174,7 +192,7 @@ fn main() -> ExitCode {
 /// `mirzam server` instead of `mirzam serve` should not read as "your file is
 /// wrong"; it should name the mistake.
 fn unknown_command(given: &str) -> String {
-    const COMMANDS: [&str; 3] = ["build", "serve", "export"];
+    const COMMANDS: [&str; 4] = ["new", "build", "serve", "export"];
     let close = COMMANDS
         .iter()
         .map(|c| (edit_distance(given, c), *c))
@@ -228,12 +246,16 @@ fn help_text() -> String {
         env!("CARGO_PKG_VERSION"),
         r#"
 Usage:
+  mirzam new <file.md> [--empty]
   mirzam build <input.md> [-o <out_dir>] [--split h1|h2|h3] [--theme <name>]
                [--css <file>] [--fit shrink] [--mode light|dark]
                [--base-url <url>] [--debug-layout]
   mirzam serve <input.md> [-p <port>]
   mirzam export pdf <input.md> [-o <out.pdf>] [--chromium <bin>]
 
+  new     write a deck to start from - frontmatter, a title slide and a
+          slide break - or, with --empty, a blank file to type into.
+          An existing file is never overwritten
   build   write <out_dir>/index.html, a single file with the viewer embedded
           --split starts a new slide at every heading of that level, which
           turns an ordinary document into a deck without editing it
@@ -255,6 +277,7 @@ Usage:
   export  render a PDF with headless Chromium (also honors MIRZAM_CHROMIUM)
 
 Examples:
+  mirzam new deck.md
   mirzam build examples/01-start.md -o out
   mirzam serve examples/04-components.md
   mirzam build README.md --split h2 -o out"#
@@ -293,6 +316,19 @@ impl Default for BuildArgs {
             mode: None,
         }
     }
+}
+
+/// Writes the file, then says what to run on it: `new` is the first command
+/// anyone types, so it is also where the second one is learned.
+fn new_deck(path: &Path, empty: bool) -> Result<(), String> {
+    scaffold::create(path, empty)?;
+    println!(
+        "✓ wrote {}{}",
+        path.display(),
+        if empty { " (empty)" } else { "" }
+    );
+    println!("  next: mirzam serve {}", path.display());
+    Ok(())
 }
 
 fn build(input: &Path, args: &BuildArgs) -> Result<(), String> {
@@ -437,6 +473,7 @@ mod tests {
     #[test]
     fn suggests_the_nearest_command() {
         assert!(unknown_command("server").contains("did you mean `serve`?"));
+        assert!(unknown_command("nwe").contains("did you mean `new`?"));
         assert!(unknown_command("buidl").contains("did you mean `build`?"));
         assert!(unknown_command("exprot").contains("did you mean `export`?"));
     }

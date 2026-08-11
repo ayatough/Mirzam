@@ -26,6 +26,9 @@ Open it, present from it, email it, put it on a share.
   `![](shot.png)` and its bytes end up inside the downloaded file. Screenshots
   from a paper are exactly the case this is for.
 - **On a phone** the editor and the preview take turns, with a tab each.
+- **Start from nothing.** **New** empties the editor for a deck of your own;
+  **Sample** puts the example back. Your draft is only in that browser, so both
+  ask before replacing it — **Save .md** first if you want to keep a copy.
 
 What the browser build cannot do, because it has no filesystem:
 
@@ -64,11 +67,18 @@ cargo install --path crates/mirzam-cli --bin mirzam   # into ~/.cargo/bin
 your `PATH`.)
 
 ```bash
+mirzam new deck.md                   # a deck to start from
 mirzam serve deck.md                 # live preview at localhost:4321
 mirzam build deck.md -o out          # one self-contained HTML file
 mirzam export pdf deck.md -o deck.pdf
 mirzam build notes.md --split h2     # any document becomes a deck, unedited
 ```
+
+`new` writes a starter deck — frontmatter, a title slide and a slide break, the
+shape shown under [Your first deck](#your-first-deck) — and never overwrites a
+file that is already there. `mirzam new deck.md --empty`
+writes a blank file instead, for starting from nothing rather than from a
+template; `serve` is happy to watch it while you type the first slide.
 
 `serve` re-renders only the slides you touched, so a large deck stays instant
 while you write.
@@ -105,7 +115,8 @@ away from your machine.
 
 ## 5. On a phone
 
-- **Writing:** the browser editor, above. It is the whole toolchain.
+- **Writing:** the browser editor, above. It is the whole toolchain. **New**
+  starts an empty deck, which is how you begin one on a phone.
 - **Reviewing:** open a built `.html` from your files or a share. Swipe to turn
   the page, swipe up for notes, two-finger tap for the shortcut sheet.
 - **Presenting from it:** the deck is one file, so AirDrop or a cloud folder is

@@ -79,8 +79,16 @@ pub fn build_deck_with(
     split_override: Option<u8>,
     base_url: Option<&str>,
 ) -> Result<BuildOutput, String> {
-    let src = std::fs::read_to_string(input)
-        .map_err(|e| format!("cannot read {}: {e}", input.display()))?;
+    // A path that is not there is usually a deck nobody has started yet, not a
+    // typo, so the error says how to start one rather than only what failed.
+    let src = std::fs::read_to_string(input).map_err(|e| match e.kind() {
+        std::io::ErrorKind::NotFound => format!(
+            "cannot read {}: no such file - `mirzam new {}` writes a deck there to start from",
+            input.display(),
+            input.display()
+        ),
+        _ => format!("cannot read {}: {e}", input.display()),
+    })?;
     let base_dir = input
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
@@ -152,6 +160,21 @@ pub fn build_deck_with(
     // 4. Split into slides and render each one through the cache.
     let level = split_override.or_else(|| meta.split_level());
     let slides = mirzam_syntax::split_slides_spanned(&body, level);
+
+    // A deck with no slides builds fine and opens as a blank page that says
+    // nothing about why - the same picture as a broken build. It stays a
+    // success, because an empty file is where a new deck starts and `serve`
+    // has to survive one until the first slide is typed into it; but it says so.
+    if slides.is_empty() {
+        warnings.push(if src.trim().is_empty() {
+            format!("no slides: {} is empty", input.display())
+        } else {
+            format!(
+                "no slides: {} has nothing outside its frontmatter",
+                input.display()
+            )
+        });
+    }
 
     // "slide 7" is not much help when slide 7 lives in a file the author has
     // not opened. Now that the map knows, say so.

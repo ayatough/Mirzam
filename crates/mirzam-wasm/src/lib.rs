@@ -232,6 +232,13 @@ impl Renderer {
         // has rendered - here as in the CLI pipeline. Without this the browser
         // build would silently drop a table of contents the CLI produces.
         mirzam_render::resolve_deck(&mut sections);
+        // Content that produced no slides renders as a blank preview with no
+        // hint why - frontmatter and nothing after it is the usual way in.
+        // A source that is *entirely* empty is not reported: that is the state
+        // an editor starts a new deck in, and the host says so its own way.
+        if sections.is_empty() && !source.trim().is_empty() {
+            warnings.push("no slides: nothing outside the frontmatter".to_string());
+        }
         Built {
             meta,
             sections,

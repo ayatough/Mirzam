@@ -137,6 +137,7 @@ The examples below assume `mirzam` is on your `PATH`. If you only ran
 `cargo build --release`, write `./target/release/mirzam` instead.
 
 ```bash
+mirzam new deck.md                   # a deck to start from (--empty for a blank file)
 mirzam build deck.md -o out          # single self-contained HTML
 mirzam build README.md --split h2    # any document becomes a deck, unedited
 mirzam serve deck.md                 # live preview at localhost:4321

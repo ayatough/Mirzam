@@ -49,7 +49,8 @@ p95 dropped in **every region**.
 - No frontmatter, no configuration, no theme chosen
 - The same file still reads as a document on GitHub
 
-*Save it as `deck.md`. That is the whole setup step.*
+*Save it as `deck.md`, or have `mirzam new deck.md` write it. That is the whole
+setup step.*
 :::
 
 ---

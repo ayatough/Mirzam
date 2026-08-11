@@ -42,6 +42,22 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   would otherwise render as a run of italic letters that merely resembles the
   formula. `docs/syntax.md` has the full table, and the theming deck shows it
   on a slide.
+- **`mirzam new <file.md>` writes the first file.** Every way in started from a
+  deck that already existed: `build` and `serve` both error on a path that is
+  not there, so the actual first step — create a file, guess the frontmatter —
+  was the one step nothing helped with. `new` writes frontmatter, a title slide
+  and a slide break, and never overwrites an existing file. `--empty` writes a
+  blank file instead, which is the case that had no expression at all: starting
+  from nothing rather than from somebody's template. Pointing `build` or
+  `serve` at a missing file now names the command instead of only reporting the
+  failed read.
+- **New and Sample in the browser editor.** It opened on the sample deck and
+  kept exactly one draft, so there was no way to start an empty deck — the
+  first thing you want on a phone, where the editor is the whole toolchain —
+  and no way back to the sample once you had typed over it. Both buttons ask
+  before replacing a draft that has anything in it, since that draft lives in
+  the browser and nowhere else. An emptied draft now survives a reload rather
+  than reopening on the sample.
 - **`examples/02-writing.md` is the reference for writing a slide**, rebuilt
   around what a reader actually asks: a contents page, headings, the marks for
   a phrase, colour and size, quotes and asides and code, four kinds of list,
@@ -118,6 +134,13 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   shipped; it now checks that every button in the cluster is bound.
 
 ### Fixed
+- **A deck with no slides said nothing about it.** An empty file, or one whose
+  content never made it past the frontmatter, built successfully and opened as
+  a blank page — the same picture as a failure, with no way to tell which. The
+  build still succeeds, because an empty file is where a new deck starts and
+  `serve` has to watch one while the first slide is typed, but it warns and
+  says which of the two happened. The browser editor shows an empty-deck page
+  in the preview instead of an unexplained black rectangle.
 - **A list inside a list came out bigger than the list.** Type sizes are written
   in `em`, which multiplies down a nesting, so `p, li { font-size: 1.35em }` made
   the qualification under a point 1.35 × 1.35 — half again as large as the point

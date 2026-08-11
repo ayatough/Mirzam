@@ -2,4 +2,5 @@
 //! The build pipeline and dev server are public so integration tests can drive them.
 
 pub mod pipeline;
+pub mod scaffold;
 pub mod serve;

@@ -69,13 +69,21 @@
   </span>
   <span class="stat" id="stat">Loading…</span>
   <span class="spacer"></span>
+  <button type="button" id="new">New</button>
+  <button type="button" id="sample">Sample</button>
   <label class="btn">Open .md<input type="file" id="open" accept=".md,.markdown,text/markdown,text/plain"></label>
   <label class="btn">Add image<input type="file" id="add-img" accept="image/*" multiple></label>
   <button type="button" id="save-md">Save .md</button>
   <button type="button" id="save-html" class="primary">Download deck</button>
 </header>
 <main>
-  <textarea id="src" spellcheck="false"></textarea>
+  <textarea id="src" spellcheck="false" placeholder="# My first slide
+
+---
+
+## The next one
+
+Write Markdown. A --- on its own line starts a slide."></textarea>
   <iframe id="preview"></iframe>
 </main>
 <div id="warnings"></div>
@@ -143,7 +151,11 @@ const warnEl = document.getElementById('warnings');
 
 await init();
 const renderer = new Renderer();
-srcEl.value = localStorage.getItem('mirzam-src') || SAMPLE;
+// `null` is "never been here", which opens on the sample. An empty *string*
+// is a draft the author emptied on purpose, and reopening on the sample would
+// undo that every reload.
+const saved = localStorage.getItem('mirzam-src');
+srcEl.value = saved === null ? SAMPLE : saved;
 
 // ---- Images ----
 // The core has no filesystem here, so the host supplies assets by name. Adding
@@ -189,8 +201,36 @@ async function addImages(files) {
   fullRender(srcEl.value);
 }
 
+// An empty deck renders as an empty page, which is indistinguishable from a
+// build that failed. A deck with nothing in it yet is a normal place to be -
+// it is where **New** lands - so the preview says which one this is.
+const EMPTY_PAGE = `<!doctype html><html lang="en"><meta charset="utf-8"><style>
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex; flex-direction: column; gap: 8px;
+    align-items: center; justify-content: center; text-align: center;
+    background: #080C18; color: #8F9AB8;
+    font-family: Inter, system-ui, 'Hiragino Sans', 'Noto Sans CJK JP', sans-serif;
+  }
+  b { color: #F4F6FF; font-size: 15px; font-weight: 600; }
+  /* A button's name inside a sentence is emphasis, not a heading. */
+  p b { font-size: inherit; }
+  p { margin: 0; font-size: 13px; max-width: 32em; padding: 0 16px; }
+  code { font-family: 'IBM Plex Mono', ui-monospace, monospace; color: #C0B7FF; }
+</style><b>An empty deck</b>
+<p>Write Markdown and it appears here. A <code>---</code> on its own line
+starts the next slide.</p>
+<p>Or press <b>Sample</b> for a deck that shows what the markup does.</p></html>`;
+
 function fullRender(text) {
   const t0 = performance.now();
+  if (!text.trim()) {
+    preview.srcdoc = EMPTY_PAGE;
+    // The baseline has to match what is displayed, and nothing is.
+    renderer.reset();
+    report(t0, 0, 'empty', []);
+    return;
+  }
   const out = renderer.render_page(text);
   preview.srcdoc = out.html;
   // Align the diff baseline with what is displayed.
@@ -284,6 +324,30 @@ document.getElementById('open').addEventListener('change', async (e) => {
   e.target.value = '';
 });
 
+// ---- Starting over ----
+// There was no way to begin from nothing: the editor opened on the sample,
+// and the only draft slot held whatever was there last. Both buttons go
+// through here, so replacing work always asks first - and only when there is
+// work to lose.
+function replaceSource(text, question) {
+  if (srcEl.value.trim() && !confirm(question)) return;
+  srcEl.value = text;
+  localStorage.setItem('mirzam-src', srcEl.value);
+  fullRender(srcEl.value);
+  // On a phone the two panes take turns, and what comes after New is typing.
+  setPane('edit');
+  srcEl.focus();
+  srcEl.setSelectionRange(0, 0);
+}
+
+document.getElementById('new').addEventListener('click', () => {
+  replaceSource('', 'Start an empty deck? Your draft is only in this browser — Save .md first if you want to keep it.');
+});
+// The sample used to be unrecoverable: type over it and it was gone.
+document.getElementById('sample').addEventListener('click', () => {
+  replaceSource(SAMPLE, 'Replace your draft with the sample deck? Your draft is only in this browser — Save .md first if you want to keep it.');
+});
+
 // Nothing is uploaded anywhere, so the draft in localStorage is the only copy.
 addEventListener('beforeunload', () => localStorage.setItem('mirzam-src', srcEl.value));
 
@@ -295,6 +359,10 @@ const setPane = (which) => {
 document.getElementById('tab-edit').addEventListener('click', () => setPane('edit'));
 document.getElementById('tab-preview').addEventListener('click', () => setPane('preview'));
 
+// An empty deck has nothing to preview, so the editor is where the work is.
+// On a phone the panes take turns and the page opens on the preview, which
+// for an empty draft is a blank page hiding the only thing worth touching.
+if (!srcEl.value.trim()) setPane('edit');
 fullRender(srcEl.value);
 </script>
 </body>
