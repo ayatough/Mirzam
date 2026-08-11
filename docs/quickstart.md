@@ -72,7 +72,14 @@ mirzam serve deck.md                 # live preview at localhost:4321
 mirzam build deck.md -o out          # one self-contained HTML file
 mirzam export pdf deck.md -o deck.pdf
 mirzam build notes.md --split h2     # any document becomes a deck, unedited
+mirzam export pdf notes.md --split h2 --theme mirzam -o notes.pdf
 ```
+
+`export pdf` takes the same `--split`, `--theme`, `--css`, `--fit` and `--mode`
+as `build`, so a deck assembled with one of those flags exports to PDF with
+the same slides in one command — there is no need to `build` first. It always
+reads the Markdown source, never a built `out/index.html`: pass it the `.md`
+file.
 
 `new` writes a starter deck — frontmatter, a title slide and a slide break, the
 shape shown under [Your first deck](#your-first-deck) — and never overwrites a
