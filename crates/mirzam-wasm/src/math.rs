@@ -34,6 +34,9 @@ fn state_json(src: &str) -> Value {
             "src": src,
             "tree": tree.iter().map(node_json).collect::<Vec<_>>(),
             "mathml": mirzam_render::render_math(src, mirzam_render::MathDialect::Typst, true),
+            // The same formula as LaTeX, so the panel can land it in a deck
+            // whose `math:` dialect is LaTeX without flipping the deck.
+            "latex": mirzam_tmath::to_latex(src).unwrap_or_default(),
         }),
         Err(e) => json!({ "ok": false, "error": e.to_string() }),
     }
@@ -200,6 +203,8 @@ mod tests {
         assert_eq!(v["tree"][0]["k"], json!("frac"));
         assert_eq!(v["tree"][0]["c"][0]["t"], json!("alpha"));
         assert!(v["mathml"].as_str().unwrap().contains("mfrac"), "{v}");
+        // The LaTeX twin, for decks whose `math:` dialect is LaTeX.
+        assert_eq!(v["latex"], json!("\\frac{\\alpha}{2}"));
     }
 
     #[test]

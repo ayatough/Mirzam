@@ -958,10 +958,17 @@ the flow above breaks — clearing selection is what the empty space beside
 the boxes is for. Insertion guards the frontmatter: a cursor that never
 moved sits at offset 0, and a formula must not land inside the YAML. What
 v1 does not do, knowingly: no drag-and-drop (tap-select then tap-place
-covers the flows drag was imagined for), no in-place editing of matrix
-cells (the boxes show them; the entry field writes `mat(...)` whole), and
-no editing for `math: latex` decks — the panel writes the dialect it
-writes, and offers to set it.
+covers the flows drag was imagined for), and no in-place editing of matrix
+cells (the boxes show them; the entry field writes `mat(...)` whole).
+
+One thing v1 got wrong and testing on a real deck caught: it offered to
+set `math: typst` on any deck, which breaks every LaTeX formula already
+there — a dialect is per deck, so flipping it is destructive, not a
+convenience. The panel now adapts its *output* instead: Typst-math into a
+Typst deck, the same tree lowered to LaTeX into a LaTeX deck (built once,
+`to_latex` was already there). Re-editing by tap stays a Typst-deck
+feature, since LaTeX cannot be parsed back; in a LaTeX deck the cursor
+inside a formula inserts after it rather than mangling it.
 
 **Where it stops.** It lives in this repository — the AST layer in
 `mirzam-tmath`, bindings in `mirzam-wasm`, the component under `web/` —

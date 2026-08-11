@@ -17,8 +17,14 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   MathML while it is built, and lands in the Markdown as ordinary `$...$`
   Typst-math text — a deck edited this way is indistinguishable from one
   typed by hand. Opening the panel with the cursor inside an existing
-  formula loads it for editing. The panel offers to set `math: typst` when
-  the deck lacks it, since that is the dialect it writes. Underneath, the
+  formula loads it for editing. **The panel adapts to the deck's dialect
+  rather than flipping the deck**: into a `math: typst` deck it writes
+  Typst-math (re-editable later), into a LaTeX deck it writes the same
+  formula lowered to LaTeX — because setting `math: typst` on a deck that
+  already holds LaTeX formulas would break every one of them, which is
+  exactly what the first version did. It offers the switch only while the
+  deck has no math at all. The browser editor's sample deck is `math:
+  typst` now, so its formula is one the panel can open. Underneath, the
   same tree the renderer parses is exposed to the page (`math_state` /
   `math_apply` in the WASM bindings), so every tap is one edit operation and
   the text stays the single source of truth.

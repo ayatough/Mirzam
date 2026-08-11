@@ -169,6 +169,7 @@ import init, { Renderer, math_state, math_apply } from './pkg/mirzam_wasm.js';
 const SAMPLE = `---
 title: My deck
 aspect: "16:9"
+math: typst
 vars:
   product: Mirzam
   price: 1200
@@ -197,7 +198,7 @@ The Rust core is running in your browser
 ::: pane main
 - The ASCII box you draw **is** the layout
 - Variables and arithmetic: {{ price * 12 }} per year
-- Math: $\\int_0^\\infty e^{-x^2}dx = \\frac{\\sqrt{\\pi}}{2}$
+- Math: $integral_0^oo e^(-x^2) d x = sqrt(pi)/2$ — tap **Math** to edit it
 - An arrow runs from [this phrase]{#anchor .u} to the shape
 :::
 
@@ -452,9 +453,11 @@ const mathErr = document.getElementById('math-err');
 const mathNote = document.getElementById('math-note');
 const mathEntry = document.getElementById('math-entry');
 
-let mathSrc = '';    // the formula being built
+let mathSrc = '';    // the formula being built, always Typst-math
 let mathSel = null;  // selected path (array of child indices), or null
 let mathRange = null; // [start, end] of the $...$ being edited, or null
+let mathInsertAt = null; // insertion offset override (after a LaTeX formula)
+let mathLatex = '';  // the same formula as LaTeX, for LaTeX-dialect decks
 let mathTree = [];
 
 // Spellings the boxes show as the glyph the reader will get.
@@ -486,9 +489,11 @@ function refreshMath(state) {
   if (!res.ok) { mathErr.textContent = res.error; return; }
   mathErr.textContent = '';
   mathSrc = res.src;
+  mathLatex = res.latex ?? '';
   mathTree = res.tree;
   mathPreview.innerHTML = res.mathml || '<span class="mhint">—</span>';
-  mathSrcEl.textContent = mathSrc ? `$${mathSrc}$` : '';
+  const typst = deckHasTypst(srcEl.value);
+  mathSrcEl.textContent = mathSrc ? `$${typst ? mathSrc : mathLatex}$` : '';
   if (mathSel && !nodeAtPath(mathTree, mathSel)) mathSel = null;
   mathBoxes.innerHTML = '';
   if (!mathTree.length) {
@@ -496,14 +501,20 @@ function refreshMath(state) {
   } else {
     mathBoxes.appendChild(rowOf(mathTree, []));
   }
+  // The panel adapts to the deck's dialect rather than flipping the deck:
+  // flipping would break every LaTeX formula already in it.
   mathNote.innerHTML = '';
-  if (!deckHasTypst(srcEl.value)) {
-    mathNote.append('This panel writes Typst math — the deck needs `math: typst` in frontmatter. ');
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.textContent = 'Set it';
-    b.addEventListener('click', () => { setTypstFrontmatter(); refreshMath(); });
-    mathNote.appendChild(b);
+  if (!typst) {
+    if (/\$[^$\n]+\$/.test(srcEl.value)) {
+      mathNote.append('This deck’s math is LaTeX, so the formula will be inserted as LaTeX. Re-editing it here needs a `math: typst` deck.');
+    } else {
+      mathNote.append('Inserted as LaTeX. For Typst-math source, editable here later, set `math: typst`: ');
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = 'Set it';
+      b.addEventListener('click', () => { setTypstFrontmatter(); refreshMath(); });
+      mathNote.appendChild(b);
+    }
   }
 }
 
@@ -667,14 +678,21 @@ function deckHasTypst(v) {
   return !!(m && /^math:\s*typst\s*$/m.exec(m[1]));
 }
 
-// `math: typst` is a per-deck switch, so the panel offers to flip it rather
-// than silently inserting text the deck would read as LaTeX.
+// `math: typst` is a per-deck switch. The panel only offers it while the
+// deck has no math yet — on a deck with LaTeX formulas the flip would break
+// them, so there the panel adapts its output instead.
 function setTypstFrontmatter() {
   const v = srcEl.value;
+  const cursor = srcEl.selectionStart ?? 0;
   const m = /^---\r?\n([\s\S]*?\r?\n)---/.exec(v);
-  srcEl.value = m
-    ? v.slice(0, m.index + 4) + 'math: typst\n' + v.slice(m.index + 4)
-    : '---\nmath: typst\n---\n\n' + v;
+  const insPos = m ? m.index + 4 : 0;
+  const inserted = m ? 'math: typst\n' : '---\nmath: typst\n---\n\n';
+  srcEl.value = v.slice(0, insPos) + inserted + v.slice(insPos);
+  // Everything after the insertion moved; keep the cursor with its text.
+  if (cursor >= insPos) {
+    srcEl.selectionStart = srcEl.selectionEnd = cursor + inserted.length;
+  }
+  if (mathInsertAt !== null && mathInsertAt >= insPos) mathInsertAt += inserted.length;
   localStorage.setItem('mirzam-src', srcEl.value);
   fullRender(srcEl.value);
 }
@@ -684,14 +702,22 @@ document.getElementById('math-open').addEventListener('click', () => {
   const v = srcEl.value;
   const pos = srcEl.selectionStart ?? 0;
   mathRange = null;
+  mathInsertAt = null;
   mathSrc = '';
-  // The cursor inside an existing $...$ means "edit this one".
+  // The cursor inside an existing $...$ means "edit this one" — when the
+  // deck's formulas are Typst-math, the only dialect this panel reads. In a
+  // LaTeX deck the formula cannot be loaded, and a new one must not be
+  // dropped into the middle of it, so it goes right after instead.
   const re = /\$([^$\n]+)\$/g;
   let m;
   while ((m = re.exec(v))) {
     if (pos >= m.index && pos <= m.index + m[0].length) {
-      mathRange = [m.index, m.index + m[0].length];
-      mathSrc = m[1].trim();
+      if (deckHasTypst(v)) {
+        mathRange = [m.index, m.index + m[0].length];
+        mathSrc = m[1].trim();
+      } else {
+        mathInsertAt = m.index + m[0].length;
+      }
       break;
     }
   }
@@ -707,9 +733,14 @@ document.getElementById('math-cancel').addEventListener('click', closeMath);
 
 document.getElementById('math-insert').addEventListener('click', () => {
   if (mathSrc.trim()) {
-    let text = `$${mathSrc}$`;
+    // The deck's dialect decides what lands in the text: Typst-math source
+    // when the deck reads it, its LaTeX twin when the deck reads LaTeX.
+    let text = `$${deckHasTypst(srcEl.value) ? mathSrc : mathLatex}$`;
     const v = srcEl.value;
-    let [from, to] = mathRange ?? [srcEl.selectionStart ?? v.length, srcEl.selectionEnd ?? v.length];
+    let [from, to] = mathRange ??
+      (mathInsertAt !== null
+        ? [mathInsertAt, mathInsertAt]
+        : [srcEl.selectionStart ?? v.length, srcEl.selectionEnd ?? v.length]);
     // A cursor that sits inside the frontmatter - or was never placed at all -
     // must not drop a formula into the middle of the YAML. Go to the end.
     const fm = /^---\r?\n[\s\S]*?\r?\n---/.exec(v);
