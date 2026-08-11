@@ -25,12 +25,16 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   and the pane, never a failed build, and that element simply keeps what it
   inherited. A deck carries the tokens of the themes it actually names, so
   none of this costs anything to a deck that uses one palette.
-- **A theme gallery, in the theming deck.** Two slides of
-  `examples/06-theming.md` put all six palettes side by side — one in light,
-  one in dark — with the same three lines of markup in each pane, so the only
-  thing that differs between the samples is the palette. It is a live deck
-  rather than a screenshot: it exists because a pane can now carry a theme,
-  and it is the shortest description of what that is for.
+- **A theme gallery, in the theming deck.** One slide of
+  `examples/06-theming.md` puts every palette side by side, each pane holding
+  the same three lines of markup, so the only thing that differs between the
+  samples is the palette. No pane names a mode, so `D` turns all five at once
+  along with the slide around them — the gallery is a live deck rather than a
+  page of screenshots, which is the whole point of a theme a pane can carry.
+  `examples/06-theming.md` also declares `mode: dark` now, which is what its
+  stylesheet already meant: a deck whose `css:` pins a mode without saying so
+  in frontmatter leaves a pane that follows the mode following the reader's
+  machine instead of the deck.
 - **A sixth built-in theme, `wuwei`.** Warm greyscale, minimal, and
   deliberately low contrast: body text sits at about 9:1 against its paper
   rather than the 12-14:1 a black-on-white theme reaches — quiet enough to

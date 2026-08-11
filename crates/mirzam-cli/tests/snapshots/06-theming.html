@@ -111,68 +111,38 @@ Read at a desk.
 </div>
 </section>
 <section class="slide" data-index="4">
-<div class="grid" style='grid-template-columns:16fr 16fr 16fr;grid-template-rows:1fr 3fr 3fr;grid-template-areas:"head head head" "one two three" "four five six"'>
-<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Gallery</span> <strong>Six palettes, in light</strong> — every pane below is one slide
-of one deck, each drawn in a different theme.</p>
+<div class="grid" style='grid-template-columns:16fr 16fr 16fr;grid-template-rows:1fr 3fr 3fr;grid-template-areas:"head head head" "one two three" "four five how"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Gallery</span> <strong>Every palette, in the deck's own mode</strong> — no pane below
+names a mode, so <code>D</code> flips all five along with the slide around them.</p>
 </div>
-<div class="pane pane-one" data-pane="one" data-theme="default" data-mode="light" style="grid-area:one;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">default</span></p>
+<div class="pane pane-one" data-pane="one" data-theme="default" style="grid-area:one;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">default</span></p>
 <p>Ink on paper, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
-<p><span class="small">What a deck that asks for nothing gets.</span></p>
+<p><span class="small"><code>default</code> and <code>mirzam</code>: one palette.</span></p>
 </div>
-<div class="pane pane-two" data-pane="two" data-theme="nord" data-mode="light" style="grid-area:two;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">nord</span></p>
-<p>Cool blues on snow, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
-<p><span class="small">The Nord palette, arctic and even.</span></p>
+<div class="pane pane-two" data-pane="two" data-theme="nord" style="grid-area:two;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">nord</span></p>
+<p>Cool blues, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
+<p><span class="small">Arctic and even, from Nord.</span></p>
 </div>
-<div class="pane pane-three" data-pane="three" data-theme="solarized" data-mode="light" style="grid-area:three;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">solarized</span></p>
-<p>Warm paper, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
+<div class="pane pane-three" data-pane="three" data-theme="solarized" style="grid-area:three;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">solarized</span></p>
+<p>Low glare, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
 <p><span class="small">Tuned for reading for a long time.</span></p>
 </div>
-<div class="pane pane-four" data-pane="four" data-theme="vscode" data-mode="light" style="grid-area:four;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">vscode</span></p>
+<div class="pane pane-four" data-pane="four" data-theme="vscode" style="grid-area:four;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">vscode</span></p>
 <p>Editor colours, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
 <p><span class="small">Light+ and Dark+, for a deck about code.</span></p>
 </div>
-<div class="pane pane-five" data-pane="five" data-theme="mirzam" data-mode="light" style="grid-area:five;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">mirzam</span></p>
-<p>Violet and cyan, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
-<p><span class="small">The project's own identity.</span></p>
-</div>
-<div class="pane pane-six" data-pane="six" data-theme="wuwei" data-mode="light" style="grid-area:six;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">wuwei</span></p>
+<div class="pane pane-five" data-pane="five" data-theme="wuwei" style="grid-area:five;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">wuwei</span></p>
 <p>Warm greyscale, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
 <p><span class="small">No accent colour, and quiet on purpose.</span></p>
+</div>
+<div class="pane pane-how card" data-pane="how" style="grid-area:how;display:flex;flex-direction:column;justify-content:center"><ul>
+<li>Each pane is just <code>{theme=…}</code>, no <code>mode=</code></li>
+<li>So they follow the deck; <code>mode=</code> pins one</li>
+</ul>
 </div>
 </div>
 </section>
 <section class="slide" data-index="5">
-<div class="grid" style='grid-template-columns:16fr 16fr 16fr;grid-template-rows:1fr 3fr 3fr;grid-template-areas:"head head head" "one two three" "four five six"'>
-<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Gallery</span> <strong>The same six, after dark</strong> — each theme's other half,
-written out rather than derived by inverting the first.</p>
-</div>
-<div class="pane pane-one" data-pane="one" data-theme="default" data-mode="dark" style="grid-area:one;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">default</span></p>
-<p>Ink on paper, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
-<p><span class="small">What a deck that asks for nothing gets.</span></p>
-</div>
-<div class="pane pane-two" data-pane="two" data-theme="nord" data-mode="dark" style="grid-area:two;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">nord</span></p>
-<p>Cool blues on slate, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
-<p><span class="small">The Nord palette, arctic and even.</span></p>
-</div>
-<div class="pane pane-three" data-pane="three" data-theme="solarized" data-mode="dark" style="grid-area:three;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">solarized</span></p>
-<p>Deep teal, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
-<p><span class="small">Tuned for reading for a long time.</span></p>
-</div>
-<div class="pane pane-four" data-pane="four" data-theme="vscode" data-mode="dark" style="grid-area:four;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">vscode</span></p>
-<p>Editor colours, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
-<p><span class="small">Light+ and Dark+, for a deck about code.</span></p>
-</div>
-<div class="pane pane-five" data-pane="five" data-theme="mirzam" data-mode="dark" style="grid-area:five;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">mirzam</span></p>
-<p>Violet and cyan, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
-<p><span class="small">The project's own identity.</span></p>
-</div>
-<div class="pane pane-six" data-pane="six" data-theme="wuwei" data-mode="dark" style="grid-area:six;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">wuwei</span></p>
-<p>Warm greyscale, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
-<p><span class="small">No accent colour, and quiet on purpose.</span></p>
-</div>
-</div>
-</section>
-<section class="slide" data-index="6">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src what"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Reference</span></p>
 <h2>Every frontmatter field</h2>
@@ -204,7 +174,7 @@ vars:
 </div>
 </div>
 </section>
-<section class="slide" data-index="7">
+<section class="slide" data-index="6">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src what"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Per element</span></p>
 <h2>Settings smaller than a deck</h2>
@@ -232,7 +202,7 @@ and the reason the syntax is this quiet.</em></p>
 </div>
 </div>
 </section>
-<section class="slide" data-index="8">
+<section class="slide" data-index="7">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src warn"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Custom CSS</span></p>
 <h2>Override the tokens, not the layout</h2>
@@ -259,7 +229,7 @@ deck to one mode. <code>D</code> then changes <code>data-mode</code> and nothing
 </div>
 </div>
 </section>
-<section class="slide" data-index="9">
+<section class="slide" data-index="8">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Custom CSS</span></p>
 <h2>Bullets are a choice, not a default</h2>
@@ -289,7 +259,7 @@ the browser adds none after one.</p>
 </div>
 </div>
 </section>
-<section class="slide" data-index="10">
+<section class="slide" data-index="9">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src what"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Overflow</span></p>
 <h2>When a slide has too much on it</h2>
@@ -313,7 +283,7 @@ cut something.</p>
 </div>
 </div>
 </section>
-<section class="slide" data-index="11">
+<section class="slide" data-index="10">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src what"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Math</span></p>
 <h2>A dialect for formulas</h2>
@@ -338,7 +308,7 @@ identical down to the font</li>
 </div>
 </div>
 </section>
-<section class="slide" data-index="12">
+<section class="slide" data-index="11">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:3fr 1fr;grid-template-areas:"main" "foot"'>
 <div class="pane pane-main" data-pane="main" style="grid-area:main;text-align:center;display:flex;flex-direction:column;justify-content:center"><h2>That is every setting</h2>
 <p>frontmatter · <code>{#id .class key=value}</code> · a stylesheet of your own</p>

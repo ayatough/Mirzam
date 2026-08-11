@@ -3,6 +3,7 @@ title: Mirzam - Theming and settings
 author: Mirzam
 aspect: "16:9"
 theme: mirzam
+mode: dark
 css: themes/mirzam.css
 math: typst
 ---
@@ -156,41 +157,41 @@ The same theme drawn again for dark, rather than inverted.
 |                |                |                |
 +----------------+----------------+----------------+
 |                |                |                |
-|  four          |  five          |  six           |
+|  four          |  five          |  how           |
 |                |                |                |
 +----------------+----------------+----------------+
 ```
 
 ::: pane head
-[Gallery]{.eyebrow} **Six palettes, in light** — every pane below is one slide
-of one deck, each drawn in a different theme.
+[Gallery]{.eyebrow} **Every palette, in the deck's own mode** — no pane below
+names a mode, so `D` flips all five along with the slide around them.
 :::
 
-::: pane one {theme=default mode=light valign=middle}
+::: pane one {theme=default valign=middle}
 [default]{.eyebrow}
 
 Ink on paper, [a link](https://example.com), **bold**.
 
-[What a deck that asks for nothing gets.]{.small}
+[`default` and `mirzam`: one palette.]{.small}
 :::
 
-::: pane two {theme=nord mode=light valign=middle}
+::: pane two {theme=nord valign=middle}
 [nord]{.eyebrow}
 
-Cool blues on snow, [a link](https://example.com), **bold**.
+Cool blues, [a link](https://example.com), **bold**.
 
-[The Nord palette, arctic and even.]{.small}
+[Arctic and even, from Nord.]{.small}
 :::
 
-::: pane three {theme=solarized mode=light valign=middle}
+::: pane three {theme=solarized valign=middle}
 [solarized]{.eyebrow}
 
-Warm paper, [a link](https://example.com), **bold**.
+Low glare, [a link](https://example.com), **bold**.
 
 [Tuned for reading for a long time.]{.small}
 :::
 
-::: pane four {theme=vscode mode=light valign=middle}
+::: pane four {theme=vscode valign=middle}
 [vscode]{.eyebrow}
 
 Editor colours, [a link](https://example.com), **bold**.
@@ -198,15 +199,7 @@ Editor colours, [a link](https://example.com), **bold**.
 [Light+ and Dark+, for a deck about code.]{.small}
 :::
 
-::: pane five {theme=mirzam mode=light valign=middle}
-[mirzam]{.eyebrow}
-
-Violet and cyan, [a link](https://example.com), **bold**.
-
-[The project's own identity.]{.small}
-:::
-
-::: pane six {theme=wuwei mode=light valign=middle}
+::: pane five {theme=wuwei valign=middle}
 [wuwei]{.eyebrow}
 
 Warm greyscale, [a link](https://example.com), **bold**.
@@ -214,73 +207,9 @@ Warm greyscale, [a link](https://example.com), **bold**.
 [No accent colour, and quiet on purpose.]{.small}
 :::
 
----
-
-```pane
-+--------------------------------------------------+
-|  head                                            |
-+----------------+----------------+----------------+
-|                |                |                |
-|  one           |  two           |  three         |
-|                |                |                |
-+----------------+----------------+----------------+
-|                |                |                |
-|  four          |  five          |  six           |
-|                |                |                |
-+----------------+----------------+----------------+
-```
-
-::: pane head
-[Gallery]{.eyebrow} **The same six, after dark** — each theme's other half,
-written out rather than derived by inverting the first.
-:::
-
-::: pane one {theme=default mode=dark valign=middle}
-[default]{.eyebrow}
-
-Ink on paper, [a link](https://example.com), **bold**.
-
-[What a deck that asks for nothing gets.]{.small}
-:::
-
-::: pane two {theme=nord mode=dark valign=middle}
-[nord]{.eyebrow}
-
-Cool blues on slate, [a link](https://example.com), **bold**.
-
-[The Nord palette, arctic and even.]{.small}
-:::
-
-::: pane three {theme=solarized mode=dark valign=middle}
-[solarized]{.eyebrow}
-
-Deep teal, [a link](https://example.com), **bold**.
-
-[Tuned for reading for a long time.]{.small}
-:::
-
-::: pane four {theme=vscode mode=dark valign=middle}
-[vscode]{.eyebrow}
-
-Editor colours, [a link](https://example.com), **bold**.
-
-[Light+ and Dark+, for a deck about code.]{.small}
-:::
-
-::: pane five {theme=mirzam mode=dark valign=middle}
-[mirzam]{.eyebrow}
-
-Violet and cyan, [a link](https://example.com), **bold**.
-
-[The project's own identity.]{.small}
-:::
-
-::: pane six {theme=wuwei mode=dark valign=middle}
-[wuwei]{.eyebrow}
-
-Warm greyscale, [a link](https://example.com), **bold**.
-
-[No accent colour, and quiet on purpose.]{.small}
+::: pane how {.card valign=middle}
+- Each pane is just `{theme=…}`, no `mode=`
+- So they follow the deck; `mode=` pins one
 :::
 
 ---

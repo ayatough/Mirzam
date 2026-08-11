@@ -1086,6 +1086,12 @@ The rules:
 - Either attribute can be given alone. `theme=` with no `mode=` follows the
   deck's mode, so a re-themed pane still flips with `D`; `mode=` with no
   `theme=` shows the surrounding theme's other half, and stays there.
+- Following the deck means following what the deck *declares* — `mode:` in
+  frontmatter, `?mode=`, `D`, and otherwise the reader's `prefers-color-scheme`.
+  A deck whose `css:` file pins a palette at a bare `:root` has chosen a mode
+  without declaring one, and a pane that follows will follow the reader's
+  machine instead. **Write `mode:` in frontmatter when your stylesheet has
+  already decided**; `examples/06-theming.md` does exactly that.
 - The palette is set **on that element**, and custom properties inherit, so
   everything inside it — headings, code, tables, chart series — is drawn from
   the other theme's tokens.
