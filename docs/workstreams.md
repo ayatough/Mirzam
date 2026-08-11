@@ -970,6 +970,19 @@ Typst deck, the same tree lowered to LaTeX into a LaTeX deck (built once,
 feature, since LaTeX cannot be parsed back; in a LaTeX deck the cursor
 inside a formula inserts after it rather than mangling it.
 
+The proxy boxes then went away entirely. Step 4 as planned drew its own
+boxes because `math-core`'s output has no node identity — but nothing says
+the *editor's* preview must come from `math-core`. A second emitter draws
+the structure itself (`mfrac`, `msup`, `msqrt`) stamping `data-path` on
+every element, and hands each leaf to the real converter so every glyph is
+the one the deck will show — so the tap surface *is* the typeset formula.
+On top of that landed **Move** (tap the node, tap the destination, pick
+shoulder/subscript/before/after — one wasm-side operation, because the
+deletion shifts the very paths a two-step caller would aim with) and the
+placement rule a first user's fingers taught: a hole is filled, a node in
+a sequence is continued after, a node in a fixed slot is replaced —
+"after" does not exist inside a denominator.
+
 **Where it stops.** It lives in this repository — the AST layer in
 `mirzam-tmath`, bindings in `mirzam-wasm`, the component under `web/` —
 because the editor and the grammar have to move together while the grammar

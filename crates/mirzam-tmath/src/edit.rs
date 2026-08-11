@@ -25,6 +25,19 @@ pub enum ScriptSlot {
     Sup,
 }
 
+/// Where [`move_node`] puts the node relative to its destination.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MoveSlot {
+    /// Becomes the destination's superscript.
+    Sup,
+    /// Becomes the destination's subscript.
+    Sub,
+    /// A sibling before the destination.
+    Before,
+    /// A sibling after the destination.
+    After,
+}
+
 /// An empty slot: prints as `()`, renders as a hole.
 pub fn placeholder() -> Node {
     Node::synthetic(NodeKind::Seq(Vec::new()))
@@ -205,6 +218,118 @@ pub fn delete(root: &mut Vec<Node>, path: &[usize]) -> Option<Node> {
     }
 }
 
+/// Whether a node's children live in a list that closes up when one leaves —
+/// as opposed to fixed slots, where a hole stays behind.
+fn is_vec_parent(kind: &NodeKind) -> bool {
+    matches!(
+        kind,
+        NodeKind::Seq(_)
+            | NodeKind::Paren(_)
+            | NodeKind::Sqrt(_)
+            | NodeKind::Abs(_)
+            | NodeKind::Norm(_)
+            | NodeKind::Call { .. }
+    )
+}
+
+/// Moves the node at `from` next to (or onto) the node at `to`: the gesture
+/// "take b, put it on a's shoulder", as one operation — because doing it as
+/// delete-then-place from outside would leave the caller adjusting paths the
+/// deletion just shifted. Feasibility is checked before anything is taken,
+/// so `false` always means an unchanged tree.
+pub fn move_node(root: &mut Vec<Node>, from: &[usize], to: &[usize], slot: MoveSlot) -> bool {
+    if from.is_empty() || to.is_empty() || to.starts_with(from) {
+        return false;
+    }
+    // The destination must exist and accept the slot.
+    let Some(target) = node_at(root, to) else {
+        return false;
+    };
+    match slot {
+        MoveSlot::Sup | MoveSlot::Sub => {
+            if let NodeKind::Script { sub, sup, .. } = &target.kind {
+                let occupied = match slot {
+                    MoveSlot::Sup => sup.is_some(),
+                    _ => sub.is_some(),
+                };
+                if occupied {
+                    return false;
+                }
+            }
+        }
+        MoveSlot::Before | MoveSlot::After => {
+            let (last, parent_path) = to.split_last().expect("checked non-empty");
+            let _ = last;
+            if !parent_path.is_empty() {
+                let Some(parent) = node_at(root, parent_path) else {
+                    return false;
+                };
+                if !is_vec_parent(&parent.kind) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    // Whether taking `from` out shifts later sibling indices: it does when
+    // the children close up (a list, or a script slot that disappears), and
+    // does not when a placeholder stays behind (a fraction operand, a
+    // script base).
+    let closes_up = {
+        let (&idx, parent_path) = from.split_last().expect("checked non-empty");
+        if parent_path.is_empty() {
+            true
+        } else {
+            match node_at(root, parent_path).map(|p| &p.kind) {
+                Some(NodeKind::Script { .. }) => idx >= 1,
+                Some(k) => is_vec_parent(k),
+                None => return false,
+            }
+        }
+    };
+
+    let Some(node) = delete(root, from) else {
+        return false;
+    };
+
+    // Re-aim `to` past the hole `from` left.
+    let mut to = to.to_vec();
+    let k = from.len() - 1;
+    if closes_up && to.len() > k && to[..k] == from[..k] && to[k] > from[k] {
+        to[k] -= 1;
+    }
+
+    match slot {
+        MoveSlot::Sup | MoveSlot::Sub => {
+            let script = match slot {
+                MoveSlot::Sup => ScriptSlot::Sup,
+                _ => ScriptSlot::Sub,
+            };
+            if !attach_script(root, &to, script) {
+                return false;
+            }
+            let target = node_at(root, &to).expect("just attached");
+            let hole = match (slot, &target.kind) {
+                (MoveSlot::Sub, _) => 1,
+                (_, NodeKind::Script { sub: Some(_), .. }) => 2,
+                _ => 1,
+            };
+            let mut path = to;
+            path.push(hole);
+            replace(root, &path, node.kind)
+        }
+        MoveSlot::Before | MoveSlot::After => {
+            let (&idx, parent_path) = to.split_last().expect("checked non-empty");
+            let at = if slot == MoveSlot::After {
+                idx + 1
+            } else {
+                idx
+            };
+            insert(root, parent_path, at, node)
+        }
+    }
+}
+
 /// Inserts `node` at `index` of a sequence-shaped container: the root when
 /// `parent_path` is empty, else the container at that path.
 pub fn insert(root: &mut Vec<Node>, parent_path: &[usize], index: usize, node: Node) -> bool {
@@ -315,6 +440,56 @@ mod tests {
         assert!(insert(&mut ast, &[], 1, plus));
         assert!(insert(&mut ast, &[], 2, b));
         assert_eq!(print(&ast), "a + b");
+    }
+
+    /// The gesture the workstream was named for: a b c, then b onto a's
+    /// shoulder.
+    #[test]
+    fn move_b_onto_a() {
+        let mut ast = parse("a b c").unwrap();
+        assert!(move_node(&mut ast, &[1], &[0], MoveSlot::Sup));
+        assert_eq!(print(&ast), "a^b c");
+        // And c under it, filling the other slot.
+        assert!(move_node(&mut ast, &[1], &[0], MoveSlot::Sub));
+        assert_eq!(print(&ast), "a_c^b");
+    }
+
+    #[test]
+    fn move_before_and_after_adjust_for_the_hole() {
+        let mut ast = parse("a b c").unwrap();
+        // Moving a after c: deleting a shifts c from [2] to [1].
+        assert!(move_node(&mut ast, &[0], &[2], MoveSlot::After));
+        assert_eq!(print(&ast), "b c a");
+        let mut ast = parse("a b c").unwrap();
+        assert!(move_node(&mut ast, &[2], &[0], MoveSlot::Before));
+        assert_eq!(print(&ast), "c a b");
+    }
+
+    #[test]
+    fn move_refuses_what_would_lose_content() {
+        // Into its own subtree.
+        let mut ast = parse("sqrt(x) y").unwrap();
+        let before = print(&ast);
+        assert!(!move_node(&mut ast, &[0], &[0, 0], MoveSlot::Sup));
+        assert_eq!(print(&ast), before);
+        // Onto an occupied slot.
+        let mut ast = parse("x^2 y").unwrap();
+        let before = print(&ast);
+        assert!(!move_node(&mut ast, &[1], &[0], MoveSlot::Sup));
+        assert_eq!(print(&ast), before);
+        // Before a fraction operand, which has no sibling list to join.
+        let mut ast = parse("a/b c").unwrap();
+        let before = print(&ast);
+        assert!(!move_node(&mut ast, &[1], &[0, 0], MoveSlot::Before));
+        assert_eq!(print(&ast), before);
+    }
+
+    #[test]
+    fn move_out_of_a_fraction_leaves_the_hole() {
+        let mut ast = parse("a/b + c").unwrap();
+        // The numerator moves out to the end; a hole stays behind.
+        assert!(move_node(&mut ast, &[0, 0], &[2], MoveSlot::After));
+        assert_eq!(print(&ast), "()/b + c a");
     }
 
     #[test]

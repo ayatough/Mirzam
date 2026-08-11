@@ -34,6 +34,9 @@ fn state_json(src: &str) -> Value {
             "src": src,
             "tree": tree.iter().map(node_json).collect::<Vec<_>>(),
             "mathml": mirzam_render::render_math(src, mirzam_render::MathDialect::Typst, true),
+            // The tap surface: the same formula typeset, with the path of
+            // its node on every element a finger could land on.
+            "emathml": editor_mathml(&tree),
             // The same formula as LaTeX, so the panel can land it in a deck
             // whose `math:` dialect is LaTeX without flipping the deck.
             "latex": mirzam_tmath::to_latex(src).unwrap_or_default(),
@@ -42,17 +45,155 @@ fn state_json(src: &str) -> Value {
     }
 }
 
+// ---------------------------------------------------------------------------
+// The tap surface: MathML with node paths
+// ---------------------------------------------------------------------------
+//
+// The deck's own rendering goes through LaTeX into `math-core`, which erases
+// the correspondence between MathML elements and tree nodes — fine for a
+// reader, useless for a finger. This emitter draws the structure itself
+// (`mfrac`, `msup`, `msqrt`, …) stamping `data-path` as it goes, and hands
+// the *leaves* to the real converter so every glyph — α, ∞, ⊆ — is exactly
+// the one the deck will show. Nodes whose insides the panel does not edit in
+// place (matrices, braces, letter styles) render whole, as one tap target.
+
+fn editor_mathml(nodes: &[Node]) -> String {
+    let mut out = String::from("<math display=\"block\"><mrow>");
+    for (i, n) in nodes.iter().enumerate() {
+        emit_mathml(n, &mut vec![i], &mut out);
+    }
+    out.push_str("</mrow></math>");
+    out
+}
+
+fn path_attr(path: &[usize]) -> String {
+    let joined = path
+        .iter()
+        .map(usize::to_string)
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(" data-path=\"{joined}\"")
+}
+
+fn xml_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
+/// Emits exactly one element for `n`, so slot-counting parents (`mfrac`,
+/// `msubsup`) can rely on child positions.
+fn emit_mathml(n: &Node, path: &mut Vec<usize>, out: &mut String) {
+    let p = path_attr(path);
+    if edit::is_placeholder(n) {
+        out.push_str(&format!("<mrow{p} class=\"mph\"><mtext>□</mtext></mrow>"));
+        return;
+    }
+    let kids = |inner: &[Node], path: &mut Vec<usize>, out: &mut String, from: usize| {
+        for (i, c) in inner.iter().enumerate() {
+            path.push(from + i);
+            emit_mathml(c, path, out);
+            path.pop();
+        }
+    };
+    match &n.kind {
+        NodeKind::Num(s) => out.push_str(&format!("<mn{p}>{}</mn>", xml_escape(s))),
+        NodeKind::Ident(c) => out.push_str(&format!("<mi{p}>{}</mi>", xml_escape(&c.to_string()))),
+        NodeKind::Ch(c) => out.push_str(&format!("<mo{p}>{}</mo>", xml_escape(&c.to_string()))),
+        NodeKind::Text(s) => out.push_str(&format!("<mtext{p}>{}</mtext>", xml_escape(s))),
+        NodeKind::Esc(c) => {
+            out.push_str(&format!("<mtext{p}>{}</mtext>", xml_escape(&c.to_string())))
+        }
+        NodeKind::Seq(inner) => {
+            out.push_str(&format!("<mrow{p}>"));
+            kids(inner, path, out, 0);
+            out.push_str("</mrow>");
+        }
+        NodeKind::Paren(inner) => {
+            out.push_str(&format!("<mrow{p}><mo>(</mo>"));
+            kids(inner, path, out, 0);
+            out.push_str("<mo>)</mo></mrow>");
+        }
+        NodeKind::Frac(a, b) => {
+            out.push_str(&format!("<mfrac{p}>"));
+            path.push(0);
+            emit_mathml(a, path, out);
+            path.pop();
+            path.push(1);
+            emit_mathml(b, path, out);
+            path.pop();
+            out.push_str("</mfrac>");
+        }
+        NodeKind::Script { base, sub, sup } => {
+            let tag = match (sub, sup) {
+                (Some(_), Some(_)) => "msubsup",
+                (Some(_), None) => "msub",
+                _ => "msup",
+            };
+            out.push_str(&format!("<{tag}{p}>"));
+            path.push(0);
+            emit_mathml(base, path, out);
+            path.pop();
+            for (at, slot) in (1..).zip([sub, sup].into_iter().flatten()) {
+                path.push(at);
+                emit_mathml(slot, path, out);
+                path.pop();
+            }
+            out.push_str(&format!("</{tag}>"));
+        }
+        NodeKind::Sqrt(inner) => {
+            out.push_str(&format!("<msqrt{p}><mrow>"));
+            kids(inner, path, out, 0);
+            out.push_str("</mrow></msqrt>");
+        }
+        NodeKind::Abs(inner) => {
+            out.push_str(&format!("<mrow{p}><mo>|</mo>"));
+            kids(inner, path, out, 0);
+            out.push_str("<mo>|</mo></mrow>");
+        }
+        NodeKind::Norm(inner) => {
+            out.push_str(&format!("<mrow{p}><mo>‖</mo>"));
+            kids(inner, path, out, 0);
+            out.push_str("<mo>‖</mo></mrow>");
+        }
+        // Everything else — symbols with their glyphs, matrices, braces,
+        // accents, styles — renders whole through the deck's own converter
+        // and is one tap target.
+        _ => {
+            let src = print(std::slice::from_ref(n));
+            let inner = converted_inner(&src);
+            out.push_str(&format!("<mrow{p}>{inner}</mrow>"));
+        }
+    }
+}
+
+/// The children of the `<math>` element the real converter produces for one
+/// node's source — the glyphs without the wrapper.
+fn converted_inner(src: &str) -> String {
+    let rendered = mirzam_render::render_math(src, mirzam_render::MathDialect::Typst, false);
+    let inner = rendered
+        .strip_suffix("</math>")
+        .and_then(|r| r.split_once('>').map(|(_, body)| body));
+    match (rendered.starts_with("<math"), inner) {
+        (true, Some(body)) => body.to_string(),
+        // A node that fails to convert alone should not exist; show a mark
+        // rather than injecting the error span into MathML.
+        _ => "<mtext>?</mtext>".into(),
+    }
+}
+
 fn apply(src: &str, op: &str) -> Result<String, String> {
     let op: Value = serde_json::from_str(op).map_err(|e| format!("bad operation: {e}"))?;
     let kind = op["op"].as_str().ok_or("operation has no `op`")?;
-    let path = || -> Result<Vec<usize>, String> {
-        op["path"]
+    let path_of = |key: &str| -> Result<Vec<usize>, String> {
+        op[key]
             .as_array()
-            .ok_or("operation has no `path`")?
+            .ok_or(format!("operation has no `{key}`"))?
             .iter()
             .map(|v| v.as_u64().map(|n| n as usize).ok_or("bad path".into()))
             .collect()
     };
+    let path = || path_of("path");
     // A snippet the user is placing — a letter, a number, a symbol name —
     // goes through the same parser as everything else, so what can be placed
     // is exactly what can be written.
@@ -80,6 +221,18 @@ fn apply(src: &str, op: &str) -> Result<String, String> {
             edit::replace(&mut tree, &path()?, node.kind)
         }
         "delete" => edit::delete(&mut tree, &path()?).is_some(),
+        // "Take this, put it there": one operation, because the deletion
+        // shifts the very paths a two-step caller would aim with.
+        "move" => {
+            let slot = match op["slot"].as_str() {
+                Some("sup") => edit::MoveSlot::Sup,
+                Some("sub") => edit::MoveSlot::Sub,
+                Some("before") => edit::MoveSlot::Before,
+                Some("after") => edit::MoveSlot::After,
+                _ => return Err("`move` needs a `slot`: sup, sub, before or after".into()),
+            };
+            edit::move_node(&mut tree, &path_of("from")?, &path_of("to")?, slot)
+        }
         "append" => {
             let node = snippet("src")?;
             let at = tree.len();
@@ -220,6 +373,34 @@ mod tests {
         .unwrap();
         assert_eq!(v["ok"], json!(false));
         assert!(v["error"].as_str().unwrap().contains("spam"), "{v}");
+    }
+
+    /// The gesture, end to end through the JSON layer: a b c, then b onto
+    /// a's shoulder.
+    #[test]
+    fn move_through_the_json_layer() {
+        let s = apply_ok("a b c", r#"{"op":"move","from":[1],"to":[0],"slot":"sup"}"#);
+        assert_eq!(s, "a^b c");
+        let v: Value = serde_json::from_str(&math_apply(
+            "x^2 y",
+            r#"{"op":"move","from":[1],"to":[0],"slot":"sup"}"#,
+        ))
+        .unwrap();
+        assert_eq!(v["ok"], json!(false), "occupied slot must refuse");
+    }
+
+    /// The tap surface: structure drawn with paths, leaves with real glyphs.
+    #[test]
+    fn editor_mathml_carries_paths_and_glyphs() {
+        let v: Value = serde_json::from_str(&math_state("alpha/2 + x^2")).unwrap();
+        let e = v["emathml"].as_str().unwrap();
+        assert!(e.contains("<mfrac data-path=\"0\">"), "{e}");
+        assert!(e.contains("data-path=\"0,0\""), "{e}");
+        assert!(e.contains('α'), "the symbol renders as its glyph: {e}");
+        assert!(e.contains("<msup data-path=\"2\">"), "{e}");
+        // A hole is visible and tappable.
+        let v: Value = serde_json::from_str(&math_state("x^()")).unwrap();
+        assert!(v["emathml"].as_str().unwrap().contains("mph"), "{v}");
     }
 
     #[test]
