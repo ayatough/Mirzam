@@ -22,12 +22,120 @@ use mirzam_core::DeckMeta;
 use mirzam_layout::{parse_grid, GridSpec};
 use mirzam_syntax::SlideSource;
 use regex::Regex;
+use std::collections::BTreeMap;
+use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::sync::OnceLock;
 
 pub struct RenderResult {
     pub html: String,
     pub warnings: Vec<String>,
+}
+
+/// What a slide has to know about the deck around it.
+///
+/// A slide is rendered on its own — that is what lets `serve` re-use every
+/// unchanged slide while one re-renders — so nothing about the deck is in
+/// reach from inside `render_slide`. Everything that is a property of the
+/// deck and changes a slide's HTML arrives here instead, explicitly.
+#[derive(Debug, Clone, Default)]
+pub struct DeckContext {
+    /// Which syntax `$...$` holds, from frontmatter `math:`.
+    pub math: MathDialect,
+    /// Named layouts a slide can be drawn on, from frontmatter `masters:`.
+    pub masters: BTreeMap<String, String>,
+    /// The master a slide takes when it neither draws a grid nor names one,
+    /// from frontmatter `layout:`.
+    pub layout: Option<String>,
+    /// Footer text drawn on every slide, from frontmatter `footer:`.
+    pub footer: Option<String>,
+    /// Slide-number template, from frontmatter `slide-number:`.
+    pub slide_number: Option<String>,
+    /// How many slides the deck has, for `{total}`.
+    pub total: usize,
+}
+
+impl DeckContext {
+    /// The context a deck's frontmatter describes. `total` is the number of
+    /// slides *rendered*, which is what a slide number counts: a slide broken
+    /// by `<!-- next -->` is several pages to the audience.
+    pub fn new(meta: &DeckMeta, total: usize) -> Self {
+        Self {
+            // A bad dialect renders as LaTeX and is reported where the
+            // frontmatter was parsed; there is no warning channel here.
+            math: meta.math_dialect().unwrap_or_default(),
+            masters: meta.masters.clone(),
+            layout: meta.layout.clone(),
+            footer: meta.footer.clone(),
+            slide_number: meta.slide_number.clone(),
+            total,
+        }
+    }
+
+    /// Problems with the deck's own settings, reported once for the deck
+    /// rather than once per slide: a `layout:` naming a master that does not
+    /// exist would otherwise repeat on every slide in the deck.
+    ///
+    /// A master whose art does not parse is *not* reported here. It reaches
+    /// `parse_grid` on the slides that use it, where the existing error path
+    /// already names it — reporting it twice would be worse than once.
+    pub fn warnings(&self) -> Vec<String> {
+        let mut out = Vec::new();
+        if let Some(name) = self.layout.as_deref().map(str::trim) {
+            if name != "none" && !self.masters.contains_key(name) {
+                out.push(format!(
+                    "layout: no master named `{name}`{}; slides that do not draw \
+                     their own grid render as a single pane",
+                    self.known_masters()
+                ));
+            }
+        }
+        out
+    }
+
+    /// `, known: a, b` — or nothing at all when the deck defines no masters,
+    /// since the list is only a help when there is something to have meant.
+    fn known_masters(&self) -> String {
+        if self.masters.is_empty() {
+            return String::new();
+        }
+        format!(
+            " (known: {})",
+            self.masters.keys().cloned().collect::<Vec<_>>().join(", ")
+        )
+    }
+
+    /// Whether the deck draws a footer or a slide number at all.
+    fn has_chrome(&self) -> bool {
+        self.footer.is_some() || self.slide_number.is_some()
+    }
+
+    /// A key for everything here that changes a slide's rendered HTML, so a
+    /// build cache keyed on slide text alone does not survive an edit to the
+    /// deck's frontmatter.
+    ///
+    /// `total` is included only when something actually prints it. Otherwise
+    /// adding a slide would invalidate every other slide in the deck, which is
+    /// exactly the incremental rebuild the cache exists to avoid.
+    pub fn fingerprint(&self) -> u64 {
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        self.math.hash(&mut h);
+        self.masters.hash(&mut h);
+        self.layout.hash(&mut h);
+        self.footer.hash(&mut h);
+        self.slide_number.hash(&mut h);
+        if self.prints_total() {
+            self.total.hash(&mut h);
+        }
+        h.finish()
+    }
+
+    fn prints_total(&self) -> bool {
+        [&self.footer, &self.slide_number]
+            .into_iter()
+            .flatten()
+            .any(|t| t.contains("{total}"))
+    }
 }
 
 /// One rendered slide: a `<section>` element with assets already inlined.
@@ -39,16 +147,15 @@ pub struct RenderedSlide {
 }
 
 /// Renders one slide to `<section>` HTML; this is the unit `serve` updates.
-/// Assets are resolved from the filesystem. `math` is the deck's `math:`
-/// dialect — a property of the deck, passed in because a slide is rendered
-/// without knowing the deck it belongs to.
+/// Assets are resolved from the filesystem. `ctx` carries the deck's own
+/// settings, which a slide cannot see from its text — see [`DeckContext`].
 pub fn render_slide_html(
     slide: &SlideSource,
     index: usize,
     asset_dir: &Path,
-    math: MathDialect,
+    ctx: &DeckContext,
 ) -> RenderedSlide {
-    render_slide_html_with(slide, index, &assets::FsAssets(asset_dir), math)
+    render_slide_html_with(slide, index, &assets::FsAssets(asset_dir), ctx)
 }
 
 /// Variant with pluggable asset resolution; WASM hosts inject their own table.
@@ -56,7 +163,7 @@ pub fn render_slide_html_with(
     slide: &SlideSource,
     index: usize,
     asset_source: &dyn AssetSource,
-    math: MathDialect,
+    ctx: &DeckContext,
 ) -> RenderedSlide {
     let mut warnings = Vec::new();
     let mut assets_used = Vec::new();
@@ -68,7 +175,7 @@ pub fn render_slide_html_with(
         &mut warnings,
         asset_source,
         &mut assets_used,
-        math,
+        ctx,
     );
     let html = assets::embed_assets(&html, asset_source, &mut warnings, &mut assets_used);
     RenderedSlide {
@@ -473,13 +580,14 @@ pub fn render_deck(meta: &DeckMeta, slides: &[SlideSource], asset_dir: &Path) ->
     let mut warnings = Vec::new();
     warnings.extend(theme_warning(meta.theme.as_deref()));
     warnings.extend(mode_warning(meta.mode.as_deref()));
-    let math = meta.math_dialect().unwrap_or_else(|w| {
+    if let Err(w) = meta.math_dialect() {
         warnings.push(w);
-        MathDialect::default()
-    });
+    }
+    let ctx = DeckContext::new(meta, slides.len());
+    warnings.extend(ctx.warnings());
     let mut sections = Vec::with_capacity(slides.len());
     for (i, slide) in slides.iter().enumerate() {
-        let rendered = render_slide_html(slide, i, asset_dir, math);
+        let rendered = render_slide_html(slide, i, asset_dir, &ctx);
         warnings.extend(rendered.warnings);
         sections.push(rendered.html);
     }
@@ -495,8 +603,9 @@ fn render_slide(
     warnings: &mut Vec<String>,
     asset_source: &dyn AssetSource,
     chart_files: &mut Vec<std::path::PathBuf>,
-    math: MathDialect,
+    ctx: &DeckContext,
 ) -> String {
+    let math = ctx.math;
     let mut errors: Vec<String> = Vec::new();
 
     // A `shape` fence only parses at slide top level - `mirzam_syntax::parse_slide`
@@ -524,12 +633,16 @@ fn render_slide(
     }
     let slide_theme = theme::scope_attrs(slide.theme.as_deref(), slide.mode.as_deref());
 
-    // Resolve the layout.
-    let grid: Option<GridSpec> = match &slide.layout {
-        Some(src) => match parse_grid(src) {
+    // Resolve the layout: the slide's own drawing, else the master it names,
+    // else the deck's default master, else a single pane.
+    let grid: Option<GridSpec> = match resolve_layout(slide, index, ctx, warnings) {
+        Some((src, from)) => match parse_grid(src) {
             Ok(g) => Some(g),
             Err(e) => {
-                errors.push(format!("slide {}: {e}", index + 1));
+                errors.push(match from {
+                    Some(name) => format!("slide {}: master `{name}`: {e}", index + 1),
+                    None => format!("slide {}: {e}", index + 1),
+                });
                 None
             }
         },
@@ -642,8 +755,90 @@ fn render_slide(
         )
     };
 
+    let chrome_html = chrome_html(slide, index, ctx, warnings);
+
     format!(
-        "<section class=\"slide\" data-index=\"{index}\"{slide_theme}{connect_attr}>\n{error_html}{body}{shapes_html}{anim_html}{annot_html}{effects_html}{notes_html}</section>\n"
+        "<section class=\"slide\" data-index=\"{index}\"{slide_theme}{connect_attr}>\n{error_html}{body}{chrome_html}{shapes_html}{anim_html}{annot_html}{effects_html}{notes_html}</section>\n"
+    )
+}
+
+/// The ASCII grid this slide is laid out on, with the name of the master it
+/// came from when it came from one.
+///
+/// A slide that draws its own `pane` block keeps it, always: a master is what
+/// a slide falls back to, never something that overrides what the author drew
+/// in front of them. Below that, `<!-- layout: -->` beats the deck's `layout:`,
+/// the same inwards-wins order a theme resolves in.
+///
+/// An unknown name on a slide is a warning, and the slide keeps what it would
+/// have had without the name — its deck's default. That is the rule an unknown
+/// `theme=` already follows: a deck never fails to build over a name, and the
+/// element keeps what it inherited.
+fn resolve_layout<'a>(
+    slide: &'a SlideSource,
+    index: usize,
+    ctx: &'a DeckContext,
+    warnings: &mut Vec<String>,
+) -> Option<(&'a str, Option<&'a str>)> {
+    if let Some(own) = &slide.layout {
+        return Some((own.as_str(), None));
+    }
+    if let Some(named) = slide.layout_name.as_deref().map(str::trim) {
+        // `<!-- layout: none -->`: a slide opting out of a deck-wide master,
+        // which is the only way a title slide gets the whole surface back.
+        if named == "none" {
+            return None;
+        }
+        match ctx.masters.get_key_value(named) {
+            Some((name, art)) => return Some((art.as_str(), Some(name.as_str()))),
+            None => warnings.push(format!(
+                "slide {}: no master named `{named}`{}",
+                index + 1,
+                ctx.known_masters()
+            )),
+        }
+    }
+    // The deck's default. An unknown name here was reported once by
+    // `DeckContext::warnings`, so this only has to survive it.
+    let name = ctx.layout.as_deref().map(str::trim)?;
+    let (name, art) = ctx.masters.get_key_value(name)?;
+    Some((art.as_str(), Some(name.as_str())))
+}
+
+/// The footer and slide number drawn along the bottom of every slide.
+///
+/// Both spans are emitted whenever the deck asks for either, so the number
+/// stays against the right edge on a deck that declares no footer.
+fn chrome_html(
+    slide: &SlideSource,
+    index: usize,
+    ctx: &DeckContext,
+    warnings: &mut Vec<String>,
+) -> String {
+    if !ctx.has_chrome() {
+        return String::new();
+    }
+    match slide.chrome.as_deref().map(str::trim) {
+        None => {}
+        Some("none") => return String::new(),
+        Some(other) => warnings.push(format!(
+            "slide {}: unknown chrome value `{other}`; `none` is the only one, \
+             and the slide keeps the deck's footer",
+            index + 1
+        )),
+    }
+    let fill = |t: &Option<String>| match t {
+        Some(t) => inline::html_escape(
+            &t.replace("{n}", &(index + 1).to_string())
+                .replace("{total}", &ctx.total.to_string()),
+        ),
+        None => String::new(),
+    };
+    format!(
+        "<div class=\"mz-slide-chrome\"><span class=\"mz-footer\">{}</span>\
+         <span class=\"mz-slide-number\">{}</span></div>\n",
+        fill(&ctx.footer),
+        fill(&ctx.slide_number),
     )
 }
 
@@ -1638,5 +1833,208 @@ mod tests {
         let out = render_deck(&meta, &[slide], Path::new("."));
         assert!(out.html.contains("title-slide"));
         assert!(out.html.contains("world"));
+    }
+
+    /// A deck whose frontmatter defines masters, for the layout tests below.
+    fn deck_with_masters() -> DeckMeta {
+        DeckMeta {
+            masters: [(
+                "two-up".to_string(),
+                "+--------+--------+\n| head            |\n+--------+--------+\n| main   | fig    |\n+--------+--------+\n".to_string(),
+            )]
+            .into(),
+            ..DeckMeta::default()
+        }
+    }
+
+    #[test]
+    fn a_slide_is_drawn_on_the_master_it_names() {
+        let slide = parse_slide("<!-- layout: two-up -->\n\n::: pane fig\nright\n:::\n");
+        let out = render_deck(&deck_with_masters(), &[slide], Path::new("."));
+        assert!(out.warnings.is_empty(), "{:?}", out.warnings);
+        assert!(
+            out.html.contains(r#""head main" "head fig""#) || out.html.contains("grid-area:fig")
+        );
+        assert!(out.html.contains("pane-fig"));
+        assert!(out.html.contains("right"));
+    }
+
+    #[test]
+    fn a_deck_wide_master_applies_to_every_slide_that_names_none() {
+        let mut meta = deck_with_masters();
+        meta.layout = Some("two-up".into());
+        let slide = parse_slide("::: pane fig\nright\n:::\n");
+        let out = render_deck(&meta, &[slide], Path::new("."));
+        assert!(out.warnings.is_empty(), "{:?}", out.warnings);
+        assert!(out.html.contains("pane-fig"));
+    }
+
+    /// A master is what a slide falls back to, never something that overrides
+    /// the grid the author drew in front of them.
+    #[test]
+    fn a_slides_own_pane_block_beats_every_master() {
+        let mut meta = deck_with_masters();
+        meta.layout = Some("two-up".into());
+        let slide = parse_slide(
+            "<!-- layout: two-up -->\n\n```pane\n+-----+\n| solo |\n+-----+\n```\n\n::: pane solo\nmine\n:::\n",
+        );
+        let out = render_deck(&meta, &[slide], Path::new("."));
+        assert!(out.html.contains("pane-solo"));
+        assert!(!out.html.contains("pane-fig"));
+    }
+
+    #[test]
+    fn layout_none_opts_one_slide_out_of_the_deck_wide_master() {
+        let mut meta = deck_with_masters();
+        meta.layout = Some("two-up".into());
+        let slide = parse_slide("<!-- layout: none -->\n\n# Title {.title-slide}\n");
+        let out = render_deck(&meta, &[slide], Path::new("."));
+        assert!(out.warnings.is_empty(), "{:?}", out.warnings);
+        // The single-pane fallback: one `main` area and nothing else.
+        assert!(out.html.contains("grid-template-areas:\"main\""));
+    }
+
+    #[test]
+    fn an_unknown_master_on_a_slide_warns_and_keeps_what_it_inherited() {
+        let mut meta = deck_with_masters();
+        meta.layout = Some("two-up".into());
+        let slide = parse_slide("<!-- layout: three-up -->\n\n::: pane fig\nright\n:::\n");
+        let out = render_deck(&meta, &[slide], Path::new("."));
+        assert!(
+            out.warnings
+                .iter()
+                .any(|w| w.contains("slide 1") && w.contains("three-up") && w.contains("two-up")),
+            "{:?}",
+            out.warnings
+        );
+        // Inherited means the deck's own master, so the slide still lays out.
+        assert!(out.html.contains("pane-fig"));
+    }
+
+    /// Once for the deck, not once per slide: the same complaint on every
+    /// slide of a long deck buries every other warning.
+    #[test]
+    fn an_unknown_deck_wide_master_is_reported_once() {
+        let mut meta = deck_with_masters();
+        meta.layout = Some("nope".into());
+        let slides = [parse_slide("a\n"), parse_slide("b\n"), parse_slide("c\n")];
+        let out = render_deck(&meta, &slides, Path::new("."));
+        assert_eq!(
+            out.warnings.iter().filter(|w| w.contains("nope")).count(),
+            1,
+            "{:?}",
+            out.warnings
+        );
+    }
+
+    #[test]
+    fn a_master_whose_art_does_not_parse_names_itself_in_the_error() {
+        let meta = DeckMeta {
+            masters: [("broken".to_string(), "| no borders |\n".to_string())].into(),
+            ..DeckMeta::default()
+        };
+        let slide = parse_slide("<!-- layout: broken -->\n\ntext\n");
+        let out = render_deck(&meta, &[slide], Path::new("."));
+        assert!(
+            out.warnings
+                .iter()
+                .any(|w| w.contains("master `broken`") && w.contains("slide 1")),
+            "{:?}",
+            out.warnings
+        );
+    }
+
+    #[test]
+    fn footer_and_slide_number_are_drawn_on_every_slide() {
+        let meta = DeckMeta {
+            footer: Some("Internal".into()),
+            slide_number: Some("{n} / {total}".into()),
+            ..DeckMeta::default()
+        };
+        let slides = [parse_slide("a\n"), parse_slide("b\n")];
+        let out = render_deck(&meta, &slides, Path::new("."));
+        assert!(out
+            .html
+            .contains("<span class=\"mz-footer\">Internal</span>"));
+        assert!(out.html.contains("1 / 2"));
+        assert!(out.html.contains("2 / 2"));
+    }
+
+    #[test]
+    fn a_slide_can_drop_the_deck_chrome() {
+        let meta = DeckMeta {
+            slide_number: Some("{n}".into()),
+            ..DeckMeta::default()
+        };
+        let slides = [
+            parse_slide("<!-- chrome: none -->\n\n# Title\n"),
+            parse_slide("b\n"),
+        ];
+        let out = render_deck(&meta, &slides, Path::new("."));
+        // Counted on the markup, not the stylesheet, which names the class too.
+        assert_eq!(
+            out.html.matches("<div class=\"mz-slide-chrome\">").count(),
+            1
+        );
+    }
+
+    /// A page number that only exists on screen is the one place it is least
+    /// needed. `print.css` hides the *viewer's* `#chrome` cluster, whose name
+    /// is one letter from this element's — so this pins that the export keeps
+    /// the deck's own.
+    #[test]
+    fn the_print_page_keeps_the_deck_chrome() {
+        let meta = DeckMeta {
+            slide_number: Some("{n}".into()),
+            ..DeckMeta::default()
+        };
+        let section = render_slide_html(
+            &parse_slide("a\n"),
+            0,
+            Path::new("."),
+            &DeckContext::new(&meta, 1),
+        );
+        let page = assemble_print_page(&meta, &[section.html], None);
+        assert!(page.contains("<div class=\"mz-slide-chrome\">"));
+        assert!(!page.contains(".mz-slide-chrome { display: none"));
+    }
+
+    /// A deck that asks for neither carries neither: the element is not in the
+    /// markup at all, so nothing changes for a deck built before it existed.
+    #[test]
+    fn a_deck_without_chrome_settings_emits_none() {
+        let out = render_deck(&DeckMeta::default(), &[parse_slide("a\n")], Path::new("."));
+        assert!(!out.html.contains("<div class=\"mz-slide-chrome\">"));
+    }
+
+    /// Footer text is escaped, not parsed: it is one line of chrome, and an
+    /// author writing `Q3 <draft>` must not lose half of it to a tag.
+    #[test]
+    fn footer_text_is_escaped() {
+        let meta = DeckMeta {
+            footer: Some("Q3 <draft> & later".into()),
+            ..DeckMeta::default()
+        };
+        let out = render_deck(&meta, &[parse_slide("a\n")], Path::new("."));
+        assert!(out.html.contains("Q3 &lt;draft&gt; &amp; later"));
+    }
+
+    /// Adding a slide must not invalidate every other slide's cache entry, so
+    /// the total only counts as a setting when something actually prints it.
+    #[test]
+    fn the_slide_total_only_changes_the_fingerprint_when_it_is_printed() {
+        let mut meta = DeckMeta {
+            footer: Some("Internal".into()),
+            ..DeckMeta::default()
+        };
+        assert_eq!(
+            DeckContext::new(&meta, 9).fingerprint(),
+            DeckContext::new(&meta, 10).fingerprint()
+        );
+        meta.slide_number = Some("{n} / {total}".into());
+        assert_ne!(
+            DeckContext::new(&meta, 9).fingerprint(),
+            DeckContext::new(&meta, 10).fingerprint()
+        );
     }
 }

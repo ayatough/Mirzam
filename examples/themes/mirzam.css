@@ -140,7 +140,11 @@ h2::after {
 :is(.right, [style*="text-align:right"]) h2::after { margin-inline: auto 0; }
 
 
-.grid { padding: 48px 64px; gap: 24px; }
+/* Roomier than the built-in margins. Written as tokens rather than as a
+   `padding` shorthand on `.grid`, because the footer and slide number read
+   `--mz-grid-pad-x` to sit on the same margin as the words above them, and a
+   shorthand they cannot see would leave them on the old one. */
+:root { --mz-grid-pad-y: 48px; --mz-grid-pad-x: 64px; --mz-grid-gap: 24px; }
 
 blockquote { border-left-color: var(--mz-accent1); color: var(--mz-fg); }
 strong { color: var(--mz-fg); font-weight: 600; }

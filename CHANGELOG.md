@@ -8,6 +8,49 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- **Slide masters: draw a shape once, not once per slide.** `masters:` in
+  frontmatter names slide shapes — the same ASCII drawing a `pane` block holds,
+  read by the same parser — and a slide picks one with
+  `<!-- layout: two-up -->`, an HTML comment, so a plain Markdown reader still
+  shows nothing. `layout:` sets the deck's default for every slide that names
+  none. Redrawing the same grid on the twelfth slide that has the same shape
+  was the part of writing a deck nobody enjoyed, and it was also where decks
+  drifted: two slides meant to match ended up a character apart. A slide that
+  needs a different shape simply draws one — its own `pane` block always wins,
+  so an exception costs nothing — and `<!-- layout: none -->` gives a title
+  slide the whole surface back. An unknown name is a warning naming the slide,
+  never a failed build, and the slide keeps what it would have had without it;
+  an unknown deck-wide `layout:` is reported once rather than once per slide.
+  The catch to know going in: a master fixes the pane names, so the deck's
+  masters and its `::: pane` blocks have to agree on `head`/`main`/`fig`.
+  `examples/03-layout.md` now uses one for the shape it drew three times, and
+  renders byte-identically to the version that drew them by hand — which is the
+  test that a master is a shape moved, not a shape changed. Rule 9 in that deck
+  shows it.
+- **A footer and a slide number on every slide.** `footer:` and
+  `slide-number:` in frontmatter draw along the bottom of every slide, in the
+  band the grid already holds back as its margin, so they take nothing from the
+  content. `{n}` and `{total}` are substituted, `{{ }}` variables work, and the
+  footer sits on the same margin as the words above it however that margin is
+  set. They are part of the document rather than the viewer, so they are in the
+  PDF too — unlike the counter in the corner of the window, which is an aid for
+  whoever is driving and never prints. `<!-- chrome: none -->` drops both on one
+  slide, which is what a title slide, a section divider, or a `.bleed`
+  photograph wants; there is no automatic suppression, because a rule that
+  silently dropped a confidentiality notice would be worse than one that draws
+  it somewhere you can see. A deck that sets neither carries neither.
+  `examples/06-theming.md` now carries its own footer from slide 2 on.
+- **Margins, padding and borders are tokens.** `--mz-grid-pad-y`,
+  `--mz-grid-pad-x`, `--mz-grid-gap`, `--mz-pane-pad`, `--mz-pane-border` and
+  `--mz-pane-radius` replace the literals that used to be spelled out in the
+  layout stylesheet, each carrying its built-in value as a fallback, so a deck
+  that sets none renders exactly as it did before. Writing `.grid { padding: …
+  }` yourself still works and always did, but the tokens are the better route:
+  custom properties inherit, so the same six names move the whole deck from
+  `:root` or one pane from a class you put on it, and the footer reads
+  `--mz-grid-pad-x` to stay on the deck's margin rather than the built-in one.
+  They are deliberately **not** palette tokens — no built-in theme defines one,
+  and `theme:` stays a choice of colour.
 - **A theme can now be smaller than a deck.** `theme=` and `mode=` are pane
   attributes (`::: pane figure {theme=wuwei mode=dark}`) and slide settings
   (`<!-- theme: nord -->`, an HTML comment, so a plain Markdown reader shows

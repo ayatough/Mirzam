@@ -210,22 +210,32 @@ impl Renderer {
         };
         warnings.extend(mirzam_render::theme_warning(meta.theme.as_deref()));
         warnings.extend(mirzam_render::mode_warning(meta.mode.as_deref()));
-        let math = meta.math_dialect().unwrap_or_else(|w| {
+        if let Err(w) = meta.math_dialect() {
             warnings.push(w);
-            mirzam_core::MathDialect::default()
-        });
+        }
         // There is no current directory in WASM, so the base is an empty path.
         let body = mirzam_syntax::expand_includes(body, Path::new(""), &MapFiles(&self.files));
         let vars = meta.var_table();
         let body = substitute_outside_fences(&body, &vars);
 
         let assets = MapAssets(&self.assets);
-        let mut sections: Vec<String> = mirzam_syntax::split_slides(&body)
+        let slide_srcs = mirzam_syntax::split_slides(&body);
+        // The deck settings a slide cannot see from its own text: the math
+        // dialect, the masters it can be drawn on, the footer it carries.
+        let mut ctx = mirzam_render::DeckContext::new(&meta, slide_srcs.len());
+        for text in [&mut ctx.footer, &mut ctx.slide_number]
+            .into_iter()
+            .flatten()
+        {
+            *text = mirzam_core::substitute_vars(text, &vars);
+        }
+        warnings.extend(ctx.warnings());
+        let mut sections: Vec<String> = slide_srcs
             .iter()
             .enumerate()
             .map(|(i, src)| {
                 let slide = mirzam_syntax::parse_slide(src);
-                let out = mirzam_render::render_slide_html_with(&slide, i, &assets, math);
+                let out = mirzam_render::render_slide_html_with(&slide, i, &assets, &ctx);
                 warnings.extend(out.warnings);
                 out.html
             })

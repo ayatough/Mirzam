@@ -48,6 +48,17 @@ author: Your Name
 aspect: "16:9"        # or "4:3"
 css: themes/dark.css  # custom stylesheet, relative to this file
 transition: fade      # how pages turn; see Animations below
+layout: body          # the master a slide takes when it draws no grid
+footer: Internal      # drawn on every slide, and in the PDF
+slide-number: "{n} / {total}"
+masters:              # named slide shapes; see Slide masters below
+  body: |
+    +--------+
+    |  head  |
+    +--------+
+    |  main  |
+    |        |
+    +--------+
 vars:
   product: Mirzam
   price: 1200
@@ -134,6 +145,110 @@ Pane attributes: `align=left|center|right`, `valign=middle|bottom`,
 `theme=`/`mode=` ([a palette for one pane](#a-theme-smaller-than-a-deck)), and
 any extra `.class` names your stylesheet defines. Content that is not assigned
 to a pane flows into `main`, or the first pane if there is none.
+
+### Slide masters
+
+Most decks use three or four shapes over and over, and redrawing the same ASCII
+on every slide is the part nobody enjoys. Name the shapes once in frontmatter
+and slides pick one instead:
+
+```yaml
+---
+layout: body            # what a slide takes when it names nothing
+masters:
+  body: |
+    +----------------------------------+
+    |  head                            |
+    +----------------------------------+
+    |                                  |
+    |  main                            |
+    |                                  |
+    +----------------------------------+
+  two-up: |
+    +----------------+-----------------+
+    |  head                            |
+    +----------------+-----------------+
+    |                |                 |
+    |  main          |  fig            |
+    |                |                 |
+    +----------------+-----------------+
+---
+```
+
+A master's value is exactly the drawing a `pane` block holds, and it is read by
+exactly the same parser — everything in [the layout guide](layout.md) about
+column widths and band heights applies unchanged.
+
+A slide picks one with an HTML comment, the same form a per-slide theme takes,
+so a plain Markdown reader shows nothing:
+
+```markdown
+<!-- layout: two-up -->
+
+::: pane fig
+![Result](img/result.svg)
+:::
+```
+
+The order, innermost first:
+
+1. **The slide's own `pane` block**, if it has one. A master is what a slide
+   falls back to, never something that overrides the grid you drew.
+2. **`<!-- layout: name -->`** on the slide.
+3. **`layout:`** in frontmatter, the deck's default.
+4. Otherwise a single pane, as always.
+
+`<!-- layout: none -->` opts one slide out of the deck's default and gives it
+the whole surface back — a title slide or a full-bleed photograph is usually
+the reason.
+
+An unknown name is a warning naming the slide, never a failed build, and the
+slide keeps what it would have had without the name: its deck's default. An
+unknown `layout:` in frontmatter is reported once for the deck rather than once
+per slide.
+
+Two things a master is not. It is **a shape, not content**: pane names come from
+the drawing, so a deck's masters and its `::: pane` blocks have to agree on
+`head`/`main`/`fig`, and a name in one that is not in the other is the usual
+first mistake. And it is **per deck**: masters live in the deck's own
+frontmatter, so sharing a set across decks today means copying the block.
+
+### A footer and a slide number on every slide
+
+```yaml
+---
+footer: "Quarterly review — internal"
+slide-number: "{n} / {total}"
+---
+```
+
+Both are drawn along the bottom of every slide, in the band the grid already
+holds back as its margin, so they take nothing from the content. `{n}` is the
+slide's own number and `{total}` is the deck's; both work in either field, and
+`{{ }}` variables are substituted as they are anywhere else. The footer sits
+against the left margin and the number against the right, on the same margin as
+the words above them.
+
+They are part of the document, so they are in the PDF too — unlike the viewer's
+own counter in the corner of the window, which is an aid for whoever is driving
+and never prints.
+
+A slide drops both with a comment:
+
+```markdown
+<!-- chrome: none -->
+
+# Quarterly review {.title-slide}
+```
+
+Use it on a title slide, on a section divider, and on any slide whose
+`.bleed` background covers the whole surface — a bleed pane drops the grid's
+margin, which is the band the footer was going to sit in. There is no automatic
+suppression: a rule that silently dropped a confidentiality notice would be
+worse than one that draws it somewhere you can see and fix.
+
+A deck that sets neither carries neither; the element is not in the markup at
+all.
 
 ### Background images
 
@@ -1126,6 +1241,52 @@ of whichever `theme:` is selected, built-in or default:
 See [`examples/themes/mirzam.css`](../examples/themes/mirzam.css) for a complete
 theme, including utility classes such as `.card`, `.metric` and `.eyebrow` that
 the sample decks use.
+
+#### Margins, padding and borders
+
+Spacing is a token too, so moving a deck's margins does not mean restating the
+rules that position them:
+
+| Token | Default | What it moves |
+|---|---|---|
+| `--mz-grid-pad-y` | `44px` | The slide's top and bottom margin |
+| `--mz-grid-pad-x` | `60px` | Its left and right margin, and the footer's |
+| `--mz-grid-gap` | `20px` | The space between panes |
+| `--mz-pane-pad` | `2px 4px` | Padding inside every pane |
+| `--mz-pane-border` | `none` | A border on every pane |
+| `--mz-pane-radius` | `0` | Its corner radius |
+| `--mz-slide-chrome-size` | `.62em` | The footer and slide number |
+| `--mz-slide-chrome-fg` | `var(--mz-muted)` | Their colour |
+
+```css
+:root {
+  --mz-grid-pad-y: 56px;
+  --mz-grid-pad-x: 72px;
+  --mz-grid-gap: 28px;
+}
+```
+
+These are **not** palette tokens: no built-in theme sets one, every use carries
+the built-in value as its fallback, and a deck that sets none renders exactly as
+it did before they existed. `theme:` remains a choice of colour only.
+
+Custom properties inherit, which makes them the one dial that works at every
+scale. Set on `:root` they move the whole deck; set under a class you put on a
+pane, they move that pane:
+
+```css
+.tight  { --mz-pane-pad: 0; }
+.framed { --mz-pane-border: 1px solid var(--mz-border); --mz-pane-radius: 8px; }
+```
+
+```markdown
+::: pane fig {.framed}
+```
+
+Writing the rule directly still works and always did — `.grid { padding: 48px
+64px; gap: 24px }` — but the tokens are the better route, because the footer
+reads `--mz-grid-pad-x` to stay on the same margin as the words above it, and a
+`padding` shorthand it cannot see leaves it on the old one.
 
 #### A custom theme needs both modes, or it has none
 

@@ -190,3 +190,33 @@ When it is not, choose the break yourself instead of letting the box choose it.<
 </div>
 </div>
 </section>
+<section class="slide" data-index="11">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Rule 9</span></p>
+<h2>Draw a shape once, not once per slide</h2>
+</div>
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-yaml">masters:
+  contrast: |
+    +--------------+-------------+
+    |  head                      |
+    +--------------+-------------+
+    |              |             |
+    |  bad         |  good       |
+    |              |             |
+    +--------------+-------------+
+</code></pre>
+<pre><code class="language-markdown">&lt;!-- layout: contrast --&gt;
+</code></pre>
+</div>
+<div class="pane pane-out" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><p>Rules 2 and 6 draw no grid at all: both name <code>contrast</code>, and this slide's own
+drawing is here because it is the one shape the deck uses once.</p>
+<p>A slide's own <code>pane</code> block always wins, so an exception needs no opt-out —
+and <code>&lt;!-- layout: none --&gt;</code> gives a title slide the whole surface back when the
+deck sets a default with <code>layout:</code>.</p>
+<p>The catch is names: the master fixes them, so <code>bad</code> and <code>good</code> are what every
+slide using it has to call its panes.</p>
+</div>
+</div>
+<aside class="notes"><p>The deck renders identically to the version that drew all three grids by hand. That is the test: a master is a shape moved, not a shape changed.</p>
+</aside>
+</section>

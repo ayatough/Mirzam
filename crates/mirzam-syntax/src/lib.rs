@@ -501,6 +501,13 @@ pub struct PaneBlock {
 pub struct SlideSource {
     /// Body of the ```pane block (the ASCII grid).
     pub layout: Option<String>,
+    /// `<!-- layout: two-up -->`: the named master this slide is drawn on,
+    /// instead of a `pane` block of its own. `None` means it takes the deck's
+    /// default; `Some("none")` means it deliberately takes no master at all.
+    pub layout_name: Option<String>,
+    /// `<!-- chrome: none -->`: this one slide carries no footer and no slide
+    /// number, whatever the deck declares. `None` means it follows the deck.
+    pub chrome: Option<String>,
     /// Content assigned through `::: pane X`.
     pub panes: Vec<PaneBlock>,
     /// Markdown not assigned to any pane.
@@ -795,6 +802,8 @@ pub fn parse_slide(src: &str) -> SlideSource {
                 match key {
                     "theme" => slide.theme = Some(value.to_string()),
                     "mode" => slide.mode = Some(value.to_string()),
+                    "layout" => slide.layout_name = Some(value.to_string()),
+                    "chrome" => slide.chrome = Some(value.to_string()),
                     _ => unreachable!("parse_setting_comment only returns known keys"),
                 }
                 continue;
@@ -848,7 +857,9 @@ fn parse_setting_comment(comment: &str) -> Option<(&'static str, String)> {
     let inner = inner.strip_suffix("-->").unwrap_or(inner).trim();
     let (key, value) = inner.split_once(':')?;
     let key = key.trim().to_ascii_lowercase();
-    let key = ["theme", "mode"].into_iter().find(|k| *k == key)?;
+    let key = ["theme", "mode", "layout", "chrome"]
+        .into_iter()
+        .find(|k| *k == key)?;
     let value = value.trim();
     if value.is_empty() {
         return None;
@@ -1171,6 +1182,25 @@ loose text
         // The setting is a comment, so nothing of it survives into the body.
         assert!(!s.loose.contains("theme"));
         assert!(s.loose.contains("# Quiet"));
+    }
+
+    #[test]
+    fn a_slide_can_name_a_master_and_drop_the_deck_chrome() {
+        let s = parse_slide("<!-- layout: two-up -->\n<!-- chrome: none -->\n\n# Quiet\n");
+        assert_eq!(s.layout_name.as_deref(), Some("two-up"));
+        assert_eq!(s.chrome.as_deref(), Some("none"));
+        assert_eq!(s.layout, None);
+        assert!(!s.loose.contains("layout"));
+        assert!(s.loose.contains("# Quiet"));
+    }
+
+    /// A slide that draws its own grid keeps it: the master is what a slide
+    /// falls back to, never something that overrides what it drew.
+    #[test]
+    fn a_pane_block_and_a_master_name_are_recorded_separately() {
+        let s = parse_slide("<!-- layout: two-up -->\n\n```pane\n+---+\n| a |\n+---+\n```\n");
+        assert_eq!(s.layout_name.as_deref(), Some("two-up"));
+        assert!(s.layout.as_deref().unwrap().contains("| a |"));
     }
 
     /// Every other comment is the author's, and must come out the far side

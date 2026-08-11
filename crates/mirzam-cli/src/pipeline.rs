@@ -110,10 +110,10 @@ pub fn build_deck_with(
 
     // A typo in `math:` renders the deck as LaTeX rather than failing, but
     // must say so — otherwise every formula just turns into an error span.
-    let math = meta.math_dialect().unwrap_or_else(|w| {
+    // The dialect itself reaches the slides through the deck context below.
+    if let Err(w) = meta.math_dialect() {
         warnings.push(w);
-        mirzam_core::MathDialect::default()
-    });
+    }
 
     // A transition that does not parse leaves the deck with plain cuts, which
     // is the right outcome for a typo in a decoration - but say so, because
@@ -231,12 +231,29 @@ pub fn build_deck_with(
     let mut sections = Vec::with_capacity(parts.len());
     let mut rendered = 0usize;
 
+    // What a slide needs to know about the deck around it: the math dialect,
+    // the masters it can be drawn on, and the footer every slide carries.
+    // `parts.len()` rather than `slides.len()`, because a slide broken by
+    // `<!-- next -->` is several pages to the audience and its number counts
+    // them. Variables are substituted here for the same reason they are in the
+    // body: a footer is text the author wrote, and `{{ }}` works in it.
+    let mut ctx = mirzam_render::DeckContext::new(&meta, parts.len());
+    for text in [&mut ctx.footer, &mut ctx.slide_number]
+        .into_iter()
+        .flatten()
+    {
+        *text = mirzam_core::substitute_vars(text, &vars);
+    }
+    warnings.extend(ctx.warnings());
+    let ctx_key = ctx.fingerprint();
+
     for (i, part) in parts.iter().enumerate() {
         let slide_src = &part.text;
         // The cache key includes the slide index, since data-index is baked
-        // into the HTML — and the math dialect, since the same `$...$` source
-        // renders differently under a different frontmatter `math:`.
-        let key = slide_hash(slide_src, i, math);
+        // into the HTML — and the deck context, since the same source renders
+        // differently under a different frontmatter `math:`, `masters:` or
+        // `footer:`.
+        let key = slide_hash(slide_src, i, ctx_key);
         let mut html = match cache.get(&key).filter(|e| e.is_fresh()) {
             Some(entry) => {
                 for (p, _) in &entry.assets {
@@ -246,7 +263,7 @@ pub fn build_deck_with(
             }
             None => {
                 let slide = mirzam_syntax::parse_slide(slide_src);
-                let out = mirzam_render::render_slide_html(&slide, i, &base_dir, math);
+                let out = mirzam_render::render_slide_html(&slide, i, &base_dir, &ctx);
                 let from = origin(part.from);
                 warnings.extend(out.warnings.into_iter().map(|w| format!("{w}{from}")));
                 let assets: Vec<(PathBuf, Option<SystemTime>)> =
@@ -291,7 +308,7 @@ pub fn build_deck_with(
         let live_keys: std::collections::HashSet<u64> = parts
             .iter()
             .enumerate()
-            .map(|(i, p)| slide_hash(&p.text, i, math))
+            .map(|(i, p)| slide_hash(&p.text, i, ctx_key))
             .collect();
         cache.retain(|k, _| live_keys.contains(k));
     }
@@ -328,11 +345,11 @@ fn mtime(path: &Path) -> Option<SystemTime> {
     std::fs::metadata(path).and_then(|m| m.modified()).ok()
 }
 
-fn slide_hash(src: &str, index: usize, math: mirzam_core::MathDialect) -> u64 {
+fn slide_hash(src: &str, index: usize, ctx: u64) -> u64 {
     let mut h = std::collections::hash_map::DefaultHasher::new();
     src.hash(&mut h);
     index.hash(&mut h);
-    math.hash(&mut h);
+    ctx.hash(&mut h);
     h.finish()
 }
 

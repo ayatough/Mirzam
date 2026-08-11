@@ -40,11 +40,27 @@ section.slide.mz-leaving { display: block; z-index: 0; pointer-events: none; }
    the deck's overflow clip without its corner radius, so the slide carries the
    radius itself and the corners stay right mid-turn. */
 section.slide { background: var(--mz-slide-bg); border-radius: inherit; }
+/* Spacing is a token, not a literal, so a deck can move its margins without
+   restating the rule that positions them. These are deliberately *not* part of
+   the palette contract in `docs/workstreams.md#c3-theme-tokens`: no built-in
+   theme defines one, every use carries the built-in value as its fallback, and
+   a deck that sets none is pixel-identical to one built before they existed.
+   Custom properties inherit, which is what makes them the one dial that works
+   at every scale: set on `:root` they move the whole deck, set on a
+   `section.slide` or a `.pane` they move that one. */
 .grid {
   display: grid; width: 100%; height: 100%;
-  gap: 20px; padding: 44px 60px;
+  gap: var(--mz-grid-gap, 20px);
+  padding: var(--mz-grid-pad-y, 44px) var(--mz-grid-pad-x, 60px);
 }
-.pane { min-width: 0; min-height: 0; overflow: hidden; padding: 2px 4px; }
+.pane {
+  min-width: 0; min-height: 0; overflow: hidden;
+  padding: var(--mz-pane-pad, 2px 4px);
+  /* Both default to the absence of a decoration, so a pane that asks for
+     neither is drawn exactly as it always was. */
+  border: var(--mz-pane-border, none);
+  border-radius: var(--mz-pane-radius, 0);
+}
 /* A pane that shrinks its text rather than clipping it. The wrapper is what
    `fit.js` scales; without the script the pane behaves exactly as any other,
    which is to say it clips - the documented fallback, not a broken state. */
@@ -132,7 +148,8 @@ section.slide { background: var(--mz-slide-bg); border-radius: inherit; }
   /* place-self, not place-items on the grid: a theme may centre its title
      slide, and an item's own placement wins over the container's default. */
   place-self: stretch;
-  border-radius: 0; padding: 44px 60px;
+  border-radius: 0;
+  padding: var(--mz-grid-pad-y, 44px) var(--mz-grid-pad-x, 60px);
   /* A hero centres itself; an explicit valign= is an inline style and still wins. */
   display: flex; flex-direction: column; justify-content: center;
 }
@@ -319,6 +336,28 @@ section.slide:has(.title-slide) .pane { overflow: visible; }
 section.slide:has(.title-slide) .pane.has-bg { overflow: hidden; }
 .title-slide { font-size: 3.4em; border: none; }
 section.slide:has(.title-slide) p { color: var(--mz-muted); font-size: 1.5em; }
+
+/* Deck chrome: the footer and slide number `footer:` and `slide-number:` ask
+   for, on every slide and in the PDF. It sits inside the band the grid already
+   holds back as its bottom padding, so it takes nothing from the content — and
+   it shares the grid's horizontal token, so the footer stays on the same
+   margin as the words above it however that margin is set.
+
+   A slide whose grid has no padding to sit in — a `.bleed` photograph — is the
+   case `<!-- chrome: none -->` exists for; there is no automatic suppression,
+   because a rule that silently drops a confidentiality notice is worse than
+   one that draws it somewhere the author can see and fix. */
+.mz-slide-chrome {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  display: flex; justify-content: space-between; align-items: baseline; gap: 1em;
+  padding: 0 var(--mz-grid-pad-x, 60px) calc(var(--mz-grid-pad-y, 44px) * .38);
+  font-size: var(--mz-slide-chrome-size, .62em);
+  color: var(--mz-slide-chrome-fg, var(--mz-muted));
+  pointer-events: none;
+}
+/* One line each: a footer long enough to wrap would climb into the content. */
+.mz-slide-chrome span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mz-slide-number { font-variant-numeric: tabular-nums; }
 
 /* Math: converted to MathML at build time and drawn natively by the browser */
 math { font-size: 1.15em; }

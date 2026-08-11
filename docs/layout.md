@@ -87,10 +87,28 @@ In order of effort:
 A document that reads well is not automatically a deck that presents well. The
 conversion is a starting point, not a finished deck.
 
+## Drawing the same shape once
+
+A deck that draws the same three or four grids on every slide should name them
+instead. `masters:` in frontmatter holds the drawings, `layout:` picks the
+deck's default, and `<!-- layout: two-up -->` picks another on one slide; the
+[syntax reference](syntax.md#slide-masters) has the resolution order. The
+drawing is the same drawing and goes through the same parser, so every rule on
+this page applies to a master exactly as it applies to a `pane` block.
+
+Two consequences worth knowing before you convert a deck:
+
+- **A master fixes the pane names**, so the sizing rule above becomes a decision
+  you make once for the deck rather than per slide. Draw the heading band two
+  lines tall in the master and every slide that uses it has room for an eyebrow.
+- **A slide that needs a different shape just draws one.** Its own `pane` block
+  always wins, so an exception costs nothing and needs no opt-out.
+
 ## Spacing
 
-- Panes are separated by the grid gap; set it in your theme with
-  `.grid { gap: … ; padding: … }`.
+- Panes are separated by the grid gap. Set `--mz-grid-gap`, `--mz-grid-pad-y`
+  and `--mz-grid-pad-x` — see [the token table](syntax.md#margins-padding-and-borders)
+  — or write the rule yourself with `.grid { gap: … ; padding: … }`.
 - Empty cells are legitimate. A `.` or blank cell reserves space, which is often
   the cleanest way to add breathing room around a figure.
 - `valign=middle` centres content in its band. It looks deliberate for short

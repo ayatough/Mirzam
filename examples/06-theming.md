@@ -6,16 +6,20 @@ theme: mirzam
 mode: dark
 css: themes/mirzam.css
 math: typst
+footer: Theming and settings
+slide-number: "{n} / {total}"
 ---
+
+<!-- chrome: none -->
 
 # Theming and settings {.title-slide}
 
-Every knob a deck has, and the order they are read in. This deck sets three of
+Every knob a deck has, and the order they are read in. This deck sets four of
 them on itself: `theme: mirzam` for the palette, `css: themes/mirzam.css` for
-the typography on top of it, and `math: typst` for how its one formula is
-written.
+the typography on top of it, `math: typst` for how its one formula is written,
+and `footer:` for the line along the bottom of every slide after this one.
 
-<!-- note: Press D. The whole deck flips, because the stylesheet defines both modes. -->
+<!-- note: Press D. The whole deck flips, because the stylesheet defines both modes. This slide says `chrome: none`, which is why the footer starts on slide 2. -->
 
 ---
 
@@ -276,6 +280,55 @@ vars:
 ```
 
 ::: pane head
+[Reference]{.eyebrow}
+## The four that repeat on every slide
+:::
+
+::: pane src {.card valign=middle}
+```yaml
+layout: body
+footer: Internal
+slide-number: "{n} / {total}"
+masters:
+  body: |
+    +----------+
+    |  head    |
+    +----------+
+    |  main    |
+    |          |
+    +----------+
+```
+
+```markdown
+<!-- layout: none -->
+<!-- chrome: none -->
+```
+:::
+
+::: pane what {valign=middle}
+- `masters:` names slide shapes — the same drawing a `pane` block holds
+- `layout:` picks the deck's default, `<!-- layout: -->` one slide's
+- A slide's own `pane` block always wins; `none` opts out
+- `footer:` and `slide-number:` draw on every slide **and in the PDF**
+- `<!-- chrome: none -->` drops both, as this deck's title slide does
+:::
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|  src             |  what           |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
 [Per element]{.eyebrow}
 ## Settings smaller than a deck
 :::
@@ -352,6 +405,60 @@ Set every token in both blocks, or set none and let the theme do it.
 
 [A test holds `examples/themes/*.css` to that rule, in both modes.]{.small}
 :::
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|  src             |  out            |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Custom CSS]{.eyebrow}
+## Margins are tokens too
+:::
+
+::: pane src {.card valign=middle}
+```css
+:root {
+  --mz-grid-pad-y: 56px;
+  --mz-grid-pad-x: 72px;
+  --mz-grid-gap: 28px;
+}
+.framed {
+  --mz-pane-border: 1px solid var(--mz-border);
+  --mz-pane-radius: 8px;
+  --mz-pane-pad: 14px 18px;
+}
+```
+
+```markdown
+::: pane fig {.framed}
+```
+:::
+
+::: pane out {valign=middle}
+Six tokens set a deck's margins, the gap between panes, and the padding,
+border and radius of a pane. Every one carries its built-in value as a
+fallback, so a deck that sets none renders exactly as it always did.
+
+These are **not** palette tokens — no built-in theme defines one, and `theme:`
+stays a choice of colour.
+
+Because custom properties inherit, the same names work at any scale: on
+`:root` they move the deck, on a class you put on one pane they move that pane.
+:::
+
+<!-- note: The stylesheet this deck loads sets the first three. Compare the margins here with 04-components.md, which does not. -->
+
 
 ---
 

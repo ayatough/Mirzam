@@ -3,6 +3,29 @@ title: Mirzam Layout Cookbook
 author: Mirzam
 aspect: "16:9"
 css: themes/mirzam.css
+masters:
+  contrast: |
+    +------------------------------------+
+    |                                    |
+    |  head                              |
+    +------------------+-----------------+
+    |                  |                 |
+    |                  |                 |
+    |  bad             |  good           |
+    |                  |                 |
+    |                  |                 |
+    +------------------+-----------------+
+  stated: |
+    +------------------------------------+
+    |                                    |
+    |  head                              |
+    +------------------------------------+
+    |                                    |
+    |                                    |
+    |  body                              |
+    |                                    |
+    |                                    |
+    +------------------------------------+
 ---
 
 # Layout cookbook {.title-slide}
@@ -56,18 +79,7 @@ Draw the band as tall as the content deserves.
 
 ---
 
-```pane
-+------------------------------------+
-|                                    |
-|  head                              |
-+------------------+-----------------+
-|                  |                 |
-|                  |                 |
-|  bad             |  good           |
-|                  |                 |
-|                  |                 |
-+------------------+-----------------+
-```
+<!-- layout: contrast -->
 
 ::: pane head
 [Rule 2]{.eyebrow}
@@ -240,18 +252,7 @@ rect      #cook-1-2 : color=@accent2 step=1 pad=6
 
 ---
 
-```pane
-+------------------------------------+
-|                                    |
-|  head                              |
-+------------------+-----------------+
-|                  |                 |
-|                  |                 |
-|  bad             |  good           |
-|                  |                 |
-|                  |                 |
-+------------------+-----------------+
-```
+<!-- layout: contrast -->
 
 ::: pane head
 [Rule 6]{.eyebrow}
@@ -325,18 +326,7 @@ When it is not, choose the break yourself instead of letting the box choose it.
 
 ---
 
-```pane
-+------------------------------------+
-|                                    |
-|  head                              |
-+------------------------------------+
-|                                    |
-|                                    |
-|  body                              |
-|                                    |
-|                                    |
-+------------------------------------+
-```
+<!-- layout: stated -->
 
 ::: pane head
 [Rule 8]{.eyebrow}
@@ -356,3 +346,55 @@ It renders every slide and reports what HTML snapshots cannot see:
 
 This deck passes it in CI, which is the only reason to trust the rules above.
 :::
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|  src             |  out            |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Rule 9]{.eyebrow}
+## Draw a shape once, not once per slide
+:::
+
+::: pane src {.card valign=middle}
+```yaml
+masters:
+  contrast: |
+    +--------------+-------------+
+    |  head                      |
+    +--------------+-------------+
+    |              |             |
+    |  bad         |  good       |
+    |              |             |
+    +--------------+-------------+
+```
+
+```markdown
+<!-- layout: contrast -->
+```
+:::
+
+::: pane out {valign=middle}
+Rules 2 and 6 draw no grid at all: both name `contrast`, and this slide's own
+drawing is here because it is the one shape the deck uses once.
+
+A slide's own `pane` block always wins, so an exception needs no opt-out —
+and `<!-- layout: none -->` gives a title slide the whole surface back when the
+deck sets a default with `layout:`.
+
+The catch is names: the master fixes them, so `bad` and `good` are what every
+slide using it has to call its panes.
+:::
+
+<!-- note: The deck renders identically to the version that drew all three grids by hand. That is the test: a master is a shape moved, not a shape changed. -->

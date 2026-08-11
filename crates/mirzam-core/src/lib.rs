@@ -35,6 +35,20 @@ pub struct DeckMeta {
     /// Which syntax `$...$` holds: `latex` (the default) or `typst`.
     /// Per deck, not per formula — a deck reads as one language.
     pub math: Option<String>,
+    /// Named layouts a slide can be drawn on instead of carrying a `pane`
+    /// block of its own: the name, and the same ASCII art that block holds.
+    /// A slide picks one with `<!-- layout: name -->`.
+    pub masters: BTreeMap<String, String>,
+    /// The master every slide takes when it neither draws a grid nor names
+    /// one. A slide opts out of it with `<!-- layout: none -->`.
+    pub layout: Option<String>,
+    /// Text drawn along the bottom of every slide. `{n}` and `{total}` are
+    /// substituted; a slide drops it with `<!-- chrome: none -->`.
+    pub footer: Option<String>,
+    /// The slide's own number, drawn opposite the footer. Same substitutions,
+    /// so `"{n} / {total}"` is the usual value.
+    #[serde(rename = "slide-number", alias = "slide_number")]
+    pub slide_number: Option<String>,
     pub vars: BTreeMap<String, serde_yaml::Value>,
 }
 
