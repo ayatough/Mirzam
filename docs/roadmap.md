@@ -152,6 +152,22 @@ to a *slide*, and above that to a section, since `## ` headings already give a
 deck its outline. A slide has no attribute syntax at all today: `## Text {…}`
 attaches to the heading, not to the slide it opens.
 
+**Syntax highlighting in code blocks.** A fenced block records its language and
+renders it uncoloured; `docs/syntax.md` says so plainly, which is the honest
+state rather than a fixed one. The question that stalled it is cost, not
+desire: a highlighter means shipping grammar definitions, and the browser build
+already pays 103 KB gzipped for the emoji table. **Measure first** — build the
+WASM bundle with a candidate (`syntect` with a trimmed syntax set, or a
+hand-rolled lexer for the six languages a deck actually shows) and compare the
+gzipped delta against that 103 KB as the yardstick for what a convenience is
+allowed to cost. Decide after the number exists.
+
+**A `[span]{...}` cannot cross a source line.** The inline-attribute transform
+runs line by line, so a span whose text is wrapped leaves its brackets and
+braces on the slide as literal characters. Documented in the reference as a
+constraint; the fix is to run the transform over paragraphs rather than lines,
+which has to keep the existing rule that nothing inside a fence is touched.
+
 ## Open questions
 
 - **Nested layouts.** Whether a pane can contain its own pane grid, or whether the
