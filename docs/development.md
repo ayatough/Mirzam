@@ -32,14 +32,19 @@ cargo run --release -p mirzam-cli --bin mirzam-bench   # performance benchmark
 ./scripts/serve-wasm-demo.sh                           # browser playground
 ./scripts/build-vsix.sh                                # VS Code extension
 
-node scripts/check-layout.mjs --build examples/pitch.md   # layout validation
+cargo run --bin mirzam -- check examples/pitch.md         # layout validation
 ./scripts/build-site.sh                                  # docs site + live decks
 node scripts/make-brand-raster.mjs                       # docs/brand/ social card + icon PNG
+
+./scripts/check-versions.sh                              # every version agrees
+./scripts/release.sh 0.5.0 --dry-run                     # what a release would change
 ```
 
-The layout checker and the brand rasteriser both need a browser: `npm i
-playwright-core && npx playwright install chromium`, or point
-`MIRZAM_CHROMIUM` at an existing Chromium.
+`mirzam check` and the brand rasteriser both need a browser. `check` finds
+Chromium on `PATH` by itself; otherwise point `MIRZAM_CHROMIUM` at one. The
+brand rasteriser and `scripts/check-layout.mjs` — the same checks driven through
+a tab that stays open, which is what a screenshot or a recording needs — want
+`npm i playwright-core && npx playwright install chromium` on top of that.
 
 ## Recording a demo
 
@@ -178,6 +183,13 @@ workspace version.
 
 - **`0.x` means the markup can change.** Breaking syntax changes are allowed in a
   minor bump, and they must be listed in [`CHANGELOG.md`](../CHANGELOG.md).
+- **Which digit moves is read off the changelog**, so it is not a judgement call
+  made twice: `[Unreleased]` carrying an `### Added`, `### Changed` or
+  `### Removed` is a minor bump, because any of the three can move the markup
+  under someone; a section that is only `### Fixed` is a patch.
+  `scripts/release.sh` applies this rule and says so when the version it is
+  given disagrees — it does not refuse, because the author may know something
+  the section headings do not.
 - A release is cut by bumping `[workspace.package] version` in the root
   `Cargo.toml`, updating the changelog, and tagging `vX.Y.Z`. Pushing the tag
   runs `.github/workflows/release.yml`, which builds `mirzam` for five targets,
@@ -244,25 +256,51 @@ the same crate — which is what the ownership tables in
 
 ## Release checklist
 
-1. `cargo test --workspace` and `cargo clippy --workspace --all-targets` are clean
-2. `cargo run --release -p mirzam-cli --bin mirzam-bench` shows no regression
-3. Sample decks build and pass the layout check: `01-start`, `02-writing`,
+```bash
+./scripts/release.sh 0.5.0            # or --dry-run first, to see the edits
+```
+
+That is steps 1 to 5 below, in one command: it writes the version into the five
+files that carry it, closes `[Unreleased]` into a dated section with a fresh
+empty one above it, and runs the gate. It stops there — it does not commit,
+push or tag, because those are the steps worth looking at.
+
+1. `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets` and
+   `cargo test --workspace` are clean
+2. `cargo run --release -p mirzam-cli --bin mirzam-bench` shows no regression.
+   **Read the second run**: the first pays for a cold cache and can report a
+   full build several times slower than the table in [the
+   roadmap](roadmap.md#measured-performance) without anything being wrong. What
+   has to stay flat is single-slide edit latency, not full-build time
+3. Sample decks build and pass `mirzam check`: `01-start`, `02-writing`,
    `03-layout`, `04-components`, `05-motion`, `06-theming`, `pitch`, `seminar`
-4. `./scripts/build-wasm.sh` and `./scripts/build-vsix.sh` succeed
-5. `CHANGELOG.md` updated, version bumped in the root `Cargo.toml` and in
-   `editors/vscode/package.json`
-6. Cut the release, either way round:
+4. `./scripts/build-vsix.sh` succeeds — it builds the WASM package on its way to
+   the extension, so it covers `build-wasm.sh` too
+5. `CHANGELOG.md` closed, and the version written in the root `Cargo.toml`,
+   `editors/vscode/package.json`, `Cargo.lock`, and the status sentence in both
+   `README.md` and `docs/roadmap.md`. `./scripts/check-versions.sh` is the same
+   check, and CI runs it on every push
+6. **Read what you are about to release.** The script writes the version
+   number; nothing writes the prose. Read the dated changelog section as a
+   stranger would, and look at `/next/` — it is the release candidate, rendered
+7. **Land the commit on `main`.** A release is cut from `main`, so a bump
+   sitting on a branch cannot be tagged. `git commit -am "Release vX.Y.Z"`,
+   saying in the body why this bump rather than what changed, then `git push
+   origin HEAD:main`
+8. Cut the release, either way round:
    - `git tag vX.Y.Z && git push origin vX.Y.Z`, or
    - run the **Release** workflow with `publish` checked, which makes the tag
-     from the manifest version and needs no local git at all. Use this when the
-     credentials to hand are scoped to branches — a CI job, an agent, a machine
-     that is not yours.
+     from the manifest version and needs no local git at all:
+     `gh workflow run release.yml --ref main -f publish=true`, the Actions tab,
+     or a `POST` to `/actions/workflows/release.yml/dispatches`.
 
-   Either way the workflow publishes the binaries, and until it is green there
-   is nothing for `install.sh` to fetch. Running the workflow with `publish`
-   unchecked builds the whole matrix and cuts nothing, which is how to find out
-   that a runner image has been retired *before* a tag is waiting on it.
-7. Check the site rebuilt. Publishing the release triggers **Pages**, which is
+   **An agent takes the second route**, always: pushing a tag is refused for
+   credentials scoped to branches (403), and there is nothing to be gained by
+   finding that out again. Either way the workflow publishes the binaries, and
+   until it is green there is nothing for `install.sh` to fetch. Running it with
+   `publish` unchecked builds the whole matrix and cuts nothing, which is how to
+   find out that a runner image has been retired *before* a tag is waiting on it
+9. Check the site rebuilt. Publishing the release triggers **Pages**, which is
    what moves the root onto the new tag — but the CI run for the version-bump
    commit *also* triggers it, a minute earlier, when the tag does not exist
    yet. That earlier run rebuilds the root from the previous release, so until

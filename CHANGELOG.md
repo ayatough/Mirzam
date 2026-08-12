@@ -7,7 +7,41 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- **Cutting a release is one command: `./scripts/release.sh <version>`.** It
+  writes the version into the five files that carry it — the root `Cargo.toml`,
+  `Cargo.lock`, `editors/vscode/package.json`, and the status sentence in both
+  `README.md` and `docs/roadmap.md` — closes `[Unreleased]` into a dated
+  section with a fresh empty one above it, and runs the gate: formatting,
+  lints, tests, the eight sample decks built and checked, the benchmark, and
+  the extension package. It refuses a version below the current one, an
+  `[Unreleased]` section with nothing in it, and a dirty working tree; it reads
+  which digit should move off the changelog's own headings (`Added`, `Changed`
+  or `Removed` is a minor bump, `Fixed` alone is a patch) and says so when the
+  version it was given disagrees. `--dry-run` shows the edits and keeps none of
+  them. It stops before committing, pushing and tagging, and prints those
+  steps, because they are the ones worth looking at.
+- **CI checks that every version agrees** (`./scripts/check-versions.sh`). The
+  README's status section spent the whole of `v0.3.0` claiming `v0.2.0` was the
+  current release, and nothing could have caught it: no test was failing,
+  because nothing was broken — only untrue. This is the kind of check
+  `build-site.sh`'s dead-link pass already is, applied to the version number.
+
+### Changed
+- **`mirzam check` is now the layout check the contributor docs ask for**, in
+  place of `node scripts/check-layout.mjs`. Both run the same in-page checks
+  from the same source, but `check` needs only the binary and a browser, where
+  the script needs `npm i playwright-core` and leaves three paths to clean up
+  before committing. The script stays the right tool where a tab has to remain
+  open — screenshots, and `scripts/record-demo.mjs`.
+- **The release checklist says where the commit has to live and how an agent
+  cuts the tag.** It assumed both: that the version bump was already on `main`
+  (a release cannot be cut from a branch) and that whoever read it could press
+  a button in the Actions tab. Neither is true for an agent working on a branch
+  through an API, which is now the case the checklist is written for. The
+  benchmark step also says to read the *second* run — the first pays for a cold
+  cache and can report a full build several times slower than the roadmap's
+  table with nothing wrong.
 
 ## [0.4.0] - 2026-08-12
 

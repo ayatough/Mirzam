@@ -39,6 +39,17 @@ jobs:
             cargo run -q --bin mirzam -- build "examples/$deck.md" -o "/tmp/out-$deck"
           done
 
+  versions:
+    name: version consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The version is written in five files. Nothing but somebody's memory
+      # used to keep them in step, which is how the README sat at v0.2.0
+      # through the whole of v0.3.0 - a drift no test could see, because
+      # nothing was broken, only untrue.
+      - run: ./scripts/check-versions.sh
+
   msrv:
     name: minimum supported Rust
     runs-on: ubuntu-latest

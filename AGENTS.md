@@ -38,9 +38,9 @@ export RUSTFLAGS="-D warnings"               # CI sets this; without it, clippy 
 cargo test --workspace                       # 23 suites
 cargo clippy --workspace --all-targets       # zero warnings
 cargo fmt --all -- --check
-node scripts/check-layout.mjs --build examples/01-start.md examples/02-writing.md \
-  examples/03-layout.md examples/04-components.md examples/05-motion.md \
-  examples/06-theming.md examples/pitch.md examples/seminar.md
+for d in 01-start 02-writing 03-layout 04-components 05-motion 06-theming pitch seminar; do
+  cargo run -q --bin mirzam -- check "examples/$d.md"   # needs a browser, nothing else
+done
 ```
 
 **Run these on the same toolchain CI does.** CI uses `dtolnay/rust-toolchain@stable`,
@@ -105,8 +105,7 @@ Rendering bugs are invisible in HTML diffs. Several real bugs in this repository
 aborting mid-way) were found only by looking at pixels.
 
 ```bash
-cargo run --bin mirzam -- build examples/pitch.md -o /tmp/out
-node scripts/check-layout.mjs /tmp/out/index.html      # automated checks
+cargo run --bin mirzam -- check examples/pitch.md      # automated checks
 ```
 
 If you have a browser driver available, screenshot the slides you touched and
@@ -215,31 +214,41 @@ GitHub loads no webfonts - regenerate it rather than retyping the paths, and see
 a test fixture if it is small. Check whether `scripts/check-layout.mjs` could have
 caught it; if not, consider teaching it to.
 
-**Cut a release.** Follow the checklist at the end of
-[docs/development.md](docs/development.md).
+**Cut a release.** `./scripts/release.sh <version>` writes the version into
+every file that carries it, closes the changelog and runs the gate; then commit,
+push to `main`, and dispatch the Release workflow with `publish`. The checklist
+at the end of [docs/development.md](docs/development.md) says what the script
+does not.
 
 ## Things that will waste your time
 
-- **`check-layout.mjs` needs a browser you probably have to point it at.** It
-  imports `playwright-core`, which is not a repository dependency — `npm i
-  playwright-core` first. If the version you install expects a Chromium build
-  the machine does not have, do not run `playwright install`: set
-  `MIRZAM_CHROMIUM` to the browser already on disk.
+- **Use `mirzam check`, not `check-layout.mjs`, unless you need a live tab.**
+  They run the same in-page checks from the same source, but `check` drives a
+  one-shot headless Chromium from the binary you already built, and the script
+  imports `playwright-core`, which is not a repository dependency and leaves
+  `package.json`, `package-lock.json` and `node_modules` to clean up before
+  committing. Either way, point it at a browser if none is on `PATH`:
   ```bash
-  npm i playwright-core
   MIRZAM_CHROMIUM=/opt/pw-browsers/chromium-*/chrome-linux/chrome \
-    node scripts/check-layout.mjs /tmp/out/index.html
+    cargo run -q --bin mirzam -- check examples/pitch.md
   ```
-  Clean up `package.json`, `package-lock.json` and `node_modules` before
-  committing; none of them belong in the repository.
+  The script is still the right tool for a screenshot or a recording, where the
+  tab has to stay open — that is what `scripts/record-demo.mjs` uses.
 - **An attribute span has to be on one line.** `[text]{.small}` split across a
   line break is not recognised and renders as literal `[text]{.small}` on the
   slide. The layout checker measures boxes, so it passes this happily — only
   looking at the slide catches it.
 - **`git push` of a tag is refused for an agent** (403; the credentials are
-  scoped to branches). Cut releases with the **Release** workflow and
-  `publish` checked, which makes the tag from the manifest version. The
-  [release checklist](docs/development.md#release-checklist) assumes this.
+  scoped to branches) — but cutting the release is still yours to do, and the
+  403 is not a reason to hand it back. Two facts make it work: the version-bump
+  commit has to be **on `main`** (a release is cut from `main`, not from the
+  branch you were given), and the **Release** workflow with `publish` checked
+  makes the tag from the manifest itself. Dispatch it however you can reach the
+  API — `gh workflow run release.yml --ref main -f publish=true`, the GitHub
+  MCP server's workflow-dispatch tool, or a `POST` to
+  `/actions/workflows/release.yml/dispatches`. Never push a tag by hand. The
+  [release checklist](docs/development.md#release-checklist) assumes all of
+  this.
 - The `wasm-bindgen` CLI must match the version resolved in `Cargo.lock` exactly.
   `scripts/build-wasm.sh` handles this; do not install it by hand.
 - `comrak` is built with `default-features = false` because its default features
