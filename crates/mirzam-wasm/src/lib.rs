@@ -334,6 +334,15 @@ impl Renderer {
                 }
             }
         }
+        // The references `[@key]` can name come out of the host's file table,
+        // the same place a masters file and a transcluded `![[…]]` do — so the
+        // preview cites, lists and links exactly as the CLI does.
+        let (bib, bib_warnings) = mirzam_render::deck_bibliography(&meta, |rel| {
+            MapFiles(&self.files).read(Path::new(rel))
+        });
+        warnings.extend(bib_warnings);
+        let (cite_style, style_warning) = mirzam_render::citation_style(&meta);
+        warnings.extend(style_warning);
         for text in [&mut ctx.footer, &mut ctx.slide_number]
             .into_iter()
             .flatten()
@@ -355,6 +364,13 @@ impl Renderer {
         // has rendered - here as in the CLI pipeline. Without this the browser
         // build would silently drop a table of contents the CLI produces.
         mirzam_render::resolve_deck(&mut sections);
+        // And so does a citation, which additionally needs to know which slide
+        // the reference list ended up on.
+        warnings.extend(mirzam_render::resolve_citations(
+            &mut sections,
+            &bib,
+            cite_style,
+        ));
         // Content that produced no slides renders as a blank preview with no
         // hint why - frontmatter and nothing after it is the usual way in.
         // A source that is *entirely* empty is not reported: that is the state

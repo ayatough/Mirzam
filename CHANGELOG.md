@@ -8,6 +8,22 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- **A deck can cite a bibliography, and the references list themselves.**
+  Footnotes always covered a remark belonging to one slide; the other half —
+  a paper cited on four slides, whose details are worth writing down once — had
+  no answer, and the reference had to be repeated on every slide that made a
+  claim from it. Now `bibliography: refs.bib` in the frontmatter turns `[@key]`
+  into a citation against a plain BibTeX file (the one a reference manager
+  already exports; a deck citing three papers can write them in frontmatter
+  instead). A `bibliography` block, usually on the last slide, lists what was
+  cited: every mark links to it and every entry links back to each slide that
+  cited it, and in the PDF that backlink is still the slide number. Marks read
+  `[1]` by default, or `[Vaswani+17]` with `citation-style: author`; the list
+  is ordered to match. Nothing is silent — a `[@key]` naming no entry stays on
+  the slide exactly as it was written and says which slide it is on, citing
+  with no list anywhere warns, and a deck with no `bibliography:` leaves
+  `[@anything]` as the text somebody typed. `--mz-bib-size` sets how large the
+  list is. See `examples/04-components.md`, slides 16 and 17.
 - **Cutting a release is one command: `./scripts/release.sh <version>`.** It
   writes the version into the five files that carry it — the root `Cargo.toml`,
   `Cargo.lock`, `editors/vscode/package.json`, and the status sentence in both

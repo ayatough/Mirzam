@@ -5,6 +5,8 @@ aspect: "16:9"
 css: themes/mirzam.css
 mode: dark
 transition: fade 240ms
+bibliography: refs.bib
+citation-style: numeric
 vars:
   uptime: 99.95
   regions: 6
@@ -644,6 +646,75 @@ box       #s-edit   : color=@accent2 step=3 pad=4
 ```pane
 +------------------------------------+
 |                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|  src             |  out            |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[References]{.eyebrow}
+## Cite once, list once
+:::
+
+::: pane src {.card valign=middle}
+```markdown
+Attention replaced recurrence[@vaswani2017],
+and the same block pretrains[@devlin2019].
+
+Both are read the way Tufte would
+draw them[@tufte2001].
+```
+
+Keys come from `refs.bib`, named once in
+the frontmatter. `[^key]` is still there for
+a remark that belongs to one slide.
+:::
+
+::: pane out {valign=middle}
+Attention replaced recurrence[@vaswani2017],
+and the same block pretrains[@devlin2019].
+
+Both are read the way Tufte would draw them[@tufte2001].
+
+*Each mark jumps to the list on the next slide, and each entry jumps back to
+every slide that cited it.*
+:::
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------------------------+
+|                                    |
+|  refs                              |
+|                                    |
++------------------------------------+
+```
+
+::: pane head
+[References]{.eyebrow}
+## The list writes itself
+:::
+
+::: pane refs
+```bibliography
+```
+:::
+
+<!-- note: Numbered in the order they were first cited. The ↩ after each entry is the slide it was cited on; on this deck they all point back one slide. -->
+
+---
+
+```pane
++------------------------------------+
+|                                    |
 |  main                              |
 |                                    |
 +------------------------------------+
@@ -654,7 +725,7 @@ box       #s-edit   : color=@accent2 step=3 pad=4
 ::: pane main {align=center valign=middle}
 ## That is the whole vocabulary
 
-`pane` · `::: pane` · `chart` · `shape` · `connect` · `annotate` · attributes · variables
+`pane` · `::: pane` · `chart` · `shape` · `connect` · `annotate` · `bibliography` · attributes · variables
 
 Motion is next door, in `05-motion.md`.
 :::

@@ -6,6 +6,7 @@ members = [
     "crates/mirzam-layout",
     "crates/mirzam-shape",
     "crates/mirzam-chart",
+    "crates/mirzam-cite",
     "crates/mirzam-connect",
     "crates/mirzam-anim",
     "crates/mirzam-annot",
@@ -39,6 +40,7 @@ mirzam-core = { path = "crates/mirzam-core" }
 mirzam-layout = { path = "crates/mirzam-layout" }
 mirzam-shape = { path = "crates/mirzam-shape" }
 mirzam-chart = { path = "crates/mirzam-chart" }
+mirzam-cite = { path = "crates/mirzam-cite" }
 mirzam-connect = { path = "crates/mirzam-connect" }
 mirzam-anim = { path = "crates/mirzam-anim" }
 mirzam-annot = { path = "crates/mirzam-annot" }

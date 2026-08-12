@@ -31,6 +31,7 @@ This file runs long; jump straight to the one you need.
 | [When a slide has too much on it](#when-a-slide-has-too-much-on-it) | `--fit shrink`, `<!-- next -->`, and when to just make another pane |
 | [Table of contents](#table-of-contents) | The `toc` block — an agenda slide that links to itself |
 | [Citations](#citations) | Footnotes with `[^key]` — **the definition must be on the same slide as the reference** |
+| [References](#references) | `[@key]` against a `bibliography:` file, listed and linked by the `bibliography` block |
 | [Presentation effects](#presentation-effects) | The `effects` block: flourishes bound to a key, fired while presenting |
 | [Annotations](#annotations) | The `annotate` block: circle, underline, box, arrow, pointing at a live element |
 | [Animations](#animations) | The `anim` block: entrances, click steps, exits |
@@ -52,6 +53,8 @@ masters: masters.md   # named slide shapes; see Slide masters below
 layout: body          # the master a slide takes when it draws no grid
 footer: Internal      # drawn on every slide, and in the PDF
 slide-number: "{n} / {total}"
+bibliography: refs.bib   # references `[@key]` can cite; see References below
+citation-style: numeric  # `[1]`, or `author` for `[Vaswani+17]`
 vars:
   product: Mirzam
   price: 1200
@@ -437,6 +440,7 @@ and both strikethrough and task lists shipped working and undocumented.
 | `| a | b |` | tables; `---` left, `---:` right, `:---:` centred |
 | ` ``` ` fences and indents | code blocks. The language is recorded but not yet coloured — syntax highlighting is not implemented |
 | `[^key]` | footnotes, landing on the slide that cites them |
+| `[@key]` | a reference from the deck's bibliography, listed at the back |
 | `<!-- -->` | comments; `<!-- note: -->` is a speaker note |
 | raw HTML | passed through, so `<div class="box">` works |
 
@@ -933,6 +937,11 @@ A bare DOI or arXiv URL becomes a link on its own. See
 talk: a figure quoted from the paper, annotated and pointed at from the prose,
 with its citation at the foot of the same slide.
 
+For a source cited on several slides — where the note would have to be repeated
+on each of them, or written once and unreachable from the others — use
+[references](#references) instead: `[@key]` against a bibliography, collected
+into a list at the back. The two are unrelated and a deck can use both.
+
 **The `[^key]: …` definition has to be on the same slide as its `[^key]`
 reference** — each slide renders on its own, so a definition left on another
 slide (or, in a grid layout, a pane other than the reference's own) never
@@ -941,6 +950,98 @@ matching definition is just left as literal `[^key]` text, which reads as a
 typo rather than a broken feature. `mirzam build` warns when this happens
 (`--strict` fails the build on it), so the fix is to move the definition onto
 the citing slide rather than to hunt for what silently did not link.
+
+## References
+
+A footnote answers *what is this claim resting on, here*. The other question —
+*what has this talk read* — is what a bibliography answers, and it is a
+different shape: one source cited on four slides, whose details are worth
+writing down exactly once.
+
+Name a bibliography in the frontmatter and `[@key]` becomes a citation:
+
+```yaml
+---
+bibliography: refs.bib
+citation-style: numeric      # or `author`
+---
+```
+
+```markdown
+Attention replaced recurrence[@vaswani2017], and the same block
+pretrains[@devlin2019]. Both at once reads [@vaswani2017; @devlin2019].
+```
+
+`refs.bib` is a plain BibTeX file — what a reference manager exports, read as
+it is. A deck citing three papers can skip the second file and write them in
+frontmatter instead, with the same field names:
+
+```yaml
+bibliography:
+  vaswani2017:
+    author: Vaswani, Ashish and Shazeer, Noam
+    title: Attention Is All You Need
+    booktitle: NeurIPS
+    year: 2017
+```
+
+**Without `bibliography:` in the frontmatter, `[@key]` is ordinary text.** So is
+anything that is not a bare key — `[@handle said so]`, an address in brackets,
+a citation inside `` ` `` or a fence, and `\[@key]` when you want the brackets
+themselves.
+
+### The list
+
+A `bibliography` block puts the references somewhere, usually on the last
+slide:
+
+````markdown
+```bibliography
+show: cited      # `cited` (default) or `all`
+back: true       # show which slides cited each entry
+```
+````
+
+| Key | Default | Does |
+|---|---|---|
+| `show` | `cited` | `all` lists every entry in the file, cited or not |
+| `back` | `true` | prints the slides each entry was cited on, each a link |
+
+Every `[@key]` links to the slide the list is on, and every entry links back to
+each slide that cited it — a slide citing one reference three times is one
+backlink. In the PDF the backlink is still the slide number, so it says
+something on paper where there is nothing to click.
+
+A block with nothing to list renders as nothing, the way an empty `toc` does.
+
+### What the mark says
+
+| `citation-style:` | Mark | Listed in |
+|---|---|---|
+| `numeric` (default) | `[1]` | order of first citation |
+| `author` | `[Vaswani+17]` | alphabetical order |
+
+`author` builds the label from the entry: the first author's surname, `+` if
+there are others, and the last two digits of the year. Two entries that would
+print the same label get `a`, `b`, … so a mark always names one reference.
+
+An entry reads as *authors — title — where it appeared, year — link*, with
+surnames only and at most three of them before `et al.` The link is the DOI if
+the entry has one, else its URL, else its arXiv identifier.
+
+**`--mz-bib-size`** (default `1.05em`) sets how large the list is, on the pane,
+the deck or a theme — a talk citing thirty papers needs it smaller than one
+citing three.
+
+### When a key is wrong
+
+A `[@key]` naming no entry stays on the slide exactly as it was written, and
+`mirzam build` says which slide it is on (`--strict` fails the build on it).
+That is deliberate: a mark that silently became `[7]` would point at the wrong
+paper, and one that silently vanished would take the claim's source with it.
+
+Citing with no `bibliography` block anywhere in the deck warns too. The marks
+still read; they simply have nowhere to go.
 
 ## Presentation effects
 

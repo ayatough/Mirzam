@@ -49,7 +49,46 @@ pub struct DeckMeta {
     /// so `"{n} / {total}"` is the usual value.
     #[serde(rename = "slide-number", alias = "slide_number")]
     pub slide_number: Option<String>,
+    /// References the deck may cite with `[@key]`, and list with a
+    /// `bibliography` block. Unset means `[@key]` is ordinary text.
+    pub bibliography: BibSource,
+    /// What a `[@key]` reads as: `numeric` for `[1]`, `author` for
+    /// `[Vaswani+17]`. Per deck, because a deck cites one way.
+    #[serde(rename = "citation-style", alias = "citation_style")]
+    pub citation_style: Option<String>,
     pub vars: BTreeMap<String, serde_yaml::Value>,
+}
+
+/// Where a deck's references come from.
+///
+/// The same two forms as [`Masters`], for the same reason and with a stronger
+/// case: a `.bib` is what a reference manager exports and what a paper already
+/// has beside it, so naming the file is the path that costs an author nothing.
+/// A deck citing three papers can write them in its own frontmatter instead
+/// and stay one file.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+pub enum BibSource {
+    /// `bibliography: refs.bib`, resolved relative to the deck like `css:` is.
+    File(String),
+    /// `bibliography: {key: {author: …, title: …, year: …}}`, in frontmatter.
+    /// The field names are BibTeX's, so an entry can be lifted either way.
+    Inline(BTreeMap<String, BTreeMap<String, String>>),
+}
+
+impl Default for BibSource {
+    fn default() -> Self {
+        BibSource::Inline(BTreeMap::new())
+    }
+}
+
+impl BibSource {
+    /// Whether the deck declared any references at all. This is what decides
+    /// whether `[@key]` is a citation or the text somebody typed: a deck with
+    /// no bibliography must leave the brackets alone.
+    pub fn is_empty(&self) -> bool {
+        matches!(self, BibSource::Inline(m) if m.is_empty())
+    }
 }
 
 /// Where a deck's named slide shapes come from.
@@ -160,6 +199,25 @@ impl DeckMeta {
         match &self.masters {
             Masters::Inline(m) => Some(m),
             Masters::File(_) => None,
+        }
+    }
+
+    /// The `.bib` this deck names, if it names a file rather than writing its
+    /// references inline. Read by the caller, like `masters:` and for the same
+    /// reason: the core has no filesystem.
+    pub fn bibliography_file(&self) -> Option<&str> {
+        match &self.bibliography {
+            BibSource::File(path) => Some(path.as_str()),
+            BibSource::Inline(_) => None,
+        }
+    }
+
+    /// References written in the deck's own frontmatter; `None` when it names
+    /// a file instead.
+    pub fn inline_bibliography(&self) -> Option<&BTreeMap<String, BTreeMap<String, String>>> {
+        match &self.bibliography {
+            BibSource::Inline(m) => Some(m),
+            BibSource::File(_) => None,
         }
     }
 

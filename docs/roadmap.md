@@ -36,6 +36,7 @@ keep changing.
 | Presenter window, touch and gesture controls | Done |
 | Per-pane continuation (`<!-- next -->`) | Done |
 | Contents page generated from headings | Done |
+| References from a BibTeX file, cited and listed | Done |
 | Browser editor (WebAssembly), prebuilt binaries | Done |
 | Slide masters (`masters:`, `<!-- layout: -->`) | Done |
 | Footers and slide numbers | Done |

@@ -5,6 +5,7 @@ mod anim;
 mod annot;
 mod assets;
 mod charts;
+mod cite;
 mod connect;
 mod effects;
 mod inline;
@@ -13,7 +14,10 @@ mod toc;
 
 pub use assets::{AssetSource, FsAssets};
 pub use charts::render_charts_in;
+pub use cite::mark as mark_citations;
+pub use cite::resolve_deck as resolve_citations;
 pub use inline::{parse_attrs, preprocess, preprocess_math, render_markdown, render_math};
+pub use mirzam_cite::{Bibliography, CiteStyle};
 pub use mirzam_core::MathDialect;
 pub use theme::{contrast_ratio, mode_warning, theme_warning, THEME_NAMES};
 pub use toc::resolve_deck;
@@ -55,6 +59,14 @@ pub struct DeckContext {
     pub slide_number: Option<String>,
     /// How many slides the deck has, for `{total}`.
     pub total: usize,
+    /// Whether the deck declared any references, from frontmatter
+    /// `bibliography:`. Only the flag, not the entries: a slide records the
+    /// key it cited and nothing else, so editing a `.bib` rewrites the
+    /// reference list without invalidating one cached slide.
+    ///
+    /// It has to reach a slide at all because a deck with no bibliography must
+    /// leave `[@name]` as the text somebody typed.
+    pub citations: bool,
     /// Set when the deck named a masters file that could not be read. Every
     /// name it would have defined is then missing, and the file is the one
     /// fact worth reporting: without this, deleting it says "cannot read the
@@ -80,6 +92,7 @@ impl DeckContext {
             footer: meta.footer.clone(),
             slide_number: meta.slide_number.clone(),
             total,
+            citations: !meta.bibliography.is_empty(),
             masters_unavailable: false,
         }
     }
@@ -147,6 +160,7 @@ impl DeckContext {
         self.layout.hash(&mut h);
         self.footer.hash(&mut h);
         self.slide_number.hash(&mut h);
+        self.citations.hash(&mut h);
         if self.prints_total() {
             self.total.hash(&mut h);
         }
@@ -158,6 +172,78 @@ impl DeckContext {
             .into_iter()
             .flatten()
             .any(|t| t.contains("{total}"))
+    }
+}
+
+/// The deck's references, however its frontmatter declared them.
+///
+/// `read` is how the host reaches a named `.bib`: the CLI reads it from disk
+/// and adds it to the watch set, the browser takes it from the table the
+/// editor injected. The core cannot do either, and the wording of what went
+/// wrong should not be written twice.
+///
+/// A bibliography that cannot be read is a warning, never a build failure. The
+/// deck still renders; every `[@key]` on it stays as the author typed it, and
+/// the warning says so rather than leaving the marks to be explained by
+/// whoever notices them on the slide.
+pub fn deck_bibliography(
+    meta: &DeckMeta,
+    read: impl FnOnce(&str) -> Result<String, String>,
+) -> (Bibliography, Vec<String>) {
+    let Some(rel) = meta.bibliography_file() else {
+        let entries = meta
+            .inline_bibliography()
+            .map(|m| {
+                m.iter()
+                    .map(|(k, fields)| {
+                        (
+                            k.clone(),
+                            mirzam_cite::Entry::from_fields(k, fields.clone()),
+                        )
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        return (entries, Vec::new());
+    };
+    let src = match read(rel) {
+        Ok(src) => src,
+        Err(e) => {
+            return (
+                Bibliography::new(),
+                vec![format!(
+                    "bibliography: {e}; every `[@key]` is left as written"
+                )],
+            )
+        }
+    };
+    let (entries, parse_warnings) = mirzam_cite::parse_bibtex(&src);
+    let mut warnings: Vec<String> = parse_warnings
+        .into_iter()
+        .map(|w| format!("{rel}: {w}"))
+        .collect();
+    if entries.is_empty() && warnings.is_empty() {
+        warnings.push(format!(
+            "bibliography: {rel} defines no entries; an entry is `@type{{key, \
+             field = {{value}}}}`"
+        ));
+    }
+    (entries, warnings)
+}
+
+/// How this deck writes a citation, with a warning for a name that is not a
+/// style. An unrecognised name numbers the references, which is the default a
+/// deck that said nothing would have had.
+pub fn citation_style(meta: &DeckMeta) -> (CiteStyle, Option<String>) {
+    match meta.citation_style.as_deref() {
+        None => (CiteStyle::default(), None),
+        Some(src) => match CiteStyle::parse(src) {
+            Ok(style) => (style, None),
+            Err(e) => (
+                CiteStyle::default(),
+                Some(format!("{e}; citing by number instead")),
+            ),
+        },
     }
 }
 
@@ -661,7 +747,6 @@ fn render_slide(
     chart_files: &mut Vec<std::path::PathBuf>,
     ctx: &DeckContext,
 ) -> String {
-    let math = ctx.math;
     let mut errors: Vec<String> = Vec::new();
 
     // A `shape` fence only parses at slide top level - `mirzam_syntax::parse_slide`
@@ -706,18 +791,8 @@ fn render_slide(
     };
 
     let mut body = match &grid {
-        Some(g) => render_grid_slide(
-            g,
-            slide,
-            index,
-            &mut errors,
-            asset_source,
-            chart_files,
-            math,
-        ),
-        None => {
-            render_single_pane_slide(slide, index, &mut errors, asset_source, chart_files, math)
-        }
+        Some(g) => render_grid_slide(g, slide, index, &mut errors, asset_source, chart_files, ctx),
+        None => render_single_pane_slide(slide, index, &mut errors, asset_source, chart_files, ctx),
     };
 
     // A `[^key]` with no definition on this slide is left as literal text by
@@ -1020,7 +1095,7 @@ fn render_grid_slide(
     errors: &mut Vec<String>,
     asset_source: &dyn AssetSource,
     chart_files: &mut Vec<std::path::PathBuf>,
-    math: MathDialect,
+    ctx: &DeckContext,
 ) -> String {
     let names = grid.pane_names();
     let mut panes_html = String::new();
@@ -1078,8 +1153,14 @@ fn render_grid_slide(
             extra_cls.push_str(" mz-fit");
         }
         let content = toc::extract(&content, errors);
+        let content = cite::extract(&content, errors);
+        let content = if ctx.citations {
+            cite::mark(&content)
+        } else {
+            content
+        };
         let (content, chart_blocks) = charts::extract(&content);
-        let mut body = render_markdown(&preprocess_math(&content, math));
+        let mut body = render_markdown(&preprocess_math(&content, ctx.math));
         if !chart_blocks.is_empty() {
             let (with_charts, files) =
                 charts::render_charts_in(&body, &chart_blocks, index, asset_source, errors);
@@ -1275,7 +1356,7 @@ fn render_single_pane_slide(
     errors: &mut Vec<String>,
     asset_source: &dyn AssetSource,
     chart_files: &mut Vec<std::path::PathBuf>,
-    math: MathDialect,
+    ctx: &DeckContext,
 ) -> String {
     let mut content = slide.loose.clone();
     // Without a layout, `::: pane` blocks are simply concatenated.
@@ -1284,8 +1365,14 @@ fn render_single_pane_slide(
         content.push_str(&pb.body);
     }
     let content = toc::extract(&content, errors);
+    let content = cite::extract(&content, errors);
+    let content = if ctx.citations {
+        cite::mark(&content)
+    } else {
+        content
+    };
     let (content, chart_blocks) = charts::extract(&content);
-    let mut body = render_markdown(&preprocess_math(&content, math));
+    let mut body = render_markdown(&preprocess_math(&content, ctx.math));
     if !chart_blocks.is_empty() {
         let (with_charts, files) =
             charts::render_charts_in(&body, &chart_blocks, index, asset_source, errors);

@@ -12,6 +12,7 @@ mirzam-syntax.workspace = true
 mirzam-layout.workspace = true
 mirzam-shape.workspace = true
 mirzam-chart.workspace = true
+mirzam-cite.workspace = true
 mirzam-connect.workspace = true
 mirzam-anim.workspace = true
 mirzam-annot.workspace = true

@@ -26,6 +26,7 @@ fn sample_block(kind: &str) -> &'static str {
         "chart" => "type: bar\ndata: |\n  k, v\n  a, 1\n",
         "effects" => "1 : flash\n",
         "toc" => "from: 2\ndepth: 3\n",
+        "bibliography" => "show: cited\nback: true\n",
         other => panic!("no sample written for the `{other}` block"),
     }
 }
@@ -67,7 +68,7 @@ A phrase [carrying an id]{#win .u} and a {{ price * 12 }} figure.
 
 <!-- next -->
 
-Body after the break, with a citation[^src].
+Body after the break, with a citation[^src] and a reference[@vaswani2017].
 
 ![[section.md]]
 
@@ -88,6 +89,10 @@ Body after the break, with a citation[^src].
     // Footnotes are a CommonMark extension, so plainly they stay as text —
     // which is still readable, and still says where the claim came from.
     assert!(html.contains("[^src]"), "{html}");
+    // A citation is the same trade one step further out: the key stays on the
+    // page, so a reader on GitHub can still see which paper is meant even
+    // though the reference list is not built for them.
+    assert!(html.contains("[@vaswani2017]"), "{html}");
 }
 
 /// The three W14 text marks name a phrase and nothing else, so the phrase has

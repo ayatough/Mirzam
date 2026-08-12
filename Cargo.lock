@@ -219,6 +219,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "mirzam-cite"
+version = "0.4.0"
+
+[[package]]
 name = "mirzam-cli"
 version = "0.4.0"
 dependencies = [
@@ -261,6 +265,7 @@ dependencies = [
  "mirzam-anim",
  "mirzam-annot",
  "mirzam-chart",
+ "mirzam-cite",
  "mirzam-connect",
  "mirzam-core",
  "mirzam-layout",

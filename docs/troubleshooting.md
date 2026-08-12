@@ -62,6 +62,11 @@ is broken, check the three limits that produce this most often:
   on another slide (or, in a `pane` grid layout, a *different pane* of the
   same slide) never reaches it, and the reference is left as literal bracket
   text. `mirzam build` warns about this one too.
+- **`[@key]` is only a citation when the deck has a `bibliography:`.** Without
+  one in the frontmatter there is nothing a key could name, so the brackets are
+  left exactly as typed rather than turning someone's prose into a reference.
+  Same for a key the bibliography does not define — the mark stays as written,
+  and the build says which slide it is on.
 
 If none of those explain it, check whether the block is nested inside a
 *longer* fence (four backticks around three): that's how a document quotes
@@ -116,6 +121,10 @@ since it changes how urgent the fix is:
 |---|---|---|---|
 | pane "x" contains a shape block, but shape only renders at slide top level | Shape | A `shape` fence sits inside `::: pane` | Note only — still renders as a code block |
 | footnote reference "[^key]" has no definition on this slide | Citations | `[^key]` with no `[^key]:` on the same slide | Note only — bracket text stays literal, once per key |
+| `[@key]` is in no bibliography entry | References | A citation key the deck's `bibliography:` does not define | Note only — the mark stays on the slide exactly as written |
+| citations: N reference(s) are cited and no `bibliography` block lists them | References | The deck cites but never places a `bibliography` block | Note only — each mark reads, and links nowhere |
+| bibliography: nothing to list | References | A `bibliography` block on a deck where no `[@key]` cited an entry | Note only — the block renders as nothing |
+| bibliography: cannot read … | References | `bibliography:` names a file that is not there | Note only — every `[@key]` is left as written |
 | connect endpoint "#id" matches nothing on this slide | Connectors | A `connect` id matches no text anchor, shape, `annotate` mark, or chart on the slide | Note only — the connector is still emitted; the viewer just draws no arrow |
 | pane "x" is not in the layout | Layout | `::: pane x` names a pane the `pane` grid doesn't define | Shown on the slide too |
 | a pane block needs … / the merged region for pane "x" is not rectangular | Layout | Malformed ASCII `pane` grid | Shown on the slide too |

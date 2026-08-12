@@ -89,6 +89,7 @@ email.
 | **Animation** | `anim` blocks compile to a timeline: entrances, click-through builds, page turns — and the PDF still shows every slide revealed |
 | **Video, audio and embeds** | Files inlined; YouTube and Vimeo embedded, with a link in the PDF |
 | **Citations** | `[^key]` footnotes land at the foot of the slide that cites them |
+| **References** | `[@key]` against a BibTeX file; the `bibliography` block lists what was cited, links each mark to it and each entry back to the slides that cited it |
 | **A contents page that writes itself** | `toc` collects the deck's headings, links each to its slide, and marks the section you are in |
 | **Nothing silently lost** | `fit: shrink` scales an overfull pane down instead of clipping it |
 | **Your break, not the box's** | `<!-- next -->` carries one pane on to the next slide while the rest hold still |
@@ -218,11 +219,12 @@ Run `./scripts/build-site.sh` to build the same site locally.
 - **Working:** build, live-reload server, PDF export, ASCII pane layout, slide
   masters, file splitting, variables and arithmetic, math in LaTeX or Typst
   flavour, charts, shapes, live connectors, video, audio and embeds, citations,
-  background images, animation and slide transitions, annotations, effects,
-  shrink-to-fit and author-chosen pane breaks, named themes and dark mode down
-  to a single pane, custom themes, footers and slide numbers, speaker notes and
-  a presenter window, touch and gesture controls, a table of contents from
-  headings, VS Code extension, WebAssembly core and a browser editor
+  references from a BibTeX file, background images, animation and slide
+  transitions, annotations, effects, shrink-to-fit and author-chosen pane
+  breaks, named themes and dark mode down to a single pane, custom themes,
+  footers and slide numbers, speaker notes and a presenter window, touch and
+  gesture controls, a table of contents from headings, VS Code extension,
+  WebAssembly core and a browser editor
 - **Next:** carrying an element from one slide to the next, dragging an
   annotation back into the Markdown, PowerPoint export
 - **Performance:** a 500-slide deck builds in 76 ms; a single-slide edit

@@ -265,6 +265,22 @@ pub fn build_deck_with(
             }
         }
     }
+    // The references a `[@key]` can name. Read here rather than in the core
+    // for the same reason `masters:` is, and watched even when the read fails
+    // so writing the file brings the citations to life without restarting
+    // `serve`. Only the flag reaches a slide: the entries are substituted into
+    // the deck once every slide has rendered, which is what lets an edit to
+    // the `.bib` rewrite the reference list without re-rendering one slide.
+    if let Some(rel) = meta.bibliography_file() {
+        files.insert(base_dir.join(rel));
+    }
+    let (bib, bib_warnings) = mirzam_render::deck_bibliography(&meta, |rel| {
+        std::fs::read_to_string(base_dir.join(rel)).map_err(|e| format!("cannot read {rel}: {e}"))
+    });
+    warnings.extend(bib_warnings);
+    let (cite_style, style_warning) = mirzam_render::citation_style(&meta);
+    warnings.extend(style_warning);
+
     for text in [&mut ctx.footer, &mut ctx.slide_number]
         .into_iter()
         .flatten()
@@ -319,6 +335,14 @@ pub fn build_deck_with(
     // once every slide has rendered. Each slide left a self-describing marker,
     // which is what lets a cached slide take part without being re-rendered.
     mirzam_render::resolve_deck(&mut sections);
+    // Citations need the whole deck too, and one thing more: which slide the
+    // reference list is on, which is not known until every `bibliography`
+    // block has been placed. So it runs last, over the same assembled deck.
+    warnings.extend(mirzam_render::resolve_citations(
+        &mut sections,
+        &bib,
+        cite_style,
+    ));
     let mut hashes: Vec<u64> = sections.iter().map(|s| str_hash(s)).collect();
 
     // Applied outside the cache: the base URL is a property of this build, not

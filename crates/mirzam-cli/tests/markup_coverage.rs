@@ -116,13 +116,41 @@ const MARKS: &[Mark] = &[
         documented_as: "a link",
         shown_as: "[a link](https://example.com)",
     },
+    Mark {
+        source: "a claim[@vaswani2017]",
+        html: r#"<span class="mz-cite">[1]</span>"#,
+        documented_as: "`[@key]`",
+        shown_as: "[@vaswani2017]",
+    },
 ];
+
+/// The `.bib` the citation mark is rendered against, so the row above is
+/// checked the whole way through rather than up to the marker.
+const REFS: &str = "@inproceedings{vaswani2017, author={Vaswani, Ashish and \
+                    Shazeer, Noam}, title={Attention Is All You Need}, \
+                    booktitle={NeurIPS}, year={2017}}";
+
+/// One fragment through the path a slide takes: citations marked, Markdown
+/// preprocessed and rendered, then the deck pass that numbers what was cited.
+///
+/// A citation cannot be checked any other way — its mark is a number nothing
+/// on the slide knows — and running every mark through the same function keeps
+/// this list honest about the pipeline rather than about one half of it.
+fn render(source: &str) -> String {
+    let meta = mirzam_core::parse_meta("bibliography: refs.bib").expect("frontmatter");
+    let (bib, _) = mirzam_render::deck_bibliography(&meta, |_| Ok(REFS.to_string()));
+    let mut sections = vec![render_markdown(&preprocess(
+        &mirzam_render::mark_citations(source),
+    ))];
+    mirzam_render::resolve_citations(&mut sections, &bib, mirzam_render::CiteStyle::Numeric);
+    sections.remove(0)
+}
 
 /// A mark that does not render is not a feature, whatever the docs say.
 #[test]
 fn every_listed_mark_renders() {
     for m in MARKS {
-        let out = render_markdown(&preprocess(m.source));
+        let out = render(m.source);
         assert!(
             out.contains(m.html),
             "`{}` should produce `{}`, got:\n{out}",
@@ -231,6 +259,7 @@ fn every_presentation_dial_is_read_with_its_default_as_a_fallback() {
         ("--mz-number-2", "decimal"),
         ("--mz-number-3", "decimal"),
         ("--mz-marker", "currentColor"),
+        ("--mz-bib-size", "1.05em"),
     ] {
         assert!(
             css.contains(&format!("var({dial}, {default})")),

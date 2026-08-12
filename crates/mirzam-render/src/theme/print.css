@@ -29,3 +29,8 @@ html.mz-debug .pane::before { display: none; }
    shows the page number the entry is on instead. */
 nav.mz-toc .mz-toc-page { display: inline; }
 nav.mz-toc a { text-decoration: none; }
+
+/* A citation and its backlink are already numbers on paper — the mark says
+   which entry, the backlink says which page — so both keep their text and
+   only lose the underline a printer would render as a smudge. */
+span.mz-cite a, ul.mz-bib a { text-decoration: none; }

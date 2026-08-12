@@ -526,7 +526,15 @@ fn is_slide_break(trimmed: &str) -> bool {
 ///
 /// Adding a block form means adding it here, in the same change.
 pub const BLOCK_KINDS: &[&str] = &[
-    "pane", "shape", "connect", "annotate", "effects", "anim", "chart", "toc",
+    "pane",
+    "shape",
+    "connect",
+    "annotate",
+    "effects",
+    "anim",
+    "chart",
+    "toc",
+    "bibliography",
 ];
 
 /// Fenced blocks reserved for a later phase.
@@ -1672,8 +1680,8 @@ loose text
     /// block form that no longer exists would make the compatibility test pass
     /// for a promise nobody is asking about any more.
     ///
-    /// `chart` and `toc` are the two the renderer consumes: here they must stay
-    /// in `loose`, which is how they reach it.
+    /// `chart`, `toc` and `bibliography` are the ones the renderer consumes:
+    /// here they must stay in `loose`, which is how they reach it.
     #[test]
     fn every_listed_block_kind_is_one_something_consumes() {
         for kind in BLOCK_KINDS {
@@ -1689,7 +1697,7 @@ loose text
                 || !s.annots.is_empty()
                 || !s.effects.is_empty()
                 || !s.reserved.is_empty();
-            if matches!(*kind, "chart" | "toc") {
+            if matches!(*kind, "chart" | "toc" | "bibliography") {
                 assert!(!claimed, "`{kind}` is the renderer's, not ours");
                 assert!(
                     s.loose.contains(&format!("```{kind}")),

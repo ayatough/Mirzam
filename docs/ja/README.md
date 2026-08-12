@@ -97,6 +97,7 @@ code --install-extension editors/vscode/mirzam-preview-*.vsix
 | 収まらないときの対処(`--fit shrink`、`<!-- next -->`) | [When a slide has too much on it](../syntax.md#when-a-slide-has-too-much-on-it) |
 | 目次(`toc` ブロック) | [Table of contents](../syntax.md#table-of-contents) |
 | 脚注(`[^key]` — **定義は参照と同じスライドに書く**) | [Citations](../syntax.md#citations) |
+| 参考文献(`[@key]` と `bibliography` ブロック — BibTeX ファイルから採番・相互リンク) | [References](../syntax.md#references) |
 | 演出(`effects` ブロック) | [Presentation effects](../syntax.md#presentation-effects) |
 | 注釈(`annotate` ブロック) | [Annotations](../syntax.md#annotations) |
 | アニメーション(`anim` ブロック) | [Animations](../syntax.md#animations) |

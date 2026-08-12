@@ -58,6 +58,7 @@ changes.
 | `mirzam-layout` | ASCII pane grid → proportional grid (areas and `fr` ratios). |
 | `mirzam-shape` | Shape DSL → SVG layer, resolving shape-to-shape endpoints. |
 | `mirzam-chart` | Chart DSL + CSV → SVG, assigning stable ids to every mark. |
+| `mirzam-cite` | BibTeX → entries, each with a citation label and a formatted reference. |
 | `mirzam-connect` | Connector DSL → JSON for the runtime. |
 | `mirzam-anim` | `anim` DSL → the timeline IR, with easing curves resolved at build time. |
 | `mirzam-annot` | `annotate` DSL → the annotation model drawn over a picture or a chart mark. |

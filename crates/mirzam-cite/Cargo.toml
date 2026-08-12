@@ -1,0 +1,9 @@
+[package]
+name = "mirzam-cite"
+description = "Bibliography entries: BibTeX in, a citation label and a formatted reference out"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
