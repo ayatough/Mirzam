@@ -49,7 +49,9 @@ is broken, check the three limits that produce this most often:
 - **An attribute span has to be on one source line.** `[text]{.small}` split
   across a line break is not recognised; rewrap the sentence or split it into
   two spans. This applies to `{#id .class}` on headings, images and spans
-  alike.
+  alike. `mirzam build` warns about this one, naming the slide. Brackets
+  *inside* a span are fine — a footnote reference, a nested span and inline
+  maths all work — so a span that failed is nearly always the line break.
 - **`shape` only parses at slide top level**, never inside `::: pane`. Written
   inside a pane, the fence reaches the Markdown renderer untouched and shows
   as an ordinary code block. `mirzam build` warns about this one (see below)

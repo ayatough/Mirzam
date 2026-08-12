@@ -380,6 +380,15 @@ pre {
   background: var(--mz-surface); border: 1px solid var(--mz-border); border-radius: 8px;
   padding: .8em 1em; font-size: 1.05em; overflow: auto;
 }
+/* On a slide a code block must not be its own scroll box. `overflow: auto`
+   also makes a flex item's automatic minimum size zero, so a code block in a
+   centred pane shrank below its own content and scrolled instead of
+   overflowing: three of four lines invisible, on a slide nobody can scroll,
+   with the pane still measuring clean, `fit=shrink` seeing nothing to shrink
+   and the layout check reporting no problem. Overflowing is the honest
+   failure — it is what every other element does, it is visible, and it is
+   what both of those already act on. */
+.pane pre { overflow: visible; }
 code { font-family: 'SF Mono', Consolas, Menlo, monospace; }
 p code, li code { background: var(--mz-surface); border-radius: 4px; padding: .1em .35em; font-size: .9em; }
 blockquote { border-left: 4px solid var(--mz-accent2); margin: .5em 0; padding: .1em 1em; color: var(--mz-muted); }

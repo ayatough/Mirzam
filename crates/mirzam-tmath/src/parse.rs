@@ -78,10 +78,16 @@ impl Parser {
         let from = self.pos;
         let mut lhs = self.postfix()?;
         while self.eat('/') {
+            if let Some(why) = not_an_operand(&lhs) {
+                return err(format!("`/` needs something before it: {why}"));
+            }
             let rhs = self.postfix().map_err(|_| Error {
                 message: "`/` needs a right-hand side".into(),
                 at: None,
             })?;
+            if let Some(why) = not_an_operand(&rhs) {
+                return err(format!("`/` needs a right-hand side: {why}"));
+            }
             lhs = Node::new(
                 NodeKind::Frac(Box::new(ungroup(lhs)), Box::new(ungroup(rhs))),
                 self.span_from(from),
@@ -97,6 +103,11 @@ impl Parser {
         let mut sub: Option<Box<Node>> = None;
         let mut sup: Option<Box<Node>> = None;
         loop {
+            if let (Some(TokKind::Ch(c @ ('\'' | '!' | '^' | '_'))), Some(why)) =
+                (self.peek(), not_an_operand(&base))
+            {
+                return err(format!("`{c}` needs something before it: {why}"));
+            }
             match self.peek() {
                 // Primes and factorials belong to their base, so `n!/2` is a
                 // fraction of n-factorial. (`!=` already lexed as one token.)
@@ -154,6 +165,9 @@ impl Parser {
             message: "`^` and `_` need an operand".into(),
             at: None,
         })?);
+        if let Some(why) = not_an_operand(&node) {
+            return err(format!("`^` and `_` need an operand: {why}"));
+        }
         Ok(match sign {
             Some(s) => Node::new(NodeKind::Seq(vec![s, node]), self.span_from(from)),
             None => node,
@@ -253,6 +267,21 @@ impl Parser {
         }
         if called {
             return err(format!("unknown function `{w}`"));
+        }
+        // Two letters side by side are the product a LaTeX author writes the
+        // same way — `dx`, `dt` — so those stay variables. Three or more is a
+        // name: `dif`, `space`, `argmax` are all things a Typst author types
+        // from memory, and juxtaposing their letters produces something that
+        // reads as a formula rather than as a mistake. `difs` in an integral
+        // looks like a typo the author made, which is the failure this whole
+        // parser refuses to have.
+        if w.chars().count() > 2 {
+            let spaced: Vec<String> = w.chars().map(|c| c.to_string()).collect();
+            return err(format!(
+                "unknown name `{w}`; write `{}` for a product of variables, \
+                 `\"{w}\"` for upright text, or `op(\"{w}\")` for an operator",
+                spaced.join(" ")
+            ));
         }
         Ok(Node::new(
             NodeKind::Seq(
@@ -365,6 +394,26 @@ impl Parser {
             }
             _ => return err(format!("`{name}` takes one argument")),
         })
+    }
+}
+
+/// Why a node cannot stand where a value has to, or `None` when it can.
+///
+/// A line break and an alignment point are structure, not values: neither can
+/// be half of a fraction or the base of a script. Lowered anyway, a break
+/// writes `\frac{\\}{b}` — a row separator nested inside a fraction — and
+/// `math-core` **panics** on it inside a matrix cell, taking the whole build
+/// with it and naming a file in a dependency rather than the line the author
+/// typed. `a \/ b` is how this arrives in practice: `\` is a line break here,
+/// so a Typst author's escaped slash parses as break-then-divide.
+///
+/// An empty group is *not* on this list. `x^()` is a hole the formula editor
+/// puts there deliberately, and `parse(&print(&tree))` has to reproduce it.
+fn not_an_operand(node: &Node) -> Option<&'static str> {
+    match &node.kind {
+        NodeKind::Break => Some("`\\` is a line break; write `#/` for a literal slash"),
+        NodeKind::Align => Some("`&` is an alignment point, not a value"),
+        _ => None,
     }
 }
 

@@ -74,12 +74,27 @@ pub(crate) fn word_symbol(w: &str) -> Option<&'static str> {
         "integral.cont" => "\\oint",
         "union.big" => "\\bigcup",
         "sect.big" | "inter.big" => "\\bigcap",
-        // Spacing.
+        // Spacing. `space` is Typst's own name for one; without it the word
+        // rendered as five italic letters in the middle of the formula.
         "quad" => "\\quad",
         "wide" => "\\qquad",
         "thin" => "\\,",
         "med" => "\\:",
         "thick" => "\\;",
+        "space" => "\\ ",
+        "space.quad" => "\\quad",
+        "space.thin" => "\\,",
+        // Blackboard shorthands. Typst spells these as a doubled capital, and
+        // they are what a probability or analysis deck reaches for first.
+        "NN" => "\\mathbb{N}",
+        "ZZ" => "\\mathbb{Z}",
+        "QQ" => "\\mathbb{Q}",
+        "RR" => "\\mathbb{R}",
+        "CC" => "\\mathbb{C}",
+        "EE" => "\\mathbb{E}",
+        "PP" => "\\mathbb{P}",
+        // The upright differential, so `integral f(s) dif s` reads as one.
+        "dif" => "\\mathrm{d}",
         // Symbols.
         "infinity" | "oo" => "\\infty",
         "ell" => "\\ell",

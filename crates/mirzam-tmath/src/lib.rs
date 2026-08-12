@@ -316,6 +316,67 @@ mod tests {
     }
 
     #[test]
+    fn nothing_empty_reaches_a_fraction_or_a_script() {
+        // `a \/ b` is a Typst author's escaped slash; here `\` is a line
+        // break, so it used to parse as a fraction with an empty numerator.
+        // That renders as a gap on its own and panics `math-core` inside a
+        // matrix cell, which loses the whole deck — so all three matrix-like
+        // constructs are held to it.
+        for src in [
+            "mat(a \\/ b, c; d, e)",
+            "cases(a \\/ b, c)",
+            "vec(a \\/ b, c)",
+            "a \\/ b",
+        ] {
+            let e = to_latex(src).unwrap_err();
+            assert!(e.message.contains("line break"), "{src}: {e}");
+        }
+        // `&` is structure too, and a matrix cell is where it turns up.
+        assert!(to_latex("mat(&/b, c)").is_err());
+        assert!(to_latex("x^\\").is_err());
+        // An empty group is a hole the formula editor puts there on purpose,
+        // so it stays parseable — it lowers to an empty LaTeX group, which
+        // `math-core` renders as a gap rather than refusing.
+        assert_eq!(latex("x^()"), "x^{}");
+        // The escape this subset does have still divides nothing.
+        assert_eq!(
+            latex("mat(a #/ b, c)"),
+            "\\begin{pmatrix}a / b & c\\end{pmatrix}"
+        );
+    }
+
+    #[test]
+    fn percent_survives_into_the_output() {
+        // A bare `%` opens a LaTeX comment, which used to swallow the rest of
+        // the formula with no error and no warning: `99% "of the mass"` came
+        // out as `99`.
+        assert_eq!(latex("99% \"of it\""), "99 \\% \\text{of it}");
+        assert_eq!(latex("p = 5%"), "p = 5 \\%");
+    }
+
+    #[test]
+    fn typst_names_a_deck_reaches_for() {
+        assert_eq!(
+            latex("integral f(s) dif s"),
+            "\\int f \\left(s\\right) \\mathrm{d} s"
+        );
+        assert_eq!(latex("EE[x]"), "\\mathbb{E} \\left[x\\right]");
+        assert_eq!(latex("RR^n"), "\\mathbb{R}^{n}");
+        assert_eq!(latex("A space B"), "A \\  B");
+    }
+
+    #[test]
+    fn a_longer_unknown_name_is_an_error_not_italic_letters() {
+        // `dif s` as four italic letters reads as a typo the author made,
+        // not as a tool that does not know the word.
+        let e = to_latex("f(s) dfi s").unwrap_err();
+        assert!(e.message.contains("dfi"), "{e}");
+        assert!(e.message.contains("d f i"), "{e}");
+        // Two letters are the product a LaTeX author writes the same way.
+        assert_eq!(latex("dx"), "d x");
+    }
+
+    #[test]
     fn spans_point_back_into_the_source() {
         let src = "a + sqrt(x)";
         let ast = parse(src).unwrap();

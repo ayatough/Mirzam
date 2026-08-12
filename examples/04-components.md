@@ -348,6 +348,7 @@ The photo is inlined with everything else, so the deck is still one file.
 |  head            |  head           |
 +------------------+-----------------+
 |                  |                 |
+|                  |                 |
 |  src             |  hero           |
 |                  |                 |
 +------------------+-----------------+
@@ -588,11 +589,11 @@ rect #load-0-2 : pad=10 color=@accent2 label="#load-0-2" step=1
 +----------------------------------------+
 |                                        |
 |  head                                  |
-|                                        |
 +------------------+---------------------+
 |                  |                     |
 |                  |                     |
 |  prose           |  src                |
+|                  |                     |
 |                  |                     |
 |                  |                     |
 +------------------+---------------------+
@@ -627,8 +628,7 @@ box       #s-edit   : step=3 pad=4
 and nothing else: where the words are is the
 browser's business.
 
-No `target:` line — every item is anchored, so
-there are no percentages to measure.
+No `target:` line: every item is anchored.
 :::
 
 ```annotate

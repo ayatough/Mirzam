@@ -133,6 +133,7 @@ pub fn preprocess_math(src: &str, math: MathDialect) -> String {
     // As can `<picture>`, which is usually written across four.
     let src = map_fence_segments(&src, picture_modes);
     let src = map_outside_fences(&src, |l| inline_math(l, math));
+    let src = map_outside_fences(&src, emphasis_guard);
     let src = map_outside_fences(&src, heading_attrs);
     let src = map_outside_fences(&src, image_attrs);
     map_outside_fences(&src, span_attrs)
@@ -434,19 +435,156 @@ fn video_html(src: &str, alt: &str, attrs: &Attrs, style_attr: &str) -> String {
 }
 
 /// `[text]{attrs}` becomes `<span ...>text</span>`; links `[t](u)` are left alone.
+///
+/// The closing `]` is found by matching brackets, not by refusing to allow one
+/// inside: a footnote reference, a nested span and inline maths each bring
+/// their own `[...]`, and every one of them used to turn the whole run into
+/// literal `[…]{.small}` on the slide — a failure that looks exactly like
+/// Markdown the author meant literally. The content stays Markdown and is
+/// handed to the one parse of the slide rather than rendered here on its own,
+/// which is what lets `[…[^a]]{.small}` find the footnote's definition.
 fn span_attrs(line: &str) -> String {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    let r = re(&RE, r"(!?)\[([^\[\]]+)\]\{([^{}]*)\}");
-    r.replace_all(line, |c: &regex::Captures| {
-        if &c[1] == "!" {
-            // Leave image syntax to the image pass.
-            return c[0].to_string();
+    let cs: Vec<char> = line.chars().collect();
+    let mut out = String::with_capacity(line.len());
+    let mut i = 0;
+    while i < cs.len() {
+        // `![alt](src){attrs}` belongs to the image pass, and a `\[` is the
+        // author asking for a literal bracket.
+        let escaped = i > 0 && (cs[i - 1] == '!' || cs[i - 1] == '\\');
+        match (cs[i], escaped) {
+            ('[', false) => match span_at(&cs, i) {
+                Some((inner, attrs, next)) => {
+                    let a = parse_attrs(&attrs);
+                    // Recurse, so `[a [b]{.accent} c]{.small}` nests.
+                    out.push_str(&format!(
+                        "<span{}>{}</span>",
+                        a.html_id_class(),
+                        span_attrs(&inner)
+                    ));
+                    i = next;
+                }
+                None => {
+                    out.push('[');
+                    i += 1;
+                }
+            },
+            (c, _) => {
+                out.push(c);
+                i += 1;
+            }
         }
-        let attrs = parse_attrs(&c[3]);
-        let inner = render_inline(&c[2]);
-        format!("<span{}>{inner}</span>", attrs.html_id_class())
-    })
-    .into_owned()
+    }
+    out
+}
+
+/// The span opening at `open`, as `(content, attributes, index after it)`.
+///
+/// `None` when the brackets do not close on this line, when nothing is between
+/// them, or when what follows the `]` is not a single `{...}` — a link's
+/// `[text](url)` and a plain bracketed aside both land there and are left
+/// alone.
+fn span_at(cs: &[char], open: usize) -> Option<(String, String, usize)> {
+    let mut depth = 0usize;
+    let mut close = None;
+    let mut i = open;
+    while i < cs.len() {
+        match cs[i] {
+            // An escape covers whatever follows, bracket or not.
+            '\\' => i += 1,
+            '[' => depth += 1,
+            ']' => {
+                depth -= 1;
+                if depth == 0 {
+                    close = Some(i);
+                    break;
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    let close = close?;
+    if close == open + 1 || cs.get(close + 1) != Some(&'{') {
+        return None;
+    }
+    let end = cs[close + 2..]
+        .iter()
+        .position(|c| *c == '}' || *c == '{')
+        .map(|p| close + 2 + p)?;
+    if cs[end] != '}' {
+        return None;
+    }
+    Some((
+        cs[open + 1..close].iter().collect(),
+        cs[close + 2..end].iter().collect(),
+        end + 1,
+    ))
+}
+
+/// Keeps `**+ text**` bold, the way every other Markdown parser reads it.
+///
+/// `comrak` decides whether a `*`/`_` run can open emphasis by looking at the
+/// character after it, and it scans past the extension delimiters `~`, `=`
+/// and `+` first so that `**==marked==**` works. When one of those is on its
+/// own and followed by a space, that scan lands on the space, the run counts
+/// as followed by whitespace, and the emphasis silently does not open —
+/// `| **+ wheel odometry** |` shows its asterisks to the audience. Escaping
+/// the delimiter puts a character there that comrak does not skip. It can
+/// only ever be a delimiter that is followed by a space, which cannot open
+/// anything of its own, so nothing else changes meaning.
+fn emphasis_guard(line: &str) -> String {
+    let cs: Vec<char> = line.chars().collect();
+    let mut out = String::with_capacity(line.len());
+    let mut i = 0;
+    while i < cs.len() {
+        let c = cs[i];
+        if c == '\\' && i + 1 < cs.len() {
+            out.extend(&cs[i..i + 2]);
+            i += 2;
+            continue;
+        }
+        // Nothing inside a code span is a delimiter.
+        if c == '`' {
+            let open = run_of(&cs, i, '`');
+            out.extend(&cs[i..i + open]);
+            i += open;
+            while i < cs.len() {
+                if cs[i] == '`' {
+                    let n = run_of(&cs, i, '`');
+                    out.extend(&cs[i..i + n]);
+                    i += n;
+                    if n == open {
+                        break;
+                    }
+                } else {
+                    out.push(cs[i]);
+                    i += 1;
+                }
+            }
+            continue;
+        }
+        if c == '*' || c == '_' {
+            let run = run_of(&cs, i, c);
+            out.extend(&cs[i..i + run]);
+            i += run;
+            let mut j = i;
+            while matches!(cs.get(j), Some('~' | '=' | '+')) {
+                j += 1;
+            }
+            if j > i && cs.get(j).is_none_or(|c| c.is_whitespace()) {
+                out.push('\\');
+            }
+            continue;
+        }
+        out.push(c);
+        i += 1;
+    }
+    out
+}
+
+/// How many of `c` start at `from`.
+fn run_of(cs: &[char], from: usize, c: char) -> usize {
+    cs[from..].iter().take_while(|x| **x == c).count()
 }
 
 /// Converts `$$...$$` (which may span lines) to block MathML.
@@ -511,10 +649,15 @@ fn math_error(shown: &str, error: &str, display: math_core::MathDisplay) -> Stri
         math_core::MathDisplay::Block => "math-error math-block",
         math_core::MathDisplay::Inline => "math-error",
     };
+    // The span is raw HTML in a Markdown document, so its text is still read
+    // as Markdown: a backslash before punctuation would be eaten as an escape
+    // and the failing formula shown back to the author without it — `\/`
+    // displayed as `/`, which is not the line they typed. A numeric reference
+    // reaches the page as a backslash without ever looking like one.
     format!(
         "<span class=\"{cls}\" title=\"{}\">{}</span>",
         html_escape(error),
-        html_escape(shown)
+        html_escape(shown).replace('\\', "&#92;")
     )
 }
 
@@ -580,6 +723,77 @@ mod tests {
         let out = preprocess("see [word]{#w .u} and [link](http://x)\n");
         assert!(out.contains("<span id=\"w\" class=\"u\">word</span>"));
         assert!(out.contains("[link](http://x)"));
+    }
+
+    #[test]
+    fn a_span_holds_brackets_of_its_own() {
+        // A footnote reference, a nested span and inline maths all put a `]`
+        // inside the span. Each of them used to end the run early, so the
+        // whole thing reached the slide as literal `[…]{.small}` — which is
+        // indistinguishable from Markdown the author meant literally.
+        let out = preprocess("[a footnote ref[^a]]{.small}\n");
+        assert!(
+            out.contains("<span class=\"small\">a footnote ref[^a]</span>"),
+            "{out}"
+        );
+
+        let out = preprocess("[a [nested]{.accent} span]{.small}\n");
+        assert!(
+            out.contains(
+                "<span class=\"small\">a <span class=\"accent\">nested</span> span</span>"
+            ),
+            "{out}"
+        );
+
+        let out = preprocess_math("[maths $x[i]$ inside]{.small}\n", MathDialect::Typst);
+        assert!(out.contains("<span class=\"small\">maths <math"), "{out}");
+        assert!(out.contains("inside</span>"), "{out}");
+    }
+
+    #[test]
+    fn a_spans_content_is_read_with_the_rest_of_the_slide() {
+        // Rendering the content on its own cannot resolve a footnote, whose
+        // definition is elsewhere on the slide; leaving it as Markdown for
+        // the one parse of the slide can.
+        let html = render_markdown(&preprocess("[an aside[^a]]{.small}\n\n[^a]: The note.\n"));
+        assert!(html.contains("footnote-ref"), "{html}");
+        assert!(html.contains("The note."), "{html}");
+    }
+
+    #[test]
+    fn a_bracket_that_is_not_a_span_is_left_alone() {
+        // Unclosed, empty, or followed by something other than one `{...}`.
+        for src in ["[a {b}\n", "[]{.small}\n", "[a](b){c\n"] {
+            let out = preprocess(src);
+            assert!(!out.contains("<span"), "{src}: {out}");
+        }
+    }
+
+    #[test]
+    fn emphasis_opens_before_a_lone_extension_delimiter() {
+        // `+`, `=` and `~` are the extension delimiters comrak scans past
+        // when deciding whether `**` opens emphasis. On its own and followed
+        // by a space, that scan landed on the space and the bold silently did
+        // not open: `| **+ wheel odometry** |` showed its asterisks.
+        for (src, want) in [
+            ("A **+ alpha** here.\n", "<strong>+ alpha</strong>"),
+            ("A **= alpha** here.\n", "<strong>= alpha</strong>"),
+            ("A **~ alpha** here.\n", "<strong>~ alpha</strong>"),
+            ("A *+ alpha* here.\n", "<em>+ alpha</em>"),
+            // Untouched: these already matched CommonMark.
+            ("A **+alpha** here.\n", "<strong>+alpha</strong>"),
+            ("A **- alpha** here.\n", "<strong>- alpha</strong>"),
+            // The extensions themselves still work, inside emphasis or not.
+            ("A **++ins++ b** here.\n", "<ins>ins</ins>"),
+            ("A ==marked== here.\n", "<mark>marked</mark>"),
+            ("A **==m== b** here.\n", "<mark>m</mark>"),
+        ] {
+            let html = render_markdown(&preprocess(src));
+            assert!(html.contains(want), "{src}: {html}");
+        }
+        // A code span is literal text, so nothing in one is escaped.
+        let html = render_markdown(&preprocess("Write `**+ a**` for it.\n"));
+        assert!(html.contains("<code>**+ a**</code>"), "{html}");
     }
 
     #[test]
@@ -680,7 +894,16 @@ mod tests {
     fn broken_math_falls_back() {
         let out = preprocess("$\\frac{1$\n");
         assert!(out.contains("math-error"));
-        assert!(out.contains("\\frac{1"));
+        // The formula is shown back as it was typed. Every backslash leaves
+        // as a numeric reference: the span is raw HTML inside a Markdown
+        // document, so a backslash before punctuation would be read as an
+        // escape and dropped — `$mat(a \/ b)$` reached the slide as `\/`
+        // turned into a bare `/`, pointing the author at a line they never
+        // wrote. The reader still sees the backslash.
+        assert!(out.contains("&#92;frac{1"), "{out}");
+        assert!(render_markdown(&out).contains("\\frac{1"), "{out}");
+        let slash = render_markdown(&preprocess_math("$$a \\/ b$$\n", MathDialect::Typst));
+        assert!(slash.contains("a \\/ b"), "{slash}");
     }
 
     #[test]

@@ -203,7 +203,10 @@ It steps each slide through to its last click before measuring, so it sees the
 slide the audience ends on rather than the one it starts as. It reports, per
 slide and pane:
 
-- **clipped** — content is taller or wider than its pane
+- **clipped** — content is taller or wider than its pane, or an element inside
+  one hides part of itself by scrolling. A scroll box on a slide is the worse
+  of the two: the pane still measures clean, and there is no reader who can
+  scroll it
 - **overlap** — an overflowing pane runs into its neighbour
 - **connector** — a connector was declared but not drawn, usually a typo in an id
 - **annotation** — a mark could not be drawn, usually because the `#id` it names

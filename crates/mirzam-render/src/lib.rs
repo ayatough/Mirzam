@@ -690,6 +690,7 @@ fn render_slide(
     // A `[^key]` with no definition on this slide is left as literal text by
     // comrak rather than becoming a link - say so, once per key.
     warn_unresolved_footnotes(index, &body, warnings);
+    warn_unrendered_spans(index, &body, warnings);
 
     // shape blocks become a static SVG layer in page coordinates, scaling with the slide.
     let mut shapes_html = String::new();
@@ -927,6 +928,36 @@ fn warn_unresolved_footnotes(index: usize, body: &str, warnings: &mut Vec<String
             ));
         }
     }
+}
+
+/// An attribute span that did not become a span reaches the slide as literal
+/// `[text]{.small}` — which is exactly what intentionally-plain Markdown looks
+/// like, so nothing about the rendered page says whether it was meant. The one
+/// way left to write one that does not work is splitting it over a line break,
+/// and the layout checker cannot see it either: the box is the right size, it
+/// just has punctuation in it.
+fn warn_unrendered_spans(index: usize, body: &str, warnings: &mut Vec<String>) {
+    let text = strip_code_regions(body);
+    let mut seen = std::collections::BTreeSet::new();
+    for cap in unrendered_span_regex().captures_iter(&text) {
+        let whole = cap[0].split_whitespace().collect::<Vec<_>>().join(" ");
+        if seen.insert(whole.clone()) {
+            warnings.push(format!(
+                "slide {}: `{whole}` is still on the slide as text - an \
+                 attribute span has to be on one line",
+                index + 1
+            ));
+        }
+    }
+}
+
+fn unrendered_span_regex() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    // Only a `#id`/`.class` block counts: `[a](b){c}` and prose in brackets
+    // beside a set of braces are not somebody's span.
+    RE.get_or_init(|| {
+        Regex::new(r"(?s)\[[^\[\]]{1,200}\]\{\s*[.#][^{}<>]{0,100}\}").expect("static regex")
+    })
 }
 
 fn strip_code_regions(html: &str) -> String {

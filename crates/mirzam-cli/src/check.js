@@ -86,6 +86,33 @@ function mzSlideIssues(sec, tol) {
         detail: `content is ${Math.round(overX)}px wider than the pane`,
       });
     }
+    // The pane measuring clean is not the same as everything being visible.
+    // An element that scrolls internally holds its overflow instead of
+    // passing it up: `pre { overflow: auto }` is a flex item whose automatic
+    // minimum size is zero, so it shrinks below its own content rather than
+    // pushing the pane over, and the pane's scroll height still equals its
+    // client height. Three of four code lines were invisible and this check
+    // said the slide was fine. Nobody in an audience can scroll a slide, so
+    // a scroll box is clipping, and it is measured where it happens.
+    for (const el of pane.querySelectorAll("*")) {
+      if (!(el instanceof HTMLElement) || !el.clientHeight) continue;
+      const cs = getComputedStyle(el);
+      const hidesY = cs.overflowY !== "visible";
+      const hidesX = cs.overflowX !== "visible";
+      if (!hidesY && !hidesX) continue;
+      const hiddenY = hidesY ? el.scrollHeight - el.clientHeight : 0;
+      const hiddenX = hidesX ? el.scrollWidth - el.clientWidth : 0;
+      if (hiddenY <= tol && hiddenX <= tol) continue;
+      const what = el.tagName.toLowerCase() + (el.className ? "." + String(el.className).split(/\s+/)[0] : "");
+      const axis = hiddenY > tol ? `${Math.round(hiddenY)}px below` : `${Math.round(hiddenX)}px to the right`;
+      issues.push({
+        kind: "clipped",
+        pane: name,
+        detail: `<${what}> scrolls: ${axis} of its content is out of sight, and a slide cannot be scrolled`,
+      });
+      break;
+    }
+
     // Panes allowed to overflow (headings) must not run into a neighbour.
     if (getComputedStyle(pane).overflow === "visible") {
       const r = pane.getBoundingClientRect();

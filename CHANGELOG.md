@@ -26,6 +26,20 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   current release, and nothing could have caught it: no test was failing,
   because nothing was broken — only untrue. This is the kind of check
   `build-site.sh`'s dead-link pass already is, applied to the version number.
+- **The layout check now measures what scrolls, not only what overflows.** An
+  element that scrolls internally holds its overflow instead of passing it up
+  to the pane, so the pane measured clean while its content was out of sight —
+  and nobody in an audience can scroll a slide. Any element inside a pane that
+  hides part of itself is reported with the element and how much is missing.
+- **Typst maths knows `dif`, `space`, and the blackboard shorthands** `NN`,
+  `ZZ`, `QQ`, `RR`, `CC`, `EE` and `PP`. `integral f(s) dif s` now sets an
+  upright differential, and `EE[x]` the 𝔼 a probability deck wants, instead of
+  spelling those names out in italic letters.
+- **A build warns when an attribute span reaches the slide as text.** A span
+  that did not become a span is literal `[text]{.small}` on the slide, which is
+  indistinguishable from Markdown somebody meant literally — and the layout
+  check cannot see it either, because the box is the right size and merely has
+  punctuation in it. `--strict` fails on it.
 
 ### Changed
 - **`mirzam check` is now the layout check the contributor docs ask for**, in
@@ -42,6 +56,55 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   benchmark step also says to read the *second* run — the first pays for a cold
   cache and can report a full build several times slower than the roadmap's
   table with nothing wrong.
+
+- **An unknown name of three letters or more in Typst maths is an error.** It
+  used to become a run of italic letters, so `dif s` in an integral rendered as
+  `difs` — which reads as a typo the author made rather than as a word the
+  parser does not know. Two letters side by side are still the product a LaTeX
+  author writes the same way (`dx`, `dt`), and the message says how to get each
+  of the other readings: `d i f` for variables, `"dif"` for upright text,
+  `op("dif")` for an operator. This is the rule the parser already applied to
+  unknown dotted names and to unknown words used like functions.
+- **A code block in a pane no longer scrolls; it overflows.** `overflow: auto`
+  also makes a flex item's automatic minimum size zero, so a code block in a
+  centred pane shrank below its own content: three lines of four invisible,
+  with `mirzam check` reporting nothing and `fit=shrink` finding nothing to
+  shrink. Overflowing is what every other element in a pane does, and it is
+  what both of those already act on. Four sample slides were hiding content
+  this way and now show all of it — `01-start.md` 6, `04-components.md` 10 and
+  15, `05-motion.md` 3, `06-theming.md` 7; the last three have a taller band to
+  hold it.
+
+### Fixed
+- **`\/` inside `mat()`, `cases()` or `vec()` crashed the build.** `\` is a
+  line break here, so a Typst author's escaped slash parsed as break-then-
+  divide and put a row separator inside a fraction, which panicked the MathML
+  renderer — no output at all, and a message naming a file in a dependency
+  rather than the line that caused it. A line break or an alignment point where
+  a value belongs is now the ordinary red source with a tooltip, and the
+  tooltip says to write `#/` for a literal slash.
+- **`%` in Typst maths discarded the rest of the formula.** It went out as a
+  bare `%`, which opens a LaTeX comment: `99% "of the mass"` rendered as `99`,
+  with no error, no warning and nothing in `mirzam check`. A sentence about a
+  99% interval simply lost its percent sign, which looks like a typo rather
+  than a tool that dropped it.
+- **`**+ text**` showed its asterisks instead of going bold.** `+` is the
+  delimiter of the `++inserted++` extension, and the scan for what follows `**`
+  stepped over it onto the space, so the emphasis never opened — in plain
+  Markdown that every other parser bolds. `| **+ wheel odometry** |` is a
+  natural way to write a table row, and it was reaching the audience as
+  punctuation. `=` and `~` had the same hole. There is now a test comparing
+  plain Markdown through Mirzam against a reference parser, so the next
+  extension cannot quietly change how ordinary text reads.
+- **An attribute span broke on any `]` inside it.** `[an aside[^a]]{.small}`,
+  `[a [word]{.accent} in it]{.small}` and `[maths $x[i]$]{.small}` all reached
+  the slide as raw `[…]{.small}`: the closing bracket was found by refusing to
+  allow one at all. Brackets are matched with nesting now, and the content is
+  read with the rest of the slide rather than on its own, which is what lets a
+  footnote inside a span find its definition.
+- **A failed formula was shown back without its backslashes.** The red source
+  is raw HTML in a Markdown document, so `\/` was read as an escape and shown
+  as `/` — the author was pointed at a line they had not written.
 
 ## [0.4.0] - 2026-08-12
 

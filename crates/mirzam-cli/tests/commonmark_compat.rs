@@ -124,6 +124,36 @@ fn speaker_notes_are_hidden_comments() {
     assert!(!html.contains("private memo") || html.contains("&lt;!--"));
 }
 
+/// The same principle read the other way round: Markdown carrying none of
+/// Mirzam's syntax has to come out of Mirzam the way a reference parser
+/// renders it. The extensions a deck wants — `==marked==`, `++inserted++` —
+/// are switched on for every document, and one of them changed how *plain*
+/// emphasis was read: `**+ alpha**` reached the slide as literal asterisks
+/// because `+` is an extension delimiter and the scan for what follows `**`
+/// stepped over it onto the space.
+#[test]
+fn plain_markdown_renders_like_the_reference_parser() {
+    for src in [
+        "A **+ alpha** here.\n",
+        "A **+alpha** here.\n",
+        "A **- alpha** here.\n",
+        "A *= alpha* here.\n",
+        "A **~ alpha** here.\n",
+        "A ** + alpha** here.\n",
+        "A **x alpha** here.\n",
+        "| **+ wheel odometry** | added |\n",
+        "Write `**+ a**` and \\*\\*+ b\\*\\* plainly.\n",
+        "_+ under_ and __+ strong__.\n",
+    ] {
+        let ours = mirzam_render::render_markdown(&mirzam_render::preprocess(src));
+        assert_eq!(
+            ours.trim(),
+            plain_commonmark(src).trim(),
+            "plain Markdown read differently: {src}"
+        );
+    }
+}
+
 /// Every sample deck must still read as a document under plain CommonMark.
 #[test]
 fn all_examples_render_as_plain_markdown() {

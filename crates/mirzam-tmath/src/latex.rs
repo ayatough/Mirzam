@@ -34,7 +34,10 @@ fn emit(node: &Node) -> String {
         NodeKind::Num(n) => n.clone(),
         NodeKind::Ident(c) => c.to_string(),
         NodeKind::Sym { latex, .. } => latex.to_string(),
-        NodeKind::Ch(c) => c.to_string(),
+        // Through the same escape as text: a bare `%` opens a LaTeX comment,
+        // which swallows the rest of the formula silently — `99% "of it"`
+        // rendered as `99`.
+        NodeKind::Ch(c) => escape_char(*c),
         NodeKind::Text(s) => format!("\\text{{{}}}", escape_text(s)),
         NodeKind::Esc(c) => escape_char(*c),
         NodeKind::Seq(inner) => emit_seq(inner),

@@ -653,7 +653,9 @@ MathML path:
 | Functions | `sin`, `cos`, `log`, `min`, … set upright, gluing to their `(...)`; `op("argmax")` for one the tables lack |
 | Arrows and relations | `->` `=>` `<-` `!=` `<=` `>=` `\|->` `<<` `>>`, `in`, `subset`, `union`, `approx`, `perp`, `parallel`, `divides`, `models`, `tack.r`/`tack.l`, and dotted variants: `subset.eq`, `in.not`, `arrow.l.r`, … |
 | Symbols | `infinity` (or `oo`), `partial`, `nabla`, `hbar`, `times`, `dot`, `pm`, `and`, `or`, `dots`, `...`, `dots.c`, `ell`, `Re`, `Im`, `aleph`, `angle`, `degree`, `star`, `dagger`, `compose`, `convolve`, `without`, `therefore`, `because`, `top`, `bot` |
-| Spacing | `thin`, `med`, `thick`, `quad`, `wide` — from `\,` up to `\qquad` |
+| Spacing | `thin`, `med`, `thick`, `quad`, `wide` — from `\,` up to `\qquad`; `space` for an ordinary one |
+| Blackboard | `NN`, `ZZ`, `QQ`, `RR`, `CC`, `EE`, `PP` — the doubled capital Typst uses; `bb(X)` for any other letter |
+| Differentials | `dif` sets an upright d: `integral_0^t f(s) dif s` |
 | Matrices | `mat(1, 2; 3, 4)` — `,` separates cells, `;` rows; `mat(delim: "[", …)` picks the brackets |
 | Vectors | `vec(1, 2)` is a column; `binom(n, k)` a binomial |
 | Cases | `cases(x^2 &"if" x > 0, 0 &"otherwise")` |
@@ -665,9 +667,13 @@ MathML path:
 It is a deliberate subset — a parser of our own rather than a dependency on
 Typst, whose own math goes through its layout engine to SVG, not MathML. A
 formula using something outside the subset shows its source in red, the same
-way a broken LaTeX formula does — including an unknown dotted name or an
-unknown word used like a function, which refuse to render rather than quietly
-becoming a run of italic letters that merely resembles the formula.
+way a broken LaTeX formula does — including an unknown dotted name, an unknown
+word used like a function, and an unknown bare name of three letters or more,
+all of which refuse to render rather than quietly becoming a run of italic
+letters that merely resembles the formula. Two letters side by side are still
+the product a LaTeX author writes the same way, so `dx` and `dt` are variables;
+for anything longer the error says how to ask for each reading — `d i f` for
+variables, `"dif"` for upright text, `op("dif")` for an operator.
 
 [Typst's math syntax]: https://typst.app/docs/reference/math/
 
