@@ -6,7 +6,7 @@ Where Mirzam is and what comes next. Design rationale lives in
 
 ## Status
 
-`v0.3.0` is the current release: everything below marked Done is in it, built
+`v0.4.0` is the current release: everything below marked Done is in it, built
 by CI and published as a prebuilt binary. It is still `0.x` — the markup will
 keep changing.
 
@@ -37,8 +37,9 @@ keep changing.
 | Per-pane continuation (`<!-- next -->`) | Done |
 | Contents page generated from headings | Done |
 | Browser editor (WebAssembly), prebuilt binaries | Done |
-| Structural math editing (the Math panel in the browser editor) | Done |
-| A theme per slide | Next |
+| Slide masters (`masters:`, `<!-- layout: -->`) | Done |
+| Footers and slide numbers | Done |
+| A theme per slide, and per pane | Done |
 | Carrying an element from one slide to the next | Next |
 | Demo recording and a generated themes gallery | Next |
 | Dragging an annotation back into the Markdown | Next |
@@ -47,6 +48,13 @@ keep changing.
 Each of those has a brief — what it is for, what is not free about it, and where
 it stops — in [workstreams.md](workstreams.md). "Next" means the reasoning is
 written down, not that a date exists.
+
+One left the table rather than moving up it: **structural math editing** — the
+Math panel in the browser editor — was built and then withdrawn before it was
+ever released, because typing Typst source turned out to be faster than tapping
+a formula into shape on the phone it was built for. The effort went into the
+math grammar instead, which is why `v0.4.0` says more about what `$...$` can
+hold than about how it is edited.
 
 The one worth naming here is **carrying an element from one slide to the next**:
 a slide presents three components and the next three take one each, and the
@@ -131,26 +139,25 @@ same core.
 **Richer data.** Column aggregation in tables, more chart types, and `mermaid` /
 `d2` diagram blocks as plugins rather than built-ins.
 
-**More themes, custom themes, and slide masters.** There is one sample
-stylesheet now — `examples/themes/mirzam.css` — because the second, `pitch.css`,
-turned out to be a copy of it that had drifted rather than a second identity.
-That is the right floor to build from, not the ceiling. What is wanted above it:
-a gallery of built-in themes worth choosing between; a documented contract for
-writing one, so a custom theme is a supported artefact rather than a stylesheet
-that happens to override the right tokens; and **slide masters** — named slide
-shapes a deck can instantiate (`title`, `section`, `two-up`, `quote`) instead of
-redrawing the same ASCII pane block on every slide that has the same shape. A
-master is where a theme stops being colour and type and starts being layout,
-which is also why it needs the scope below to exist first.
+**More themes and custom themes.** There is one sample stylesheet now —
+`examples/themes/mirzam.css` — because the second, `pitch.css`, turned out to be
+a copy of it that had drifted rather than a second identity. That is the right
+floor to build from, not the ceiling. What is wanted above it: a gallery of
+built-in themes worth choosing between, and a documented contract for writing
+one, so a custom theme is a supported artefact rather than a stylesheet that
+happens to override the right tokens. Slide masters — the layout half of the
+same question — landed in `v0.4.0`: `masters:` names the shapes and a slide
+picks one with `<!-- layout: -->`.
 
-**A scope between the deck and the pane.** Presentation dials — `--mz-terms-*`,
-`--mz-bullet`, `--mz-number` — can be set on a theme or a deck, and overridden on
-a single pane. Nothing sits in between, so a run of slides that wants one
-treatment has to repeat the attribute on every pane in it, and a slide with three
-panes has to repeat it three times. What is missing is a way to attach attributes
-to a *slide*, and above that to a section, since `## ` headings already give a
-deck its outline. A slide has no attribute syntax at all today: `## Text {…}`
-attaches to the heading, not to the slide it opens.
+**A scope between the deck and the pane, for the rest of the dials.** A slide
+can now say which theme, which master and whether it carries the deck's chrome,
+each through an HTML comment. What still has no slide-level home is the
+presentation dials — `--mz-terms-*`, `--mz-bullet`, `--mz-number` — which can be
+set on a theme or a deck and overridden on a single pane, with nothing in
+between, so a run of slides that wants one treatment repeats the attribute on
+every pane in it. What is missing is a general way to attach attributes to a
+*slide*, and above that to a section, since `## ` headings already give a deck
+its outline: `## Text {…}` attaches to the heading, not to the slide it opens.
 
 **Syntax highlighting in code blocks.** A fenced block records its language and
 renders it uncoloured; `docs/syntax.md` says so plainly, which is the honest

@@ -68,7 +68,7 @@ there is. The model column follows from that:
 | W15 | Brand and visual identity | B | — | — | ✅ |
 | W9 | Release hardening and `v0.1.0` | A | Opus | all | ✅ |
 | W16 | Showing the thing working: demo recording, themes gallery | C | — | — | |
-| W17 | A theme per slide | B | — | — | |
+| W17 | A theme per slide | B | — | — | ✅ |
 | W18 | Carrying an element from one slide to the next | S | — | W2 | |
 | W5 | Typst-flavoured math | A | Sonnet | — | ✅ |
 | W19 | Structural math editing: tap and place, not type | S | Fable | W5 | withdrawn |

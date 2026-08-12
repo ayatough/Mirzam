@@ -7,6 +7,10 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.4.0] - 2026-08-12
+
 ### Added
 - **Slide masters: draw a shape once, not once per slide.** `masters:` names
   slide shapes — the same ASCII drawing a `pane` block holds, read by the same

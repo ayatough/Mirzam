@@ -212,18 +212,19 @@ Run `./scripts/build-site.sh` to build the same site locally.
 
 ## Status
 
-`v0.2.0` is the current release, covered by regression tests in CI. It is
+`v0.4.0` is the current release, covered by regression tests in CI. It is
 `0.x`: the markup will keep changing, so pin a version if you depend on it.
 
-- **Working:** build, live-reload server, PDF export, ASCII pane layout, file
-  splitting, variables and arithmetic, math, charts, shapes, live connectors,
-  video, audio and embeds, citations, background images, animation and slide
-  transitions, annotations, effects, shrink-to-fit and author-chosen pane
-  breaks, named themes and dark mode, custom themes, speaker notes and a
-  presenter window, touch and gesture controls, a table of contents from
+- **Working:** build, live-reload server, PDF export, ASCII pane layout, slide
+  masters, file splitting, variables and arithmetic, math in LaTeX or Typst
+  flavour, charts, shapes, live connectors, video, audio and embeds, citations,
+  background images, animation and slide transitions, annotations, effects,
+  shrink-to-fit and author-chosen pane breaks, named themes and dark mode down
+  to a single pane, custom themes, footers and slide numbers, speaker notes and
+  a presenter window, touch and gesture controls, a table of contents from
   headings, VS Code extension, WebAssembly core and a browser editor
-- **Next:** dragging an annotation back into the Markdown, Typst-flavoured
-  math, PowerPoint export
+- **Next:** carrying an element from one slide to the next, dragging an
+  annotation back into the Markdown, PowerPoint export
 - **Performance:** a 500-slide deck builds in 76 ms; a single-slide edit
   re-renders in 3.2 ms
 
