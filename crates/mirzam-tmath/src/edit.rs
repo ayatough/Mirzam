@@ -240,6 +240,113 @@ fn is_vec_parent(kind: &NodeKind) -> bool {
     )
 }
 
+/// Puts `node` at the destination: the shared back half of a move and of
+/// dropping fresh material. Every slot means something everywhere:
+///
+/// - `Sup`/`Sub`: the destination gains the node as that script.
+/// - `Before`/`After`: a sibling where the destination sits in a list; where
+///   it sits in a fixed slot — a numerator, a script base — the two become a
+///   run, because "beside" inside a slot can only mean juxtaposition.
+/// - `Into`: a hole is filled; a container gains the node at the end of its
+///   contents; anything else becomes a run with the node appended.
+fn place(root: &mut Vec<Node>, to: &[usize], slot: MoveSlot, node: Node) -> bool {
+    match slot {
+        MoveSlot::Sup | MoveSlot::Sub => {
+            let script = match slot {
+                MoveSlot::Sup => ScriptSlot::Sup,
+                _ => ScriptSlot::Sub,
+            };
+            if !attach_script(root, to, script) {
+                return false;
+            }
+            let target = node_at(root, to).expect("just attached");
+            let hole = match (slot, &target.kind) {
+                (MoveSlot::Sub, _) => 1,
+                (_, NodeKind::Script { sub: Some(_), .. }) => 2,
+                _ => 1,
+            };
+            let mut path = to.to_vec();
+            path.push(hole);
+            replace(root, &path, node.kind)
+        }
+        MoveSlot::Before | MoveSlot::After => {
+            let (&idx, parent_path) = to.split_last().expect("callers check non-empty");
+            let listed = parent_path.is_empty()
+                || node_at(root, parent_path).is_some_and(|p| is_vec_parent(&p.kind));
+            if listed {
+                let at = if slot == MoveSlot::After {
+                    idx + 1
+                } else {
+                    idx
+                };
+                return insert(root, parent_path, at, node);
+            }
+            let Some(slot_node) = node_at_mut(root, to) else {
+                return false;
+            };
+            let old = std::mem::replace(slot_node, placeholder());
+            let pair = if slot == MoveSlot::After {
+                vec![old, node]
+            } else {
+                vec![node, old]
+            };
+            *slot_node = Node::synthetic(NodeKind::Seq(pair));
+            true
+        }
+        MoveSlot::Into => {
+            let Some(target) = node_at_mut(root, to) else {
+                return false;
+            };
+            if is_placeholder(target) {
+                *target = Node::synthetic(node.kind);
+                return true;
+            }
+            match &mut target.kind {
+                NodeKind::Seq(v)
+                | NodeKind::Paren(v)
+                | NodeKind::Sqrt(v)
+                | NodeKind::Abs(v)
+                | NodeKind::Norm(v)
+                | NodeKind::Call { arg: v, .. } => v.push(node),
+                _ => {
+                    let old = std::mem::replace(target, placeholder());
+                    *target = Node::synthetic(NodeKind::Seq(vec![old, node]));
+                }
+            }
+            true
+        }
+    }
+}
+
+/// [`place`] for material that is not in the tree yet — what dropping a
+/// symbol from a palette means.
+pub fn place_node(root: &mut Vec<Node>, to: &[usize], slot: MoveSlot, node: Node) -> bool {
+    if to.is_empty() {
+        return false;
+    }
+    if node_at(root, to).is_none() {
+        return false;
+    }
+    if script_slot_occupied(root, to, slot) {
+        return false;
+    }
+    place(root, to, slot, node)
+}
+
+fn script_slot_occupied(root: &[Node], to: &[usize], slot: MoveSlot) -> bool {
+    let Some(target) = node_at(root, to) else {
+        return false;
+    };
+    if let NodeKind::Script { sub, sup, .. } = &target.kind {
+        return match slot {
+            MoveSlot::Sup => sup.is_some(),
+            MoveSlot::Sub => sub.is_some(),
+            _ => false,
+        };
+    }
+    false
+}
+
 /// Moves the node at `from` next to (or onto) the node at `to`: the gesture
 /// "take b, put it on a's shoulder", as one operation — because doing it as
 /// delete-then-place from outside would leave the caller adjusting paths the
@@ -249,39 +356,8 @@ pub fn move_node(root: &mut Vec<Node>, from: &[usize], to: &[usize], slot: MoveS
     if from.is_empty() || to.is_empty() || to.starts_with(from) {
         return false;
     }
-    // The destination must exist and accept the slot.
-    let Some(target) = node_at(root, to) else {
+    if node_at(root, to).is_none() || script_slot_occupied(root, to, slot) {
         return false;
-    };
-    match slot {
-        MoveSlot::Sup | MoveSlot::Sub => {
-            if let NodeKind::Script { sub, sup, .. } = &target.kind {
-                let occupied = match slot {
-                    MoveSlot::Sup => sup.is_some(),
-                    _ => sub.is_some(),
-                };
-                if occupied {
-                    return false;
-                }
-            }
-        }
-        MoveSlot::Before | MoveSlot::After => {
-            let (last, parent_path) = to.split_last().expect("checked non-empty");
-            let _ = last;
-            if !parent_path.is_empty() {
-                let Some(parent) = node_at(root, parent_path) else {
-                    return false;
-                };
-                if !is_vec_parent(&parent.kind) {
-                    return false;
-                }
-            }
-        }
-        MoveSlot::Into => {
-            if !is_placeholder(target) {
-                return false;
-            }
-        }
     }
 
     // Whether taking `from` out shifts later sibling indices: it does when
@@ -316,36 +392,7 @@ pub fn move_node(root: &mut Vec<Node>, from: &[usize], to: &[usize], slot: MoveS
         to[k] -= 1;
     }
 
-    match slot {
-        MoveSlot::Sup | MoveSlot::Sub => {
-            let script = match slot {
-                MoveSlot::Sup => ScriptSlot::Sup,
-                _ => ScriptSlot::Sub,
-            };
-            if !attach_script(root, &to, script) {
-                return false;
-            }
-            let target = node_at(root, &to).expect("just attached");
-            let hole = match (slot, &target.kind) {
-                (MoveSlot::Sub, _) => 1,
-                (_, NodeKind::Script { sub: Some(_), .. }) => 2,
-                _ => 1,
-            };
-            let mut path = to;
-            path.push(hole);
-            replace(root, &path, node.kind)
-        }
-        MoveSlot::Before | MoveSlot::After => {
-            let (&idx, parent_path) = to.split_last().expect("checked non-empty");
-            let at = if slot == MoveSlot::After {
-                idx + 1
-            } else {
-                idx
-            };
-            insert(root, parent_path, at, node)
-        }
-        MoveSlot::Into => replace(root, &to, node.kind),
-    }
+    place(root, &to, slot, node)
 }
 
 /// Inserts `node` at `index` of a sequence-shaped container: the root when
@@ -508,25 +555,71 @@ mod tests {
         let before = print(&ast);
         assert!(!move_node(&mut ast, &[1], &[0], MoveSlot::Sup));
         assert_eq!(print(&ast), before);
-        // Before a fraction operand, which has no sibling list to join.
-        let mut ast = parse("a/b c").unwrap();
-        let before = print(&ast);
-        assert!(!move_node(&mut ast, &[1], &[0, 0], MoveSlot::Before));
-        assert_eq!(print(&ast), before);
     }
 
-    /// Dropping a node onto a hole fills it — a drag from `c` to the empty
-    /// exponent is `Into`.
+    /// "Beside" a node in a fixed slot joins it there, because a numerator
+    /// has no sibling list to insert into.
     #[test]
-    fn move_into_a_hole() {
+    fn move_beside_a_slot_joins_it() {
+        let mut ast = parse("a/b c").unwrap();
+        assert!(move_node(&mut ast, &[1], &[0, 0], MoveSlot::Before));
+        assert_eq!(print(&ast), "ca/b");
+    }
+
+    /// `Into` everywhere it can mean something: a hole is filled, a
+    /// container's contents grow, anything else becomes a run.
+    #[test]
+    fn move_into_fills_grows_or_joins() {
         let mut ast = parse("x^() c").unwrap();
         assert!(move_node(&mut ast, &[1], &[0, 1], MoveSlot::Into));
         assert_eq!(print(&ast), "x^c");
-        // Not a hole: refused, unchanged.
+        // A root with something in it already: the drop joins the contents.
+        let mut ast = parse("sqrt(2) y").unwrap();
+        assert!(move_node(&mut ast, &[1], &[0], MoveSlot::Into));
+        assert_eq!(print(&ast), "sqrt(2 y)");
+        // A leaf in a fixed slot: the two become a run.
         let mut ast = parse("x^2 c").unwrap();
-        let before = print(&ast);
-        assert!(!move_node(&mut ast, &[1], &[0, 1], MoveSlot::Into));
-        assert_eq!(print(&ast), before);
+        assert!(move_node(&mut ast, &[1], &[0, 1], MoveSlot::Into));
+        assert_eq!(print(&ast), "x^(2 c)");
+    }
+
+    /// Fresh material lands the same way a moved node does.
+    #[test]
+    fn place_node_covers_every_slot() {
+        let mut ast = parse("a/b").unwrap();
+        // Into the numerator, which is a single leaf: they become a run.
+        assert!(place_node(
+            &mut ast,
+            &[0, 0],
+            MoveSlot::Into,
+            parse("x").unwrap().remove(0)
+        ));
+        assert_eq!(print(&ast), "ax/b");
+        // Before the denominator — a fixed slot, so "beside" joins.
+        assert!(place_node(
+            &mut ast,
+            &[0, 1],
+            MoveSlot::Before,
+            parse("2").unwrap().remove(0)
+        ));
+        assert_eq!(print(&ast), "ax/(2 b)");
+        // A shoulder in one step.
+        let mut ast = parse("x + 1").unwrap();
+        assert!(place_node(
+            &mut ast,
+            &[0],
+            MoveSlot::Sup,
+            parse("2").unwrap().remove(0)
+        ));
+        assert_eq!(print(&ast), "x^2 + 1");
+        // An occupied shoulder still refuses.
+        assert!(!place_node(
+            &mut ast,
+            &[0],
+            MoveSlot::Sup,
+            parse("3").unwrap().remove(0)
+        ));
+        assert_eq!(print(&ast), "x^2 + 1");
     }
 
     #[test]

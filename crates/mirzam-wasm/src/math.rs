@@ -224,15 +224,15 @@ fn apply(src: &str, op: &str) -> Result<String, String> {
         // "Take this, put it there": one operation, because the deletion
         // shifts the very paths a two-step caller would aim with.
         "move" => {
-            let slot = match op["slot"].as_str() {
-                Some("sup") => edit::MoveSlot::Sup,
-                Some("sub") => edit::MoveSlot::Sub,
-                Some("before") => edit::MoveSlot::Before,
-                Some("after") => edit::MoveSlot::After,
-                Some("into") => edit::MoveSlot::Into,
-                _ => return Err("`move` needs a `slot`: sup, sub, before, after or into".into()),
-            };
+            let slot = move_slot(&op)?;
             edit::move_node(&mut tree, &path_of("from")?, &path_of("to")?, slot)
+        }
+        // The same landing rules for material that is not in the tree yet —
+        // what dropping a palette symbol means.
+        "place" => {
+            let slot = move_slot(&op)?;
+            let node = snippet("src")?;
+            edit::place_node(&mut tree, &path_of("to")?, slot, node)
         }
         "append" => {
             let node = snippet("src")?;
@@ -258,6 +258,17 @@ fn apply(src: &str, op: &str) -> Result<String, String> {
         return Err("the operation does not apply there".into());
     }
     Ok(print(&tree))
+}
+
+fn move_slot(op: &Value) -> Result<edit::MoveSlot, String> {
+    match op["slot"].as_str() {
+        Some("sup") => Ok(edit::MoveSlot::Sup),
+        Some("sub") => Ok(edit::MoveSlot::Sub),
+        Some("before") => Ok(edit::MoveSlot::Before),
+        Some("after") => Ok(edit::MoveSlot::After),
+        Some("into") => Ok(edit::MoveSlot::Into),
+        _ => Err("a drop needs a `slot`: sup, sub, before, after or into".into()),
+    }
 }
 
 /// One node for the box view: `{k, t?, c, ph?, sub?, sup?}`. The children
@@ -388,6 +399,23 @@ mod tests {
         ))
         .unwrap();
         assert_eq!(v["ok"], json!(false), "occupied slot must refuse");
+    }
+
+    /// One drop, one operation: `place` lands fresh material by slot.
+    #[test]
+    fn place_through_the_json_layer() {
+        let s = apply_ok(
+            "sqrt(2)",
+            r#"{"op":"place","to":[0],"slot":"into","src":"y"}"#,
+        );
+        assert_eq!(s, "sqrt(2 y)");
+        let s = apply_ok(
+            "a/b",
+            r#"{"op":"place","to":[0,0],"slot":"after","src":"x"}"#,
+        );
+        assert_eq!(s, "ax/b");
+        let s = apply_ok("x", r#"{"op":"place","to":[0],"slot":"sup","src":"2"}"#);
+        assert_eq!(s, "x^2");
     }
 
     /// The tap surface: structure drawn with paths, leaves with real glyphs.

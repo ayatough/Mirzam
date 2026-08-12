@@ -124,9 +124,11 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   bar, a root or an accent from the palette; **drag** a symbol from the
   palette — or any node of the formula itself — onto the formula, and where
   it lands decides the slot: the top of a node is its shoulder, the bottom
-  its subscript, the sides its neighbours, and a hole takes what it is
-  given, with the slot previewed beside the finger before release — `a b c`,
-  then b dragged onto a, is one gesture. Typing in the entry places on
+  its subscript, the sides its neighbours (never thinner than a
+  finger-width, whatever the glyph), a fraction's halves are its numerator
+  and denominator, the middle of a root or a bracket joins its contents,
+  and a hole takes what it is given — with the slot previewed beside the
+  finger before release. `a b c`, then b dragged onto a, is one gesture. Typing in the entry places on
   Enter or space; there is no Put and no Move button. `▲` steps the
   selection out to the enclosing node when a finger lands deeper than
   intended. Deleting a container's only child leaves a visible hole to drop

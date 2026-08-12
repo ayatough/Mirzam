@@ -983,6 +983,19 @@ drag work: deleting a container's only child leaves a hole (an empty
 `sqrt()` has nothing left to aim an edit at), and dropping onto a hole is
 its own move slot.
 
+The second round of feedback was about the drops that did not land:
+before/after lived in a band a few pixels tall, a fraction could not take
+anything into its halves, a full root could not take more. Three fixes,
+one per cause. Geometry: the side strips are before/after at any height
+and never thinner than 12px. Semantics: `Into` means something everywhere
+— a hole is filled, a container's contents grow, a leaf becomes a run —
+and "beside" a node in a fixed slot joins it there, since a numerator has
+no sibling list. Reality: a fraction's face is entirely its halves, so
+the drop rule reads the parent — landing on a numerator joins the
+numerator, which *is* "dropping onto the top of the fraction". Palette
+drops go through one `place` operation now, the same landing rules as
+`move` minus the deletion.
+
 The proxy boxes went away before that. Step 4 as planned drew its own
 boxes because `math-core`'s output has no node identity — but nothing says
 the *editor's* preview must come from `math-core`. A second emitter draws

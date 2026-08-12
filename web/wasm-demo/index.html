@@ -573,20 +573,45 @@ function dragSourceDown(e, src, label) {
   drag = { src, label, active: false, x0: e.clientX, y0: e.clientY };
 }
 
-const ZONE_LABEL = { into: '□', sup: 'x²', sub: 'x₂', before: '⇤', after: '⇥' };
+const ZONE_LABEL = { into: '⊕ in', sup: 'x²', sub: 'x₂', before: '⇤', after: '⇥' };
 
+// What a drop at (x, y) would do, decided by what is under the finger and
+// where inside it. The side strips are before/after and never thinner than
+// 12px, or a narrow glyph would have no reachable sides at all. Between
+// them: a fraction is its halves (top adds to the numerator, bottom to the
+// denominator), a container's middle adds to its contents, and anything
+// else splits top/bottom into shoulder and subscript.
 function dropZoneAt(x, y) {
   const el = document.elementFromPoint(x, y)?.closest('#math-boxes [data-path]');
   if (!el) return null;
-  const path = el.dataset.path.split(',').map(Number);
+  let path = el.dataset.path.split(',').map(Number);
   if (drag.src.kind === 'node' && path.join(',') === drag.src.path.join(',')) return null;
   const node = nodeAtPath(mathTree, path);
-  if (node && node.ph) return { el, path, zone: 'into' };
+  if (!node) return null;
+  if (node.ph) return { el, path, zone: 'into' };
   const r = el.getBoundingClientRect();
+  const side = Math.min(Math.max(12, r.width * 0.25), r.width / 3);
+  if (x < r.left + side) return { el, path, zone: 'before' };
+  if (x > r.right - side) return { el, path, zone: 'after' };
   const fy = (y - r.top) / r.height;
-  const fx = (x - r.left) / r.width;
-  const zone = fy < 0.4 ? 'sup' : fy > 0.6 ? 'sub' : fx < 0.5 ? 'before' : 'after';
-  return { el, path, zone };
+  if (node.k === 'frac') {
+    const half = fy < 0.5 ? 0 : 1;
+    path = [...path, half];
+    const childEl = mathBoxes.querySelector(`[data-path="${path.join(',')}"]`) ?? el;
+    return { el: childEl, path, zone: 'into' };
+  }
+  const container = node.k === 'call' || node.k === 'paren' || node.k === 'seq';
+  if (container) {
+    if (fy < 0.3) return { el, path, zone: 'sup' };
+    if (fy > 0.7) return { el, path, zone: 'sub' };
+    return { el, path, zone: 'into' };
+  }
+  // The middle of a numerator or denominator joins it: a fraction's face is
+  // entirely its halves, so "drop onto the top of the fraction" always
+  // lands on the half itself.
+  const parent = path.length > 1 ? nodeAtPath(mathTree, path.slice(0, -1)) : null;
+  if (parent && parent.k === 'frac') return { el, path, zone: 'into' };
+  return { el, path, zone: fy < 0.5 ? 'sup' : 'sub' };
 }
 
 document.addEventListener('pointermove', (e) => {
@@ -621,27 +646,8 @@ function endDrag(e, drop) {
   dragDropAt = performance.now();
   if (src.kind === 'node') {
     applyMath({ op: 'move', from: src.path, to: hit.path, slot: hit.zone }, () => null);
-    return;
-  }
-  if (hit.zone === 'into') {
-    applyMath({ op: 'replace', path: hit.path, src: src.text }, () => hit.path);
-  } else if (hit.zone === 'before' || hit.zone === 'after') {
-    const parent = hit.path.slice(0, -1);
-    const index = hit.path[hit.path.length - 1] + (hit.zone === 'after' ? 1 : 0);
-    applyMath({ op: 'insert', parent, index, src: src.text }, () => [...parent, index]);
   } else {
-    // A palette symbol onto a shoulder: make the slot, then fill the hole
-    // it opened — two operations, the second aimed with the first's tree.
-    const first = JSON.parse(math_apply(mathSrc, JSON.stringify({ op: hit.zone, path: hit.path })));
-    if (!first.ok) {
-      mathErr.textContent = first.error;
-      return;
-    }
-    const node = nodeAtPath(first.tree, hit.path);
-    const hole = hit.zone === 'sub' ? 1 : 1 + (node && node.sub ? 1 : 0);
-    mathSrc = first.src;
-    mathTree = first.tree;
-    applyMath({ op: 'replace', path: [...hit.path, hole], src: src.text }, () => [...hit.path, hole]);
+    applyMath({ op: 'place', to: hit.path, slot: hit.zone, src: src.text }, () => null);
   }
 }
 
