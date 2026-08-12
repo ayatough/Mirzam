@@ -9,6 +9,12 @@ repository.workspace = true
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+# The withdrawn math-panel API (math_state / math_apply). Off by default so
+# the shipped WASM carries none of it; the module still compiles and runs
+# under `cargo test` either way.
+math-editor = []
+
 [dependencies]
 mirzam-syntax.workspace = true
 mirzam-core.workspace = true

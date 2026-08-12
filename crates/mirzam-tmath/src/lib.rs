@@ -211,6 +211,43 @@ mod tests {
     }
 
     #[test]
+    fn brackets_and_intervals_are_fences() {
+        assert_eq!(latex("[a/b]"), "\\left[\\frac{a}{b}\\right]");
+        assert_eq!(latex("[0, oo)"), "\\left[0 , \\infty\\right)");
+        assert_eq!(latex("(0, 1]"), "\\left(0 , 1\\right]");
+        assert!(to_latex("[a").is_err());
+        assert!(to_latex("a]").is_err());
+    }
+
+    #[test]
+    fn spacing_words() {
+        assert_eq!(latex("a quad b"), "a \\quad b");
+        assert_eq!(latex("a wide b"), "a \\qquad b");
+        assert_eq!(latex("d thin x"), "d \\, x");
+    }
+
+    #[test]
+    fn accents_widen_over_words() {
+        assert_eq!(latex("hat(x)"), "\\hat{x}");
+        assert_eq!(latex("hat(A B)"), "\\widehat{A B}");
+        assert_eq!(latex("arrow(A B)"), "\\overrightarrow{A B}");
+        // No wide tilde in the renderer; the narrow one is still right for
+        // one glyph and least wrong for more.
+        assert_eq!(latex("tilde(x y)"), "\\tilde{x y}");
+    }
+
+    #[test]
+    fn more_operators_map() {
+        assert_eq!(latex("x |-> x^2"), "x \\mapsto x^{2}");
+        assert_eq!(latex("a << b >> c"), "a \\ll b \\gg c");
+        assert_eq!(latex("a | b"), "a | b");
+        assert_eq!(latex("A without B"), "A \\setminus B");
+        assert_eq!(latex("a perp b"), "a \\perp b");
+        assert_eq!(latex("p divides.not q"), "p \\nmid q");
+        assert_eq!(latex("theta degree"), "\\theta \\degree");
+    }
+
+    #[test]
     fn dotted_variants_map() {
         assert_eq!(latex("A subset.eq B"), "A \\subseteq B");
         assert_eq!(latex("x in.not A"), "x \\notin A");

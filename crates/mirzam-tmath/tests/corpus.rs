@@ -116,6 +116,29 @@ const CORPUS: &[(&str, &str)] = &[
         "op(\"argmax\")_theta f(theta)",
         r"\operatorname{argmax}_{\theta }f\left(\theta \right)",
     ),
+    // Brackets and mixed fences stretch like parens.
+    ("[a/b]", r"\left[\frac{a}{b}\right]"),
+    ("x in [0, oo)", r"x\in \left[0,\infty\right)"),
+    ("(0, 1]", r"\left(0,1\right]"),
+    // Spacing words.
+    ("a quad b", r"a\quad b"),
+    ("integral f(x) thin d x", r"\int f\left(x\right)\,dx"),
+    // Accents widen over more than one glyph.
+    ("hat(A B)", r"\widehat{AB}"),
+    ("arrow(A B)", r"\overrightarrow{AB}"),
+    ("hat(x) + arrow(v)", r"\hat{x}+\vec{v}"),
+    // More operators and symbols.
+    ("f: x |-> x^2", r"f:x\mapsto x^{2}"),
+    ("a << b >> c", r"a\ll b\gg c"),
+    ("a perp b parallel c", r"a\perp b\parallel c"),
+    ("A without B", r"A\setminus B"),
+    ("p divides q", r"p\mid q"),
+    ("therefore ell in bb(R)", r"\therefore \ell \in \mathbb{R}"),
+    ("Re z + Im z", r"\Re z+\Im z"),
+    ("f compose g", r"f\circ g"),
+    ("f convolve g", r"f\ast g"),
+    ("x tack.r y", r"x\vdash y"),
+    ("angle.l u, v angle.r", r"\langle u,v\rangle"),
 ];
 
 #[test]

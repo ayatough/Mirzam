@@ -176,6 +176,7 @@ pub fn delete(root: &mut Vec<Node>, path: &[usize]) -> Option<Node> {
     match &mut parent.kind {
         NodeKind::Seq(v)
         | NodeKind::Paren(v)
+        | NodeKind::Fence { inner: v, .. }
         | NodeKind::Sqrt(v)
         | NodeKind::Abs(v)
         | NodeKind::Norm(v)
@@ -233,6 +234,7 @@ fn is_vec_parent(kind: &NodeKind) -> bool {
         kind,
         NodeKind::Seq(_)
             | NodeKind::Paren(_)
+            | NodeKind::Fence { .. }
             | NodeKind::Sqrt(_)
             | NodeKind::Abs(_)
             | NodeKind::Norm(_)
@@ -304,6 +306,7 @@ fn place(root: &mut Vec<Node>, to: &[usize], slot: MoveSlot, node: Node) -> bool
             match &mut target.kind {
                 NodeKind::Seq(v)
                 | NodeKind::Paren(v)
+                | NodeKind::Fence { inner: v, .. }
                 | NodeKind::Sqrt(v)
                 | NodeKind::Abs(v)
                 | NodeKind::Norm(v)
@@ -411,6 +414,7 @@ pub fn insert(root: &mut Vec<Node>, parent_path: &[usize], index: usize, node: N
     match &mut parent.kind {
         NodeKind::Seq(v)
         | NodeKind::Paren(v)
+        | NodeKind::Fence { inner: v, .. }
         | NodeKind::Sqrt(v)
         | NodeKind::Abs(v)
         | NodeKind::Norm(v)

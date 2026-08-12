@@ -174,12 +174,20 @@ impl Parser {
                 latex,
             },
             TokKind::Word(w) => return self.word(w, from),
-            TokKind::Ch('(') => {
-                let inner = self.sequence(&[')'])?;
-                if !self.eat(')') {
-                    return err("unmatched `(`");
+            // `(` and `[` open a stretchy pair, and either may close with
+            // `)` or `]` — intervals need the mixed pairs: `[0, oo)`.
+            // Only a pure `(...)` also serves as invisible grouping.
+            TokKind::Ch(open @ ('(' | '[')) => {
+                let inner = self.sequence(&[')', ']'])?;
+                let close = match self.next() {
+                    Some(TokKind::Ch(c @ (')' | ']'))) => c,
+                    _ => return err(format!("unmatched `{open}`")),
+                };
+                if open == '(' && close == ')' {
+                    NodeKind::Paren(inner)
+                } else {
+                    NodeKind::Fence { open, close, inner }
                 }
-                NodeKind::Paren(inner)
             }
             TokKind::Ch('&') => NodeKind::Align,
             TokKind::Ch('\\') => NodeKind::Break,

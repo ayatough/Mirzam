@@ -71,7 +71,7 @@ there is. The model column follows from that:
 | W17 | A theme per slide | B | — | — | |
 | W18 | Carrying an element from one slide to the next | S | — | W2 | |
 | W5 | Typst-flavoured math | A | Sonnet | — | ✅ |
-| W19 | Structural math editing: tap and place, not type | S | Fable | W5 | ✅ |
+| W19 | Structural math editing: tap and place, not type | S | Fable | W5 | withdrawn |
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
 
 ### What is deferred, and why
@@ -1019,6 +1019,22 @@ editor, not an IME — no handwriting recognition, no guessing.
 
 **Owns:** spans, printer and edit operations in `mirzam-tmath`, their
 `mirzam-wasm` bindings, and the editor component under `web/`.
+
+**Withdrawn after field testing, before any release carried it.** On the
+phone it was built for, fingers covered the drop targets, and the verdict
+from real use was blunt: typing the Typst source was faster than dragging
+it into shape. The panel UI is gone from the browser editor; the wasm
+bindings (`math_state` / `math_apply`, the path-stamped MathML emitter)
+still compile behind the `math-editor` feature of `mirzam-wasm` — off by
+default, costing the shipped binary nothing — and their tests still run.
+Steps 1–3 were never the experiment and stay in the crate unconditionally:
+spans sharpen every parse error, the printer is what any tool that writes
+math needs, and the round-trip property now guards the grammar as it
+grows. The effort that would have gone into step 4's second iteration went
+into the grammar instead — brackets and mixed fences, spacing words, wide
+accents, `|->` and the rest — because the real lesson of the testing was
+that the *text* is the editor, so the text had better be able to say
+everything.
 
 ## W6 — Annotations on images and charts ✅
 

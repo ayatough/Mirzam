@@ -39,6 +39,9 @@ fn emit(node: &Node) -> String {
         NodeKind::Esc(c) => escape_char(*c),
         NodeKind::Seq(inner) => emit_seq(inner),
         NodeKind::Paren(inner) => format!("\\left({}\\right)", emit_seq(inner)),
+        NodeKind::Fence { open, close, inner } => {
+            format!("\\left{open}{}\\right{close}", emit_seq(inner))
+        }
         NodeKind::Frac(a, b) => format!("\\frac{{{}}}{{{}}}", emit(a), emit(b)),
         NodeKind::Script { base, sub, sup } => {
             // Braces around a one-token base change more than grouping:
@@ -65,7 +68,20 @@ fn emit(node: &Node) -> String {
         NodeKind::Abs(x) => format!("\\left|{}\\right|", emit_seq(x)),
         NodeKind::Norm(x) => format!("\\left\\|{}\\right\\|", emit_seq(x)),
         NodeKind::Call { name, arg } => match wrap_command(name) {
-            Some(cmd) => format!("{cmd}{{{}}}", emit_seq(arg)),
+            Some(cmd) => {
+                // A hat sized for one letter looks lost over a word; the
+                // wide forms span, where LaTeX has one to offer.
+                let cmd = if single_atom(arg) {
+                    cmd
+                } else {
+                    match cmd {
+                        "\\hat" => "\\widehat",
+                        "\\vec" => "\\overrightarrow",
+                        other => other,
+                    }
+                };
+                format!("{cmd}{{{}}}", emit_seq(arg))
+            }
             None => {
                 let (open, close) = fence_pair(name).expect("call names are known");
                 format!("{open} {} {close}", emit_seq(arg))
@@ -121,6 +137,17 @@ fn emit(node: &Node) -> String {
         NodeKind::Align => "\\&".into(),
         NodeKind::Break => "\\\\".into(),
     }
+}
+
+/// Whether an accent argument is one glyph — the size a plain accent fits.
+fn single_atom(nodes: &[Node]) -> bool {
+    matches!(
+        nodes,
+        [n] if matches!(
+            n.kind,
+            NodeKind::Ident(_) | NodeKind::Ch(_) | NodeKind::Sym { .. } | NodeKind::Num(_)
+        )
+    )
 }
 
 /// Characters that need escaping inside `\text{...}`.

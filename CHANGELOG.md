@@ -114,40 +114,21 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   it at a built `out/index.html` used to "succeed" with a title-only PDF,
   silently dropping the whole deck, because the HTML was re-parsed as
   Markdown. That is an error now, and says the right command to run instead.
-- **A formula panel in the browser editor: tap and place, not type.** The
-  letters of a formula are easy to type on a phone; the structure — what is a
-  subscript, what sits over what — is what costs keystrokes. The **Math**
-  button opens a panel that builds a formula by touch — and the tap surface
-  is **the typeset formula itself**: every element of the rendered
-  mathematics carries the node it draws, so a finger on the denominator
-  selects the denominator. Tap a node and give it a superscript, a fraction
-  bar, a root or an accent from the palette; **drag** a symbol from the
-  palette — or any node of the formula itself — onto the formula, and where
-  it lands decides the slot: the top of a node is its shoulder, the bottom
-  its subscript, the sides its neighbours (never thinner than a
-  finger-width, whatever the glyph), a fraction's halves are its numerator
-  and denominator, the middle of a root or a bracket joins its contents,
-  and a hole takes what it is given — with the slot previewed beside the
-  finger before release. `a b c`, then b dragged onto a, is one gesture. Typing in the entry places on
-  Enter or space; there is no Put and no Move button. `▲` steps the
-  selection out to the enclosing node when a finger lands deeper than
-  intended. Deleting a container's only child leaves a visible hole to drop
-  into, rather than an empty `sqrt()` with nothing left to aim at. Editing
-  the deck text while the panel is open no longer corrupts the insert: the
-  panel anchors to the formula's text and finds it again, not to offsets
-  the edit just moved. The formula lands in the Markdown as ordinary `$...$` text — a
-  deck edited this way is indistinguishable from one typed by hand. Opening the panel with the cursor inside an existing
-  formula loads it for editing. **The panel adapts to the deck's dialect
-  rather than flipping the deck**: into a `math: typst` deck it writes
-  Typst-math (re-editable later), into a LaTeX deck it writes the same
-  formula lowered to LaTeX — because setting `math: typst` on a deck that
-  already holds LaTeX formulas would break every one of them, which is
-  exactly what the first version did. It offers the switch only while the
-  deck has no math at all. The browser editor's sample deck is `math:
-  typst` now, so its formula is one the panel can open. Underneath, the
-  same tree the renderer parses is exposed to the page (`math_state` /
-  `math_apply` in the WASM bindings), so every tap is one edit operation and
-  the text stays the single source of truth.
+- **Typst-flavoured math covers more of what LaTeX can say.** Brackets are
+  delimiters now: `[a/b]` grows with its contents like parens always did, and
+  the mixed pairs intervals need — `[0, oo)`, `(0, 1]` — parse instead of
+  erroring on the unmatched half. Spacing words (`thin`, `med`, `thick`,
+  `quad`, `wide`) map to LaTeX's `\,` through `\qquad`, so `integral f(x)
+  thin d x` gets its breath. `hat` and `arrow` widen over more than one
+  glyph (`hat(A B)` is `\widehat`, `arrow(A B)` is `\overrightarrow`).
+  `|->`, `<<` and `>>` lex as `\mapsto`, `\ll` and `\gg`; and a batch of
+  everyday names joins the tables: `ell`, `Re`, `Im`, `aleph`, `angle` (and
+  `angle.l`/`angle.r` for ⟨ ⟩), `degree`, `star`, `dagger`, `compose`,
+  `convolve`, `without`, `perp`, `parallel`, `divides`, `therefore`,
+  `because`, `top`, `bot`, `models`, `tack.r`, `tack.l`, `arrow.r.bar`,
+  `lt.double`, `gt.double`, `brace.l`, `brace.r`. Every entry is verified
+  against hand-written LaTeX at the MathML level, so a name the renderer
+  cannot draw cannot join the table.
 - Text areas in the browser editor hold 16px type on phones, because iOS
   Safari force-zooms the page into any smaller input the moment it is
   focused — which read as "editing is broken on a phone" while being,

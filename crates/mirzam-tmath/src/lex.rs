@@ -154,12 +154,14 @@ pub(crate) fn lex(src: &str) -> Result<Vec<Tok>, Error> {
                     },
                 });
             }
-            '-' | '=' | '<' | '>' | '!' | '.' => {
+            '-' | '=' | '<' | '>' | '!' | '.' | '|' => {
                 // Multi-character operators, longest first.
                 let rest: String = chars.clone().map(|(_, c)| c).take(3).collect();
                 let sym = |src, latex| Some(TokKind::Sym { src, latex });
                 let (kind, len) = if rest.starts_with("...") {
                     (sym("...", "\\dots"), 3)
+                } else if rest.starts_with("|->") {
+                    (sym("|->", "\\mapsto"), 3)
                 } else if rest.starts_with("->") {
                     (sym("->", "\\to"), 2)
                 } else if rest.starts_with("=>") {
@@ -172,6 +174,10 @@ pub(crate) fn lex(src: &str) -> Result<Vec<Tok>, Error> {
                     (sym(">=", "\\geq"), 2)
                 } else if rest.starts_with("<-") {
                     (sym("<-", "\\leftarrow"), 2)
+                } else if rest.starts_with("<<") {
+                    (sym("<<", "\\ll"), 2)
+                } else if rest.starts_with(">>") {
+                    (sym(">>", "\\gg"), 2)
                 } else {
                     (None, 1)
                 };
@@ -187,8 +193,8 @@ pub(crate) fn lex(src: &str) -> Result<Vec<Tok>, Error> {
                     },
                 });
             }
-            '+' | '*' | '/' | '^' | '_' | '&' | '\\' | '(' | ')' | '[' | ']' | ',' | ';' | '|'
-            | '\'' | ':' | '?' | '%' | '@' | '~' => {
+            '+' | '*' | '/' | '^' | '_' | '&' | '\\' | '(' | ')' | '[' | ']' | ',' | ';' | '\''
+            | ':' | '?' | '%' | '@' | '~' => {
                 chars.next();
                 tokens.push(Tok {
                     kind: TokKind::Ch(c),

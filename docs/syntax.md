@@ -645,14 +645,15 @@ MathML path:
 | Fractions | `a/b` — binds the adjacent term; `(a + b)/c` groups without printing the parens |
 | Scripts | `x^2`, `x_(i+1)`, `x_i^2`, `x^-1`; `'` and `!` stay with their base |
 | Roots | `sqrt(x)`, `root(3, x)` |
-| Bars and fences | `abs(x)`, `norm(v)`, `floor(x)`, `ceil(x)` |
+| Bars and fences | `abs(x)`, `norm(v)`, `floor(x)`, `ceil(x)`; `[a, b]` and the mixed pairs intervals need — `[0, oo)`, `(0, 1]` — all growing with their contents; `angle.l u, v angle.r` for ⟨u, v⟩ |
 | Big operators | `sum_(i=1)^n`, `product`, `integral_0^oo` and `integral.double`/`.triple`/`.cont`, `union.big`, `lim_(x -> 0)` |
 | Greek | by name: `alpha`, `pi`, `Omega` — following Typst's glyphs, so `epsilon` is ε and `epsilon.alt` is ϵ |
-| Accents | `hat(x)`, `dot(x)`, `ddot(x)`, `tilde(x)`, `macron(x)`, `arrow(v)`, `overline(x)`, `underline(x)` |
+| Accents | `hat(x)`, `dot(x)`, `ddot(x)`, `tilde(x)`, `macron(x)`, `arrow(v)`, `overline(x)`, `underline(x)`; `hat` and `arrow` widen over more than one glyph — `hat(A B)` |
 | Letter styles | `bb(R)`, `cal(F)`, `frak(g)`, `bold(v)`, `upright(d)`, `sans(A)`, `mono(m)` |
 | Functions | `sin`, `cos`, `log`, `min`, … set upright, gluing to their `(...)`; `op("argmax")` for one the tables lack |
-| Arrows and relations | `->` `=>` `<-` `!=` `<=` `>=`, `in`, `subset`, `union`, `approx`, and dotted variants: `subset.eq`, `in.not`, `arrow.l.r`, … |
-| Symbols | `infinity` (or `oo`), `partial`, `nabla`, `hbar`, `times`, `dot`, `pm`, `and`, `or`, `dots`, `...`, `dots.c` |
+| Arrows and relations | `->` `=>` `<-` `!=` `<=` `>=` `\|->` `<<` `>>`, `in`, `subset`, `union`, `approx`, `perp`, `parallel`, `divides`, `models`, `tack.r`/`tack.l`, and dotted variants: `subset.eq`, `in.not`, `arrow.l.r`, … |
+| Symbols | `infinity` (or `oo`), `partial`, `nabla`, `hbar`, `times`, `dot`, `pm`, `and`, `or`, `dots`, `...`, `dots.c`, `ell`, `Re`, `Im`, `aleph`, `angle`, `degree`, `star`, `dagger`, `compose`, `convolve`, `without`, `therefore`, `because`, `top`, `bot` |
+| Spacing | `thin`, `med`, `thick`, `quad`, `wide` — from `\,` up to `\qquad` |
 | Matrices | `mat(1, 2; 3, 4)` — `,` separates cells, `;` rows; `mat(delim: "[", …)` picks the brackets |
 | Vectors | `vec(1, 2)` is a column; `binom(n, k)` a binomial |
 | Cases | `cases(x^2 &"if" x > 0, 0 &"otherwise")` |

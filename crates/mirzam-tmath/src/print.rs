@@ -105,6 +105,9 @@ fn print(node: &Node) -> String {
         NodeKind::Esc(c) => format!("#{c}"),
         NodeKind::Seq(inner) => print_inner_seq(inner),
         NodeKind::Paren(inner) => format!("({})", print_seq(inner)),
+        NodeKind::Fence { open, close, inner } => {
+            format!("{open}{}{close}", print_seq(inner))
+        }
         NodeKind::Frac(a, b) => format!(
             "{}/{}",
             print_frac_operand(a, false),

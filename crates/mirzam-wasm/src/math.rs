@@ -114,6 +114,11 @@ fn emit_mathml(n: &Node, path: &mut Vec<usize>, out: &mut String) {
             kids(inner, path, out, 0);
             out.push_str("<mo>)</mo></mrow>");
         }
+        NodeKind::Fence { open, close, inner } => {
+            out.push_str(&format!("<mrow{p}><mo>{open}</mo>"));
+            kids(inner, path, out, 0);
+            out.push_str(&format!("<mo>{close}</mo></mrow>"));
+        }
         NodeKind::Frac(a, b) => {
             out.push_str(&format!("<mfrac{p}>"));
             path.push(0);
@@ -294,7 +299,7 @@ fn kind_tag(n: &Node) -> &'static str {
         NodeKind::Num(_) | NodeKind::Ident(_) | NodeKind::Sym { .. } | NodeKind::Ch(_) => "leaf",
         NodeKind::Text(_) | NodeKind::Esc(_) | NodeKind::Op(_) => "leaf",
         NodeKind::Seq(_) => "seq",
-        NodeKind::Paren(_) => "paren",
+        NodeKind::Paren(_) | NodeKind::Fence { .. } => "paren",
         NodeKind::Frac(..) => "frac",
         NodeKind::Script { .. } => "script",
         NodeKind::Sqrt(_)
@@ -329,9 +334,11 @@ fn label(n: &Node) -> Option<String> {
         NodeKind::Cases(_) => "cases".into(),
         NodeKind::Align => "&".into(),
         NodeKind::Break => "\\".into(),
-        NodeKind::Seq(_) | NodeKind::Paren(_) | NodeKind::Frac(..) | NodeKind::Script { .. } => {
-            return None
-        }
+        NodeKind::Seq(_)
+        | NodeKind::Paren(_)
+        | NodeKind::Fence { .. }
+        | NodeKind::Frac(..)
+        | NodeKind::Script { .. } => return None,
     })
 }
 

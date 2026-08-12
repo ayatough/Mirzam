@@ -15,6 +15,12 @@
 //! const changed = JSON.parse(r.render_changed(source)); // changed slides only
 //! ```
 
+// The structural math editor's back end: built, field-tested in the browser
+// editor, and withdrawn — typing the Typst dialect beat editing it by touch.
+// The logic lives on tested (the edit layer in `mirzam-tmath`, the JSON layer
+// here under `cfg(test)`), but shipping WASM carries none of it unless the
+// `math-editor` feature turns it back on.
+#[cfg(any(test, feature = "math-editor"))]
 mod math;
 
 use mirzam_render::AssetSource;

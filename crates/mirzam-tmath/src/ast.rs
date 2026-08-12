@@ -81,6 +81,7 @@ impl Node {
             }
             NodeKind::Seq(inner)
             | NodeKind::Paren(inner)
+            | NodeKind::Fence { inner, .. }
             | NodeKind::Sqrt(inner)
             | NodeKind::Abs(inner)
             | NodeKind::Norm(inner)
@@ -110,6 +111,7 @@ impl Node {
             }
             NodeKind::Seq(inner)
             | NodeKind::Paren(inner)
+            | NodeKind::Fence { inner, .. }
             | NodeKind::Sqrt(inner)
             | NodeKind::Abs(inner)
             | NodeKind::Norm(inner)
@@ -142,6 +144,13 @@ pub enum NodeKind {
     Seq(Vec<Node>),
     /// `(...)` that the author wants printed, stretchy.
     Paren(Vec<Node>),
+    /// A delimited pair other than plain parens: `[a, b]`, and the mixed
+    /// pairs intervals need — `[0, oo)`, `(0, 1]`. Stretchy, never grouping.
+    Fence {
+        open: char,
+        close: char,
+        inner: Vec<Node>,
+    },
     Frac(Box<Node>, Box<Node>),
     Script {
         base: Box<Node>,
