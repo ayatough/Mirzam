@@ -65,16 +65,19 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 810 } });
 
 let failures = 0;
 for (const deck of decks) {
-  const { count, problems } = await checkDeck(page, deck.file);
+  const { count, problems, notes = [] } = await checkDeck(page, deck.file);
   if (problems.length === 0) {
     console.log(`✓ ${deck.label}: ${count} slides, no layout problems`);
-    continue;
+  } else {
+    failures += problems.length;
+    console.log(`✗ ${deck.label}: ${problems.length} problem(s) across ${count} slides`);
+    for (const p of problems) {
+      console.log(`    slide ${p.slide} [${p.kind}] pane "${p.pane}": ${p.detail}`);
+    }
   }
-  failures += problems.length;
-  console.log(`✗ ${deck.label}: ${problems.length} problem(s) across ${count} slides`);
-  for (const p of problems) {
-    console.log(`    slide ${p.slide} [${p.kind}] pane "${p.pane}": ${p.detail}`);
-  }
+  // What the run was measured with. A deck embeds no text font, so a clean
+  // result is a statement about this machine; the notes say which machine.
+  for (const n of notes) console.log(`  · ${n}`);
 }
 
 await browser.close();

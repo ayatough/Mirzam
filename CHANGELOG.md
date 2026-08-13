@@ -70,6 +70,19 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   indistinguishable from Markdown somebody meant literally — and the layout
   check cannot see it either, because the box is the right size and merely has
   punctuation in it. `--strict` fails on it.
+- **`mirzam check` says what it measured with.** A deck embeds no text font —
+  only the maths face is inlined — so the layout it checks is the deck set in
+  whatever fonts the checking machine happens to have, and a clean run was a
+  statement about that one machine with nothing saying so. It now prints the
+  families it found, the ones the deck asks for and this machine lacks, and how
+  much room the tightest pane had left. On the Japanese sample that last number
+  is 3px: less than one wrapped line, which is what a font substitution costs.
+- **`mirzam check --min-slack <px>`** reports any pane with less than that much
+  room left, even though it fits here. A deck that will be shown somewhere else
+  can be held to a margin instead of to "it fitted on the machine that ran
+  this", which is the only thing a fit alone can promise.
+- **The long arrows.** `-->` `<--` `<->` `<-->` `==>` `<==` `<=>` `<==>`, and
+  the tailed `->>` `<<-` `>->`, are single operators in Typst maths now.
 
 ### Changed
 - **`mirzam check` is now the layout check the contributor docs ask for**, in

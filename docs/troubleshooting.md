@@ -39,6 +39,13 @@ exactly, but the overflow is invisible until you look or run `mirzam check`.
 That's the documented fallback, not a bug: nothing about the syntax warns you
 while you're typing.
 
+**A slide that fits here may not fit where you present it.** A deck embeds no
+text font, so `check` measures it in whatever the checking machine resolved the
+deck's font stack to — and it now says so, along with how little room the
+tightest pane had. If the deck is going to be shown on another machine, ask for
+a margin rather than for a fit: `mirzam check deck.md --min-slack 24`. See
+[Layout guide § What a clean run does and does not promise](layout.md#what-a-clean-run-does-and-does-not-promise).
+
 ## Something rendered as literal text instead of the feature you wrote
 
 Every Mirzam extension is designed to degrade to plain text in a parser that
@@ -122,6 +129,7 @@ since it changes how urgent the fix is:
 | pane "x" contains a shape block, but shape only renders at slide top level | Shape | A `shape` fence sits inside `::: pane` | Note only — still renders as a code block |
 | footnote reference "[^key]" has no definition on this slide | Citations | `[^key]` with no `[^key]:` on the same slide | Note only — bracket text stays literal, once per key |
 | slide N: "[text]{.class}" is still on the slide as text | Spans | An attribute span split across a line break | Note only — it stays literal bracket text |
+| slide N: the brace over "…" will stop short of it | Math | An `underbrace`/`overbrace` base wider than about 8em, where the browser stops stretching the brace | Note only — the formula renders, with the end of the base uncovered. Move the words into the label |
 | `[@key]` is in no bibliography entry | References | A citation key the deck's `bibliography:` does not define | Note only — the mark stays on the slide exactly as written |
 | citations: N reference(s) are cited and no `bibliography` block lists them | References | The deck cites but never places a `bibliography` block | Note only — each mark reads, and links nowhere |
 | bibliography: nothing to list | References | A `bibliography` block on a deck where no `[@key]` cited an entry | Note only — the block renders as nothing |

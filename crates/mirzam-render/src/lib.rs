@@ -799,6 +799,7 @@ fn render_slide(
     // comrak rather than becoming a link - say so, once per key.
     warn_unresolved_footnotes(index, &body, warnings);
     warn_unrendered_spans(index, &body, warnings);
+    warn_wide_braces(index, &body, warnings);
 
     // shape blocks become a static SVG layer in page coordinates, scaling with the slide.
     let mut shapes_html = String::new();
@@ -1036,6 +1037,65 @@ fn warn_unresolved_footnotes(index: usize, body: &str, warnings: &mut Vec<String
             ));
         }
     }
+}
+
+/// `underbrace`/`overbrace` stop growing at about ten em.
+///
+/// The brace is a stretchy operator, assembled by the browser out of the
+/// font's brace pieces — and Blink stops extending that assembly at roughly
+/// ten em, then draws a brace *shorter* than the base and flush left. The
+/// formula still renders, and it renders wrong: the last characters of the
+/// base have nothing under them. Nothing downstream can see it either, since
+/// the operator's layout box does not grow with the glyph it paints, so the
+/// layout check measures a brace that fits while looking at one that does not.
+///
+/// So it is estimated here, from the base's own content, and deliberately
+/// under-eager: a warning that cried wolf on ordinary formulas would be worse
+/// than none. The remedy is to move the words into the label, where they have
+/// no brace to outgrow.
+fn warn_wide_braces(index: usize, body: &str, warnings: &mut Vec<String>) {
+    /// Where Blink stops stretching, in em, read off a ladder of bases
+    /// rendered at increasing widths: the painted brace is the same length at
+    /// twelve, fourteen and eighteen characters of base.
+    const CAP_EM: f32 = 8.0;
+    let mut seen = std::collections::BTreeSet::new();
+    for cap in brace_regex().captures_iter(body) {
+        let base = strip_tags(&cap[2]);
+        let em: f32 = base
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            // A CJK character is one em square; Latin and digits average
+            // rather less, italic in a maths font.
+            .map(|c| if (c as u32) > 0x2E80 { 1.0 } else { 0.6 })
+            .sum();
+        if em > CAP_EM && seen.insert(base.clone()) {
+            warnings.push(format!(
+                "slide {}: the brace over `{}` will stop short of it - a browser \
+                 stops stretching one at about {CAP_EM:.0}em, and this base is wider. \
+                 Put the words in the label instead of the base",
+                index + 1,
+                base.trim()
+            ));
+        }
+    }
+}
+
+fn brace_regex() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| {
+        Regex::new(
+            r#"(?s)<m(?:under|over) accent(?:under)?="true">(<mrow>)?(.*?)(</mrow>)?<mo>[⏟⏞]</mo>"#,
+        )
+        .expect("static regex")
+    })
+}
+
+/// The text of an HTML fragment, tags removed.
+fn strip_tags(html: &str) -> String {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| Regex::new(r"<[^>]*>").expect("static regex"))
+        .replace_all(html, "")
+        .into_owned()
 }
 
 /// An attribute span that did not become a span reaches the slide as literal
@@ -1957,6 +2017,38 @@ mod tests {
         );
         let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
         assert!(!out.warnings.iter().any(|w| w.contains("shape")));
+    }
+
+    /// The brace is a stretchy operator the browser stops extending, and its
+    /// layout box does not grow with the glyph it paints — so nothing
+    /// downstream can catch this, and the slide shows a base with its last
+    /// characters hanging over nothing.
+    #[test]
+    fn a_brace_wider_than_the_browser_will_draw_warns() {
+        let meta = DeckMeta {
+            math: Some("typst".into()),
+            ..DeckMeta::default()
+        };
+        let long = parse_slide("$$underbrace(m m m m m m m m m m m m m m, \"label\")$$\n");
+        let out = render_deck(&meta, &[long], Path::new("."));
+        assert!(
+            out.warnings.iter().any(|w| w.contains("stop short")),
+            "{:?}",
+            out.warnings
+        );
+        // A base the browser can draw, and the same words moved into the
+        // label where they belong, both stay quiet.
+        for src in [
+            "$$underbrace(a + b, \"total\")$$\n",
+            "$$underbrace(P, \"a rather long label indeed, many characters\")$$\n",
+        ] {
+            let out = render_deck(&meta, &[parse_slide(src)], Path::new("."));
+            assert!(
+                !out.warnings.iter().any(|w| w.contains("stop short")),
+                "{src}: {:?}",
+                out.warnings
+            );
+        }
     }
 
     #[test]

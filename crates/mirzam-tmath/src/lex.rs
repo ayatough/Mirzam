@@ -43,6 +43,45 @@ impl TokKind {
     }
 }
 
+/// Operators written out of `-=<>!.|`, **longest first**: a form that begins
+/// with a shorter one has to be tried before it, or the shorter one wins and
+/// the rest of the run lexes as a second operator. `arrows_are_matched_longest_first`
+/// holds the order.
+const OPERATORS: &[(&str, &str)] = &[
+    ("<==>", "\\Longleftrightarrow"),
+    ("<-->", "\\longleftrightarrow"),
+    ("...", "\\dots"),
+    ("|->", "\\mapsto"),
+    ("<==", "\\Longleftarrow"),
+    ("==>", "\\Longrightarrow"),
+    ("<--", "\\longleftarrow"),
+    ("-->", "\\longrightarrow"),
+    ("<=>", "\\Leftrightarrow"),
+    ("<->", "\\leftrightarrow"),
+    ("->>", "\\twoheadrightarrow"),
+    ("<<-", "\\twoheadleftarrow"),
+    (">->", "\\rightarrowtail"),
+    ("->", "\\to"),
+    ("=>", "\\Rightarrow"),
+    ("!=", "\\neq"),
+    ("<=", "\\leq"),
+    (">=", "\\geq"),
+    ("<-", "\\leftarrow"),
+    ("<<", "\\ll"),
+    (">>", "\\gg"),
+];
+
+/// How far ahead the operator table can need to look.
+const LONGEST_OP: usize = 4;
+
+/// The run of arrow characters `cs` starts with. `!`, `.` and `|` are not among
+/// them: each carries a meaning of its own that repeating it does not change,
+/// and `||` is a pair of bars somebody meant.
+fn arrow_run(cs: impl Iterator<Item = char>) -> String {
+    cs.take_while(|c| matches!(c, '<' | '>' | '-' | '='))
+        .collect()
+}
+
 pub(crate) fn lex(src: &str) -> Result<Vec<Tok>, Error> {
     let mut tokens = Vec::new();
     let mut chars = src.char_indices().peekable();
@@ -155,31 +194,32 @@ pub(crate) fn lex(src: &str) -> Result<Vec<Tok>, Error> {
                 });
             }
             '-' | '=' | '<' | '>' | '!' | '.' | '|' => {
-                // Multi-character operators, longest first.
-                let rest: String = chars.clone().map(|(_, c)| c).take(3).collect();
-                let sym = |src, latex| Some(TokKind::Sym { src, latex });
-                let (kind, len) = if rest.starts_with("...") {
-                    (sym("...", "\\dots"), 3)
-                } else if rest.starts_with("|->") {
-                    (sym("|->", "\\mapsto"), 3)
-                } else if rest.starts_with("->") {
-                    (sym("->", "\\to"), 2)
-                } else if rest.starts_with("=>") {
-                    (sym("=>", "\\Rightarrow"), 2)
-                } else if rest.starts_with("!=") {
-                    (sym("!=", "\\neq"), 2)
-                } else if rest.starts_with("<=") {
-                    (sym("<=", "\\leq"), 2)
-                } else if rest.starts_with(">=") {
-                    (sym(">=", "\\geq"), 2)
-                } else if rest.starts_with("<-") {
-                    (sym("<-", "\\leftarrow"), 2)
-                } else if rest.starts_with("<<") {
-                    (sym("<<", "\\ll"), 2)
-                } else if rest.starts_with(">>") {
-                    (sym(">>", "\\gg"), 2)
-                } else {
-                    (None, 1)
+                let rest: String = chars.clone().map(|(_, c)| c).take(LONGEST_OP).collect();
+                let run = arrow_run(chars.clone().map(|(_, c)| c));
+                let matched = OPERATORS.iter().find(|(src, _)| rest.starts_with(src));
+                // A run of arrow characters is one operator or it is nothing.
+                // Taking the longest prefix that matched and lexing the rest
+                // as a second operator is how `<==>` became `<=` then `=>`,
+                // which renders `≤⇒` — not a broken formula, a different and
+                // perfectly plausible one, which is the kind that survives
+                // proofreading. Same policy the parser applies to an unknown
+                // name: refuse rather than render something else.
+                let whole = matched.is_some_and(|&(src, _)| src == run);
+                let (kind, len) = match matched {
+                    Some(&(src, latex)) if whole || run.len() < 2 => {
+                        (Some(TokKind::Sym { src, latex }), src.len())
+                    }
+                    _ if run.len() > 1 => {
+                        return err_at(
+                            format!(
+                                "unknown operator `{run}`; the arrows are `->` `<-` `=>` `<=>` \
+                                 `<->` `-->` `<--` `==>` `<==` `<-->` `<==>` `->>` `<<-` `>->`"
+                            ),
+                            at,
+                        );
+                    }
+                    Some(&(src, latex)) => (Some(TokKind::Sym { src, latex }), src.len()),
+                    None => (None, 1),
                 };
                 for _ in 0..len {
                     chars.next();
@@ -208,4 +248,20 @@ pub(crate) fn lex(src: &str) -> Result<Vec<Tok>, Error> {
         }
     }
     Ok(tokens)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The table is scanned in order, so a form that another begins with must
+    /// come first. Sorted by descending length is the simple way to be sure.
+    #[test]
+    fn arrows_are_matched_longest_first() {
+        assert!(OPERATORS.windows(2).all(|w| w[0].0.len() >= w[1].0.len()));
+        assert_eq!(
+            LONGEST_OP,
+            OPERATORS.iter().map(|(s, _)| s.len()).max().unwrap_or(0)
+        );
+    }
 }

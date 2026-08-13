@@ -214,6 +214,7 @@ slide and pane:
   sentence that said "the circled bar" is not
 - **animation** — an element is still in its entrance state after that entrance
   has played, so nobody ever sees it. That includes the PDF, which never steps
+- **slack** — a pane fits, but by less than `--min-slack <px>` asked for
 - **debug** — the pane overlay is baked into this build (see below). Fine for a
   screenshot, wrong for anything published
 
@@ -222,6 +223,38 @@ slide and pane:
     slide 1 [clipped] pane "head": content is 100px taller than the pane
     slide 1 [overlap] pane "head": overflows 79px into pane below
 ```
+
+### What a clean run does and does not promise
+
+A pass says the deck fits **on the machine that ran the check**, and after the
+verdict the check says which machine that was:
+
+```
+✓ 12 slides, no layout problems (1456 ms)
+  · fonts: measured with Arial; not on this machine: Helvetica Neue, Hiragino
+    Kaku Gothic ProN, Hiragino Sans, and 5 more. A reader who has them sees
+    different line breaks
+  · tightest pane: slide 2 "main", 3px of room left
+```
+
+A deck embeds no text font — only the maths face is inlined — so the type it is
+measured in is whatever the checking machine resolved the deck's stack to. Swap
+the font and the text changes extent; one extra wrapped line is about 28px
+against a pane that had 3. That is why the tightest pane is worth reading even
+when nothing failed, and why a deck that will be shown somewhere else can ask
+for a margin rather than for a fit:
+
+```bash
+mirzam check deck.md --min-slack 24
+```
+
+Every pane with less than 24px of room left is then reported, and the check
+exits non-zero — a CI gate that survives a font substitution instead of one
+that passes right up until the room it presents in.
+
+`--fit shrink` and the check agree by construction: the check measures the same
+wrapper `fit.js` scales, so a pane the fit rescued passes and a pane still
+overflowing at the 55% floor fails.
 
 The same check runs in CI over every sample deck, so the samples stay a reliable
 reference.

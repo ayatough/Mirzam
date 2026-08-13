@@ -248,6 +248,35 @@ mod tests {
     }
 
     #[test]
+    fn long_arrows_are_one_operator() {
+        // `<==>` used to lex as `<=` then `=>` and render `≤⇒`: still a valid
+        // relation, and a false one, which is the failure that survives
+        // proofreading.
+        assert_eq!(latex("A <==> B"), "A \\Longleftrightarrow B");
+        assert_eq!(latex("A <=> B"), "A \\Leftrightarrow B");
+        assert_eq!(latex("A ==> B"), "A \\Longrightarrow B");
+        assert_eq!(latex("A <== B"), "A \\Longleftarrow B");
+        assert_eq!(latex("A <-> B"), "A \\leftrightarrow B");
+        assert_eq!(latex("A <--> B"), "A \\longleftrightarrow B");
+        assert_eq!(latex("A --> B"), "A \\longrightarrow B");
+        assert_eq!(latex("A <-- B"), "A \\longleftarrow B");
+        assert_eq!(latex("A ->> B"), "A \\twoheadrightarrow B");
+        assert_eq!(latex("A <<- B"), "A \\twoheadleftarrow B");
+        assert_eq!(latex("A >-> B"), "A \\rightarrowtail B");
+        // The short forms still lex as themselves.
+        assert_eq!(latex("a <= b >= c != d"), "a \\leq b \\geq c \\neq d");
+        assert_eq!(latex("a << b >> c"), "a \\ll b \\gg c");
+        assert_eq!(latex("x |-> x^2"), "x \\mapsto x^{2}");
+        assert_eq!(latex("x^-1"), "x^{- 1}");
+        // An arrow-shaped run that is none of them is a typo, not two
+        // operators that happen to fit.
+        for src in ["A === B", "A -- B", "A >>> B", "A <=< B"] {
+            let e = to_latex(src).unwrap_err();
+            assert!(e.message.contains("unknown operator"), "{src}: {e}");
+        }
+    }
+
+    #[test]
     fn dotted_variants_map() {
         assert_eq!(latex("A subset.eq B"), "A \\subseteq B");
         assert_eq!(latex("x in.not A"), "x \\notin A");

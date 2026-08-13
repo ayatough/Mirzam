@@ -170,6 +170,13 @@ fn main() -> ExitCode {
                             None => return usage("--chromium requires an executable path"),
                         }
                     }
+                    "--min-slack" => {
+                        i += 1;
+                        match args.get(i).and_then(|v| v.parse().ok()) {
+                            Some(px) => opts.min_slack = Some(px),
+                            None => return usage("--min-slack requires a number of pixels"),
+                        }
+                    }
                     arg => match parse_deck_flag(&args, &mut i, &mut opts.deck) {
                         Some(Ok(())) => {}
                         Some(Err(e)) => return usage(&e),
@@ -266,7 +273,7 @@ Usage:
                [--mode light|dark] [--chromium <bin>]
   mirzam check <input.md> [--split h1|h2|h3] [--theme <name>] [--css <file>]
                [--fit shrink] [--mode light|dark] [--base-url <url>]
-               [--debug-layout] [--chromium <bin>]
+               [--debug-layout] [--chromium <bin>] [--min-slack <px>]
 
   new     write a deck to start from - frontmatter, a title slide and a
           slide break - or, with --empty, a blank file to type into.
@@ -283,7 +290,10 @@ Usage:
           overlay baked in. Exits non-zero on any of them, so CI - or a
           binary install with no cargo, no playwright-core, no repository -
           can catch what a build's own warnings cannot: a slide that renders,
-          just wrong
+          just wrong. It also says what it measured with: the fonts this
+          machine actually had, and how little room the tightest pane had
+          left, because a deck embeds no text font and a clean run is
+          therefore a statement about one machine
 
   --split starts a new slide at every heading of that level, which turns an
           ordinary document into a deck without editing it. `build` and
@@ -306,6 +316,10 @@ Usage:
           broken deck (toggle it live in the viewer with the L key instead).
           `check` reports it baked on, since it is meant for screenshotting a
           broken deck, not for publishing (build and check)
+  --min-slack reports any pane with less than that many pixels of room left
+          under its content, even though it fits here. A deck is measured in
+          whatever fonts the checking machine has; asking for a margin is how
+          a deck that will be shown elsewhere says it needs one (check only)
   --strict exits non-zero when the build produced any warnings - a shape
           block inside a pane, a footnote with no definition on its slide, a
           connect endpoint that matches nothing - so CI can catch a silent

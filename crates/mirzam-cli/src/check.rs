@@ -44,6 +44,11 @@ pub(crate) struct CheckArgs {
     pub(crate) base_url: Option<String>,
     pub(crate) debug_layout: bool,
     pub(crate) chromium: Option<String>,
+    /// `--min-slack <px>`: how much room a pane has to have left before this
+    /// call it fitted. A deck measured on one machine's fonts fits by whatever
+    /// margin that machine's fonts left it; asking for a margin is how a deck
+    /// that has to survive a font substitution says so.
+    pub(crate) min_slack: Option<u32>,
 }
 
 struct Problem {
@@ -75,7 +80,7 @@ pub(crate) fn check(input: &Path, args: &CheckArgs) -> Result<(), String> {
         all_themes: false,
     };
     let html = mirzam_render::assemble_page(&out.meta, &out.sections, &opts);
-    let html = inject_before_closing_body(&html, &check_script());
+    let html = inject_before_closing_body(&html, &check_script(args.min_slack.unwrap_or(0)));
 
     // A directory, not a bare temp file: the deck is otherwise built exactly
     // like `build` writes it, and nothing here needs the file to outlive the
@@ -87,13 +92,20 @@ pub(crate) fn check(input: &Path, args: &CheckArgs) -> Result<(), String> {
         .map_err(|e| format!("cannot write temporary file: {e}"))
         .and_then(|()| run_chromium(&tmp, args.chromium.as_deref()));
     let _ = std::fs::remove_dir_all(&dir);
-    let (count, problems) = result?;
+    let (count, problems, notes) = result?;
 
     if problems.is_empty() {
         println!(
             "✓ {count} slides, no layout problems ({} ms)",
             t0.elapsed().as_millis()
         );
+        // After the verdict, because they qualify it rather than replace it:
+        // what the layout was measured with, and how little room the tightest
+        // pane had. A clean run on a machine missing the deck's fonts is a
+        // statement about that machine, and until now nothing said so.
+        for n in &notes {
+            println!("  · {n}");
+        }
         return Ok(());
     }
     println!("✗ {} problem(s) across {count} slides", problems.len());
@@ -102,6 +114,9 @@ pub(crate) fn check(input: &Path, args: &CheckArgs) -> Result<(), String> {
             "    slide {} [{}] pane \"{}\": {}",
             p.slide, p.kind, p.pane, p.detail
         );
+    }
+    for n in &notes {
+        println!("  · {n}");
     }
     Err(format!(
         "{} problem(s). Widen the band in the pane block, shorten the text, \
@@ -115,21 +130,23 @@ pub(crate) fn check(input: &Path, args: &CheckArgs) -> Result<(), String> {
 /// it, and parks the result in a `<pre>` `--dump-dom` will still show once
 /// the script is done - the only channel back to the process that launched
 /// Chromium headless.
-fn check_script() -> String {
-    let tail = r#"
-(async function () {
-  try {
-    var payload = JSON.stringify(await mzRunCheck());
-  } catch (e) {
-    var payload = JSON.stringify({ error: String((e && e.stack) || e) });
-  }
+fn check_script(min_slack: u32) -> String {
+    let tail = format!(
+        r#"
+(async function () {{
+  try {{
+    var payload = JSON.stringify(await mzRunCheck({{ minSlack: {min_slack} }}));
+  }} catch (e) {{
+    var payload = JSON.stringify({{ error: String((e && e.stack) || e) }});
+  }}
   var marker = document.createElement('pre');
   marker.id = 'mz-check-result';
   marker.style.display = 'none';
   marker.textContent = encodeURIComponent(payload);
   document.body.appendChild(marker);
-})();
-"#;
+}})();
+"#
+    );
     format!("<script>\n{CHECK_JS}\n{tail}</script>")
 }
 
@@ -144,7 +161,9 @@ fn inject_before_closing_body(html: &str, script: &str) -> String {
     }
 }
 
-fn run_chromium(html_path: &Path, chromium: Option<&str>) -> Result<(u64, Vec<Problem>), String> {
+type CheckResult = (u64, Vec<Problem>, Vec<String>);
+
+fn run_chromium(html_path: &Path, chromium: Option<&str>) -> Result<CheckResult, String> {
     let bin = find_chromium(chromium)?;
     let output = std::process::Command::new(&bin)
         .args([
@@ -198,7 +217,15 @@ fn run_chromium(html_path: &Path, chromium: Option<&str>) -> Result<(u64, Vec<Pr
                 .to_string(),
         })
         .collect();
-    Ok((count, problems))
+    let notes = value
+        .get("notes")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|n| n.as_str().map(str::to_string))
+        .collect();
+    Ok((count, problems, notes))
 }
 
 /// Pulls the `encodeURIComponent`-encoded payload out of `--dump-dom`'s

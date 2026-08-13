@@ -655,7 +655,7 @@ MathML path:
 | Accents | `hat(x)`, `dot(x)`, `ddot(x)`, `tilde(x)`, `macron(x)`, `arrow(v)`, `overline(x)`, `underline(x)`; `hat` and `arrow` widen over more than one glyph — `hat(A B)` |
 | Letter styles | `bb(R)`, `cal(F)`, `frak(g)`, `bold(v)`, `upright(d)`, `sans(A)`, `mono(m)` |
 | Functions | `sin`, `cos`, `log`, `min`, … set upright, gluing to their `(...)`; `op("argmax")` for one the tables lack |
-| Arrows and relations | `->` `=>` `<-` `!=` `<=` `>=` `\|->` `<<` `>>`, `in`, `subset`, `union`, `approx`, `perp`, `parallel`, `divides`, `models`, `tack.r`/`tack.l`, and dotted variants: `subset.eq`, `in.not`, `arrow.l.r`, … |
+| Arrows and relations | `->` `=>` `<-` `!=` `<=` `>=` `\|->` `<<` `>>`, the long forms `-->` `<--` `<->` `<-->` `==>` `<==` `<=>` `<==>`, the tailed `->>` `<<-` `>->`, `in`, `subset`, `union`, `approx`, `perp`, `parallel`, `divides`, `models`, `tack.r`/`tack.l`, and dotted variants: `subset.eq`, `in.not`, `arrow.l.r`, … |
 | Symbols | `infinity` (or `oo`), `partial`, `nabla`, `hbar`, `times`, `dot`, `pm`, `and`, `or`, `dots`, `...`, `dots.c`, `ell`, `Re`, `Im`, `aleph`, `angle`, `degree`, `star`, `dagger`, `compose`, `convolve`, `without`, `therefore`, `because`, `top`, `bot` |
 | Spacing | `thin`, `med`, `thick`, `quad`, `wide` — from `\,` up to `\qquad`; `space` for an ordinary one |
 | Blackboard | `NN`, `ZZ`, `QQ`, `RR`, `CC`, `EE`, `PP` — the doubled capital Typst uses; `bb(X)` for any other letter |
@@ -663,10 +663,26 @@ MathML path:
 | Matrices | `mat(1, 2; 3, 4)` — `,` separates cells, `;` rows; `mat(delim: "[", …)` picks the brackets |
 | Vectors | `vec(1, 2)` is a column; `binom(n, k)` a binomial |
 | Cases | `cases(x^2 &"if" x > 0, 0 &"otherwise")` |
-| Braces | `underbrace(a + b, "label")`, `overbrace`, `cancel(x)` |
+| Braces | `underbrace(a + b, "label")`, `overbrace`, `cancel(x)` — keep the *base* under about eight em and put the words in the label; see below |
 | Text | `"km/h"` renders upright, spaces kept |
 | Alignment | `&` lines up equations, `\` breaks the line |
 | Escapes | `#` strips the next character of its meaning: `a #/ b` is a slash, not a fraction |
+
+Two things to know that are not the parser's doing:
+
+- **A brace stops growing at about eight em.** `underbrace` and `overbrace`
+  draw a stretchy character the browser assembles out of pieces, and it stops
+  extending that assembly at roughly eight em — past which the brace is drawn
+  shorter than the base and flush left, so the last characters of the base
+  have nothing under them. It is a rendering-engine limit rather than a markup
+  error, and it reaches the PDF for the same reason. Write
+  `underbrace(P, "the over-confident term")`, not
+  `underbrace(P "is over-confident", "…")`: the label has no brace to outgrow.
+  A build warns, naming the slide, when a base looks wide enough to hit it.
+- **`EE` is 𝔼 here, where Typst reads it as ∃.** The doubled capitals are
+  blackboard letters in this subset — `EE`, `PP`, `RR`, `NN`, `ZZ`, `QQ`, `CC`
+  — because a deck writing `EE[x]` means an expectation far more often than it
+  means "there exists". Write `exists` for ∃.
 
 It is a deliberate subset — a parser of our own rather than a dependency on
 Typst, whose own math goes through its layout engine to SVG, not MathML. A

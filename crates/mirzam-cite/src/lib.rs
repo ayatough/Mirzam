@@ -96,6 +96,28 @@ impl Entry {
         )
     }
 
+    /// Volume, issue and pages as a reference list writes them: `29(5),
+    /// 502–528`. Empty when the entry carries none, which is most of the
+    /// preprints and all of the software.
+    fn locator(&self) -> String {
+        let mut out = match (self.field(&["volume"]), self.field(&["number", "issue"])) {
+            (Some(v), Some(n)) => format!("{}({})", escape(v), escape(n)),
+            (Some(v), None) => escape(v),
+            // An issue with no volume is rare enough that the bare number
+            // would read as one.
+            (None, Some(n)) => format!("no. {}", escape(n)),
+            (None, None) => String::new(),
+        };
+        if let Some(p) = self.field(&["pages"]) {
+            if !out.is_empty() {
+                out.push_str(", ");
+            }
+            // BibTeX spells a range `502--528`; a slide sets it as one dash.
+            out.push_str(&escape(&p.replace("--", "–")));
+        }
+        out
+    }
+
     /// The reference as it reads in the list: authors, title, where it
     /// appeared, and a link to it.
     ///
@@ -120,13 +142,28 @@ impl Entry {
             "howpublished",
             "series",
         ]);
-        // Venue and year read as one clause. "NeurIPS. 2017." is two
-        // sentences for one fact.
-        match (container, self.year()) {
-            (Some(c), Some(y)) => parts.push(format!("{}, {}", escape(c), escape(y))),
-            (Some(c), None) => parts.push(escape(c)),
-            (None, Some(y)) => parts.push(escape(y)),
-            (None, None) => {}
+        // Where it appeared reads as one clause: venue, locators, year.
+        // "NeurIPS. 2017." is two sentences for one fact, and the locators
+        // belong with the venue they locate — `IJRR 29(5), 502–528, 2010` is
+        // how a reader finds the paper, where `IJRR, 2010` only lets them
+        // recognise one they already know. A talk whose references are a
+        // reading list needs the first.
+        let mut clause = container.map(escape).unwrap_or_default();
+        let locator = self.locator();
+        if !locator.is_empty() {
+            if !clause.is_empty() {
+                clause.push(' ');
+            }
+            clause.push_str(&locator);
+        }
+        if let Some(y) = self.year() {
+            if !clause.is_empty() {
+                clause.push_str(", ");
+            }
+            clause.push_str(&escape(y));
+        }
+        if !clause.is_empty() {
+            parts.push(clause);
         }
         // Clauses are separated by a full stop, and `et al.` already ends in
         // one — without this, four authors print `Vaswani, Shazeer, Parmar et
@@ -599,6 +636,32 @@ mod tests {
             html.contains(r#"<a href="https://doi.org/10.5555/3295222.3295349">"#),
             "{html}"
         );
+    }
+
+    /// The locators are what makes an entry followable: two papers by the same
+    /// group in the same journal two years apart are told apart by `29(5),
+    /// 502–528`, not by the venue and the year.
+    #[test]
+    fn a_reference_carries_volume_issue_and_pages() {
+        let e = one(
+            "@article{h, author={Huang, Guoquan}, title={T}, journal={IJRR}, \
+             volume={29}, number={5}, pages={502--528}, year={2010}}",
+        );
+        assert!(
+            e.html().contains("IJRR 29(5), 502–528, 2010."),
+            "{}",
+            e.html()
+        );
+        // Each part is optional, and what is missing must not leave a comma
+        // or a bracket behind.
+        let vol = one("@article{a, title={T}, journal={J}, volume={7}, year={2020}}");
+        assert!(vol.html().contains("J 7, 2020."), "{}", vol.html());
+        let pages = one("@incollection{b, title={T}, booktitle={B}, pages={1--9}}");
+        assert!(pages.html().contains("B 1–9."), "{}", pages.html());
+        let issue = one("@article{c, title={T}, journal={J}, number={3}}");
+        assert!(issue.html().contains("J no. 3."), "{}", issue.html());
+        // An entry with none of them reads exactly as it did before.
+        assert!(one(VASWANI).html().contains("NeurIPS, 2017."));
     }
 
     /// Under three authors the list is complete, so it must not say `et al.`
