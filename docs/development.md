@@ -148,6 +148,13 @@ without colliding. `CLAUDE.md` points there too. Keep it in sync when the build
 commands or quality gates change — an agent that follows a stale checklist will
 confidently produce work that fails CI.
 
+That is an agent changing *Mirzam*. For an agent writing a *deck* with it,
+[agents.md](agents.md) is the contract: the versioned JSON schema of
+`mirzam check --format json`, and [llms.md](llms.md), the syntax card the site
+publishes as `/llms.txt`. Both are documentation of a promise — a field in that
+schema may be added but never renamed — so change them the way you would change
+an API.
+
 ## Conventions
 
 - **English everywhere in the repository**: code comments, identifiers, commit

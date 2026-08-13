@@ -4,6 +4,10 @@ Mirzam decks are CommonMark files. Everything below is an addition that a plain
 Markdown parser still renders as readable text — that rule is enforced by
 `crates/mirzam-cli/tests/commonmark_compat.rs`.
 
+> **In a hurry, or handing this to a model?** [llms.md](llms.md) is the same
+> markup compressed to one page — every block, every frontmatter field, one
+> example each, and the traps called out. This page is the reference behind it.
+
 | Extension | What a plain Markdown parser shows |
 |---|---|
 | Fenced blocks (`pane`, `shape`, `connect`, `chart`) | A code block |

@@ -177,6 +177,14 @@ fn main() -> ExitCode {
                             None => return usage("--min-slack requires a number of pixels"),
                         }
                     }
+                    "--format" => {
+                        i += 1;
+                        match args.get(i).map(String::as_str) {
+                            Some("text") => opts.format = check::Format::Text,
+                            Some("json") => opts.format = check::Format::Json,
+                            _ => return usage("--format takes text or json"),
+                        }
+                    }
                     arg => match parse_deck_flag(&args, &mut i, &mut opts.deck) {
                         Some(Ok(())) => {}
                         Some(Err(e)) => return usage(&e),
@@ -274,6 +282,7 @@ Usage:
   mirzam check <input.md> [--split h1|h2|h3] [--theme <name>] [--css <file>]
                [--fit shrink] [--mode light|dark] [--base-url <url>]
                [--debug-layout] [--chromium <bin>] [--min-slack <px>]
+               [--format text|json]
 
   new     write a deck to start from - frontmatter, a title slide and a
           slide break - or, with --empty, a blank file to type into.
@@ -320,6 +329,12 @@ Usage:
           under its content, even though it fits here. A deck is measured in
           whatever fonts the checking machine has; asking for a margin is how
           a deck that will be shown elsewhere says it needs one (check only)
+  --format json writes the same run as one JSON document on stdout instead of
+          prose - every build warning and every in-page finding as a record
+          carrying a stable kind, a severity, the slide and pane, and the
+          source file and line it came from, through transclusion. The exit
+          code is unchanged, and errors still go to stderr, so the document is
+          safe to pipe. The schema is versioned in docs/agents.md (check only)
   --strict exits non-zero when the build produced any warnings - a shape
           block inside a pane, a footnote with no definition on its slide, a
           connect endpoint that matches nothing - so CI can catch a silent
@@ -333,7 +348,8 @@ Examples:
   mirzam build README.md --split h2 -o out
   mirzam export pdf README.md --split h2 -o out.pdf
   mirzam build deck.md --strict
-  mirzam check deck.md --split h2"#
+  mirzam check deck.md --split h2
+  mirzam check deck.md --format json"#
     )
 }
 

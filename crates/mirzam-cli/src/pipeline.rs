@@ -23,6 +23,11 @@ pub struct BuildOutput {
     /// Resolved contents of frontmatter `css:`.
     pub custom_css: Option<String>,
     pub warnings: Vec<String>,
+    /// Where each warning came from, in the same order and of the same length
+    /// as `warnings`. Split out rather than folded into the message because
+    /// the message is prose a person reads and this is what a tool needs to
+    /// open the file — `mirzam check --format json` is the caller.
+    pub warning_sites: Vec<WarningSite>,
     /// Source files and referenced assets making up this deck; the watch set.
     pub files: BTreeSet<PathBuf>,
     /// How many slides this build actually re-rendered (cache misses).
@@ -35,6 +40,75 @@ pub struct BuildOutput {
     /// A slide broken by `<!-- next -->` renders as several sections but is one
     /// entry here: this list is the source view, and there is only one source.
     pub slides: Vec<mirzam_syntax::SlideSpan>,
+    /// The authored slide each rendered section came from, as an index into
+    /// `slides`. The two lists differ only where `<!-- next -->` broke a slide
+    /// into parts, and this is what turns a rendered slide number — the number
+    /// the viewer and the layout checker both count in — back into source.
+    pub section_slides: Vec<usize>,
+}
+
+/// Where a build warning came from, as far as the source map can say.
+///
+/// Every field is optional, and absent means *not known* rather than *none*:
+/// a warning about the frontmatter belongs to no slide, and a line variable
+/// substitution rewrote belongs to no file, because the text on screen is not
+/// text anyone typed there.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct WarningSite {
+    /// 1-based rendered slide number, counted the way the deck numbers itself.
+    pub slide: Option<usize>,
+    pub file: Option<PathBuf>,
+    /// Byte offset of the slide's first character within `file`.
+    pub offset: Option<usize>,
+}
+
+impl BuildOutput {
+    /// Where a rendered slide begins: its file, and the byte offset of its
+    /// first real character in that file. `slide` is 1-based, as everything
+    /// the viewer and the layout checker report is.
+    pub fn slide_origin(&self, slide: usize) -> Option<(&Path, usize)> {
+        let span = self
+            .slides
+            .get(*self.section_slides.get(slide.checked_sub(1)?)?)?;
+        let head = span.text.find(|c: char| !c.is_whitespace())?;
+        self.map.lookup(span.start + head)
+    }
+
+    /// Where a named pane's `::: pane` block is on that slide, falling back to
+    /// the slide itself when the pane has no block of its own — content that
+    /// names no pane flows into `main`, so `main` is often nowhere in the
+    /// source, and the slide is then the closest true answer.
+    pub fn pane_origin(&self, slide: usize, pane: &str) -> Option<(&Path, usize)> {
+        let span = self
+            .slides
+            .get(*self.section_slides.get(slide.checked_sub(1)?)?)?;
+        match pane_block_offset(&span.text, pane) {
+            Some(at) => self.map.lookup(span.start + at),
+            None => self.slide_origin(slide),
+        }
+    }
+}
+
+/// The offset within a slide's text of the line opening `pane`, or `None` when
+/// the slide assigns nothing to it. Matched on the whole name so `fig` does not
+/// find `figure`.
+fn pane_block_offset(slide: &str, pane: &str) -> Option<usize> {
+    let mut at = 0usize;
+    for raw in slide.split_inclusive('\n') {
+        let line = raw.trim_end();
+        if let Some(rest) = line.trim_start().strip_prefix("::: pane ") {
+            let name = rest
+                .trim_start()
+                .split(|c: char| c.is_whitespace() || c == '{')
+                .next()
+                .unwrap_or("");
+            if name == pane {
+                return Some(at);
+            }
+        }
+        at += raw.len();
+    }
+    None
 }
 
 /// One rendered section, and the authored slide it came from. The two differ
@@ -105,6 +179,10 @@ pub fn build_deck_with(
         None => mirzam_core::DeckMeta::default(),
     };
     let mut warnings = Vec::new();
+    // Sites are recorded by the index of the warning they belong to, rather
+    // than pushed alongside it, so the places that know nothing about location
+    // — most of this function — stay untouched.
+    let mut sites: HashMap<usize, WarningSite> = HashMap::new();
     warnings.extend(mirzam_render::theme_warning(meta.theme.as_deref()));
     warnings.extend(mirzam_render::mode_warning(meta.mode.as_deref()));
 
@@ -200,6 +278,19 @@ pub fn build_deck_with(
         }
     };
 
+    // The same lookup `origin` makes, kept as coordinates instead of prose: a
+    // tool wants the file and the offset, not a sentence naming the file.
+    let site = |si: usize, slide_no: usize| -> WarningSite {
+        let s: &mirzam_syntax::SlideSpan = &slides[si];
+        let head = s.text.find(|c: char| !c.is_whitespace());
+        let at = head.and_then(|o| map.lookup(s.start + o));
+        WarningSite {
+            slide: Some(slide_no),
+            file: at.map(|(f, _)| f.to_path_buf()),
+            offset: at.map(|(_, o)| o),
+        }
+    };
+
     // 4a. Expand `<!-- next -->`. A slide that breaks one pane becomes several
     //     slides, identical but for that pane. Doing it on the text, before
     //     anything is parsed, keeps the rest of the pipeline - anim, annotate,
@@ -227,6 +318,7 @@ pub fn build_deck_with(
             // predict. Say so and render the slide whole: the content is all
             // still there, just not split.
             Err(e) => {
+                sites.insert(warnings.len(), site(si, parts.len() + 1));
                 warnings.push(format!("{e}{}", origin(si)));
                 parts.push(Part {
                     text: slide.text.clone(),
@@ -308,7 +400,11 @@ pub fn build_deck_with(
                 let slide = mirzam_syntax::parse_slide(slide_src);
                 let out = mirzam_render::render_slide_html(&slide, i, &base_dir, &ctx);
                 let from = origin(part.from);
-                warnings.extend(out.warnings.into_iter().map(|w| format!("{w}{from}")));
+                let at = site(part.from, i + 1);
+                for w in out.warnings {
+                    sites.insert(warnings.len(), at.clone());
+                    warnings.push(format!("{w}{from}"));
+                }
                 let assets: Vec<(PathBuf, Option<SystemTime>)> =
                     out.assets.iter().map(|p| (p.clone(), mtime(p))).collect();
                 for (p, _) in &assets {
@@ -382,6 +478,10 @@ pub fn build_deck_with(
         h.finish()
     };
 
+    let warning_sites = (0..warnings.len())
+        .map(|i| sites.remove(&i).unwrap_or_default())
+        .collect();
+
     Ok(BuildOutput {
         meta,
         sections,
@@ -389,10 +489,12 @@ pub fn build_deck_with(
         page_fingerprint,
         custom_css,
         warnings,
+        warning_sites,
         files,
         rendered,
         map,
         slides,
+        section_slides: parts.iter().map(|p| p.from).collect(),
     })
 }
 
@@ -444,4 +546,22 @@ fn substitute_outside_fences(
         map.carry(start..out.len(), from, &mut derived);
     }
     (out, derived)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_pane_block_is_found_by_its_whole_name() {
+        let slide = "# Head\n\n::: pane figure\nx\n:::\n\n::: pane fig {align=center}\ny\n:::\n";
+        let at = pane_block_offset(slide, "fig").expect("fig has a block");
+        assert!(
+            slide[at..].starts_with("::: pane fig {"),
+            "{:?}",
+            &slide[at..]
+        );
+        assert_eq!(pane_block_offset(slide, "figure"), Some(8));
+        assert_eq!(pane_block_offset(slide, "main"), None);
+    }
 }

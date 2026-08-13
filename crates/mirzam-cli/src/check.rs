@@ -23,16 +23,34 @@
 //! every example deck, and a deliberately broken one, before this landed.
 
 use crate::{apply_deck_overrides, find_chromium, DeckArgs};
-use std::path::Path;
+use mirzam_cli::pipeline::BuildOutput;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 const CHECK_JS: &str = include_str!("check.js");
+
+/// The version of the `--format json` contract, documented in `docs/agents.md`.
+/// A field may be added without moving it; it goes up only when a field is
+/// renamed, removed, or given a different meaning - which that document
+/// promises will not happen quietly.
+const SCHEMA_VERSION: u32 = 1;
 
 /// Generous on purpose: real wall-clock cost tracks actual page work, not
 /// this number - Chromium dumps as soon as the page goes idle, well under
 /// budget, for every deck measured while this was written. The ceiling only
 /// matters for a deck animating far longer than any of them.
 const VIRTUAL_TIME_BUDGET_MS: &str = "60000";
+
+/// How the result is written. `Text` is what a person reads and is the
+/// default; `Json` is the same run's findings as records, for the caller that
+/// is going to *act* on them - see `docs/agents.md`.
+#[derive(Default, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Format {
+    #[default]
+    Text,
+    Json,
+}
 
 /// Everything `mirzam check` was asked for: the same deck-shaping flags
 /// `build` takes (so a `--split` deck, or one built with a `--theme`
@@ -41,6 +59,7 @@ const VIRTUAL_TIME_BUDGET_MS: &str = "60000";
 #[derive(Default)]
 pub(crate) struct CheckArgs {
     pub(crate) deck: DeckArgs,
+    pub(crate) format: Format,
     pub(crate) base_url: Option<String>,
     pub(crate) debug_layout: bool,
     pub(crate) chromium: Option<String>,
@@ -68,8 +87,13 @@ pub(crate) fn check(input: &Path, args: &CheckArgs) -> Result<(), String> {
         args.base_url.as_deref(),
     )?;
     apply_deck_overrides(&mut out, &args.deck)?;
-    for w in &out.warnings {
-        println!("  ⚠ {w}");
+    // Under `--format json` stdout carries one JSON document and nothing else,
+    // so every incidental line - this one included - waits until the end and
+    // goes into the document as a record instead.
+    if args.format == Format::Text {
+        for w in &out.warnings {
+            println!("  ⚠ {w}");
+        }
     }
 
     let opts = mirzam_render::PageOptions {
@@ -93,6 +117,14 @@ pub(crate) fn check(input: &Path, args: &CheckArgs) -> Result<(), String> {
         .and_then(|()| run_chromium(&tmp, args.chromium.as_deref()));
     let _ = std::fs::remove_dir_all(&dir);
     let (count, problems, notes) = result?;
+
+    if args.format == Format::Json {
+        println!("{}", json_report(input, &out, count, &problems, &notes));
+        // The verdict is the exit code, exactly as it is for the text form:
+        // the error text goes to stderr, so it cannot reach the document
+        // stdout just carried.
+        return verdict(&problems);
+    }
 
     if problems.is_empty() {
         println!(
@@ -118,11 +150,187 @@ pub(crate) fn check(input: &Path, args: &CheckArgs) -> Result<(), String> {
     for n in &notes {
         println!("  · {n}");
     }
+    verdict(&problems)
+}
+
+/// The exit status, kept in one place so the two output formats cannot come to
+/// different conclusions about the same run.
+fn verdict(problems: &[Problem]) -> Result<(), String> {
+    if problems.is_empty() {
+        return Ok(());
+    }
     Err(format!(
         "{} problem(s). Widen the band in the pane block, shorten the text, \
          or move the content to another pane. See docs/layout.md.",
         problems.len()
     ))
+}
+
+/// The whole run as one JSON document: the build's own warnings and the
+/// in-page check's findings in a single `diagnostics` array, because a caller
+/// fixing a deck does not care which pass noticed - only what is wrong and
+/// where. Everything the text form prints is here, notes included.
+///
+/// Pretty-printed rather than packed: the reader is usually a program, but the
+/// person debugging that program reads the same bytes, and nothing downstream
+/// pays for the newlines.
+fn json_report(
+    input: &Path,
+    out: &BuildOutput,
+    count: u64,
+    problems: &[Problem],
+    notes: &[String],
+) -> String {
+    let mut lines = LineIndex::default();
+    let mut diagnostics: Vec<serde_json::Value> = Vec::new();
+
+    for (message, site) in out.warnings.iter().zip(&out.warning_sites) {
+        let mut d = record(build_kind(message), "warning", message);
+        if let Some(n) = site.slide {
+            d.insert("slide".into(), n.into());
+        }
+        if let (Some(file), Some(offset)) = (&site.file, site.offset) {
+            locate(&mut d, &mut lines, file, offset);
+        }
+        diagnostics.push(d.into());
+    }
+
+    for p in problems {
+        // The kind travels verbatim under a namespace rather than through a
+        // translation table: a table would have to be updated in step with
+        // `check.js`, and the one that was not is how a new failure mode
+        // arrives named `unknown`.
+        let mut d = record(&format!("layout.{}", p.kind), "error", &p.detail);
+        d.insert("slide".into(), p.slide.into());
+        // `-` is the in-page check's way of saying "no single pane", and `?`
+        // its way of saying "a pane the class names did not spell out".
+        let pane = (p.pane != "-" && p.pane != "?").then_some(p.pane.as_str());
+        if let Some(pane) = pane {
+            d.insert("pane".into(), pane.into());
+        }
+        // A baked-in debug overlay is a property of the build, not of the
+        // slide it is reported against, so it gets no place in the source.
+        if p.kind != "debug" {
+            let at = match pane {
+                Some(pane) => out.pane_origin(p.slide as usize, pane),
+                None => out.slide_origin(p.slide as usize),
+            };
+            if let Some((file, offset)) = at {
+                let file = file.to_path_buf();
+                locate(&mut d, &mut lines, &file, offset);
+            }
+        }
+        diagnostics.push(d.into());
+    }
+
+    let report = serde_json::json!({
+        "schema": "mirzam-check",
+        "version": SCHEMA_VERSION,
+        "deck": input.display().to_string(),
+        "slides": count,
+        "ok": problems.is_empty(),
+        "diagnostics": diagnostics,
+        "notes": notes,
+    });
+    serde_json::to_string_pretty(&report).unwrap_or_else(|_| "{}".to_string())
+}
+
+fn record(kind: &str, severity: &str, message: &str) -> serde_json::Map<String, serde_json::Value> {
+    let mut d = serde_json::Map::new();
+    d.insert("kind".into(), kind.into());
+    d.insert("severity".into(), severity.into());
+    d.insert("message".into(), message.into());
+    d
+}
+
+/// Adds `file`, and `line` when the file can still be read. A field that is
+/// absent means the location is not known - never that there is none - so a
+/// file whose line cannot be counted carries the file alone rather than a
+/// guessed number.
+fn locate(
+    d: &mut serde_json::Map<String, serde_json::Value>,
+    lines: &mut LineIndex,
+    file: &Path,
+    offset: usize,
+) {
+    d.insert("file".into(), file.display().to_string().into());
+    if let Some(line) = lines.line_of(file, offset) {
+        d.insert("line".into(), line.into());
+    }
+}
+
+/// Byte offset to line number, over the files a deck was written in.
+///
+/// The source map answers in offsets because that is what a rewrite needs; a
+/// person, and every editor they might open, counts lines. Contents are cached
+/// because a deck of forty slides in one file would otherwise read it forty
+/// times.
+#[derive(Default)]
+struct LineIndex {
+    files: HashMap<PathBuf, Option<String>>,
+}
+
+impl LineIndex {
+    fn line_of(&mut self, file: &Path, offset: usize) -> Option<usize> {
+        let text = self
+            .files
+            .entry(file.to_path_buf())
+            .or_insert_with(|| std::fs::read_to_string(file).ok())
+            .as_deref()?;
+        // Counted over bytes rather than a `&str` slice: an offset taken from a
+        // file that has since been edited can land mid-character, and losing
+        // the line number over that would be worse than being one line out.
+        let upto = &text.as_bytes()[..offset.min(text.len())];
+        Some(upto.iter().filter(|b| **b == b'\n').count() + 1)
+    }
+}
+
+/// A stable name for what a build warning is about.
+///
+/// The messages themselves are prose written for a person and are free to be
+/// reworded; this is the part a program may branch on, so it is matched on the
+/// one distinctive token each family of warnings carries. Order matters - the
+/// first match wins - and anything unrecognised is `build.other` rather than a
+/// guess, which is also what a warning added after this table gets until it is
+/// added here.
+fn build_kind(message: &str) -> &'static str {
+    const TABLE: &[(&str, &str)] = &[
+        ("`shape` block", "build.shape"),
+        ("shape line ", "build.shape"),
+        ("anim ", "build.anim"),
+        ("cannot split", "build.anim"),
+        ("a target is split", "build.anim"),
+        ("annotate ", "build.annotate"),
+        ("effects line ", "build.effects"),
+        ("connect ", "build.connect"),
+        ("chart", "build.chart"),
+        ("footnote reference", "build.footnote"),
+        ("toc:", "build.toc"),
+        ("bibliography", "build.bibliography"),
+        ("citations:", "build.bibliography"),
+        ("masters:", "build.master"),
+        ("master ", "build.master"),
+        ("is not in the layout", "build.layout"),
+        ("pane block", "build.layout"),
+        ("merged region", "build.layout"),
+        ("bg-light", "build.layout"),
+        ("bg-dark", "build.layout"),
+        ("is still on the slide as text", "build.span"),
+        ("the brace over", "build.math"),
+        ("math:", "build.math"),
+        ("unknown theme", "build.theme"),
+        ("unknown mode", "build.theme"),
+        ("transition:", "build.transition"),
+        ("css:", "build.css"),
+        ("no slides:", "build.deck"),
+        ("<!-- next -->", "build.continuation"),
+        ("file not found", "build.asset"),
+        ("not inlined", "build.asset"),
+    ];
+    TABLE
+        .iter()
+        .find(|(needle, _)| message.contains(needle))
+        .map_or("build.other", |(_, kind)| *kind)
 }
 
 /// The check page: `check.js` verbatim, then an invocation that runs it,
@@ -298,5 +506,83 @@ mod tests {
     #[test]
     fn a_missing_marker_is_a_readable_error() {
         assert!(extract_result_payload("<body></body>").is_err());
+    }
+
+    /// One real message per family, copied from a build of a deliberately
+    /// broken deck. A reworded message is allowed to keep its kind; a message
+    /// that lands on `build.other` is one this table has not been taught.
+    #[test]
+    fn every_family_of_build_warning_has_its_own_kind() {
+        for (message, kind) in [
+            (
+                "slide 1: pane `main` contains a `shape` block, but shape only renders at slide top level",
+                "build.shape",
+            ),
+            (
+                "slide 1: footnote reference `[^gone]` has no definition on this slide",
+                "build.footnote",
+            ),
+            (
+                "slide 1: `[span broken]{.small}` is still on the slide as text",
+                "build.span",
+            ),
+            (
+                "slide 1: connect endpoint `#nowhere` matches nothing on this slide",
+                "build.connect",
+            ),
+            (
+                "slide 2: anim target `#nothing` matches nothing on this slide",
+                "build.anim",
+            ),
+            (
+                "slide 2: annotate target `nosuchpane` matches nothing on this slide",
+                "build.annotate",
+            ),
+            (
+                "slide 2: effects line 1: unknown effect `nosucheffect`",
+                "build.effects",
+            ),
+            ("slide 2: chart: cannot parse block: type", "build.chart"),
+            ("slide 1: pane `x` is not in the layout", "build.layout"),
+            ("toc: unknown key `bogus`", "build.toc"),
+            ("bibliography: nothing to list", "build.bibliography"),
+            ("masters: cannot read masters.md", "build.master"),
+            ("unknown theme `nope`; using `default`", "build.theme"),
+            ("unknown mode `sideways`; expected `light` or `dark`", "build.theme"),
+            ("math: unknown dialect `maple`", "build.math"),
+            ("transition: unknown transition `wobble`", "build.transition"),
+            ("css: cannot read missing.css", "build.css"),
+            ("no slides: deck.md is empty", "build.deck"),
+            ("nope.png: file not found", "build.asset"),
+        ] {
+            assert_eq!(build_kind(message), kind, "for: {message}");
+        }
+    }
+
+    #[test]
+    fn an_unfamiliar_warning_is_named_rather_than_guessed() {
+        assert_eq!(
+            build_kind("something nobody has classified yet"),
+            "build.other"
+        );
+    }
+
+    #[test]
+    fn a_line_number_counts_from_one() {
+        let dir = std::env::temp_dir().join(format!("mirzam-lineindex-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("temp dir");
+        let path = dir.join("deck.md");
+        std::fs::write(&path, "one\ntwo\nthree\n").expect("write");
+
+        let mut index = LineIndex::default();
+        assert_eq!(index.line_of(&path, 0), Some(1));
+        assert_eq!(index.line_of(&path, 4), Some(2));
+        assert_eq!(index.line_of(&path, 8), Some(3));
+        // Past the end rather than a panic: an offset is only ever as fresh as
+        // the file it was taken from.
+        assert_eq!(index.line_of(&path, 9_999), Some(4));
+        assert_eq!(index.line_of(&dir.join("gone.md"), 0), None);
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

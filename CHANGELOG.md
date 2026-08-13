@@ -8,6 +8,27 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- **`mirzam check --format json`, so something other than a person can read
+  the answer.** The checker already found the failures a diff cannot show — a
+  clipped heading, an arrow pointing at an id that was renamed, a `shape` block
+  written inside a pane so it ships as source code — but it said so in prose,
+  which meant a tool that could fix them had to guess at what it had been told.
+  Now the same run comes back as one JSON document: every build warning and
+  every in-page finding as a record with a stable `kind`, a severity, the slide
+  and pane, and the source file and line, followed through `![[…]]` to the file
+  the slide was actually written in. Exit codes are unchanged and `--format
+  text` is still the default, so nothing that already runs the checker moves;
+  the document goes to stdout on its own, with errors on stderr, so it is safe
+  to pipe. The schema is versioned in `docs/agents.md` and a field may be added
+  but never renamed.
+- **`docs/llms.md`, the whole markup on one page** — every fenced block, every
+  frontmatter field, the attribute syntax, one example each, and the traps that
+  fail silently called out at the top: an attribute span cannot cross a line
+  break, `shape` and `connect` only work at slide top level, a footnote
+  definition has to be on the slide that cites it. It is written to be handed
+  to a model as context, and the site publishes it at `/llms.txt`, where the
+  emerging convention says to look. `docs/agents.md` ties the two together: the
+  card to write a deck with, the JSON schema to check it against.
 - **A deck can cite a bibliography, and the references list themselves.**
   Footnotes always covered a remark belonging to one slide; the other half —
   a paper cited on four slides, whose details are worth writing down once — had

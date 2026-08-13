@@ -73,6 +73,15 @@ echo "==> copying brand assets"
 mkdir -p "$OUT/brand"
 cp docs/brand/*.svg docs/brand/*.png docs/brand/*.webp "$OUT/brand/"
 
+# The syntax card, at the path the emerging convention puts it: a model handed
+# a URL for a tool's markup looks for /llms.txt, and one file it can read
+# beginning to end is worth more than a docs tree it has to crawl. Copied
+# rather than linked to GitHub, because the point is that the site itself
+# serves it - and `.txt` rather than `.md` for the same reason the rest of the
+# prose stays on GitHub: nothing here renders Markdown.
+echo "==> copying the syntax card"
+cp docs/llms.md "$OUT/llms.txt"
+
 # The prose stays on GitHub, linked absolutely from the landing page below.
 # `actions/deploy-pages` serves this directory verbatim - no Jekyll runs, so a
 # copied `syntax.md` would never become the `syntax.html` the page linked to,
@@ -386,6 +395,7 @@ try {
   <ul>
     <li><a href="https://github.com/ayatough/Mirzam/blob/main/docs/syntax.md">Syntax reference</a> — every block and inline form</li>
     <li><a href="https://github.com/ayatough/Mirzam/blob/main/docs/layout.md">Layout guide</a> — sizing, spacing, keeping arrows out of the text</li>
+    <li><a href="llms.txt">Syntax card</a> — the whole markup on one page, for a model writing a deck</li>
     <li><a href="https://github.com/ayatough/Mirzam/blob/main/docs/architecture.md">Architecture</a> — how it is built and why</li>
     <li><a href="https://github.com/ayatough/Mirzam/blob/main/docs/roadmap.md">Roadmap</a> — what works today, what is next</li>
     <li><a href="https://github.com/ayatough/Mirzam/blob/main/docs/development.md">Development guide</a> — build, test, contribute</li>
