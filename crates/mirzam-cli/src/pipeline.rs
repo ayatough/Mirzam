@@ -340,17 +340,21 @@ pub fn build_deck_with(
         cache.retain(|k, _| live_keys.contains(k));
     }
 
+    // What `serve` reloads for: everything the page carries around the slides.
+    // Asked of the renderer rather than listed here, so a setting added to the
+    // page cannot be forgotten in this file — the options are the ones `serve`
+    // assembles with, since those are what the answer describes.
     let page_fingerprint = {
+        let opts = mirzam_render::PageOptions {
+            custom_css: custom_css.clone(),
+            all_themes: true,
+            ..Default::default()
+        };
         let mut h = std::collections::hash_map::DefaultHasher::new();
-        meta.title.hash(&mut h);
-        meta.author.hash(&mut h);
-        meta.theme.hash(&mut h);
-        meta.mode.hash(&mut h);
-        meta.aspect.hash(&mut h);
-        custom_css.hash(&mut h);
+        mirzam_render::page_fingerprint(&meta, &sections, &opts).hash(&mut h);
+        // Not on the page, but it decides what a slide *is*: `--split` handed
+        // in on the command line reaches no frontmatter this could read.
         level.hash(&mut h);
-        // Whether math is present decides if the math font is bundled.
-        mirzam_render::sections_have_math(&sections).hash(&mut h);
         h.finish()
     };
 

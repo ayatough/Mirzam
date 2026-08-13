@@ -323,6 +323,39 @@ impl SourceMap {
         Some((&self.files[s.file], s.src.start + within))
     }
 
+    /// The inverse of [`lookup`](Self::lookup): where byte `offset` of `file`
+    /// ended up in the expanded document.
+    ///
+    /// This is how a cursor becomes a place in the deck. A file included twice
+    /// is two places, and this answers with the first: an editor showing one of
+    /// them is right, and it is the one the reader reaches first.
+    ///
+    /// An offset the expansion did not copy — the `![[…]]` line itself, or the
+    /// frontmatter above the body — resolves to the point where the text that
+    /// replaced it begins, so a cursor resting on an include names the first
+    /// line of what it pulls in rather than the slide before it.
+    pub fn locate(&self, file: &Path, offset: usize) -> Option<usize> {
+        let idx = self.files.iter().position(|p| p == file)?;
+        let mut best: Option<&Span> = None;
+        for span in self.spans.iter().filter(|s| s.file == idx) {
+            if span.src.start > offset {
+                continue;
+            }
+            // Strictly later, so a second copy of the same file loses to the
+            // first rather than quietly replacing it.
+            if best.is_none_or(|b| span.src.start > b.src.start) {
+                best = Some(span);
+            }
+        }
+        let span = best?;
+        let within = offset - span.src.start;
+        Some(if within < span.src.len() {
+            span.out.start + within.min(span.out.len())
+        } else {
+            span.out.end
+        })
+    }
+
     /// The byte range in the original file that produced `range`.
     ///
     /// `None` when the range covers generated text or crosses a file boundary:
@@ -1167,6 +1200,56 @@ mod tests {
         // Both copies point at the one place the text actually lives.
         assert_eq!(map.lookup(first), Some((Path::new("part.md"), 0)));
         assert_eq!(map.lookup(second), Some((Path::new("part.md"), 0)));
+    }
+
+    /// The direction an editor asks in: "the cursor is here in *my* file —
+    /// where is that in the deck?"
+    #[test]
+    fn locate_finds_where_a_byte_of_a_file_ended_up() {
+        let body = "intro\n\n![[part.md]]\n\nouter\n";
+        let (out, map) = mapped(body, &[("part.md", "## Section\n\nchild text\n")]);
+        let at = |file: &str, needle: &str, hay: &str| {
+            map.locate(Path::new(file), hay.find(needle).unwrap())
+                .expect("that byte is in the document")
+        };
+        assert!(out[at("deck.md", "intro", body)..].starts_with("intro"));
+        assert!(out[at("deck.md", "outer", body)..].starts_with("outer"));
+        assert!(
+            out[at("part.md", "child text", "## Section\n\nchild text\n")..]
+                .starts_with("child text")
+        );
+    }
+
+    /// A cursor on the `![[…]]` line itself: the line is not in the expanded
+    /// document at all, so it answers with the first byte of what replaced it.
+    /// Anything else would name the slide *before* the include, which is the
+    /// one place the author is demonstrably not looking.
+    #[test]
+    fn locate_puts_an_include_line_at_the_start_of_what_it_pulls_in() {
+        let body = "intro\n\n![[part.md]]\n";
+        let (out, map) = mapped(body, &[("part.md", "child text\n")]);
+        let at = map
+            .locate(Path::new("deck.md"), body.find("![[").unwrap())
+            .unwrap();
+        assert!(out[at..].starts_with("child text"), "{:?}", &out[at..]);
+    }
+
+    #[test]
+    fn locate_answers_for_the_first_copy_of_a_file_included_twice() {
+        let (out, map) = mapped(
+            "![[part.md]]\n\nmiddle\n\n![[part.md]]\n",
+            &[("part.md", "shared\n")],
+        );
+        assert_eq!(
+            map.locate(Path::new("part.md"), 0),
+            Some(out.find("shared").unwrap())
+        );
+    }
+
+    #[test]
+    fn locate_knows_nothing_of_a_file_the_deck_never_read() {
+        let (_, map) = mapped("plain\n", &[]);
+        assert_eq!(map.locate(Path::new("elsewhere.md"), 0), None);
     }
 
     #[test]

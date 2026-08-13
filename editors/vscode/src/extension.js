@@ -34,15 +34,17 @@ function activate(context) {
         .get("previewDelay", 120);
       timer = setTimeout(() => update(entry, e.document), delay);
     }),
-    // Reveal the slide matching the cursor position.
+    // Reveal the slide matching the cursor position. Which slide that is, only
+    // the core knows: a deck split across files has slides this document never
+    // wrote a `---` for, so the offset goes to the webview and the WASM core
+    // answers there, from the same expanded document it renders.
     vscode.window.onDidChangeTextEditorSelection((e) => {
       const entry = panels.get(e.textEditor.document.uri.toString());
       if (!entry) return;
-      const index = slideIndexAtLine(
-        e.textEditor.document.getText(),
-        e.selections[0].active.line
-      );
-      entry.panel.webview.postMessage({ type: "reveal", index });
+      entry.panel.webview.postMessage({
+        type: "reveal",
+        offset: byteOffset(e.textEditor.document, e.selections[0].active),
+      });
     })
   );
 }
@@ -231,27 +233,16 @@ function dataUri(file) {
   return `data:${mime};base64,${fs.readFileSync(file).toString("base64")}`;
 }
 
-/** Which slide (0-based) a line belongs to; `---` inside code fences is ignored. */
-function slideIndexAtLine(text, line) {
-  const lines = text.split(/\r?\n/);
-  let index = 0;
-  let inCode = false;
-  // Skip frontmatter.
-  let start = 0;
-  if (lines[0] && lines[0].trim() === "---") {
-    for (let i = 1; i < lines.length; i++) {
-      if (lines[i].trim() === "---") {
-        start = i + 1;
-        break;
-      }
-    }
-  }
-  for (let i = start; i < Math.min(line, lines.length); i++) {
-    const t = lines[i].trim();
-    if (t.startsWith("```")) inCode = !inCode;
-    else if (!inCode && t.length >= 3 && /^-+$/.test(t)) index++;
-  }
-  return index;
+/**
+ * A position in the document as a byte offset into its text — what the core
+ * counts in. VS Code counts UTF-16 code units, which is the same number only
+ * until the deck contains a non-ASCII character.
+ */
+function byteOffset(document, position) {
+  const upto = document.getText(
+    new vscode.Range(new vscode.Position(0, 0), position)
+  );
+  return Buffer.byteLength(upto, "utf8");
 }
 
 function webviewHtml(webview, context) {

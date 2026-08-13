@@ -13,7 +13,12 @@
 //! r.set_assets(JSON.stringify({ 'img/x.svg': 'data:image/svg+xml;base64,...' }));
 //! const html = r.render_page(source);                  // whole page
 //! const changed = JSON.parse(r.render_changed(source)); // changed slides only
+//! const slide = r.slide_at_offset(source, cursor);      // where the cursor is
 //! ```
+//!
+//! `render_changed` answers with `structural` when patching the changed slides
+//! into the page is not enough — a host that ignores it shows a `theme:` edit
+//! doing nothing at all.
 
 // The structural math editor's back end: built, field-tested in the browser
 // editor, and withdrawn — typing the Typst dialect beat editing it by touch.
@@ -90,6 +95,10 @@ pub struct Renderer {
     assets: BTreeMap<String, String>,
     /// Slide HTML from the previous render, used to compute diffs.
     previous: RefCell<Vec<String>>,
+    /// The page the previous render was assembled for. A host patches slides
+    /// into a page it built earlier, so a `theme:` it cannot see change is a
+    /// theme it never applies; this is what tells it to build the page again.
+    previous_page: RefCell<Option<u64>>,
 }
 
 impl Default for Renderer {
@@ -106,6 +115,7 @@ impl Renderer {
             files: BTreeMap::new(),
             assets: BTreeMap::new(),
             previous: RefCell::new(Vec::new()),
+            previous_page: RefCell::new(None),
         }
     }
 
@@ -124,6 +134,7 @@ impl Renderer {
     /// Resets the diff baseline; the next call reports every slide as changed.
     pub fn reset(&self) {
         self.previous.borrow_mut().clear();
+        *self.previous_page.borrow_mut() = None;
     }
 
     /// Renders a complete HTML page with the viewer.
@@ -144,11 +155,19 @@ impl Renderer {
 
     /// Returns only the slides that changed since the last render.
     /// JSON: `{"count": n, "changes": [[index, html], ...], "structural": bool}`
-    /// When `structural` is true the slide count changed, so rebuild the page.
+    ///
+    /// `structural` means the changed slides are not enough: the slide count
+    /// moved, or something the page carries around them did — a theme, the
+    /// aspect ratio, the title, a palette a slide newly asks for. Both cases
+    /// need the page assembled again, and a host that only patched the changes
+    /// would show an edit that visibly did nothing.
     pub fn render_changed(&self, source: &str) -> String {
         let built = self.build(source);
         let mut prev = self.previous.borrow_mut();
-        let structural = prev.len() != built.sections.len();
+        let mut prev_page = self.previous_page.borrow_mut();
+        let structural =
+            prev.len() != built.sections.len() || *prev_page != Some(built.page_fingerprint);
+        *prev_page = Some(built.page_fingerprint);
         let changes: Vec<(usize, &String)> = built
             .sections
             .iter()
@@ -166,6 +185,42 @@ impl Renderer {
         json
     }
 
+    /// Which slide (0-based) the byte at `offset` of the deck's *root* source
+    /// belongs to — the answer an editor needs to follow the cursor.
+    ///
+    /// Counting `---` in the file being edited is only right for a deck that
+    /// is one file. A deck split across files transcludes whole sections with
+    /// `![[…]]`, and every slide inside one of them is a slide the root never
+    /// wrote a rule for: counted that way, the preview lands earlier and
+    /// earlier the further down the deck the cursor goes. So the count happens
+    /// where the deck is actually assembled, on the expanded document, and the
+    /// source map carries the cursor across.
+    ///
+    /// `offset` is a byte offset into the whole file, frontmatter included; a
+    /// cursor there, or past the end, resolves to the first slide.
+    pub fn slide_at_offset(&self, source: &str, offset: usize) -> usize {
+        let (fm, body) = mirzam_syntax::split_frontmatter(source);
+        let meta = fm
+            .and_then(|y| mirzam_core::parse_meta(y).ok())
+            .unwrap_or_default();
+        let root = Path::new("");
+        let expanded = mirzam_syntax::expand_includes_mapped(
+            body,
+            source.len() - body.len(),
+            root,
+            root,
+            &MapFiles(&self.files),
+            &mut Default::default(),
+        );
+        // Split before variables are substituted: a rule is a rule either way,
+        // and skipping the pass keeps every offset the map speaks for intact.
+        let slides = mirzam_syntax::split_slides_spanned(&expanded.text, meta.split_level());
+        let Some(at) = expanded.map.locate(root, offset) else {
+            return 0;
+        };
+        slides.iter().rposition(|s| s.start <= at).unwrap_or(0)
+    }
+
     /// Parses only, returning a summary of the deck structure for outlines and diagnostics.
     /// JSON: `{"slides": [{"index", "panes", "hasShapes", "hasConnectors", "notes"}], "warnings": []}`
     pub fn outline(&self, source: &str) -> String {
@@ -176,20 +231,21 @@ impl Renderer {
         let body = mirzam_syntax::expand_includes(body, Path::new(""), &MapFiles(&self.files));
         let vars = meta.var_table();
         let body = substitute_outside_fences(&body, &vars);
-        let slides: Vec<serde_json::Value> = mirzam_syntax::split_slides(&body)
-            .iter()
-            .enumerate()
-            .map(|(i, src)| {
-                let s = mirzam_syntax::parse_slide(src);
-                serde_json::json!({
-                    "index": i,
-                    "panes": s.panes.iter().map(|p| p.name.clone()).collect::<Vec<_>>(),
-                    "hasShapes": !s.shapes.is_empty(),
-                    "hasConnectors": !s.connects.is_empty(),
-                    "notes": s.notes,
+        let slides: Vec<serde_json::Value> =
+            mirzam_syntax::split_slides_at(&body, meta.split_level())
+                .iter()
+                .enumerate()
+                .map(|(i, src)| {
+                    let s = mirzam_syntax::parse_slide(src);
+                    serde_json::json!({
+                        "index": i,
+                        "panes": s.panes.iter().map(|p| p.name.clone()).collect::<Vec<_>>(),
+                        "hasShapes": !s.shapes.is_empty(),
+                        "hasConnectors": !s.connects.is_empty(),
+                        "notes": s.notes,
+                    })
                 })
-            })
-            .collect();
+                .collect();
         serde_json::json!({ "title": meta.title, "slides": slides }).to_string()
     }
 }
@@ -198,6 +254,8 @@ struct Built {
     meta: mirzam_core::DeckMeta,
     sections: Vec<String>,
     warnings: Vec<String>,
+    /// Everything the assembled page carries around the slides.
+    page_fingerprint: u64,
 }
 
 impl Renderer {
@@ -240,7 +298,7 @@ impl Renderer {
         let body = substitute_outside_fences(&expanded.text, &vars);
 
         let assets = MapAssets(&self.assets);
-        let slide_srcs = mirzam_syntax::split_slides(&body);
+        let slide_srcs = mirzam_syntax::split_slides_at(&body, meta.split_level());
         // The deck settings a slide cannot see from its own text: the math
         // dialect, the masters it can be drawn on, the footer it carries.
         let mut ctx = mirzam_render::DeckContext::new(&meta, slide_srcs.len());
@@ -287,10 +345,16 @@ impl Renderer {
         if sections.is_empty() && !source.trim().is_empty() {
             warnings.push("no slides: nothing outside the frontmatter".to_string());
         }
+        let page_fingerprint = mirzam_render::page_fingerprint(
+            &meta,
+            &sections,
+            &mirzam_render::PageOptions::default(),
+        );
         Built {
             meta,
             sections,
             warnings,
+            page_fingerprint,
         }
     }
 }
@@ -392,6 +456,51 @@ mod tests {
         assert_eq!(third["changes"].as_array().unwrap().len(), 0);
     }
 
+    /// The preview patches changed slides into a page it assembled earlier, so
+    /// a `theme:` swap - which changes no slide at all - has to come back as a
+    /// rebuild. Without this the deck keeps the palette it opened with and the
+    /// edit looks like it did nothing.
+    #[test]
+    fn a_page_level_setting_asks_for_a_rebuild() {
+        let r = Renderer::new();
+        r.render_changed("---\ntheme: default\n---\n\n# A\n");
+        let out: serde_json::Value =
+            serde_json::from_str(&r.render_changed("---\ntheme: nord\n---\n\n# A\n")).unwrap();
+        assert_eq!(out["structural"], true);
+        assert_eq!(out["count"], 1);
+        // The slide itself is unchanged, which is exactly why the flag matters.
+        assert_eq!(out["changes"].as_array().unwrap().len(), 0);
+
+        // And an ordinary edit still patches.
+        let out: serde_json::Value =
+            serde_json::from_str(&r.render_changed("---\ntheme: nord\n---\n\n# B\n")).unwrap();
+        assert_eq!(out["structural"], false);
+        assert_eq!(out["changes"].as_array().unwrap().len(), 1);
+    }
+
+    /// A slide that switches palette needs tokens the page was not assembled
+    /// with, so it is a page change even though the frontmatter never moved.
+    #[test]
+    fn a_slide_reaching_for_another_palette_asks_for_a_rebuild() {
+        let r = Renderer::new();
+        r.render_changed("# A\n");
+        let out: serde_json::Value =
+            serde_json::from_str(&r.render_changed("<!-- theme: nord -->\n\n# A\n")).unwrap();
+        assert_eq!(out["structural"], true);
+    }
+
+    /// `split: h2` is how an ordinary document becomes a deck. The preview read
+    /// it as one slide while `mirzam build` made several - the two disagreeing
+    /// about what a slide even is.
+    #[test]
+    fn frontmatter_split_makes_slides_here_too() {
+        let r = Renderer::new();
+        let src = "---\nsplit: h2\n---\n\n## One\n\na\n\n## Two\n\nb\n";
+        assert_eq!(r.render_page(src).slide_count, 2);
+        let out: serde_json::Value = serde_json::from_str(&r.outline(src)).unwrap();
+        assert_eq!(out["slides"].as_array().unwrap().len(), 2);
+    }
+
     #[test]
     fn structural_change_flagged() {
         let r = Renderer::new();
@@ -400,6 +509,59 @@ mod tests {
             serde_json::from_str(&r.render_changed("# A\n\n---\n\n# B\n")).unwrap();
         assert_eq!(out["structural"], true);
         assert_eq!(out["count"], 2);
+    }
+
+    /// Where the editor's cursor is, in slides. Counting the root's own `---`
+    /// rules is right only until a deck is split across files: here the second
+    /// section is slide 3, and the rule-counting answer was 2.
+    #[test]
+    fn the_cursor_finds_its_slide_across_transcluded_files() {
+        let mut r = Renderer::new();
+        r.set_files("{\"a.md\": \"# A1\\n\\n---\\n\\n# A2\\n\", \"b.md\": \"# B1\\n\"}")
+            .unwrap();
+        let src = "---\ntitle: T\n---\n\n# Cover\n\n---\n\n![[a.md]]\n\n---\n\n![[b.md]]\n";
+        assert_eq!(r.render_page(src).slide_count, 4); // cover, A1, A2, B1
+
+        let at = |needle: &str| r.slide_at_offset(src, src.find(needle).unwrap());
+        assert_eq!(at("title: T"), 0); // frontmatter: the deck starts at the top
+        assert_eq!(at("# Cover"), 0);
+        assert_eq!(at("![[a.md]]"), 1); // the include *is* what it pulls in
+        assert_eq!(at("![[b.md]]"), 3);
+        assert_eq!(r.slide_at_offset(src, src.len()), 3);
+    }
+
+    /// The same file with nothing transcluded still has to agree with the old
+    /// rule-counting answer, or every single-file deck moves.
+    #[test]
+    fn the_cursor_finds_its_slide_in_a_deck_of_one_file() {
+        let r = Renderer::new();
+        let src =
+            "---\ntitle: T\n---\n\n# One\n\n---\n\n# Two\n\n```md\n---\n```\n\n---\n\n# Three\n";
+        let at = |needle: &str| r.slide_at_offset(src, src.find(needle).unwrap());
+        assert_eq!(at("# One"), 0);
+        assert_eq!(at("# Two"), 1);
+        assert_eq!(at("```md"), 1); // a rule inside a fence is not a rule
+        assert_eq!(at("# Three"), 2);
+    }
+
+    /// The offset is counted in bytes, which is what the host converts to — a
+    /// deck in Japanese is where counting anything else stops agreeing. An
+    /// offset that lands mid-character is answered rather than panicking:
+    /// nothing here slices the text with it.
+    #[test]
+    fn the_cursor_finds_its_slide_in_a_deck_that_is_not_ascii() {
+        let mut r = Renderer::new();
+        r.set_files("{\"章.md\": \"# 第一章\\n\\n---\\n\\n# 第二章\\n\"}")
+            .unwrap();
+        let src = "# 表紙\n\n---\n\n![[章.md]]\n\n---\n\n# 結び\n";
+        assert_eq!(r.render_page(src).slide_count, 4);
+        let at = |needle: &str| r.slide_at_offset(src, src.find(needle).unwrap());
+        assert_eq!(at("# 表紙"), 0);
+        assert_eq!(at("![[章.md]]"), 1);
+        assert_eq!(at("# 結び"), 3);
+        // Mid-character, the way a stale offset arrives while the deck is
+        // being typed into.
+        assert_eq!(r.slide_at_offset(src, src.find("結び").unwrap() + 1), 3);
     }
 
     #[test]

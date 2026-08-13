@@ -315,6 +315,39 @@ fn themes_used(meta: &DeckMeta, sections: &[String], all: bool) -> Vec<&'static 
     used
 }
 
+/// A key for everything [`assemble_page`] puts *around* the slides: the theme
+/// tokens, the `<html>` attributes, the title, the deck's size, and which
+/// runtimes are inlined.
+///
+/// A host that patches changed `<section>`s into a page it assembled earlier —
+/// `serve`, the editor preview — cannot show any of that changing, because none
+/// of it lives in a slide. Comparing this key is how such a host finds out it
+/// has to assemble the page again: without it, a deck that only swaps `theme:`
+/// produces no changed slide and the edit is dropped on the floor.
+///
+/// `live_version` is deliberately left out: it moves on every reload and says
+/// nothing about how the page looks.
+///
+/// Whatever `assemble_page` reads out of `meta`, `sections` or `opts` is read
+/// here too — in the same change, or the host stops being told.
+pub fn page_fingerprint(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -> u64 {
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    meta.title.hash(&mut h);
+    meta.slide_size().hash(&mut h);
+    theme_attrs(meta).hash(&mut h);
+    themes_used(meta, sections, opts.all_themes).hash(&mut h);
+    transition_attr(meta).hash(&mut h);
+    deck_fit_attr(meta).hash(&mut h);
+    sections_have_math(sections).hash(&mut h);
+    deck_has_anim(meta, sections).hash(&mut h);
+    deck_has_annot(sections).hash(&mut h);
+    deck_has_fit(meta, sections).hash(&mut h);
+    effects::deck_has_effects(sections).hash(&mut h);
+    opts.custom_css.hash(&mut h);
+    opts.debug_layout.hash(&mut h);
+    h.finish()
+}
+
 /// Assembles rendered sections into a complete HTML page with the viewer.
 pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -> String {
     let (w, h) = meta.slide_size();
@@ -1381,6 +1414,103 @@ mod tests {
         for name in THEME_NAMES {
             assert!(html.contains(&format!(":where([data-theme=\"{name}\"])")));
         }
+    }
+
+    /// Every page-level setting a host can edit has to move the fingerprint,
+    /// or the host patches slides into a page that still carries the old one.
+    /// Checked against the assembled page rather than against a list of fields,
+    /// so a setting added to `assemble_page` and forgotten here fails loudly.
+    #[test]
+    fn page_fingerprint_moves_with_every_page_level_setting() {
+        let sections = vec!["<section class=\"slide\" data-index=\"0\">x</section>".to_string()];
+        let base = DeckMeta::default();
+        let opts = PageOptions::default();
+        let key = page_fingerprint(&base, &sections, &opts);
+        let page = assemble_page(&base, &sections, &opts);
+
+        let variants: Vec<(&str, DeckMeta)> = vec![
+            (
+                "title",
+                DeckMeta {
+                    title: Some("T".into()),
+                    ..Default::default()
+                },
+            ),
+            (
+                "theme",
+                DeckMeta {
+                    theme: Some("nord".into()),
+                    ..Default::default()
+                },
+            ),
+            (
+                "mode",
+                DeckMeta {
+                    mode: Some("dark".into()),
+                    ..Default::default()
+                },
+            ),
+            (
+                "aspect",
+                DeckMeta {
+                    aspect: Some("4:3".into()),
+                    ..Default::default()
+                },
+            ),
+            (
+                "transition",
+                DeckMeta {
+                    transition: Some("fade".into()),
+                    ..Default::default()
+                },
+            ),
+            (
+                "fit",
+                DeckMeta {
+                    fit: Some("shrink".into()),
+                    ..Default::default()
+                },
+            ),
+        ];
+        for (what, meta) in variants {
+            assert_ne!(
+                assemble_page(&meta, &sections, &opts),
+                page,
+                "{what}: the test deck does not actually change the page"
+            );
+            assert_ne!(
+                page_fingerprint(&meta, &sections, &opts),
+                key,
+                "{what} changes the page but not the fingerprint, so a host \
+                 patching slides would keep showing the old one"
+            );
+        }
+
+        // The same for what a slide, rather than the frontmatter, brings to the
+        // page: a palette the `<head>` has to grow tokens for.
+        let themed = vec!["<section class=\"slide\" data-theme=\"nord\">x</section>".to_string()];
+        assert_ne!(page_fingerprint(&base, &themed, &opts), key);
+
+        // And for the options the host itself supplies.
+        let css = PageOptions {
+            custom_css: Some(":root { --mz-accent1: red }".into()),
+            ..Default::default()
+        };
+        assert_ne!(page_fingerprint(&base, &sections, &css), key);
+    }
+
+    /// The counterpart: editing a slide is not a page change. A fingerprint
+    /// that moved with the slides would make every keystroke a full reload.
+    #[test]
+    fn page_fingerprint_ignores_ordinary_slide_edits() {
+        let meta = DeckMeta::default();
+        let opts = PageOptions::default();
+        let before = vec!["<section class=\"slide\">hello</section>".to_string()];
+        let after = vec!["<section class=\"slide\">hello, world</section>".to_string()];
+        assert_eq!(
+            page_fingerprint(&meta, &before, &opts),
+            page_fingerprint(&meta, &after, &opts)
+        );
     }
 
     #[test]

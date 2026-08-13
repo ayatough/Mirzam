@@ -76,6 +76,30 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   hold it.
 
 ### Fixed
+- **Changing `theme:` did nothing to the live preview.** The preview patches
+  the slides that changed into a page it assembled earlier, and a theme is not
+  in a slide: swapping it changed no slide's HTML, so nothing was patched and
+  the deck kept the palette it opened with until the preview was closed and
+  reopened. The same held for `title:`, `aspect:`, `transition:`, `fit:` and
+  for a slide reaching for a palette the page was never assembled with. The
+  renderer now hands out a fingerprint of everything the page carries around
+  the slides, and a host that sees it move rebuilds the page. `serve` uses the
+  same fingerprint, which closes the case it also missed: a page-level setting
+  changed in the same save as a slide.
+- **The preview followed the cursor to the wrong slide in a deck split across
+  files.** Which slide the cursor was on was counted by the `---` rules in the
+  file being edited — right for a deck of one file, and wrong for every slide
+  a `![[…]]` brings in, so the preview landed further and further ahead of the
+  cursor the further down the deck it went. The count now happens in the core,
+  on the expanded document, and the source map carries the cursor across; a
+  cursor resting on the `![[…]]` line itself shows the first slide of the file
+  it names. Non-ASCII text no longer shifts the answer either — the offset is
+  counted in bytes on both sides now instead of UTF-16 units on one.
+- **`split: h2` made no slides in the preview or the browser build.** The
+  frontmatter setting that turns an ordinary document into a deck was read by
+  `mirzam build` and ignored by the WASM core, so the two disagreed about what
+  a slide even is: the preview showed one long slide for a deck the CLI split
+  into a dozen.
 - **`\/` inside `mat()`, `cases()` or `vec()` crashed the build.** `\` is a
   line break here, so a Typst author's escaped slash parsed as break-then-
   divide and put a row separator inside a fraction, which panicked the MathML
