@@ -140,7 +140,7 @@ fi
 if [ "$GATE" -eq 0 ]; then
   echo "==> gate skipped (--no-gate)"
 else
-  DECKS=(01-start 02-writing 03-layout 04-components 05-motion 06-theming pitch seminar)
+  DECKS=(01-start 02-writing 03-layout 04-components 05-motion 06-theming pitch research seminar)
 
   echo "==> formatting, lints, tests"
   cargo fmt --all -- --check

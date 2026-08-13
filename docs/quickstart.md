@@ -201,8 +201,9 @@ you drew, row heights from the number of lines.
   showing as literal text, the current PDF steps, and every build warning
 - **[The examples](../examples/)** — six numbered decks that teach the markup in
   order, starting at [`01-start.md`](../examples/01-start.md), plus
-  [`seminar.md`](../examples/seminar.md), a research talk with math, a quoted
-  figure and citations
+  [`research.md`](../examples/research.md), a report with math, a chart and a
+  cited bibliography, and [`seminar.md`](../examples/seminar.md), the same shape
+  in Japanese with a quoted figure
 - **[All of them running](https://ayatough.github.io/Mirzam/)**
 
 Press `/` in any deck to see what the viewer responds to.

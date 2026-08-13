@@ -1,0 +1,181 @@
+<section class="slide" data-index="0">
+<div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
+<div class="pane pane-main" data-pane="main" style="grid-area:main"><h1 class="title-slide">Compensating thermal drift in a<br>fibre Bragg grating strain array</h1>
+<p>Group meeting — Instrumentation</p>
+<p>R. Wren|2026-08-13</p>
+</div>
+</div>
+<aside class="notes"><p>One sentence of framing: the array works, the numbers move with the weather, and this is what we did about it.</p>
+</aside>
+</section>
+<section class="slide" data-index="1">
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:1fr 5fr;grid-template-areas:"head" "main"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><h2>What this covers</h2>
+</div>
+<div class="pane pane-main" data-pane="main" style="grid-area:main;display:flex;flex-direction:column;justify-content:center"><nav class="mz-toc" data-current="1"><ol><li class="mz-toc-l2" data-slide="2" style="margin-left:0em"><a href="#3">One grating, two things to measure</a><span class="mz-toc-page">3</span></li><li class="mz-toc-l2" data-slide="3" style="margin-left:0em"><a href="#4">Three ways people compensate, and what each costs</a><span class="mz-toc-page">4</span></li><li class="mz-toc-l2" data-slide="4" style="margin-left:0em"><a href="#5">Two wavelengths, one matrix</a><span class="mz-toc-page">5</span></li><li class="mz-toc-l2" data-slide="5" style="margin-left:0em"><a href="#6">Apparent strain over a day, before and after</a><span class="mz-toc-page">6</span></li><li class="mz-toc-l2" data-slide="6" style="margin-left:0em"><a href="#7">Where it still fails</a><span class="mz-toc-page">7</span></li><li class="mz-toc-l2" data-slide="7" style="margin-left:0em"><a href="#8">References</a><span class="mz-toc-page">8</span></li><li class="mz-toc-l2" data-slide="8" style="margin-left:0em"><a href="#9">Summary</a><span class="mz-toc-page">9</span></li></ol></nav>
+<p><em>Twelve minutes, then questions — each line links to its slide</em></p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="2">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:1fr 4fr;grid-template-areas:"head head" "main fig"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Background</span></p>
+<h2>One grating, two things to measure</h2>
+</div>
+<div class="pane pane-main" data-pane="main" style="grid-area:main"><ul>
+<li>A grating's reflected wavelength moves with <strong>strain</strong> and with
+<strong>temperature</strong>, and one reading cannot tell you which moved it<span class="mz-cite">[<a href="#8">1</a>]</span></li>
+<li>Over our 120 m baseline the diurnal swing is worth more than the
+signal we are trying to see</li>
+<li>So the array is only as good as the temperature model behind it — which is
+the part nobody publishes</li>
+</ul>
+<blockquote>
+<p>A strain number without a temperature number is an opinion.</p>
+</blockquote>
+</div>
+<div class="pane pane-fig" data-pane="fig" style="grid-area:fig"></div>
+</div>
+<svg class="mz-shapes" viewBox="0 0 1280 720" preserveAspectRatio="none" aria-hidden="true">
+<g id="fibre">
+<rect x="729.6" y="374.4" width="435.2" height="43.2" rx="6" style="fill:var(--mz-shape-fill);stroke:var(--mz-accent1)" stroke-width="2.5"/>
+<text x="947.2" y="396.0" text-anchor="middle" dominant-baseline="central" class="mz-shape-label">fibre</text>
+</g>
+<g id="g1">
+<rect x="780.8" y="374.4" width="76.8" height="43.2" rx="10" style="fill:var(--mz-shape-fill);stroke:var(--mz-accent2)" stroke-width="2.5"/>
+</g>
+<g id="g2">
+<rect x="908.8" y="374.4" width="76.8" height="43.2" rx="10" style="fill:var(--mz-shape-fill);stroke:var(--mz-accent2)" stroke-width="2.5"/>
+</g>
+<g id="g3">
+<rect x="1036.8" y="374.4" width="76.8" height="43.2" rx="10" style="fill:var(--mz-shape-fill);stroke:var(--mz-accent2)" stroke-width="2.5"/>
+</g>
+<text class="small" x="947.2" y="504.0" text-anchor="middle" dominant-baseline="central" class="mz-shape-label small" style="fill:var(--mz-fg)">{{sensors}} gratings, one fibre</text>
+</svg>
+<aside class="notes"><p>Do not derive the wavelength shift here; slide 5 has it.</p>
+</aside>
+</section>
+<section class="slide" data-index="3">
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:1fr 3fr 1fr;grid-template-areas:"head" "table" "note"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Background</span></p>
+<h2>Three ways people compensate, and what each costs</h2>
+</div>
+<div class="pane pane-table" data-pane="table" style="grid-area:table;display:flex;flex-direction:column;justify-content:center"><table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>Extra hardware</th>
+<th>Holds over</th>
+<th>Our verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Reference grating, unstrained</td>
+<td>One channel per zone</td>
+<td>Slow drift</td>
+<td>Channel budget too tight<span class="mz-cite">[<a href="#8">2</a>]</span></td>
+</tr>
+<tr>
+<td>Athermal packaging</td>
+<td>Custom mounts</td>
+<td>Wide range</td>
+<td>Cannot retrofit the installed array<span class="mz-cite">[<a href="#8">3</a>]</span></td>
+</tr>
+<tr>
+<td>Dual-wavelength matrix</td>
+<td>None</td>
+<td>Calibrated range</td>
+<td><strong>Chosen</strong> — arithmetic, not parts<span class="mz-cite">[<a href="#8">1</a>]</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="pane pane-note" data-pane="note" style="grid-area:note;text-align:right"><p><em>See <span class="mz-cite">[<a href="#8">2</a>]</span> for a survey of the field; this table is only the part that bears on a retrofit.</em></p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="4">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:1fr 3fr;grid-template-areas:"head head" "main eq"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Method</span></p>
+<h2>Two wavelengths, one matrix</h2>
+</div>
+<div class="pane pane-main" data-pane="main" style="grid-area:main"><ul>
+<li>Each sensing point carries <strong>two gratings</strong> with different photo-elastic and
+thermo-optic coefficients</li>
+<li>Their shifts are a linear system in <math><mo stretchy="false">(</mo><mi>ε</mi><mo>,</mo><mrow><mspace/><mi mathvariant="normal">Δ</mi></mrow><mi>T</mi><mo stretchy="false">)</mo></math>, so inverting a
+2×2 matrix separates them<span class="mz-cite">[<a href="#8">1</a>]</span></li>
+<li>The matrix is fitted once per installation, in an oven, over the range the
+site actually sees</li>
+</ul>
+</div>
+<div class="pane pane-eq" data-pane="eq" style="grid-area:eq;display:flex;flex-direction:column;justify-content:center"><p><math display="block"><mrow><mo>(</mo><mtable displaystyle="false" scriptlevel="0"><mtr><mtd><mrow><mspace/><mi mathvariant="normal">Δ</mi></mrow><msub><mi>λ</mi><mn>1</mn></msub></mtd></mtr><mtr><mtd><mrow><mspace/><mi mathvariant="normal">Δ</mi></mrow><msub><mi>λ</mi><mn>2</mn></msub></mtd></mtr></mtable><mo>)</mo></mrow><mo>=</mo><mrow><mo>(</mo><mtable displaystyle="false" scriptlevel="0"><mtr><mtd><msub><mi>K</mi><mrow><mi>ε</mi><mn>1</mn></mrow></msub></mtd><mtd><msub><mi>K</mi><mrow><mi>T</mi><mn>1</mn></mrow></msub></mtd></mtr><mtr><mtd><msub><mi>K</mi><mrow><mi>ε</mi><mn>2</mn></mrow></msub></mtd><mtd><msub><mi>K</mi><mrow><mi>T</mi><mn>2</mn></mrow></msub></mtd></mtr></mtable><mo>)</mo></mrow><mrow><mo>(</mo><mtable displaystyle="false" scriptlevel="0"><mtr><mtd><mi>ε</mi></mtd></mtr><mtr><mtd><mrow><mspace/><mi mathvariant="normal">Δ</mi></mrow><mi>T</mi></mtd></mtr></mtable><mo>)</mo></mrow></math></p>
+<p><math display="block"><mi>ε</mi><mo>=</mo><mfrac><mrow><msub><mi>K</mi><mrow><mi>T</mi><mn>2</mn></mrow></msub><mspace width="0.16666667em"/><mrow><mspace/><mi mathvariant="normal">Δ</mi></mrow><msub><mi>λ</mi><mn>1</mn></msub><mo>−</mo><msub><mi>K</mi><mrow><mi>T</mi><mn>1</mn></mrow></msub><mspace width="0.16666667em"/><mrow><mspace/><mi mathvariant="normal">Δ</mi></mrow><msub><mi>λ</mi><mn>2</mn></msub></mrow><mrow><msub><mi>K</mi><mrow><mi>ε</mi><mn>1</mn></mrow></msub><msub><mi>K</mi><mrow><mi>T</mi><mn>2</mn></mrow></msub><mo>−</mo><msub><mi>K</mi><mrow><mi>ε</mi><mn>2</mn></mrow></msub><msub><mi>K</mi><mrow><mi>T</mi><mn>1</mn></mrow></msub></mrow></mfrac></math></p>
+</div>
+</div>
+<aside class="notes"><p>The denominator is the conditioning question someone always asks. Answer: 0.02 in our coefficient set, and that is slide 7.</p>
+</aside>
+</section>
+<section class="slide" data-index="5">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:1fr 3fr;grid-template-areas:"head head" "chart note"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Results</span></p>
+<h2>Apparent strain over a day, before and after</h2>
+</div>
+<div class="pane pane-chart" data-pane="chart" style="grid-area:chart"><div class="mz-chart-wrap"><svg class="mz-chart" id="drift" viewBox="0 0 720 440" preserveAspectRatio="xMidYMid meet" role="img"><text class="mz-chart-title" x="360" y="26" text-anchor="middle">Apparent strain with no load (µε)</text><line class="mz-chart-grid" x1="66" y1="374.0" x2="700.0" y2="374.0"/><text class="mz-chart-tick" x="56.0" y="378.0" text-anchor="end">0</text><line class="mz-chart-grid" x1="66" y1="292.0" x2="700.0" y2="292.0"/><text class="mz-chart-tick" x="56.0" y="296.0" text-anchor="end">12.5</text><line class="mz-chart-grid" x1="66" y1="210.0" x2="700.0" y2="210.0"/><text class="mz-chart-tick" x="56.0" y="214.0" text-anchor="end">25</text><line class="mz-chart-grid" x1="66" y1="128.0" x2="700.0" y2="128.0"/><text class="mz-chart-tick" x="56.0" y="132.0" text-anchor="end">37.5</text><line class="mz-chart-grid" x1="66" y1="46.0" x2="700.0" y2="46.0"/><text class="mz-chart-tick" x="56.0" y="50.0" text-anchor="end">50</text><text class="mz-chart-axis" transform="rotate(-90 16 210.0)" x="16" y="210.0" text-anchor="middle">µε</text><text class="mz-chart-tick" x="118.8" y="396.0" text-anchor="middle">00</text><text class="mz-chart-tick" x="224.5" y="396.0" text-anchor="middle">04</text><text class="mz-chart-tick" x="330.2" y="396.0" text-anchor="middle">08</text><text class="mz-chart-tick" x="435.8" y="396.0" text-anchor="middle">12</text><text class="mz-chart-tick" x="541.5" y="396.0" text-anchor="middle">16</text><text class="mz-chart-tick" x="647.2" y="396.0" text-anchor="middle">20</text><polyline class="mz-chart-line" points="118.8,334.6 224.5,295.3 330.2,236.2 435.8,124.7 541.5,170.6 647.2,301.8" fill="none" stroke="var(--mz-accent1)" stroke-width="3"/><circle class="mz-chart-point" id="drift-0-0" cx="118.8" cy="334.6" r="5" fill="var(--mz-accent1)"/><circle class="mz-chart-point" id="drift-0-1" cx="224.5" cy="295.3" r="5" fill="var(--mz-accent1)"/><circle class="mz-chart-point" id="drift-0-2" cx="330.2" cy="236.2" r="5" fill="var(--mz-accent1)"/><circle class="mz-chart-point" id="drift-0-3" cx="435.8" cy="124.7" r="5" fill="var(--mz-accent1)"/><circle class="mz-chart-point" id="drift-0-4" cx="541.5" cy="170.6" r="5" fill="var(--mz-accent1)"/><circle class="mz-chart-point" id="drift-0-5" cx="647.2" cy="301.8" r="5" fill="var(--mz-accent1)"/><polyline class="mz-chart-line" points="118.8,367.4 224.5,360.9 330.2,360.9 435.8,347.8 541.5,354.3 647.2,367.4" fill="none" stroke="var(--mz-accent2)" stroke-width="3"/><circle class="mz-chart-point" id="drift-1-0" cx="118.8" cy="367.4" r="5" fill="var(--mz-accent2)"/><circle class="mz-chart-point" id="drift-1-1" cx="224.5" cy="360.9" r="5" fill="var(--mz-accent2)"/><circle class="mz-chart-point" id="drift-1-2" cx="330.2" cy="360.9" r="5" fill="var(--mz-accent2)"/><circle class="mz-chart-point" id="drift-1-3" cx="435.8" cy="347.8" r="5" fill="var(--mz-accent2)"/><circle class="mz-chart-point" id="drift-1-4" cx="541.5" cy="354.3" r="5" fill="var(--mz-accent2)"/><circle class="mz-chart-point" id="drift-1-5" cx="647.2" cy="367.4" r="5" fill="var(--mz-accent2)"/><rect x="70" y="422" width="14" height="14" rx="3" fill="var(--mz-accent1)"/><text class="mz-chart-legend" x="90" y="434">uncompensated</text><rect x="221" y="422" width="14" height="14" rx="3" fill="var(--mz-accent2)"/><text class="mz-chart-legend" x="241" y="434">compensated</text></svg></div>
+</div>
+<div class="pane pane-note" data-pane="note" style="grid-area:note;display:flex;flex-direction:column;justify-content:center"><ul>
+<li>Peak apparent strain falls from <strong>38 µε</strong> to
+<strong>4 µε</strong></li>
+<li>What is left tracks the <em>rate</em> of temperature change, not its value —
+a lag, not a scale error</li>
+<li>Across all 16 gratings the worst channel is 6 µε</li>
+</ul>
+</div>
+</div>
+<aside class="notes"><p>The residual shape is the interesting part. Do not claim it as noise.</p>
+</aside>
+</section>
+<section class="slide" data-index="6">
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:1fr 3fr;grid-template-areas:"head" "main"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Discussion</span></p>
+<h2>Where it still fails</h2>
+</div>
+<div class="pane pane-main" data-pane="main" style="grid-area:main"><ul>
+<li><strong>Outside the calibrated range</strong> the matrix is an extrapolation, and the
+coefficients are not linear there — the same limit the survey
+reports<span class="mz-cite">[<a href="#8">2</a>]</span></li>
+<li><strong>Fast transients</strong> beat the lag: a cold front moving over the span leaves
+the two gratings at different temperatures, and the model assumes they are
+not</li>
+<li>Published drift budgets put a retrofit like ours near the floor of what is
+useful<span class="mz-cite">[<a href="#8">4</a>]</span>, which is an argument for packaging on the next
+array<span class="mz-cite">[<a href="#8">3</a>]</span> rather than for a better fit on this one</li>
+</ul>
+</div>
+</div>
+<aside class="notes"><p>If asked about the transient case: we have four events on record and none of them are in this dataset.</p>
+</aside>
+</section>
+<section class="slide" data-index="7">
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:1fr 4fr;grid-template-areas:"head" "refs"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><h2>References</h2>
+</div>
+<div class="pane pane-refs" data-pane="refs" style="grid-area:refs"><ul class="mz-bib"><li id="mz-bib-alder2019"><span class="mz-bib-mark">[1]</span><span class="mz-bib-entry">Alder, Bishop. <em>Dual-parameter discrimination in fibre Bragg gratings</em>. Journal of Lightwave Sensing, 2019.</span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#3">3</a>, <a href="#4">4</a>, <a href="#5">5</a></span></li><li id="mz-bib-devi2022"><span class="mz-bib-mark">[2]</span><span class="mz-bib-entry">Devi. <em>Temperature compensation in FBG sensing: a survey</em>. Sensors Review, 2022.</span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#4">4</a>, <a href="#7">7</a></span></li><li id="mz-bib-castellani2021"><span class="mz-bib-mark">[3]</span><span class="mz-bib-entry">Castellani, Nyman, Oduya. <em>Athermal packaging for distributed strain arrays</em>. Proc. Optical Sensing Symposium, 2021.</span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#4">4</a>, <a href="#7">7</a></span></li><li id="mz-bib-erikson2023"><span class="mz-bib-mark">[4]</span><span class="mz-bib-entry">Erikson, Fontaine, Grigoryan et al. <em>Drift budgets for long-baseline strain monitoring</em>. Measurement Science Notes, 2023. <a href="https://example.org/drift-budgets">https://example.org/drift-budgets</a></span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#7">7</a></span></li></ul>
+</div>
+</div>
+<aside class="notes"><p>Numbered in citation order; the ↩ on each entry is the slide it was cited on, so a question about [1] can go straight back to the method.</p>
+</aside>
+</section>
+<section class="slide" data-index="8">
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:3fr 1fr;grid-template-areas:"main" "foot"'>
+<div class="pane pane-main" data-pane="main" style="grid-area:main;text-align:center;display:flex;flex-direction:column;justify-content:center"><h2>Summary</h2>
+<p>Two gratings and a 2×2 inverse, no new hardware</p>
+<p>Apparent drift <strong>38 µε → 4 µε</strong> across 16 channels</p>
+<p><em>Next: the transient case, and whether packaging is worth it on array two</em></p>
+</div>
+<div class="pane pane-foot" data-pane="foot" style="grid-area:foot;text-align:right"><p>Instrumentation group|2026-08-13</p>
+</div>
+</div>
+<aside class="notes"><p>Ask for the oven slot before finishing; that is the blocker.</p>
+</aside>
+</section>

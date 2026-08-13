@@ -125,7 +125,8 @@ code --install-extension editors/vscode/mirzam-preview-*.vsix
 | デッキ | 内容 |
 |---|---|
 | `examples/pitch.md` | 営業向けピッチ。指標タイル、CSV からのグラフ、ダークテーマ |
-| `examples/seminar.md` | 研究発表(日本語)。数式・表・和文組版 |
+| `examples/research.md` | 研究報告(英語)。数式・グラフ・4スライドから引かれる参考文献 |
+| `examples/seminar.md` | 研究発表(日本語)。数式・表・脚注と参考文献・和文組版 |
 
 ## 日本語まわりの注意
 

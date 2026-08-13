@@ -200,7 +200,8 @@ source beside the slides is the example.
 | Deck | What it is |
 |---|---|
 | [`examples/pitch.md`](examples/pitch.md) | A sales pitch: metric tiles, charts from CSV, a custom dark theme |
-| [`examples/seminar.md`](examples/seminar.md) | A research talk in Japanese: maths, a quoted figure, footnotes and a cited bibliography, CJK typography |
+| [`examples/research.md`](examples/research.md) | A research report: maths, a chart, and a bibliography cited from four slides |
+| [`examples/seminar.md`](examples/seminar.md) | The same shape in Japanese: maths, a quoted figure, footnotes beside a cited bibliography, CJK typography |
 
 ```bash
 cargo run --bin mirzam -- build examples/01-start.md -o out && open out/index.html

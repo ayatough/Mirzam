@@ -24,7 +24,7 @@ the user view, [docs/architecture.md](docs/architecture.md) for the design, and
 3. **English everywhere in the repository**: comments, identifiers, CLI output,
    commit messages, docs. `docs/ja/` holds Japanese translations and is never the
    source of truth. `examples/seminar.md` is deliberately Japanese; it is the CJK
-   typography sample.
+   typography sample, and `examples/research.md` is its English counterpart.
 4. **Do not weaken a test to make it pass.** If a quality gate fails, either the
    change is wrong or the expectation genuinely moved — and if it moved, say so in
    the commit message.
@@ -38,7 +38,7 @@ export RUSTFLAGS="-D warnings"               # CI sets this; without it, clippy 
 cargo test --workspace                       # 23 suites
 cargo clippy --workspace --all-targets       # zero warnings
 cargo fmt --all -- --check
-for d in 01-start 02-writing 03-layout 04-components 05-motion 06-theming pitch seminar; do
+for d in 01-start 02-writing 03-layout 04-components 05-motion 06-theming pitch research seminar; do
   cargo run -q --bin mirzam -- check "examples/$d.md"   # needs a browser, nothing else
 done
 ```
@@ -151,8 +151,8 @@ a change by "which deck owns this":
 | `05-motion.md` | `anim`, transitions, `effects` |
 | `06-theming.md` | Themes, frontmatter, attributes, custom CSS |
 
-`pitch.md` and `seminar.md` are the third group: complete decks, written the way
-somebody would write one for an audience. They are not feature catalogues, so do
+`pitch.md`, `research.md` and `seminar.md` are the third group: complete decks,
+written the way somebody would write one for an audience. They are not feature catalogues, so do
 not add a slide to them to demonstrate something.
 
 A feature gets **one** home. Before adding a slide, check the feature is not

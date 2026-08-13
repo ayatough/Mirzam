@@ -30,6 +30,14 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   the question side by side. The VS Code preview reads the `.bib` out of the
   same file table it already reads a masters file and a transcluded section
   from, so it cites and lists exactly as the CLI does.
+- **`examples/research.md`: a research report, in English.** The whole-deck
+  samples were a sales pitch and a Japanese seminar talk, so anyone wanting a
+  report to start from had to read the one deck deliberately written in the
+  language they might not read. This is that shape in English — background,
+  prior work as a table, method in maths, a chart, what still fails — citing
+  four references from four different slides, with one of them cited from
+  three so its entry carries three backlinks. `seminar.md` stays Japanese: it
+  is the CJK typography sample, and having both is the point.
 - **Cutting a release is one command: `./scripts/release.sh <version>`.** It
   writes the version into the five files that carry it — the root `Cargo.toml`,
   `Cargo.lock`, `editors/vscode/package.json`, and the status sentence in both

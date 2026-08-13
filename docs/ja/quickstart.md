@@ -178,7 +178,8 @@ data: |
   矢印を本文から遠ざける方法
 - **[サンプル](../../examples/)** — まずは [`01-start.md`](../../examples/01-start.md)。
   02〜06 は分野別の記法リファレンスで、どこから読んでも構いません。
-  [`seminar.md`](../../examples/seminar.md) は数式・図の引用・参考文献つきの研究発表
+  [`research.md`](../../examples/research.md) は数式・グラフ・参考文献つきの研究報告(英語)、
+  [`seminar.md`](../../examples/seminar.md) はその日本語版で図の引用と脚注つき
 - **[全部動いているところ](https://ayatough.github.io/Mirzam/)**
 
 デッキ上で `/` を押すと、そのビューアが応答する操作の一覧が出ます。
