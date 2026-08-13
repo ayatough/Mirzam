@@ -27,7 +27,9 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   `examples/seminar.md` — the Japanese research talk now cites three papers
   from three slides and lists them on slide 11, with the quoted figure's
   source left in the footnote where it belongs, which is the two halves of
-  the question side by side.
+  the question side by side. The VS Code preview reads the `.bib` out of the
+  same file table it already reads a masters file and a transcluded section
+  from, so it cites and lists exactly as the CLI does.
 - **Cutting a release is one command: `./scripts/release.sh <version>`.** It
   writes the version into the five files that carry it — the root `Cargo.toml`,
   `Cargo.lock`, `editors/vscode/package.json`, and the status sentence in both

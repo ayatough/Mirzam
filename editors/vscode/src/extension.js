@@ -206,6 +206,13 @@ function collectResources(text, baseDir) {
         files[key] = content;
         sources.set(abs, key);
         walk(content, path.dirname(abs));
+      } else if (rel.endsWith(".bib")) {
+        // Text, not an asset: the core reads a bibliography through the same
+        // `FileProvider` as a transclusion, so it belongs in the file table
+        // and not in the data-URI table beside the images. Nothing inside it
+        // references anything, so there is nothing to walk.
+        files[key] = readText(abs);
+        sources.set(abs, key);
       } else if (stat.size <= maxSize) {
         assets[key] = dataUri(abs);
         sources.set(abs, key);
@@ -232,14 +239,14 @@ function readText(file) {
 }
 
 /**
- * Targets of `![[a.md]]`, `![alt](path)` and frontmatter `masters:`, excluding
- * URLs and data URIs.
+ * Targets of `![[a.md]]`, `![alt](path)`, frontmatter `masters:` and
+ * frontmatter `bibliography:`, excluding URLs and data URIs.
  *
- * The masters file is here because the core reads it through the same
- * `FileProvider` a transclusion uses, and in this host that provider is the
- * table below. Miss it and the preview draws every slide as a single pane
- * while the CLI draws the deck correctly — the kind of disagreement between
- * the two that is worse than either being wrong.
+ * The two frontmatter files are here because the core reads them through the
+ * same `FileProvider` a transclusion uses, and in this host that provider is
+ * the table below. Miss one and the preview disagrees with the CLI while
+ * looking perfectly fine: every slide drawn as a single pane, or every
+ * `[@key]` left as bracket text with no reference list.
  */
 function references(source) {
   const out = [];
@@ -253,20 +260,22 @@ function references(source) {
       out.push(p);
     }
   }
-  const masters = mastersFile(source);
-  if (masters) out.push(masters);
+  for (const key of ["masters", "bibliography"]) {
+    const named = frontmatterPath(source, key);
+    if (named) out.push(named);
+  }
   return out;
 }
 
 /**
- * The path in frontmatter `masters:`, or null when the deck writes its shapes
- * inline (a mapping, so the value is empty and the drawings are indented
- * under it) or names none.
+ * The path in a frontmatter setting that names one, or null when the deck
+ * writes the thing inline (a mapping, so the value is empty and the entries
+ * are indented under it) or names none.
  */
-function mastersFile(source) {
+function frontmatterPath(source, key) {
   const front = /^---\r?\n([\s\S]*?)\r?\n---\s*$/m.exec(source);
   if (!front || front.index !== 0) return null;
-  const m = /^masters:[ \t]*(\S.*)$/m.exec(front[1]);
+  const m = new RegExp(`^${key}:[ \\t]*(\\S.*)$`, "m").exec(front[1]);
   if (!m) return null;
   const value = m[1].trim().replace(/^["']|["']$/g, "");
   return value && !value.startsWith("{") ? value : null;

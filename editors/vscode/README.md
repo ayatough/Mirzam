@@ -36,7 +36,7 @@ export lives in the CLI (`mirzam export pdf`).
 
 `pane` layouts, `::: pane` assignment, `chart`, `shape`, `connect`, `![[file.md]]`
 transclusion, frontmatter variables and arithmetic, math, video and GIF, custom
-themes, and speaker notes. See the [syntax
+themes, `[@key]` references against a `bibliography:` file, and speaker notes. See the [syntax
 reference](https://github.com/ayatough/Mirzam/blob/main/docs/syntax.md).
 
 ## Building locally

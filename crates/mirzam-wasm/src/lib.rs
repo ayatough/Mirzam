@@ -460,6 +460,23 @@ mod tests {
         assert_eq!(out.warnings, "[]");
     }
 
+    /// A bibliography reaches the preview the same way, out of the same table.
+    /// The CLI and the browser disagreeing here is the failure that is hard to
+    /// see: the deck still renders, every `[@key]` just quietly stops being a
+    /// citation in one of the two.
+    #[test]
+    fn a_bibliography_comes_out_of_the_host_table() {
+        let mut r = Renderer::new();
+        r.set_files("{\"refs.bib\": \"@misc{a, author={Ito, Ken}, title={One}, year={2020}}\"}")
+            .unwrap();
+        let out = r.render_page(
+            "---\ntitle: T\nbibliography: refs.bib\ncitation-style: author\n---\n\nA claim[@a].\n\n---\n\n```bibliography\n```\n",
+        );
+        assert!(out.html.contains(">Ito20</a>"), "{}", out.html);
+        assert!(out.html.contains("mz-bib-back"), "{}", out.html);
+        assert_eq!(out.warnings, "[]");
+    }
+
     /// A host that did not supply the file gets a warning saying what the deck
     /// will look like, not a silent fallback nobody can diagnose.
     #[test]
