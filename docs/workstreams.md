@@ -74,8 +74,8 @@ there is. The model column follows from that:
 | W5 | Typst-flavoured math | A | Sonnet | — | ✅ |
 | W19 | Structural math editing: tap and place, not type | S | Fable | W5 | withdrawn |
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
-| W20 | Syntax highlighting at build time | B | Opus | — | |
-| W21 | An authoring contract for agents | B | Opus | — | |
+| W20 | Syntax highlighting at build time | B | Opus | — | engine chosen |
+| W21 | An authoring contract for agents | B | Opus | — | 1–2 ✅ |
 
 ### What is deferred, and why
 
@@ -853,7 +853,7 @@ give up.
 
 ## W20 — Syntax highlighting at build time
 
-**Difficulty B · not started**
+**Difficulty B · measured, engine chosen; the render pass remains**
 
 A fenced block records its language and renders it uncoloured. That was an
 honest state, not a fixed one — and the market moved: Shiki is now the default
@@ -874,6 +874,18 @@ emoji table. So the stream starts with a measurement, not a dependency:
 2. **Build** the winner into the render pass: highlighting happens at build
    time, the output is spans with classes, and the deck stays self-contained
    with no client-side JavaScript.
+
+**Measured, 2026-08-13** (gzipped `mirzam-wasm`, baseline 1,442 KB, spike
+reachable from an exported function so nothing was dead-stripped):
+`synoptic` costs **+33 KB** with its full 38-language table built in — a third
+of the yardstick, no dump generation, and it emits token kinds (`keyword`,
+`string`, `comment`, …) that map straight onto classes. `syntect` costs
++191 KB trimmed to seven grammars and +481 KB full; worse, a trimmed dump
+cannot be derived from the shipped binary set (`into_builder()` keeps dangling
+context indices and panics), so trimming means vendoring `.sublime-syntax`
+sources. The tree-sitter crates do not build for `wasm32` at all (C headers).
+**Decision: synoptic, in both the CLI and the browser build, full table.**
+syntect stays the documented fallback if grammar fidelity disappoints.
 
 The shape of the output is fixed regardless of the engine chosen:
 
@@ -896,7 +908,7 @@ regenerated deliberately, since every code block in every deck changes.
 
 ## W21 — An authoring contract for agents
 
-**Difficulty B · not started**
+**Difficulty B · deliverables 1 and 2 landed; 3, the skill, remains**
 
 The second P0 from the [market survey](reports/2026-08-market-survey.md). The
 visible trend behind it: "the AI drafts, the human reviews the diff" is
