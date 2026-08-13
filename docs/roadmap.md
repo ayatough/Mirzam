@@ -44,11 +44,18 @@ keep changing.
 | Carrying an element from one slide to the next | Next |
 | Demo recording and a generated themes gallery | Next |
 | Dragging an annotation back into the Markdown | Next |
+| Syntax highlighting in code blocks | Next |
+| An authoring contract for agents | Next |
+| Mermaid rendered to SVG at build time | Later |
 | Plugins, PPTX export | Later |
 
 Each of those has a brief — what it is for, what is not free about it, and where
 it stops — in [workstreams.md](workstreams.md). "Next" means the reasoning is
-written down, not that a date exists.
+written down, not that a date exists. The two newest entries — highlighting and
+the agent contract — come out of the
+[August 2026 market survey](reports/2026-08-market-survey.md), which also
+carries the priorities behind the Later section and the reasoning for what is
+deliberately not on this page.
 
 One left the table rather than moving up it: **structural math editing** — the
 Math panel in the browser editor — was built and then withdrawn before it was
@@ -128,17 +135,30 @@ extension, which today previews but does not understand.
 before rendering, and JavaScript modules that register runtime effects. Themes stay
 plain CSS plus a manifest, since that already works.
 
-**Export beyond HTML and PDF.** PowerPoint via OOXML, with elements that have no
-native equivalent rasterized rather than dropped; Google Slides through the same
-path. Direct PDF generation without Chromium is a separate, larger question that
-depends on adopting a text layout engine.
+**Export beyond HTML and PDF.** PowerPoint via OOXML, staged: slides as images
+plus real speaker notes first, which is where Marp, Slidev and Touying all
+stop — then native text boxes, which none of them ships and the market survey
+found to be the loudest unmet ask across every Markdown slide tool. Elements
+with no OOXML equivalent are rasterized rather than dropped; Google Slides
+comes through the same path. Direct PDF generation without Chromium is a
+separate, larger question that depends on adopting a text layout engine.
 
 **Editing anywhere.** The WASM core already runs in a browser; a progressive web
 app on top of it is what makes phone editing real. An Obsidian plugin reuses the
 same core.
 
-**Richer data.** Column aggregation in tables, more chart types, and `mermaid` /
-`d2` diagram blocks as plugins rather than built-ins.
+**Richer data.** Column aggregation in tables, more chart types, and data-driven
+slides — a run of slides generated from the rows of a CSV, the one structural
+advantage Typst's scripting has over every Markdown tool.
+
+**Mermaid, then D2.** Diagrams-as-code became table stakes the day GitHub
+rendered Mermaid natively; Marp made it a built-in in 2026. Waiting for the
+plugin system was the earlier plan, but the market moved first. The Mirzam-shaped
+answer keeps the core pure and the output self-contained: the CLI shells out to
+a local renderer (`mmdc`, then `d2`) at build time and inlines the SVG, the way
+charts already work — no client-side JavaScript, nothing fetched at present
+time. A `mermaid` fence stays a plain code block for any renderer that does not
+know it, and for `mirzam-wasm`, which has no process to shell out to.
 
 **More themes and custom themes.** There is one sample stylesheet now —
 `examples/themes/mirzam.css` — because the second, `pitch.css`, turned out to be
@@ -160,21 +180,25 @@ every pane in it. What is missing is a general way to attach attributes to a
 *slide*, and above that to a section, since `## ` headings already give a deck
 its outline: `## Text {…}` attaches to the heading, not to the slide it opens.
 
-**Syntax highlighting in code blocks.** A fenced block records its language and
-renders it uncoloured; `docs/syntax.md` says so plainly, which is the honest
-state rather than a fixed one. The question that stalled it is cost, not
-desire: a highlighter means shipping grammar definitions, and the browser build
-already pays 103 KB gzipped for the emoji table. **Measure first** — build the
-WASM bundle with a candidate (`syntect` with a trimmed syntax set, or a
-hand-rolled lexer for the six languages a deck actually shows) and compare the
-gzipped delta against that 103 KB as the yardstick for what a convenience is
-allowed to cost. Decide after the number exists.
+**Handouts and an overview.** A PDF export that carries the speaker notes
+beside each slide — the most-reacted request on Marp's CLI, still unmet there —
+and an overview grid in the viewer that shows the deck at a glance and jumps on
+click.
 
 **A `[span]{...}` cannot cross a source line.** The inline-attribute transform
 runs line by line, so a span whose text is wrapped leaves its brackets and
 braces on the slide as literal characters. Documented in the reference as a
 constraint; the fix is to run the transform over paragraphs rather than lines,
 which has to keep the existing rule that nothing inside a fence is touched.
+
+## Non-goals
+
+Named so the lists above stay lists. No real-time collaboration and no viewer
+analytics — that ground belongs to server-backed products, and a deck that
+needs an account is no longer a file in a repository. No WYSIWYG editing; the
+source is the interface. No executable code cells — Quarto and Slidev own that,
+and reproducing it means shipping their toolchain weight, which is the thing
+people come here to escape.
 
 ## Open questions
 

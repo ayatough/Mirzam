@@ -39,6 +39,7 @@ from a deck someone was actually trying to give.
 | 2 | W12, W13 | W12 needs the chrome from W10; W13 needs nothing |
 | 3 | W14 | Retires an authoring pattern the other streams now cover |
 | 4 | W9 | Integration, benchmark, `v0.1.0` — done; the release is tagged |
+| 5 | W20, W21 | The [market survey](reports/2026-08-market-survey.md)'s P0: visible code, and a loop an agent can close |
 
 ## Assignment
 
@@ -73,6 +74,8 @@ there is. The model column follows from that:
 | W5 | Typst-flavoured math | A | Sonnet | — | ✅ |
 | W19 | Structural math editing: tap and place, not type | S | Fable | W5 | withdrawn |
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
+| W20 | Syntax highlighting at build time | B | Opus | — | |
+| W21 | An authoring contract for agents | B | Opus | — | |
 
 ### What is deferred, and why
 
@@ -847,6 +850,87 @@ outlives both; the deck's own page-turn effect must be suppressed for exactly
 the elements that are moving and kept for everything else; and going *backwards*
 has to be as good as going forwards, which is where most implementations of this
 give up.
+
+## W20 — Syntax highlighting at build time
+
+**Difficulty B · not started**
+
+A fenced block records its language and renders it uncoloured. That was an
+honest state, not a fixed one — and the market moved: Shiki is now the default
+in both Marp and Slidev, presenterm and Typst highlight too, so uncoloured
+code is the single most visible gap for the developer-talk audience this tool
+courts. Out of the August 2026
+[market survey](reports/2026-08-market-survey.md), this is one of the two P0
+items.
+
+The question that stalled it is cost, not desire: a highlighter means shipping
+grammar definitions, and the browser build already pays 103 KB gzipped for the
+emoji table. So the stream starts with a measurement, not a dependency:
+
+1. **Measure.** Build `mirzam-wasm` with each candidate — `syntect` with a
+   trimmed syntax set, a smaller pure-Rust highlighter, a hand-rolled lexer
+   for the half-dozen languages decks actually show — and compare the gzipped
+   delta against that 103 KB yardstick. Decide after the number exists.
+2. **Build** the winner into the render pass: highlighting happens at build
+   time, the output is spans with classes, and the deck stays self-contained
+   with no client-side JavaScript.
+
+The shape of the output is fixed regardless of the engine chosen:
+
+- **Colors come from theme tokens**, never from the highlighter's own palette.
+  A `--mz-code-*` token set in `base.css`, overridable per theme, keeps Nord
+  code Nord and keeps the WCAG contrast test meaningful. Highlighters that
+  emit their own hex colors have that output mapped to the tokens.
+- **An unknown or absent language stays a plain block** — exactly today's
+  rendering, which is also what the CommonMark-compat rule demands.
+- **Native and WASM builds may differ in what they can afford**, and that is
+  allowed: if the grammar set is too heavy for the browser bundle, the CLI
+  highlights everything and the WASM build carries the trimmed set. The
+  measurement decides where that line is.
+
+Stops at: coloring tokens. Line numbers, line highlighting and diff ranges are
+a later stream once the engine exists. Sample slides go in `02-writing.md`
+(code inside a pane is its territory); `docs/syntax.md` drops the "renders it
+uncoloured" sentence the day this lands, and the golden snapshots are
+regenerated deliberately, since every code block in every deck changes.
+
+## W21 — An authoring contract for agents
+
+**Difficulty B · not started**
+
+The second P0 from the [market survey](reports/2026-08-market-survey.md). The
+visible trend behind it: "the AI drafts, the human reviews the diff" is
+becoming how decks get written, comparison articles now score slide tools on
+LLM-friendliness — and Mirzam is accidentally well-placed, because the source
+renders on GitHub (the diff is reviewable) and the layout is ASCII (the model
+can *see* the grid it is emitting). This stream makes that accident a
+contract.
+
+Three deliverables, in order of leverage:
+
+1. **A machine-readable `check`.** `mirzam check --format json` emits the
+   diagnostics the human-readable form prints — overflow, orphan panes,
+   unresolved connectors and anchors, the lot — as structured records: kind,
+   severity, slide number, pane, source file and line via the source map, and
+   the message. The schema is documented and versioned in `docs/`; a field
+   can be added but never renamed. This is the loop-closer: the usability
+   evaluation's headline was that every persona shipped a visual defect
+   unnoticed, and an agent is the persona that *will* run the checker after
+   every edit if the output is parseable. Exit codes stay as they are;
+   `--format text` stays the default.
+2. **A syntax card the model can be handed.** One file, `docs/llms.md`,
+   generated-or-checked against `docs/syntax.md`, compact enough to sit in a
+   model's context: every fence kind, every frontmatter field, every
+   attribute, one example each, and the sharp edges called out (attribute
+   spans cannot cross lines; shapes live at slide top level). Published on
+   the site as `llms.txt` the way the emerging convention has it.
+3. **A skill definition** for coding agents (Claude Code skill or MCP
+   wrapper): write deck → `mirzam check --format json` → fix → repeat, with
+   the syntax card inlined. This ships in the repository, not in the binary.
+
+Stops at: the contract. No generation features in the product, no API keys,
+no model calls — Mirzam stays the renderer and the checker; the agent is
+somebody else's process consuming a stable interface.
 
 ## W5 — Typst-flavoured math ✅
 
