@@ -168,19 +168,23 @@ impl Entry {
     /// Surnames rather than the field as written, because a `.bib` exported by
     /// a reference manager spells them `Vaswani, Ashish and Shazeer, Noam and …`
     /// — correct, and unreadable at the foot of a slide.
+    ///
+    /// Separated by commas and never by `and`, which is an English word: a
+    /// Japanese entry rendered `山田 and 鈴木`, one conjunction of the wrong
+    /// language in the middle of an otherwise Japanese line. A comma is what
+    /// every numeric style uses anyway, and it is the same in both.
     fn author_display(&self) -> Option<String> {
         let (names, truncated) = self.surnames();
-        let (first, _) = names.split_at(names.len().min(3));
-        let cut = truncated || names.len() > 3;
-        match (first, cut) {
-            ([], _) => None,
-            (shown, true) => Some(format!("{} et al.", shown.join(", "))),
-            ([one], false) => Some(one.clone()),
-            (shown, false) => {
-                let (last, head) = shown.split_last().expect("non-empty");
-                Some(format!("{} and {last}", head.join(", ")))
-            }
+        let (shown, _) = names.split_at(names.len().min(3));
+        if shown.is_empty() {
+            return None;
         }
+        let cut = truncated || names.len() > 3;
+        Some(format!(
+            "{}{}",
+            shown.join(", "),
+            if cut { " et al." } else { "" }
+        ))
     }
 
     /// Every author's surname, and whether the list was cut short — either by
@@ -597,10 +601,15 @@ mod tests {
         );
     }
 
+    /// Under three authors the list is complete, so it must not say `et al.`
+    /// — and the separator is a comma in every language, never an English
+    /// `and` dropped into a Japanese line.
     #[test]
-    fn two_authors_are_joined_with_and_rather_than_cut() {
+    fn a_short_author_list_is_shown_whole_and_comma_separated() {
         let e = one("@misc{x, author={Rivest, Ron and Shamir, Adi}, title={T}}");
-        assert!(e.html().starts_with("Rivest and Shamir."), "{}", e.html());
+        assert!(e.html().starts_with("Rivest, Shamir."), "{}", e.html());
+        let ja = one("@misc{y, author={山田, 太郎 and 鈴木, 花子}, title={T}}");
+        assert!(ja.html().starts_with("山田, 鈴木."), "{}", ja.html());
     }
 
     #[test]

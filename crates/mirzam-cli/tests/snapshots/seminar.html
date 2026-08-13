@@ -9,10 +9,10 @@
 </aside>
 </section>
 <section class="slide" data-index="1">
-<div class="grid" style='grid-template-columns:36fr;grid-template-rows:1fr 3fr;grid-template-areas:"head" "main"'>
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:1fr 5fr;grid-template-areas:"head" "main"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><h2>本日の内容</h2>
 </div>
-<div class="pane pane-main" data-pane="main" style="grid-area:main;display:flex;flex-direction:column;justify-content:center"><nav class="mz-toc" data-current="1"><ol><li class="mz-toc-l2" data-slide="2" style="margin-left:0em"><a href="#3">背景: 分散読み出し</a><span class="mz-toc-page">3</span></li><li class="mz-toc-l2" data-slide="3" style="margin-left:0em"><a href="#4">課題: 前回までの測定</a><span class="mz-toc-page">4</span></li><li class="mz-toc-l2" data-slide="4" style="margin-left:0em"><a href="#5">手法: JPA 導入と積分時間の最適化</a><span class="mz-toc-page">5</span></li><li class="mz-toc-l2" data-slide="5" style="margin-left:0em"><a href="#6">測定系</a><span class="mz-toc-page">6</span></li><li class="mz-toc-l2" data-slide="6" style="margin-left:0em"><a href="#7">結果 1: 条件別の読み出し忠実度</a><span class="mz-toc-page">7</span></li><li class="mz-toc-l2" data-slide="7" style="margin-left:0em"><a href="#8">結果 2: 忠実度の積分時間依存性</a><span class="mz-toc-page">8</span></li><li class="mz-toc-l2" data-slide="8" style="margin-left:0em"><a href="#9">考察</a><span class="mz-toc-page">9</span></li><li class="mz-toc-l2" data-slide="9" style="margin-left:0em"><a href="#10">元論文の Fig. 3 と、本測定の対応</a><span class="mz-toc-page">10</span></li><li class="mz-toc-l2" data-slide="10" style="margin-left:0em"><a href="#11">まとめ</a><span class="mz-toc-page">11</span></li></ol></nav>
+<div class="pane pane-main" data-pane="main" style="grid-area:main;display:flex;flex-direction:column;justify-content:center"><nav class="mz-toc" data-current="1"><ol><li class="mz-toc-l2" data-slide="2" style="margin-left:0em"><a href="#3">背景: 分散読み出し</a><span class="mz-toc-page">3</span></li><li class="mz-toc-l2" data-slide="3" style="margin-left:0em"><a href="#4">課題: 前回までの測定</a><span class="mz-toc-page">4</span></li><li class="mz-toc-l2" data-slide="4" style="margin-left:0em"><a href="#5">手法: JPA 導入と積分時間の最適化</a><span class="mz-toc-page">5</span></li><li class="mz-toc-l2" data-slide="5" style="margin-left:0em"><a href="#6">測定系</a><span class="mz-toc-page">6</span></li><li class="mz-toc-l2" data-slide="6" style="margin-left:0em"><a href="#7">結果 1: 条件別の読み出し忠実度</a><span class="mz-toc-page">7</span></li><li class="mz-toc-l2" data-slide="7" style="margin-left:0em"><a href="#8">結果 2: 忠実度の積分時間依存性</a><span class="mz-toc-page">8</span></li><li class="mz-toc-l2" data-slide="8" style="margin-left:0em"><a href="#9">考察</a><span class="mz-toc-page">9</span></li><li class="mz-toc-l2" data-slide="9" style="margin-left:0em"><a href="#10">元論文の Fig. 3 と、本測定の対応</a><span class="mz-toc-page">10</span></li><li class="mz-toc-l2" data-slide="10" style="margin-left:0em"><a href="#11">参考文献</a><span class="mz-toc-page">11</span></li><li class="mz-toc-l2" data-slide="11" style="margin-left:0em"><a href="#12">まとめ</a><span class="mz-toc-page">12</span></li></ol></nav>
 <p><em>所要 15 分 + 質疑 — 各行はそのスライドへのリンク</em></p>
 </div>
 </div>
@@ -22,7 +22,7 @@
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><h2>背景: 分散読み出し</h2>
 </div>
 <div class="pane pane-main" data-pane="main" style="grid-area:main"><ul>
-<li>量子ビットと共振器を<strong>分散結合</strong>させると、量子ビットの状態に応じて共振周波数が <math><mi>χ</mi><mo>=</mo><msup><mi>g</mi><mn>2</mn></msup><mo lspace="0" rspace="0">/</mo><mrow><mspace/><mi mathvariant="normal">Δ</mi></mrow></math> だけシフトする</li>
+<li>量子ビットと共振器を<strong>分散結合</strong>させると、量子ビットの状態に応じて共振周波数が <math><mi>χ</mi><mo>=</mo><msup><mi>g</mi><mn>2</mn></msup><mo lspace="0" rspace="0">/</mo><mrow><mspace/><mi mathvariant="normal">Δ</mi></mrow></math> だけシフトする<span class="mz-cite">[<a href="#11">山田+24</a>]</span></li>
 <li>このシフトを <em>マイクロ波の位相変化</em> として読み取る</li>
 <li>読み出しの誤りは、そのまま<strong>誤り訂正の閾値</strong>に効いてくる</li>
 </ul>
@@ -57,7 +57,7 @@
 <p>「読み出しを速くしたければ、まず初段の雑音を下げよ」 — 教科書の通りの結論に戻ってきた</p>
 </blockquote>
 </div>
-<div class="pane pane-ref" data-pane="ref" style="grid-area:ref;text-align:right"><p><em>参考: 先行研究では JPA 導入により SNR が 5–10 倍改善</em></p>
+<div class="pane pane-ref" data-pane="ref" style="grid-area:ref;text-align:right"><p><em>参考: 先行研究では JPA 導入により SNR が 5–10 倍改善<span class="mz-cite">[<a href="#11">Researcher+25</a>]</span></em></p>
 </div>
 </div>
 </section>
@@ -66,8 +66,8 @@
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><h2>手法: JPA 導入と積分時間の最適化</h2>
 </div>
 <div class="pane pane-main" data-pane="main" style="grid-area:main"><ul>
-<li>初段に <strong>JPA</strong>(ジョセフソン・パラメトリック増幅器)を挿入し、量子限界近くの雑音温度を狙う</li>
-<li>積分時間 <math><mi>τ</mi></math> は長いほど SNR が稼げるが、<math><msub><mi>T</mi><mn>1</mn></msub></math> 緩和による<strong>状態反転</strong>と競合する</li>
+<li>初段に <strong>JPA</strong>(ジョセフソン・パラメトリック増幅器)を挿入し、量子限界近くの雑音温度を狙う<span class="mz-cite">[<a href="#11">Researcher+25</a>]</span></li>
+<li>積分時間 <math><mi>τ</mi></math> は長いほど SNR が稼げるが、<math><msub><mi>T</mi><mn>1</mn></msub></math> 緩和による<strong>状態反転</strong>と競合する<span class="mz-cite">[<a href="#11">山田+24</a>]</span></li>
 <li>両者のトレードオフから <em>最適積分時間</em> 480 ns を設計</li>
 </ul>
 </div>
@@ -186,7 +186,7 @@
 </ul>
 </li>
 <li>JPA のポンプ強度を下げると飽和は避けられるが利得も落ちる — <em>利得 15 dB 前後が妥協点</em></li>
-<li>次の一手は <strong>TWPA</strong>(進行波型)への置き換え: 飽和点が高く、帯域も広い</li>
+<li>次の一手は <strong>TWPA</strong>(進行波型)への置き換え: 飽和点が高く、帯域も広い<span class="mz-cite">[<a href="#11">Fifth26</a>]</span></li>
 </ul>
 <blockquote>
 <p>忠実度 99% は「ゴール」ではなく、誤り訂正実験の「入場券」である</p>
@@ -222,6 +222,17 @@
 </aside>
 </section>
 <section class="slide" data-index="10">
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:1fr 4fr;grid-template-areas:"head" "refs"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><h2>参考文献</h2>
+</div>
+<div class="pane pane-refs" data-pane="refs" style="grid-area:refs"><ul class="mz-bib"><li id="mz-bib-twpa2026"><span class="mz-bib-mark">[Fifth26]</span><span class="mz-bib-entry">Fifth. <em>Travelling-wave parametric amplifiers in practice</em>. J. Cryogenic Electronics, 2026.</span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#9">9</a></span></li><li id="mz-bib-jpa2025"><span class="mz-bib-mark">[Researcher+25]</span><span class="mz-bib-entry">Researcher, Coauthor, Third et al. <em>Near-quantum-limited amplification for qubit readout</em>. Proc. Quantum Measurement Workshop, 2025. <a href="https://arxiv.org/abs/2601.00317">arXiv:2601.00317</a></span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#4">4</a>, <a href="#5">5</a></span></li><li id="mz-bib-dispersive2024"><span class="mz-bib-mark">[山田+24]</span><span class="mz-bib-entry">山田, 鈴木. <em>分散読み出しの基礎と最適化</em>. 応用物理, 2024.</span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#3">3</a>, <a href="#5">5</a></span></li></ul>
+<p><span class="small"><em>本文の [著者+年] をたどるとここに来る。各項目の ↩ は引用したスライド番号。</em></span></p>
+</div>
+</div>
+<aside class="notes"><p>前スライドの脚注とは別の道具。図の出典のようにそのスライドで完結するものは脚注、本文で何度も引く文献はここ。JPA の文献は 4 枚目と 5 枚目の両方から引いているので ↩ が二つ並ぶ</p>
+</aside>
+</section>
+<section class="slide" data-index="11">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:3fr 1fr;grid-template-areas:"main" "foot"'>
 <div class="pane pane-main" data-pane="main" style="grid-area:main;text-align:center;display:flex;flex-direction:column;justify-content:center"><h2>まとめ</h2>
 <p>JPA 導入と積分時間最適化により</p>

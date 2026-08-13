@@ -23,7 +23,11 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   the slide exactly as it was written and says which slide it is on, citing
   with no list anywhere warns, and a deck with no `bibliography:` leaves
   `[@anything]` as the text somebody typed. `--mz-bib-size` sets how large the
-  list is. See `examples/04-components.md`, slides 16 and 17.
+  list is. See `examples/04-components.md`, slides 16 and 17, and
+  `examples/seminar.md` — the Japanese research talk now cites three papers
+  from three slides and lists them on slide 11, with the quoted figure's
+  source left in the footnote where it belongs, which is the two halves of
+  the question side by side.
 - **Cutting a release is one command: `./scripts/release.sh <version>`.** It
   writes the version into the five files that carry it — the root `Cargo.toml`,
   `Cargo.lock`, `editors/vscode/package.json`, and the status sentence in both

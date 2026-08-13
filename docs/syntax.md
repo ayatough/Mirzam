@@ -1014,6 +1014,12 @@ something on paper where there is nothing to click.
 
 A block with nothing to list renders as nothing, the way an empty `toc` does.
 
+[`examples/seminar.md`](../examples/seminar.md) shows both halves of the
+question in one talk: the quoted figure's source stays in a footnote on the
+slide that shows the figure, and the papers the argument leans on are cited
+with `[@key]` from three different slides and listed at the back. Its `.bib`
+carries a Japanese-authored entry, which is where `[山田+24]` comes from.
+
 ### What the mark says
 
 | `citation-style:` | Mark | Listed in |
