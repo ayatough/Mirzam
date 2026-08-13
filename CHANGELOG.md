@@ -7,6 +7,10 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.5.0] - 2026-08-13
+
 ### Added
 - **Code blocks are syntax highlighted.** A fence that names a language comes
   out coloured — 36 of them, Rust, Python, JavaScript, TypeScript, Go, C, C++,
