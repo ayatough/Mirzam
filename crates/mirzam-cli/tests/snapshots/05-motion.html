@@ -27,12 +27,12 @@ curve instead of computing one. Press <code>→</code> twice.</p>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Entrances</span></p>
 <h2 class="m-title"><span class="mz-split-item">O</span><span class="mz-split-item">n</span><span class="mz-split-item">e</span><span class="mz-split-item"> </span><span class="mz-split-item">l</span><span class="mz-split-item">i</span><span class="mz-split-item">n</span><span class="mz-split-item">e</span><span class="mz-split-item">,</span><span class="mz-split-item"> </span><span class="mz-split-item">o</span><span class="mz-split-item">n</span><span class="mz-split-item">e</span><span class="mz-split-item"> </span><span class="mz-split-item">m</span><span class="mz-split-item">o</span><span class="mz-split-item">v</span><span class="mz-split-item">e</span><span class="mz-split-item">m</span><span class="mz-split-item">e</span><span class="mz-split-item">n</span><span class="mz-split-item">t</span></h2>
 </div>
-<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">```anim
-[enter]   .m-title : chars fade-in 500ms stagger=25ms
-[click 1] .m-a     : slide-in 400ms dir=up
-[click 2] .m-b     : wipe-in 500ms dir=right
-[click 3] .m-c     : zoom-in 400ms ease=out-back
-```
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown"><span class="tok-keyword">```anim</span>
+<span class="tok-keyword">[enter]   .m-title : chars fade-in 500ms stagger=25ms</span>
+<span class="tok-keyword">[click 1] .m-a     : slide-in 400ms dir=up</span>
+<span class="tok-keyword">[click 2] .m-b     : wipe-in 500ms dir=right</span>
+<span class="tok-keyword">[click 3] .m-c     : zoom-in 400ms ease=out-back</span>
+<span class="tok-keyword">```</span>
 </code></pre>
 <p><code>→</code> plays the next one.</p>
 </div>
@@ -54,8 +54,8 @@ curve instead of computing one. Press <code>→</code> twice.</p>
 </div>
 <div class="pane pane-note" data-pane="note" style="grid-area:note;display:flex;flex-direction:column;justify-content:center"><p>Every mark already has an id — and the id names the bar <em>and</em> its value
 label, as one group — so a bar rises with its number on top:</p>
-<pre><code class="language-markdown">[click 1] #rev-0-0 : wipe-in dir=up
-[click 1] #rev-1-0 : wipe-in dir=up delay=80ms
+<pre><code class="language-markdown"><span class="tok-string">[click 1]</span> <span class="tok-function">#rev-0-0 : wipe-in dir=up</span>
+<span class="tok-string">[click 1]</span> <span class="tok-function">#rev-1-0 : wipe-in dir=up delay=80ms</span>
 </code></pre>
 <p><span class="m-punch">Growth is broad, not one region carrying the quarter.</span></p>
 </div>
@@ -68,8 +68,8 @@ label, as one group — so a bar rises with its number on top:</p>
 <h2>A diagram that draws itself</h2>
 </div>
 <div class="pane pane-text" data-pane="text" style="grid-area:text;display:flex;flex-direction:column;justify-content:center"><p>Shapes carry ids, and <code>draw</code> animates a stroke from nothing to its full length.</p>
-<pre><code class="language-markdown">[click 1] #ingest : pop 350ms
-[click 2] #a1     : draw 500ms
+<pre><code class="language-markdown"><span class="tok-string">[click 1]</span> <span class="tok-function">#ingest : pop 350ms</span>
+<span class="tok-string">[click 2]</span> <span class="tok-function">#a1     : draw 500ms</span>
 </code></pre>
 <p><span class="m-cap small">Each box lands, then the arrow reaches for the next one.</span></p>
 </div>
@@ -126,8 +126,8 @@ label, as one group — so a bar rises with its number on top:</p>
 </div>
 <div class="pane pane-body" data-pane="body" style="grid-area:body;display:flex;flex-direction:column;justify-content:center"><p>The deck turns pages with <code>transition: slide-left</code>. A slide overrides its half
 of that with an ordinary whole-slide track — this one wipes in and irises out:</p>
-<pre><code class="language-markdown">[enter] slide : wipe-in 450ms dir=right
-[exit]  slide : iris-out 450ms
+<pre><code class="language-markdown"><span class="tok-string">[enter]</span> slide : wipe-in 450ms dir=right
+<span class="tok-string">[exit]</span>  slide : iris-out 450ms
 </code></pre>
 <p><code>none</code>, <code>fade</code>, <code>slide-*</code>, <code>wipe-*</code>, <code>zoom</code> and <code>iris</code> are the deck-wide names.</p>
 </div>

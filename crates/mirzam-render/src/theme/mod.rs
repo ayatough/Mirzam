@@ -734,6 +734,12 @@ mod contrast_tests {
         "danger-bg",
         "danger-fg",
         "danger-border",
+        "code-keyword",
+        "code-string",
+        "code-comment",
+        "code-function",
+        "code-number",
+        "code-operator",
     ];
 
     /// Rendered as text directly against `--mz-slide-bg` (h1/h2/h3, links,
@@ -758,6 +764,22 @@ mod contrast_tests {
         ("fg", "surface"),
         ("muted", "surface"),
         ("danger-fg", "danger-bg"),
+    ];
+
+    /// Highlighted code is text, and it is drawn on `--mz-surface` like the
+    /// rest of a `pre` block — so every token kind is held to the 4.5:1 body
+    /// threshold there, not to the looser one a chart mark gets. Without this
+    /// a theme could pick a pretty comment grey that vanishes into its own
+    /// code background, which is the exact failure a highlighter invites:
+    /// the colours that look best in an editor at arm's length are the ones
+    /// that disappear from the back of a room.
+    const CODE_TOKENS: &[&str] = &[
+        "code-keyword",
+        "code-string",
+        "code-comment",
+        "code-function",
+        "code-number",
+        "code-operator",
     ];
 
     /// Collects every failing pair rather than stopping at the first, so a
@@ -786,6 +808,17 @@ mod contrast_tests {
                 failures.push(format!(
                     "{theme}/{mode}: --mz-{token} ({fg}) on --mz-slide-bg ({bg}) is only \
                      {ratio:.2}:1, need >= 3.0:1 for chart marks"
+                ));
+            }
+        }
+        let surface = &tokens["surface"];
+        for token in CODE_TOKENS {
+            let fg = &tokens[*token];
+            let ratio = contrast_ratio(fg, surface);
+            if ratio < 4.5 {
+                failures.push(format!(
+                    "{theme}/{mode}: --mz-{token} ({fg}) on --mz-surface ({surface}) is only \
+                     {ratio:.2}:1, need >= 4.5:1 for code"
                 ));
             }
         }

@@ -117,6 +117,16 @@ const MARKS: &[Mark] = &[
         shown_as: "[a link](https://example.com)",
     },
     Mark {
+        // Highlighting is not an inline mark, but it fails the same three
+        // ways: a language the table forgot renders plain, a reader who
+        // cannot find the list does not know which languages work, and a deck
+        // with no coloured code shows nobody what it looks like.
+        source: "```rust\nfn main() {}\n```\n",
+        html: r#"<span class="tok-keyword">fn</span>"#,
+        documented_as: "36 languages",
+        shown_as: "```python",
+    },
+    Mark {
         source: "a claim[@vaswani2017]",
         html: r#"<span class="mz-cite">[1]</span>"#,
         documented_as: "`[@key]`",

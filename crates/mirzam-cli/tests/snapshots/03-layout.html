@@ -178,7 +178,7 @@ When it is not, choose the break yourself instead of letting the box choose it.<
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Rule 8</span></p>
 <h2>Let the checker find what your eye misses</h2>
 </div>
-<div class="pane pane-body" data-pane="body" style="grid-area:body;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-bash">node scripts/check-layout.mjs --build examples/03-layout.md
+<div class="pane pane-body" data-pane="body" style="grid-area:body;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-bash">node scripts/check<span class="tok-operator">-</span>layout<span class="tok-operator">.</span>mjs <span class="tok-operator">-</span><span class="tok-operator">-</span>build examples/<span class="tok-number">03</span><span class="tok-operator">-</span>layout<span class="tok-operator">.</span>md
 </code></pre>
 <p>It renders every slide and reports what HTML snapshots cannot see:</p>
 <ul>
@@ -195,9 +195,9 @@ When it is not, choose the break yourself instead of letting the box choose it.<
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Rule 9</span></p>
 <h2>Draw a shape once, not once per slide</h2>
 </div>
-<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-yaml">masters: masters/cookbook.md
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-yaml"><span class="tok-function">masters:</span> masters/cookbook.md
 </code></pre>
-<pre><code class="language-markdown">## contrast
+<pre><code class="language-markdown"><span class="tok-function">## contrast</span>
 
 +--------------+-------------+
 |  head                      |
@@ -205,7 +205,7 @@ When it is not, choose the break yourself instead of letting the box choose it.<
 |  bad         |  good       |
 +--------------+-------------+
 </code></pre>
-<pre><code class="language-markdown">&lt;!-- layout: contrast --&gt;
+<pre><code class="language-markdown"><span class="tok-comment">&lt;!-- layout: contrast --&gt;</span>
 </code></pre>
 </div>
 <div class="pane pane-out" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><p>Rules 2 and 6 draw no grid at all: both name <code>contrast</code>, which lives in

@@ -201,24 +201,27 @@ mode. Every class here is a theme token.
 :::
 
 ::: pane src {.card valign=middle}
-```markdown
+````markdown
 > Somebody else's voice.
 
 <div class="box">
 An aside that is not a quotation.
 </div>
-```
 
-A horizontal rule is `***`. Three hyphens would end the slide — the one place a
-deck reads Markdown differently from a document.
+```rust
+fn main() { ... }
+```
+````
+
+Name the language after the fence and the block is coloured. A horizontal rule
+is `***` — three hyphens would end the slide.
 :::
 
 ::: pane out {valign=middle}
 > A quotation gets an accent rule and quieter text.
 
 <div class="box">
-<code>.box</code> is in the renderer, not a theme, so a deck that picked no
-stylesheet still has somewhere to put a caveat.
+<code>.box</code> is in the renderer, not a theme.
 </div>
 
 ```rust
@@ -227,7 +230,12 @@ fn main() {
 }
 ```
 
-[The language is recorded but not coloured yet.]{.small}
+```python
+def greet(name):  # 36 languages
+    return f"hello {name}"
+```
+
+[Colour comes from the theme, not the highlighter.]{.small}
 :::
 
 ---

@@ -28,7 +28,7 @@ This file runs long; jump straight to the one you need.
 |---|---|
 | [Deck and slides](#deck-and-slides) | Frontmatter, how a document splits into slides, speaker notes |
 | [Layout](#layout) | The `pane` grid and `::: pane` — see also the dedicated [layout guide](layout.md) |
-| [Inline syntax](#inline-syntax) | Plain CommonMark on a slide, headings, `{#id .class}` attributes, the marks a slide reaches for (`==highlight==`, term lists, …), variables, transclusion |
+| [Inline syntax](#inline-syntax) | Plain CommonMark on a slide, headings, `{#id .class}` attributes, the marks a slide reaches for (`==highlight==`, term lists, …), syntax-highlighted code, variables, transclusion |
 | [Charts](#charts) | The `chart` block: types, CSV data, per-mark ids for `connect` |
 | [Shapes](#shapes) | The `shape` block — **slide top level only**, drawn on a layer above the panes |
 | [Connectors](#connectors) | The `connect` block: arrows between text anchors, shapes and chart marks |
@@ -442,7 +442,7 @@ and both strikethrough and task lists shipped working and undocumented.
 | `***` or `___` | a horizontal rule — **not** `---`, which breaks the slide |
 | `[text](url)`, bare URLs | links, kept clickable, printed beside the words in the PDF |
 | `| a | b |` | tables; `---` left, `---:` right, `:---:` centred |
-| ` ``` ` fences and indents | code blocks. The language is recorded but not yet coloured — syntax highlighting is not implemented |
+| ` ``` ` fences and indents | code blocks, [syntax highlighted](#syntax-highlighting) when the fence names a language |
 | `[^key]` | footnotes, landing on the slide that cites them |
 | `[@key]` | a reference from the deck's bibliography, listed at the back |
 | `<!-- -->` | comments; `<!-- note: -->` is a speaker note |
@@ -451,6 +451,58 @@ and both strikethrough and task lists shipped working and undocumented.
 `crates/mirzam-cli/tests/markup_coverage.rs` holds this table, the renderer and
 `examples/02-writing.md` to each other: a mark that renders but is missing from
 either fails the build.
+
+### Syntax highlighting
+
+A fence that names a language is coloured:
+
+````markdown
+```rust
+fn main() {
+    println!("hello");
+}
+```
+````
+
+**36 languages**, via [synoptic](https://crates.io/crates/synoptic) — Rust,
+Python, JavaScript, TypeScript, Go, C, C++, C#, Java, Kotlin, Swift, Ruby,
+PHP, Haskell, Scala, Lua, R, SQL, HTML, CSS, XML, JSON, YAML, TOML, Markdown,
+shell and diff among them. Common aliases work: `py`, `js`, `ts`, `rs`,
+`c++`, `golang`, `bash`, `zsh`, `yml`, `latex`.
+
+**A language nobody recognises stays a plain block**, exactly as it rendered
+before highlighting existed — and so does a fence with no language at all, and
+so do Mirzam's own block kinds (`chart`, `shape`, `pane`, …) when they appear
+somewhere that leaves them as code. Nothing to switch off: an unhighlighted
+block is not a degraded one.
+
+Highlighting happens **at build time**. The deck carries `<span>` runs and no
+highlighter, so it stays one self-contained file with no client-side
+JavaScript, and the PDF export — which never runs a script — is coloured too.
+
+**The colours are the deck's, not the highlighter's.** Six theme tokens carry
+them, so code in a `nord` deck reads Nord and code follows the deck through
+`D`:
+
+| Token | Colours |
+|---|---|
+| `--mz-code-keyword` | reserved words, macros, tags, attributes |
+| `--mz-code-string` | strings, characters, links |
+| `--mz-code-comment` | comments, block quotes |
+| `--mz-code-function` | calls, types, namespaces, keys, headings |
+| `--mz-code-number` | numbers, booleans, other literal constants |
+| `--mz-code-operator` | operators, punctuation, list and table markup |
+
+Every built-in theme sets all six, in both modes, and the contrast test holds
+them to 4.5:1 against the code block's background. Override one in a deck's
+own stylesheet like any other token:
+
+```css
+:root { --mz-code-comment: #7a8b9a; }
+```
+
+A deck whose stylesheet sets none of them still gets coloured code: each token
+falls back to a colour the theme already defines.
 
 ### Attributes
 

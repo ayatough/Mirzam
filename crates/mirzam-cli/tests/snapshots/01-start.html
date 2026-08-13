@@ -13,13 +13,13 @@ commands. Six slides, and nothing on the way needs a mouse.</p>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Step 1</span></p>
 <h2>Five lines are a deck</h2>
 </div>
-<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown"># What changed this week
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown"><span class="tok-function"># What changed this week</span>
 
 ---
 
-## Latency
+<span class="tok-function">## Latency</span>
 
-p95 dropped in **every region**.
+p95 dropped in <span class="tok-operator">**every region**</span>.
 </code></pre>
 </div>
 <div class="pane pane-out" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><ul>
@@ -48,10 +48,10 @@ First line of the next one.
 </div>
 <div class="pane pane-auto" data-pane="auto" style="grid-area:auto;display:flex;flex-direction:column;justify-content:center"><p>A document nobody wrote for slides — a README, a set of notes — breaks at its
 own headings instead:</p>
-<pre><code class="language-bash">mirzam build notes.md --split h2
+<pre><code class="language-bash">mirzam build notes<span class="tok-operator">.</span>md <span class="tok-operator">-</span><span class="tok-operator">-</span>split h2
 </code></pre>
 <p>or, for a file you own, in frontmatter:</p>
-<pre><code class="language-yaml">split: h2
+<pre><code class="language-yaml"><span class="tok-function">split:</span> h2
 </code></pre>
 <p><code>---</code> still breaks a page either way.</p>
 </div>
@@ -63,10 +63,10 @@ own headings instead:</p>
 <h2>Frontmatter, if you want it</h2>
 </div>
 <div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-yaml">---
-title: Weekly review
-author: Your Name
-aspect: &quot;16:9&quot;      # or &quot;4:3&quot;
-theme: mirzam
+<span class="tok-function">title:</span> Weekly review
+<span class="tok-function">author:</span> Your Name
+<span class="tok-function">aspect:</span> <span class="tok-string">&quot;16:9&quot;</span>      <span class="tok-comment"># or &quot;4:3&quot;</span>
+<span class="tok-function">theme:</span> mirzam
 ---
 </code></pre>
 </div>
@@ -84,11 +84,11 @@ theme: mirzam
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Step 4</span></p>
 <h2>Three commands</h2>
 </div>
-<div class="pane pane-cmds card" data-pane="cmds" style="grid-area:cmds;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-bash">mirzam serve deck.md
+<div class="pane pane-cmds card" data-pane="cmds" style="grid-area:cmds;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-bash">mirzam serve deck<span class="tok-operator">.</span>md
 
-mirzam build deck.md -o out
+mirzam build deck<span class="tok-operator">.</span>md <span class="tok-operator">-</span>o out
 
-mirzam export pdf deck.md -o deck.pdf
+mirzam <span class="tok-keyword">export</span> pdf deck<span class="tok-operator">.</span>md <span class="tok-operator">-</span>o deck<span class="tok-operator">.</span>pdf
 </code></pre>
 </div>
 <div class="pane pane-notes" data-pane="notes" style="grid-area:notes;display:flex;flex-direction:column;justify-content:center"><ul>
@@ -144,7 +144,7 @@ revealed</li>
 </table>
 </div>
 <div class="pane pane-next" data-pane="next" style="grid-area:next;display:flex;flex-direction:column;justify-content:center"><p>Speaker notes are HTML comments, so they stay invisible everywhere else:</p>
-<pre><code class="language-markdown">&lt;!-- note: Skip the derivation if time is short. --&gt;
+<pre><code class="language-markdown"><span class="tok-comment">&lt;!-- note: Skip the derivation if time is short. --&gt;</span>
 </code></pre>
 <p>On a phone: swipe to turn the page, swipe up for the notes.</p>
 <p><span class="small"><strong>Next:</strong> <code>02-writing.md</code> — what plain Markdown looks like on a slide.</span></p>

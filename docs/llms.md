@@ -160,6 +160,14 @@ All of CommonMark, plus GFM tables, strikethrough and task lists. Beyond that:
 | `[@key]` | a reference from `bibliography:`, listed by a `bibliography` block |
 | `![[file.md]]` | transclusion |
 | `***` | a horizontal rule |
+| ` ```rust ` | a code block, syntax highlighted at build time |
+
+Fenced code is coloured for 36 languages (`rust`, `python`, `js`, `ts`, `go`,
+`c`, `cpp`, `java`, `sh`, `sql`, `html`, `css`, `json`, `yaml`, `toml`, `md`,
+`diff`, … and the usual aliases). Name the language or the block stays plain —
+which is also what `chart`, `shape` and the rest stay when they land somewhere
+that leaves them as code. Colours are the theme's `--mz-code-*` tokens, so do
+not write a palette into the deck.
 
 ### Attributes
 

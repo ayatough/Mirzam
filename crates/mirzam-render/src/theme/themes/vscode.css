@@ -15,6 +15,12 @@
   --mz-danger-bg: #fdeaea;
   --mz-danger-fg: #a31515;
   --mz-danger-border: #cd3131;
+  --mz-code-keyword: #0000ff;
+  --mz-code-string: #a31515;
+  --mz-code-comment: #008000;
+  --mz-code-function: #795e26;
+  --mz-code-number: #08794f;
+  --mz-code-operator: #000000;
 }
 @media (prefers-color-scheme: dark) {
   :where([data-theme="vscode"]:not([data-mode="light"]):not([data-mode="light"] *)) {
@@ -34,6 +40,12 @@
     --mz-danger-bg: #3a2323;
     --mz-danger-fg: #f48771;
     --mz-danger-border: #cd3131;
+    --mz-code-keyword: #569cd6;
+    --mz-code-string: #ce9178;
+    --mz-code-comment: #6a9955;
+    --mz-code-function: #dcdcaa;
+    --mz-code-number: #b5cea8;
+    --mz-code-operator: #d4d4d4;
   }
 }
 :where([data-mode="dark"] [data-theme="vscode"]:not([data-mode="light"]):not([data-mode="light"] *)),
@@ -54,4 +66,10 @@
   --mz-danger-bg: #3a2323;
   --mz-danger-fg: #f48771;
   --mz-danger-border: #cd3131;
+  --mz-code-keyword: #569cd6;
+  --mz-code-string: #ce9178;
+  --mz-code-comment: #6a9955;
+  --mz-code-function: #dcdcaa;
+  --mz-code-number: #b5cea8;
+  --mz-code-operator: #d4d4d4;
 }

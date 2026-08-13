@@ -19,5 +19,10 @@ mirzam-annot.workspace = true
 mirzam-tmath.workspace = true
 comrak = { version = "0.54", default-features = false, features = ["shortcodes"] }
 regex = "1"
+# Syntax highlighting at build time. Pure Rust, builds for wasm32, and carries
+# its whole 36-grammar table for +36 KB gzipped in the browser bundle — a third
+# of what the emoji table already costs, and a sixth of syntect trimmed to
+# seven grammars. See docs/workstreams.md#w20.
+synoptic = "2.2"
 base64 = "0.22"
 math-core = "0.7"

@@ -8,6 +8,27 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- **Code blocks are syntax highlighted.** A fence that names a language comes
+  out coloured — 36 of them, Rust, Python, JavaScript, TypeScript, Go, C, C++,
+  Java, shell, SQL, HTML, CSS, JSON, YAML, TOML, Markdown and diff among them,
+  with the usual aliases (`py`, `js`, `rs`, `c++`, `bash`, `yml`). Uncoloured
+  code was the most visible thing separating a Mirzam deck from the tools a
+  developer talk is usually written in, and it is gone.
+
+  The colouring happens while the deck is built, so a deck is still one file
+  with no JavaScript doing the work, and the PDF export is coloured too. **The
+  colours are the theme's, not a highlighter's**: six new `--mz-code-*` tokens
+  carry them, so code in a `nord` deck reads Nord, code follows the deck when
+  a reader presses `D`, and every one of them is held to the same contrast
+  floor as body text in both light and dark. Override any of them in a deck's
+  own stylesheet like any other token.
+
+  **A language nobody recognises is still a plain block** — as is a fence with
+  no language, and one carrying `chart`, `shape` or another Mirzam block that
+  landed somewhere it renders as code. Nothing to turn on, nothing to turn
+  off, and existing decks change in exactly one way: their code has colour in
+  it. The browser build grows 36 KB gzipped, a third of what the emoji table
+  already costs.
 - **`mirzam check --format json`, so something other than a person can read
   the answer.** The checker already found the failures a diff cannot show — a
   clipped heading, an arrow pointing at an id that was renamed, a `shape` block

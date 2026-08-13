@@ -390,6 +390,24 @@ pre {
    what both of those already act on. */
 .pane pre { overflow: visible; }
 code { font-family: 'SF Mono', Consolas, Menlo, monospace; }
+/* Syntax highlighting, coloured at build time. The classes come from
+   `code.rs`; the colours come from the deck's palette and never from the
+   highlighter, which is what keeps Nord code reading as Nord and keeps the
+   contrast test able to say something true about a code block.
+
+   Each token is read with a fallback drawn from the palette a theme already
+   defines, so a deck with a custom stylesheet that names none of the
+   `--mz-code-*` tokens still gets code in its own colours rather than in
+   somebody else's scheme.
+
+   Colour only — no weight and no italic. A monospace run that changes weight
+   changes width, and a code block on a slide has nowhere to reflow to. */
+.tok-keyword { color: var(--mz-code-keyword, var(--mz-accent1)); }
+.tok-string { color: var(--mz-code-string, var(--mz-chart3)); }
+.tok-comment { color: var(--mz-code-comment, var(--mz-muted)); }
+.tok-function { color: var(--mz-code-function, var(--mz-accent2)); }
+.tok-number { color: var(--mz-code-number, var(--mz-chart5)); }
+.tok-operator { color: var(--mz-code-operator, var(--mz-fg)); }
 p code, li code { background: var(--mz-surface); border-radius: 4px; padding: .1em .35em; font-size: .9em; }
 blockquote { border-left: 4px solid var(--mz-accent2); margin: .5em 0; padding: .1em 1em; color: var(--mz-muted); }
 

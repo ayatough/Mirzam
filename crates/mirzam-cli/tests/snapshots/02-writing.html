@@ -14,11 +14,11 @@ the handful of additions CommonMark does not have.</p>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Contents</span></p>
 <h2>A contents page that writes itself</h2>
 </div>
-<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">```toc
-from: 2
-depth: 2
-current: true
-```
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown"><span class="tok-keyword">```toc</span>
+<span class="tok-keyword">from: 2</span>
+<span class="tok-keyword">depth: 2</span>
+<span class="tok-keyword">current: true</span>
+<span class="tok-keyword">```</span>
 </code></pre>
 <ul>
 <li><code>from</code> skips the deck's own title</li>
@@ -34,11 +34,11 @@ current: true
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Structure</span></p>
 <h2>Headings</h2>
 </div>
-<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown"># One, the title of the deck
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown"><span class="tok-function"># One, the title of the deck</span>
 
-## Two, a slide's own heading
+<span class="tok-function">## Two, a slide's own heading</span>
 
-### Three, for the detail under it
+<span class="tok-function">### Three, for the detail under it</span>
 </code></pre>
 <p>Two levels are usually enough on a slide. Three is a sign it wants to be two
 slides.</p>
@@ -55,11 +55,11 @@ not, so wrap the source where your editor likes.</p>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Emphasis</span></p>
 <h2>Marking a phrase</h2>
 </div>
-<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">**bold**  *italic*  `code`
-~~struck~~
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown"><span class="tok-operator">**bold**</span>  <span class="tok-operator">*italic*</span>  <span class="tok-keyword">`code`</span>
+<span class="tok-operator">~~struck~~</span>
 ==highlighted==
 ++underlined++
-[a link](https://example.com)
+<span class="tok-string">[a link]</span>(<span class="tok-string">https://example.com</span>)
 </code></pre>
 <p>Underline is <code>++text++</code>, <strong>not</strong> <code>__text__</code> — CommonMark reads double
 underscores as bold, and the same file has to render on GitHub.</p>
@@ -77,9 +77,9 @@ introduced. <code>inline code</code> for an identifier.</p>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Emphasis</span></p>
 <h2>Colour and size</h2>
 </div>
-<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">[quiet]{.muted}   [loud]{.big}
-[the point]{.accent}
-[careful]{.danger}
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown"><span class="tok-string">[quiet]</span>{.muted}   <span class="tok-string">[loud]</span>{.big}
+<span class="tok-string">[the point]</span>{.accent}
+<span class="tok-string">[careful]</span>{.danger}
 </code></pre>
 <p>There is no way to write a colour literal, on purpose: a hex value picked
 against a white slide is the one thing that cannot follow the deck into dark
@@ -96,27 +96,33 @@ mode. Every class here is a theme token.</p>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Blocks</span></p>
 <h2>Quotes, asides and code</h2>
 </div>
-<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">&gt; Somebody else's voice.
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown"><span class="tok-comment">&gt; Somebody else's voice.</span>
 
 &lt;div class=&quot;box&quot;&gt;
 An aside that is not a quotation.
 &lt;/div&gt;
+
+<span class="tok-keyword">```rust</span>
+<span class="tok-keyword">fn main() { ... }</span>
+<span class="tok-keyword">```</span>
 </code></pre>
-<p>A horizontal rule is <code>***</code>. Three hyphens would end the slide — the one place a
-deck reads Markdown differently from a document.</p>
+<p>Name the language after the fence and the block is coloured. A horizontal rule
+is <code>***</code> — three hyphens would end the slide.</p>
 </div>
 <div class="pane pane-out" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><blockquote>
 <p>A quotation gets an accent rule and quieter text.</p>
 </blockquote>
 <div class="box">
-<code>.box</code> is in the renderer, not a theme, so a deck that picked no
-stylesheet still has somewhere to put a caveat.
+<code>.box</code> is in the renderer, not a theme.
 </div>
-<pre><code class="language-rust">fn main() {
-    println!(&quot;a fence keeps its shape&quot;);
+<pre><code class="language-rust"><span class="tok-keyword">fn</span> <span class="tok-function">main</span>() {
+    <span class="tok-keyword">println!</span>(<span class="tok-string">&quot;a fence keeps its shape&quot;</span>);
 }
 </code></pre>
-<p><span class="small">The language is recorded but not coloured yet.</span></p>
+<pre><code class="language-python"><span class="tok-keyword">def</span> <span class="tok-function">greet</span>(name):  <span class="tok-comment"># 36 languages</span>
+    <span class="tok-keyword">return</span> <span class="tok-string">f&quot;hello {</span>name<span class="tok-string">}&quot;</span>
+</code></pre>
+<p><span class="small">Colour comes from the theme, not the highlighter.</span></p>
 </div>
 </div>
 </section>
@@ -131,8 +137,8 @@ stylesheet still has somewhere to put a caveat.
 1. numbered
 2. and the renderer counts
 
-- [x] done
-- [ ] not
+- <span class="tok-string">[x]</span> done
+- <span class="tok-string">[ ]</span> not
 
 Term
 : What it means.
@@ -246,12 +252,12 @@ over them.</p>
 </div>
 <div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">:tada: or 🎉 — both work
 
-Text with a note[^a]
+Text with a note<span class="tok-string">[^a]</span>
 
-[^a]: The note itself.
+<span class="tok-string">[^a]</span>: The note itself.
 
-&lt;!-- an ordinary comment --&gt;
-&lt;!-- note: what you say here --&gt;
+<span class="tok-comment">&lt;!-- an ordinary comment --&gt;</span>
+<span class="tok-comment">&lt;!-- note: what you say here --&gt;</span>
 </code></pre>
 </div>
 <div class="pane pane-out" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><p>Shipping 🚀 — the shortcode is for keyboards that make the character

@@ -698,7 +698,14 @@ pub fn render_markdown(md: &str) -> String {
     // A bare DOI or arXiv URL in a reference becomes a link without ceremony.
     options.extension.autolink = true;
     options.render.r#unsafe = true;
-    comrak::markdown_to_html(md, &options)
+    // Syntax highlighting runs here rather than in a later pass over the HTML,
+    // because comrak hands the adapter the *raw* fence contents: the tokenizer
+    // sees the code the author wrote, and escaping happens once, on the way
+    // out. A language the table in `code.rs` does not list writes exactly the
+    // bytes comrak would have written on its own.
+    let mut plugins = comrak::options::Plugins::default();
+    plugins.render.codefence_syntax_highlighter = Some(&crate::code::Highlighter);
+    comrak::markdown_to_html_with_plugins(md, &options, &plugins)
 }
 
 pub fn html_escape(s: &str) -> String {

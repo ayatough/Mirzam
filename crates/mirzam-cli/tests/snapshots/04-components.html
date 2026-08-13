@@ -137,7 +137,7 @@
 <h2>Video is a first-class citizen</h2>
 </div>
 <div class="pane pane-desc" data-pane="desc" style="grid-area:desc;display:flex;flex-direction:column;justify-content:center"><p>The image syntax becomes a <code>&lt;video&gt;</code> on the file extension alone:</p>
-<pre><code class="language-markdown">![Demo](media/demo.webm){.autoplay .loop .controls}
+<pre><code class="language-markdown"><span class="tok-string">![Demo]</span>(media/demo.webm){.autoplay .loop .controls}
 </code></pre>
 <ul>
 <li>Flags: <code>.autoplay</code>, <code>.loop</code>, <code>.controls</code>, <code>.muted</code></li>
@@ -159,7 +159,7 @@
 </div>
 <div class="pane pane-desc" data-pane="desc" style="grid-area:desc;display:flex;flex-direction:column;justify-content:center"><p>Animated GIFs stay <code>&lt;img&gt;</code> elements and loop on their own — there is no
 player to configure and no flag to set.</p>
-<pre><code class="language-markdown">![Motion](media/demo.gif){w=90%}
+<pre><code class="language-markdown"><span class="tok-string">![Motion]</span>(media/demo.gif){w=90%}
 </code></pre>
 <p>The PDF export uses the first frame.</p>
 </div>
@@ -174,7 +174,7 @@ player to configure and no flag to set.</p>
 </div>
 <div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">::: pane hero {bg=media/bg/mountains.jpg
                dim=0.35 blur=2 scrim=bottom}
-## Ship the story, not the slide
+<span class="tok-function">## Ship the story, not the slide</span>
 :::
 </code></pre>
 <ul>
@@ -197,7 +197,7 @@ player to configure and no flag to set.</p>
 <div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">::: pane hero {bg-light=art/dawn.webp
                bg-dark=art/night.webp
                text=dark}
-### Both are inlined
+<span class="tok-function">### Both are inlined</span>
 :::
 </code></pre>
 <ul>
@@ -263,7 +263,7 @@ measuring it. <code>#load-0-2</code> is series 0, row 2 — the third node on a 
   n-2, 38, 24
   n-3, 74, 26
 
-rect #load-0-2 : pad=10 step=1
+rect <span class="tok-function">#load-0-2 : pad=10 step=1</span>
 </code></pre>
 </div>
 </div>
@@ -285,7 +285,7 @@ shrank and moved down with it.</p>
   n-2, 38, 24
   n-3, 19, 26
 
-rect #load-0-2 : pad=10 step=1
+rect <span class="tok-function">#load-0-2 : pad=10 step=1</span>
 </code></pre>
 </div>
 </div>
@@ -304,13 +304,13 @@ and arrive somewhere meaningful.</p>
 says it with nothing travelling between them — and it
 <span id="s-edit">survives an edit</span> to the sentence.</p>
 </div>
-<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">Marking both ends [at the same moment]{#s-moment}
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">Marking both ends <span class="tok-string">[at the same moment]</span>{<span class="tok-function">#s-moment}</span>
 
-```annotate
-highlight #s-moment : step=1
-underline #s-colour : step=2
-box       #s-edit   : step=3 pad=4
-```
+<span class="tok-keyword">```annotate</span>
+<span class="tok-keyword">highlight #s-moment : step=1</span>
+<span class="tok-keyword">underline #s-colour : step=2</span>
+<span class="tok-keyword">box       #s-edit   : step=3 pad=4</span>
+<span class="tok-keyword">```</span>
 </code></pre>
 <p><code>highlight</code>, <code>underline</code> and <code>box</code> take an <code>#id</code>
 and nothing else: where the words are is the
@@ -327,11 +327,11 @@ browser's business.</p>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">References</span></p>
 <h2>Cite once, list once</h2>
 </div>
-<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">Attention replaced recurrence[@vaswani2017],
-and the same block pretrains[@devlin2019].
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">Attention replaced recurrence<span class="tok-string">[@vaswani2017]</span>,
+and the same block pretrains<span class="tok-string">[@devlin2019]</span>.
 
 Both are read the way Tufte would
-draw them[@tufte2001].
+draw them<span class="tok-string">[@tufte2001]</span>.
 </code></pre>
 <p>Keys come from <code>refs.bib</code>, named once in
 the frontmatter. <code>[^key]</code> is still there for

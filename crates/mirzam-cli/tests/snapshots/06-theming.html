@@ -51,7 +51,7 @@ and <code>footer:</code> for the line along the bottom of every slide after this
 </table>
 </div>
 <div class="pane pane-how" data-pane="how" style="grid-area:how;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-yaml">---
-theme: nord
+<span class="tok-function">theme:</span> nord
 ---
 </code></pre>
 <ul>
@@ -152,18 +152,18 @@ names a mode, so <code>D</code> flips all five along with the slide around them.
 <h2>Every frontmatter field</h2>
 </div>
 <div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-yaml">---
-title: Quarterly review
-author: Your Name
-theme: mirzam
-mode: dark
-aspect: &quot;16:9&quot;
-css: themes/mirzam.css
-split: h2
-transition: fade 240ms
-fit: shrink
-math: typst
-vars:
-  seats: 8
+<span class="tok-function">title:</span> Quarterly review
+<span class="tok-function">author:</span> Your Name
+<span class="tok-function">theme:</span> mirzam
+<span class="tok-function">mode:</span> dark
+<span class="tok-function">aspect:</span> <span class="tok-string">&quot;16:9&quot;</span>
+<span class="tok-function">css:</span> themes/mirzam.css
+<span class="tok-function">split:</span> h2
+<span class="tok-function">transition:</span> fade <span class="tok-number">240</span>ms
+<span class="tok-function">fit:</span> shrink
+<span class="tok-function">math:</span> typst
+<span class="tok-function">vars:</span>
+<span class="tok-function">  seats:</span> <span class="tok-number">8</span>
 ---
 </code></pre>
 </div>
@@ -184,12 +184,12 @@ vars:
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Reference</span></p>
 <h2>The four that repeat on every slide</h2>
 </div>
-<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-yaml">masters: masters/cookbook.md
-layout: body
-footer: Internal
-slide-number: &quot;{n} / {total}&quot;
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-yaml"><span class="tok-function">masters:</span> masters/cookbook.md
+<span class="tok-function">layout:</span> body
+<span class="tok-function">footer:</span> Internal
+<span class="tok-function">slide-number:</span> <span class="tok-string">&quot;{n} / {total}&quot;</span>
 </code></pre>
-<pre><code class="language-markdown">## body
+<pre><code class="language-markdown"><span class="tok-function">## body</span>
 
 +----------+
 |  head    |
@@ -197,8 +197,8 @@ slide-number: &quot;{n} / {total}&quot;
 |  main    |
 +----------+
 </code></pre>
-<pre><code class="language-markdown">&lt;!-- layout: none --&gt;
-&lt;!-- chrome: none --&gt;
+<pre><code class="language-markdown"><span class="tok-comment">&lt;!-- layout: none --&gt;</span>
+<span class="tok-comment">&lt;!-- chrome: none --&gt;</span>
 </code></pre>
 </div>
 <div class="pane pane-what" data-pane="what" style="grid-area:what;display:flex;flex-direction:column;justify-content:center"><ul>
@@ -218,9 +218,9 @@ under it is the drawing. A mapping written here works for a short set</li>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Per element</span></p>
 <h2>Settings smaller than a deck</h2>
 </div>
-<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown">## Heading {#intro .center}
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown"><span class="tok-function">## Heading {#intro .center}</span>
 
-[a phrase]{#win .u}
+<span class="tok-string">[a phrase]</span>{<span class="tok-function">#win .u}</span>
 
 ::: pane hero {.card valign=middle}
 Content of the pane.
@@ -247,17 +247,17 @@ and the reason the syntax is this quiet.</em></p>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Custom CSS</span></p>
 <h2>Override the tokens, not the layout</h2>
 </div>
-<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-css">:root {
-  --mz-slide-bg: #0d1117;
-  --mz-fg: #e9edf5;
-  --mz-accent1: #5b8cff;
-  --mz-accent2: #2dd4bf;
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-css"><span class="tok-keyword">:root</span> {
+  --mz-slide-bg<span class="tok-keyword">:</span> <span class="tok-number">#0d1117</span>;
+  --mz-fg<span class="tok-keyword">:</span> <span class="tok-number">#e9edf5</span>;
+  --mz-accent<span class="tok-number">1</span><span class="tok-keyword">:</span> <span class="tok-number">#5b8cff</span>;
+  --mz-accent<span class="tok-number">2</span><span class="tok-keyword">:</span> <span class="tok-number">#2dd4bf</span>;
 }
-:root[data-mode=&quot;light&quot;] {
-  --mz-slide-bg: #ffffff;
-  --mz-fg: #17202a;
-  --mz-accent1: #2f5fe0;
-  --mz-accent2: #0f766e;
+<span class="tok-keyword">:root</span>[<span class="tok-keyword">data</span>-mode=<span class="tok-string">&quot;light&quot;</span>] {
+  --mz-slide-bg<span class="tok-keyword">:</span> <span class="tok-number">#ffffff</span>;
+  --mz-fg<span class="tok-keyword">:</span> <span class="tok-number">#17202a</span>;
+  --mz-accent<span class="tok-number">1</span><span class="tok-keyword">:</span> <span class="tok-number">#2f5fe0</span>;
+  --mz-accent<span class="tok-number">2</span><span class="tok-keyword">:</span> <span class="tok-number">#0f766e</span>;
 }
 </code></pre>
 </div>
@@ -275,15 +275,15 @@ deck to one mode. <code>D</code> then changes <code>data-mode</code> and nothing
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Custom CSS</span></p>
 <h2>Margins are tokens too</h2>
 </div>
-<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-css">:root {
-  --mz-grid-pad-y: 56px;
-  --mz-grid-pad-x: 72px;
-  --mz-grid-gap: 28px;
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-css"><span class="tok-keyword">:root</span> {
+  --mz-grid-pad-y<span class="tok-keyword">:</span> <span class="tok-number">56px</span>;
+  --mz-grid-pad-x<span class="tok-keyword">:</span> <span class="tok-number">72px</span>;
+  --mz-grid-gap<span class="tok-keyword">:</span> <span class="tok-number">28px</span>;
 }
-.framed {
-  --mz-pane-border: 1px solid var(--mz-border);
-  --mz-pane-radius: 8px;
-  --mz-pane-pad: 14px 18px;
+<span class="tok-keyword">.framed</span> {
+  --mz-pane-<span class="tok-keyword">border</span><span class="tok-keyword">:</span> <span class="tok-number">1px</span> solid <span class="tok-keyword">var</span>(--mz-<span class="tok-keyword">border</span>);
+  --mz-pane-radius<span class="tok-keyword">:</span> <span class="tok-number">8px</span>;
+  --mz-pane-pad<span class="tok-keyword">:</span> <span class="tok-number">14px</span> <span class="tok-number">18px</span>;
 }
 </code></pre>
 <pre><code class="language-markdown">::: pane fig {.framed}
@@ -307,11 +307,11 @@ stays a choice of colour.</p>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Custom CSS</span></p>
 <h2>Bullets are a choice, not a default</h2>
 </div>
-<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-css">.markers {
-  --mz-bullet: &quot;→  &quot;;
-  --mz-bullet-2: &quot;·  &quot;;
-  --mz-number: upper-roman;
-  --mz-marker: var(--mz-accent2);
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-css"><span class="tok-keyword">.markers</span> {
+  --mz-bullet<span class="tok-keyword">:</span> <span class="tok-string">&quot;→  &quot;</span>;
+  --mz-bullet-<span class="tok-number">2</span><span class="tok-keyword">:</span> <span class="tok-string">&quot;·  &quot;</span>;
+  --mz-number<span class="tok-keyword">:</span> upper-roman;
+  --mz-marker<span class="tok-keyword">:</span> <span class="tok-keyword">var</span>(--mz-accent<span class="tok-number">2</span>);
 }
 </code></pre>
 <p>A quoted string is a marker too — and <strong>carries its own trailing space</strong>, since
@@ -339,12 +339,12 @@ the browser adds none after one.</p>
 <h2>When a slide has too much on it</h2>
 </div>
 <div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-yaml">---
-fit: shrink
+<span class="tok-function">fit:</span> shrink
 ---
 </code></pre>
 <pre><code class="language-markdown">::: pane notes {fit=shrink}
 </code></pre>
-<pre><code class="language-bash">mirzam build long.md --fit shrink
+<pre><code class="language-bash">mirzam build long<span class="tok-operator">.</span>md <span class="tok-operator">-</span><span class="tok-operator">-</span>fit shrink
 </code></pre>
 </div>
 <div class="pane pane-what" data-pane="what" style="grid-area:what;display:flex;flex-direction:column;justify-content:center"><p>Without it, a pane that overflows is <strong>clipped</strong> — the last line simply is not
@@ -364,10 +364,10 @@ cut something.</p>
 <h2>A dialect for formulas</h2>
 </div>
 <div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-yaml">---
-math: typst
+<span class="tok-function">math:</span> typst
 ---
 </code></pre>
-<pre><code class="language-markdown">$x = (-b pm sqrt(b^2 - 4a c))/(2a)$
+<pre><code class="language-markdown"><span class="tok-number">$x = (-b pm sqrt(b^2 - 4a c))/(2a)$</span>
 </code></pre>
 <p>Which renders as:</p>
 <p><math><mi>x</mi><mo>=</mo><mfrac><mrow><mo lspace="0" rspace="0">−</mo><mi>b</mi><mo lspace="0" rspace="0">±</mo><msqrt><mrow><msup><mi>b</mi><mn>2</mn></msup><mo lspace="0" rspace="0">−</mo><mn>4</mn><mi>a</mi><mi>c</mi></mrow></msqrt></mrow><mrow><mn>2</mn><mi>a</mi></mrow></mfrac></math></p>
