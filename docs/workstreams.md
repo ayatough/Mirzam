@@ -74,7 +74,7 @@ there is. The model column follows from that:
 | W5 | Typst-flavoured math | A | Sonnet | — | ✅ |
 | W19 | Structural math editing: tap and place, not type | S | Fable | W5 | withdrawn |
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
-| W20 | Syntax highlighting at build time | B | Opus | — | engine chosen |
+| W20 | Syntax highlighting at build time | B | Opus | — | ✅ |
 | W21 | An authoring contract for agents | B | Opus | — | 1–2 ✅ |
 
 ### What is deferred, and why
@@ -853,7 +853,10 @@ give up.
 
 ## W20 — Syntax highlighting at build time
 
-**Difficulty B · measured, engine chosen; the render pass remains**
+**Difficulty B · landed** — synoptic in the render pass, six `--mz-code-*`
+tokens per theme and mode, contrast-tested at 4.5:1; unknown languages render
+byte-identically to before. Line numbers and highlight ranges stay a later
+stream, as briefed.
 
 A fenced block records its language and renders it uncoloured. That was an
 honest state, not a fixed one — and the market moved: Shiki is now the default

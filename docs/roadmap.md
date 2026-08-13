@@ -44,8 +44,8 @@ keep changing.
 | Carrying an element from one slide to the next | Next |
 | Demo recording and a generated themes gallery | Next |
 | Dragging an annotation back into the Markdown | Next |
-| Syntax highlighting in code blocks | Next |
-| An authoring contract for agents | Next |
+| Syntax highlighting in code blocks (36 languages, theme-token colours) | Done |
+| An authoring contract for agents (`check --format json`, `llms.txt`) | Done |
 | Mermaid rendered to SVG at build time | Later |
 | Plugins, PPTX export | Later |
 
