@@ -510,3 +510,67 @@ fn editing_one_part_re_renders_only_that_part() {
     assert_eq!(out.sections[0], warm.sections[0]);
     assert!(out.sections[1].contains("revised"));
 }
+
+fn deck_with_a_bibliography(dir_name: &str, title: &str) -> TempDeck {
+    let deck = TempDeck::new(
+        dir_name,
+        "---\ntitle: T\nbibliography: refs.bib\n---\n\n\
+         A claim[@a].\n\n---\n\n```bibliography\n```\n",
+    );
+    std::fs::write(
+        deck.dir.join("refs.bib"),
+        format!("@misc{{a, author={{Ito, Ken}}, title={{{title}}}, year={{2020}}}}\n"),
+    )
+    .expect("write bib");
+    deck
+}
+
+/// The `.bib` is part of the deck's input, so it joins the watch set — and it
+/// does so even when the read fails, since writing the file it named is
+/// exactly the edit that should bring the citations to life.
+#[test]
+fn a_deck_watches_the_bibliography_it_names() {
+    let deck = deck_with_a_bibliography("bib-watch", "One");
+    let mut cache = HashMap::new();
+    let out = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("build");
+    assert!(out.warnings.is_empty(), "{:?}", out.warnings);
+    assert!(out.files.contains(&deck.dir.join("refs.bib")));
+
+    std::fs::remove_file(deck.dir.join("refs.bib")).expect("remove bib");
+    let gone = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("rebuild");
+    assert!(
+        gone.files.contains(&deck.dir.join("refs.bib")),
+        "still watched"
+    );
+    assert!(
+        gone.warnings.iter().any(|w| w.contains("bibliography:")),
+        "{:?}",
+        gone.warnings
+    );
+}
+
+/// The point of a slide recording only the key it cited: an edit to the `.bib`
+/// rewrites the reference list and changes the deck's hashes — so hot reload
+/// fires — while re-rendering no slide at all.
+#[test]
+fn editing_the_bibliography_changes_the_deck_without_re_rendering_a_slide() {
+    let deck = deck_with_a_bibliography("bib-edit", "One");
+    let mut cache = HashMap::new();
+    let first = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("build");
+    assert_eq!(first.rendered, 2, "both slides rendered the first time");
+    assert!(first.sections[1].contains("One"), "{}", first.sections[1]);
+
+    std::fs::write(
+        deck.dir.join("refs.bib"),
+        "@misc{a, author={Ito, Ken}, title={Two}, year={2020}}\n",
+    )
+    .expect("rewrite bib");
+    let second = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("rebuild");
+
+    assert_eq!(second.rendered, 0, "no slide had to be rendered again");
+    assert!(second.sections[1].contains("Two"), "{}", second.sections[1]);
+    // What `serve` compares to decide whether to push a diff.
+    assert_ne!(first.hashes, second.hashes);
+    // The citing slide never changed, so only the list is pushed.
+    assert_eq!(first.hashes[0], second.hashes[0]);
+}
