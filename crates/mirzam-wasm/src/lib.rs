@@ -13,7 +13,7 @@
 //! r.set_assets(JSON.stringify({ 'img/x.svg': 'data:image/svg+xml;base64,...' }));
 //! const html = r.render_page(source);                  // whole page
 //! const changed = JSON.parse(r.render_changed(source)); // changed slides only
-//! const slide = r.slide_at_offset(source, cursor);      // where the cursor is
+//! const slide = r.slide_at_offset(source, cursor, file); // where the cursor is
 //! ```
 //!
 //! `render_changed` answers with `structural` when patching the changed slides
@@ -185,8 +185,10 @@ impl Renderer {
         json
     }
 
-    /// Which slide (0-based) the byte at `offset` of the deck's *root* source
-    /// belongs to — the answer an editor needs to follow the cursor.
+    /// Which slide (0-based) the byte at `offset` belongs to — the answer an
+    /// editor needs to follow the cursor. `file` names which of the deck's
+    /// files the offset is in, by the same key `set_files` uses; the deck's own
+    /// source is `null` or the empty string.
     ///
     /// Counting `---` in the file being edited is only right for a deck that
     /// is one file. A deck split across files transcludes whole sections with
@@ -194,11 +196,13 @@ impl Renderer {
     /// wrote a rule for: counted that way, the preview lands earlier and
     /// earlier the further down the deck the cursor goes. So the count happens
     /// where the deck is actually assembled, on the expanded document, and the
-    /// source map carries the cursor across.
+    /// source map carries the cursor across — from a section file as readily
+    /// as from the deck, since the map knows every file it read.
     ///
     /// `offset` is a byte offset into the whole file, frontmatter included; a
-    /// cursor there, or past the end, resolves to the first slide.
-    pub fn slide_at_offset(&self, source: &str, offset: usize) -> usize {
+    /// cursor there, in a file this deck does not read, or past the end,
+    /// resolves to the first slide.
+    pub fn slide_at_offset(&self, source: &str, offset: usize, file: Option<String>) -> usize {
         let (fm, body) = mirzam_syntax::split_frontmatter(source);
         let meta = fm
             .and_then(|y| mirzam_core::parse_meta(y).ok())
@@ -215,7 +219,20 @@ impl Renderer {
         // Split before variables are substituted: a rule is a rule either way,
         // and skipping the pass keeps every offset the map speaks for intact.
         let slides = mirzam_syntax::split_slides_spanned(&expanded.text, meta.split_level());
-        let Some(at) = expanded.map.locate(root, offset) else {
+        // The map holds each file under the path the include was written with,
+        // so `./sections/a.md` and `sections/a.md` are the same file said two
+        // ways and both have to find it.
+        let want = normalize(Path::new(file.as_deref().unwrap_or("")));
+        let Some(in_file) = expanded
+            .map
+            .files()
+            .iter()
+            .find(|p| normalize(p) == want)
+            .cloned()
+        else {
+            return 0;
+        };
+        let Some(at) = expanded.map.locate(&in_file, offset) else {
             return 0;
         };
         slides.iter().rposition(|s| s.start <= at).unwrap_or(0)
@@ -522,12 +539,37 @@ mod tests {
         let src = "---\ntitle: T\n---\n\n# Cover\n\n---\n\n![[a.md]]\n\n---\n\n![[b.md]]\n";
         assert_eq!(r.render_page(src).slide_count, 4); // cover, A1, A2, B1
 
-        let at = |needle: &str| r.slide_at_offset(src, src.find(needle).unwrap());
+        let at = |needle: &str| r.slide_at_offset(src, src.find(needle).unwrap(), None);
         assert_eq!(at("title: T"), 0); // frontmatter: the deck starts at the top
         assert_eq!(at("# Cover"), 0);
         assert_eq!(at("![[a.md]]"), 1); // the include *is* what it pulls in
         assert_eq!(at("![[b.md]]"), 3);
-        assert_eq!(r.slide_at_offset(src, src.len()), 3);
+        assert_eq!(r.slide_at_offset(src, src.len(), None), 3);
+    }
+
+    /// The other half of a split deck: the cursor is in a section file, and the
+    /// preview open on the deck still has to follow it. The section knows
+    /// nothing of the slides before it, and does not need to — the map does.
+    #[test]
+    fn the_cursor_finds_its_slide_from_inside_a_section_file() {
+        let mut r = Renderer::new();
+        let a = "# A1\n\n---\n\n# A2\n";
+        r.set_files(&format!(
+            "{{\"a.md\": {a:?}, \"b.md\": \"# B1\\n\\n---\\n\\n# B2\\n\"}}"
+        ))
+        .unwrap();
+        let src = "---\ntitle: T\n---\n\n# Cover\n\n---\n\n![[a.md]]\n\n---\n\n![[./b.md]]\n";
+        assert_eq!(r.render_page(src).slide_count, 5);
+
+        let at = |file: &str, source: &str, needle: &str| {
+            r.slide_at_offset(src, source.find(needle).unwrap(), Some(file.into()))
+        };
+        assert_eq!(at("a.md", a, "# A1"), 1);
+        assert_eq!(at("a.md", a, "# A2"), 2);
+        // Written `![[./b.md]]`, keyed `b.md`: one file said two ways.
+        assert_eq!(at("b.md", "# B1\n\n---\n\n# B2\n", "# B2"), 4);
+        // A file this deck does not read at all is not an error, just slide 1.
+        assert_eq!(r.slide_at_offset(src, 0, Some("elsewhere.md".into())), 0);
     }
 
     /// The same file with nothing transcluded still has to agree with the old
@@ -537,7 +579,7 @@ mod tests {
         let r = Renderer::new();
         let src =
             "---\ntitle: T\n---\n\n# One\n\n---\n\n# Two\n\n```md\n---\n```\n\n---\n\n# Three\n";
-        let at = |needle: &str| r.slide_at_offset(src, src.find(needle).unwrap());
+        let at = |needle: &str| r.slide_at_offset(src, src.find(needle).unwrap(), None);
         assert_eq!(at("# One"), 0);
         assert_eq!(at("# Two"), 1);
         assert_eq!(at("```md"), 1); // a rule inside a fence is not a rule
@@ -555,13 +597,16 @@ mod tests {
             .unwrap();
         let src = "# 表紙\n\n---\n\n![[章.md]]\n\n---\n\n# 結び\n";
         assert_eq!(r.render_page(src).slide_count, 4);
-        let at = |needle: &str| r.slide_at_offset(src, src.find(needle).unwrap());
+        let at = |needle: &str| r.slide_at_offset(src, src.find(needle).unwrap(), None);
         assert_eq!(at("# 表紙"), 0);
         assert_eq!(at("![[章.md]]"), 1);
         assert_eq!(at("# 結び"), 3);
         // Mid-character, the way a stale offset arrives while the deck is
         // being typed into.
-        assert_eq!(r.slide_at_offset(src, src.find("結び").unwrap() + 1), 3);
+        assert_eq!(
+            r.slide_at_offset(src, src.find("結び").unwrap() + 1, None),
+            3
+        );
     }
 
     #[test]

@@ -22,31 +22,51 @@ function activate(context) {
     )
   );
 
-  // Follow edits; debouncing happens here rather than in the webview.
-  let timer;
+  // Follow edits, in the deck or in any file it is assembled from; debouncing
+  // happens here rather than in the webview, per preview so two open decks do
+  // not cancel each other's updates.
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument((e) => {
-      const entry = panels.get(e.document.uri.toString());
-      if (!entry) return;
-      clearTimeout(timer);
       const delay = vscode.workspace
         .getConfiguration("mirzam")
         .get("previewDelay", 120);
-      timer = setTimeout(() => update(entry, e.document), delay);
+      for (const entry of previewsOf(e.document)) {
+        clearTimeout(entry.timer);
+        entry.timer = setTimeout(() => update(entry), delay);
+      }
     }),
     // Reveal the slide matching the cursor position. Which slide that is, only
     // the core knows: a deck split across files has slides this document never
     // wrote a `---` for, so the offset goes to the webview and the WASM core
-    // answers there, from the same expanded document it renders.
+    // answers there, from the same expanded document it renders — which is
+    // also what lets a cursor in a section file name a slide of the deck.
     vscode.window.onDidChangeTextEditorSelection((e) => {
-      const entry = panels.get(e.textEditor.document.uri.toString());
-      if (!entry) return;
-      entry.panel.webview.postMessage({
-        type: "reveal",
-        offset: byteOffset(e.textEditor.document, e.selections[0].active),
-      });
+      const document = e.textEditor.document;
+      for (const entry of previewsOf(document)) {
+        entry.panel.webview.postMessage({
+          type: "reveal",
+          offset: byteOffset(document, e.selections[0].active),
+          file: entry.files.get(document.uri.fsPath) || "",
+        });
+      }
     })
   );
+}
+
+/**
+ * The previews `document` takes part in: the deck it *is*, and every deck that
+ * transcludes it.
+ *
+ * A deck split across files is written in its sections, and the preview is
+ * open on the file that transcludes them. Watching only that file left the
+ * whole workflow with a preview that never moved.
+ */
+function* previewsOf(document) {
+  const self = panels.get(document.uri.toString());
+  if (self) yield self;
+  for (const entry of panels.values()) {
+    if (entry !== self && entry.files.has(document.uri.fsPath)) yield entry;
+  }
 }
 
 function showPreview(context) {
@@ -73,26 +93,42 @@ function showPreview(context) {
     }
   );
 
-  const entry = { panel, ready: false, pending: null, lastAssets: "" };
+  const entry = {
+    panel,
+    document: editor.document,
+    ready: false,
+    lastAssets: "",
+    // Every file this deck was assembled from last time it was rendered, as
+    // absolute path -> the key the core knows it by. This is what turns an
+    // edit somewhere in the workspace into "that deck has to be re-rendered",
+    // and a cursor in a section file into a place in the deck.
+    files: new Map(),
+    timer: undefined,
+  };
   panels.set(key, entry);
 
   panel.webview.html = webviewHtml(panel.webview, context);
   panel.webview.onDidReceiveMessage((msg) => {
     if (msg.type === "ready") {
       entry.ready = true;
-      update(entry, editor.document);
+      update(entry);
     } else if (msg.type === "error") {
       vscode.window.showErrorMessage(`Mirzam preview: ${msg.message}`);
     }
   });
-  panel.onDidDispose(() => panels.delete(key));
+  panel.onDidDispose(() => {
+    clearTimeout(entry.timer);
+    panels.delete(key);
+  });
 }
 
-function update(entry, document) {
+function update(entry) {
   if (!entry.ready) return;
+  const document = entry.document;
   const text = document.getText();
   const baseDir = path.dirname(document.uri.fsPath);
-  const { files, assets } = collectResources(text, baseDir);
+  const { files, assets, sources } = collectResources(text, baseDir);
+  entry.files = sources;
 
   // Assets are heavy, so only resend them when they actually change.
   const assetsJson = JSON.stringify(assets);
@@ -107,7 +143,10 @@ function update(entry, document) {
 async function exportHtml(context) {
   const editor = vscode.window.activeTextEditor;
   if (!editor) return;
-  const entry = panels.get(editor.document.uri.toString());
+  // The deck being exported is the one the preview is open on, which is not
+  // necessarily the file in front of you: a section of it is the deck as much
+  // as the file that transcludes it.
+  const [entry] = previewsOf(editor.document);
   if (!entry || !entry.ready) {
     vscode.window.showWarningMessage(
       "Open the preview first; rendering runs inside it"
@@ -117,7 +156,7 @@ async function exportHtml(context) {
   const target = await vscode.window.showSaveDialog({
     filters: { HTML: ["html"] },
     defaultUri: vscode.Uri.file(
-      editor.document.uri.fsPath.replace(/\.md$/, ".html")
+      entry.document.uri.fsPath.replace(/\.md$/, ".html")
     ),
   });
   if (!target) return;
@@ -136,6 +175,10 @@ async function exportHtml(context) {
 /**
  * Collects transcluded files (`![[...]]`) and referenced assets from the source
  * into tables the webview can consume, following references recursively.
+ *
+ * `sources` maps each file's absolute path to the key the core knows it by,
+ * which is how an edit anywhere in the workspace finds the previews it belongs
+ * to.
  */
 function collectResources(text, baseDir) {
   const maxSize = vscode.workspace
@@ -143,6 +186,7 @@ function collectResources(text, baseDir) {
     .get("maxAssetSize", 20 * 1024 * 1024);
   const files = {};
   const assets = {};
+  const sources = new Map();
   const seen = new Set();
 
   const walk = (source, dir) => {
@@ -158,16 +202,33 @@ function collectResources(text, baseDir) {
         continue; // Missing files fall back to the core's placeholder handling.
       }
       if (rel.endsWith(".md")) {
-        const content = fs.readFileSync(abs, "utf8");
+        const content = readText(abs);
         files[key] = content;
+        sources.set(abs, key);
         walk(content, path.dirname(abs));
       } else if (stat.size <= maxSize) {
         assets[key] = dataUri(abs);
+        sources.set(abs, key);
       }
     }
   };
   walk(text, baseDir);
-  return { files, assets };
+  return { files, assets, sources };
+}
+
+/**
+ * A file as it currently reads: the editor's buffer while it is open, unsaved
+ * edits included, and the file on disk otherwise.
+ *
+ * A section of a deck is a file like any other, and a preview that waited for
+ * it to be saved would spend the whole editing session showing the draft
+ * before the one being typed.
+ */
+function readText(file) {
+  const open = vscode.workspace.textDocuments.find(
+    (d) => !d.isClosed && d.uri.scheme === "file" && d.uri.fsPath === file
+  );
+  return open ? open.getText() : fs.readFileSync(file, "utf8");
 }
 
 /**

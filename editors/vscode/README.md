@@ -11,10 +11,14 @@ WebAssembly and executed inside the webview.
    (`Cmd+K V` on macOS), or click the preview icon in the editor title bar.
 
 The preview opens beside your editor. Editing re-renders only the slide you
-changed, and moving the cursor scrolls the preview to the matching slide — in a
-deck [split across files](https://github.com/ayatough/Mirzam/blob/main/docs/syntax.md),
-counting the slides each `![[…]]` brings in, so a cursor on the include line
-shows the first slide of the file it names.
+changed, and moving the cursor scrolls the preview to the matching slide.
+
+A deck [split across files](https://github.com/ayatough/Mirzam/blob/main/docs/syntax.md)
+is previewed from the file that transcludes the others, and you can keep
+working in any of them: editing a section re-renders the deck as you type,
+saved or not, and the cursor there scrolls the preview to that section's
+slides. A cursor on an `![[…]]` line shows the first slide of the file it
+names.
 
 Inside the preview: `←` `→` to navigate, `N` for speaker notes, `F` for fullscreen.
 

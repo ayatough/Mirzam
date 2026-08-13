@@ -9,8 +9,12 @@ const warnEl = document.getElementById("warn");
 
 let renderer = null;
 let lastText = "";
-/** Where the editor's cursor is, as a byte offset into the deck's own file. */
-let wantOffset = 0;
+/**
+ * Where the editor's cursor is: a byte offset, and which of the deck's files it
+ * is an offset into — the empty string for the deck's own source, a transclusion
+ * key such as `sections/two.md` for one of its sections.
+ */
+let want = { offset: 0, file: "" };
 
 async function boot() {
   try {
@@ -36,7 +40,7 @@ function fullRender(text) {
   renderer.reset();
   renderer.render_changed(text);
   report(t0, out.slide_count, "full", JSON.parse(out.warnings));
-  frame.addEventListener("load", () => reveal(wantOffset), { once: true });
+  frame.addEventListener("load", () => reveal(want), { once: true });
 }
 
 function update(text) {
@@ -64,19 +68,19 @@ function update(text) {
   report(t0, res.count, `${res.changes.length} changed`, res.warnings);
   // The cursor has not moved, but the slide under it may have: typing a `---`
   // above it makes the page it belongs to a different one.
-  reveal(wantOffset);
+  reveal(want);
 }
 
 /**
- * Shows the slide the editor's cursor sits on, given as a byte offset into the
- * deck's own file. The core turns it into a slide number, since only it knows
- * what the transcluded files contribute.
+ * Shows the slide the editor's cursor sits on, given as a byte offset into one
+ * of the deck's files. The core turns it into a slide number, since only it
+ * knows how many slides the files before this one contribute.
  */
-function reveal(offset) {
-  wantOffset = offset;
+function reveal(at) {
+  want = { offset: at.offset || 0, file: at.file || "" };
   const win = frame.contentWindow;
   if (!win || !win.__mirzamGoto || !renderer || !lastText) return;
-  win.__mirzamGoto(renderer.slide_at_offset(lastText, offset));
+  win.__mirzamGoto(renderer.slide_at_offset(lastText, want.offset, want.file));
 }
 
 function report(t0, count, kind, warnings) {
@@ -96,7 +100,7 @@ window.addEventListener("message", (event) => {
     }
     update(msg.text);
   } else if (msg.type === "reveal") {
-    reveal(msg.offset);
+    reveal(msg);
   } else if (msg.type === "export") {
     const out = renderer.render_page(lastText);
     vscode.postMessage({ type: "exported", html: out.html });

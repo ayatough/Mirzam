@@ -95,6 +95,15 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   cursor resting on the `![[…]]` line itself shows the first slide of the file
   it names. Non-ASCII text no longer shifts the answer either — the offset is
   counted in bytes on both sides now instead of UTF-16 units on one.
+- **Editing a section of a split deck did nothing to the preview.** The preview
+  watched exactly one document — the file it was opened on — so the whole point
+  of splitting a deck was lost the moment you started writing in a section:
+  nothing re-rendered, and the cursor there moved nothing. A preview now
+  follows every file its deck was assembled from, sections and masters alike,
+  re-rendering as they are typed in rather than waiting for a save, and the
+  cursor in a section scrolls the preview to that section's slides. Two open
+  previews also stop cancelling each other's updates: the debounce is per
+  preview now instead of one shared timer.
 - **`split: h2` made no slides in the preview or the browser build.** The
   frontmatter setting that turns an ordinary document into a deck was read by
   `mirzam build` and ignored by the WASM core, so the two disagreed about what
