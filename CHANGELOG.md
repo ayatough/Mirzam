@@ -86,7 +86,6 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   benchmark step also says to read the *second* run — the first pays for a cold
   cache and can report a full build several times slower than the roadmap's
   table with nothing wrong.
-
 - **An unknown name of three letters or more in Typst maths is an error.** It
   used to become a run of italic letters, so `dif s` in an integral rendered as
   `difs` — which reads as a typo the author made rather than as a word the
@@ -106,6 +105,13 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   hold it.
 
 ### Fixed
+- **The warning table in `docs/troubleshooting.md` lists every warning again.**
+  It says it is the full list, and a reader who cannot find a message there
+  reasonably concludes the build is telling them something undocumented. Three
+  families had been added to the code without reaching it: slide masters
+  (`no master named …`, a masters file that cannot be read or defines none, a
+  transcluded section naming its own), a malformed `toc` or `bibliography`
+  block, and the attribute-span warning added above.
 - **Changing `theme:` did nothing to the live preview.** The preview patches
   the slides that changed into a page it assembled earlier, and a theme is not
   in a slide: swapping it changed no slide's HTML, so nothing was patched and

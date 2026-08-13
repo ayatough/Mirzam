@@ -121,6 +121,7 @@ since it changes how urgent the fix is:
 |---|---|---|---|
 | pane "x" contains a shape block, but shape only renders at slide top level | Shape | A `shape` fence sits inside `::: pane` | Note only — still renders as a code block |
 | footnote reference "[^key]" has no definition on this slide | Citations | `[^key]` with no `[^key]:` on the same slide | Note only — bracket text stays literal, once per key |
+| slide N: "[text]{.class}" is still on the slide as text | Spans | An attribute span split across a line break | Note only — it stays literal bracket text |
 | `[@key]` is in no bibliography entry | References | A citation key the deck's `bibliography:` does not define | Note only — the mark stays on the slide exactly as written |
 | citations: N reference(s) are cited and no `bibliography` block lists them | References | The deck cites but never places a `bibliography` block | Note only — each mark reads, and links nowhere |
 | bibliography: nothing to list | References | A `bibliography` block on a deck where no `[@key]` cited an entry | Note only — the block renders as nothing |
@@ -129,6 +130,10 @@ since it changes how urgent the fix is:
 | pane "x" is not in the layout | Layout | `::: pane x` names a pane the `pane` grid doesn't define | Shown on the slide too |
 | a pane block needs … / the merged region for pane "x" is not rectangular | Layout | Malformed ASCII `pane` grid | Shown on the slide too |
 | `bg-light`/`bg-dark` needs `bg=` … alongside it | Layout | Only one per-mode background given, with no `bg=` fallback for the other mode | Shown on the slide too (no `slide N:` prefix — the only structural error that lacks one) |
+| masters: … / masters: "file" defines none / master "x" is defined more than once | Masters | The `masters:` file can't be read, holds no heading with a `pane` block under it, or names one shape twice | Note only — slides that draw no grid of their own render as a single pane; a duplicate name keeps the last |
+| layout: no master named "x" (known: …) | Masters | Deck-wide `layout:` names a shape the masters file doesn't define | Note only — reported once, not once per slide |
+| slide N: no master named "x" (known: …) | Masters | `<!-- layout: x -->` names a shape the masters file doesn't define | Note only — that slide renders as it would with no master |
+| file.md: its `masters:` names different shapes from the deck's | Masters | A `![[…]]` section declares its own `masters:` | Note only — a transcluded file's frontmatter is not read, so the deck's shapes are used |
 | shape line N: … (unknown kind, bad `at()`/`size()`, unclosed paren, unknown id) | Shape | Malformed top-level `shape` DSL | Shown on the slide too |
 | connect line N: … (missing operator, endpoint not written as `#id`) | Connectors | Malformed `connect` DSL line | Shown on the slide too |
 | chart: cannot parse block / cannot read data file / no data rows / row-level CSV errors | Charts | Malformed `chart` YAML, an unreadable `data:` file, or bad CSV | Shown on the slide too |
@@ -138,6 +143,8 @@ since it changes how urgent the fix is:
 | annotate line N: … (empty target, bad coordinates, unknown attribute, …) | Annotations | Malformed `annotate` DSL — the message names the exact problem | That `annotate` block dropped (others on the slide still run) |
 | annotate target "…" matches nothing on this slide / annotate anchors an id that doesn't exist | Annotations | `target:` or an anchored `#id` doesn't resolve | That `annotate` block dropped |
 | effects line N: … (key bound twice, not a single key, taken by the viewer, unknown effect, needs an argument, …) | Effects | Malformed `effects` DSL — the message names the exact problem | Whole `effects` block dropped |
+| toc: unknown key … / from … / depth … must be 1 to 6 / current … must be true or false / … is not `key: value` | Contents | Malformed `toc` block | Shown on the slide too |
+| bibliography: unknown key … / show … must be `cited` or `all` / back … must be true or false / … is not `key: value` | References | Malformed `bibliography` block | Shown on the slide too |
 | path: file not found / larger than 20MB, not inlined | Assets | An image/audio/video `src=` doesn't resolve, or exceeds the inline size limit | Note only — a placeholder "missing" graphic is substituted (no `slide N:` prefix) |
 | unknown theme "x"; using default | Theme | Frontmatter `theme:` isn't a built-in name | Note only — falls back to `default` |
 | unknown mode "x"; expected light or dark | Theme | Frontmatter `mode:` isn't `light`/`dark` | Note only — falls back to following the reader's machine |
