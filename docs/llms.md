@@ -141,8 +141,9 @@ Background image on a pane:
 
 `bg=`, `bg-light=`, `bg-dark=`, `bg-fit=cover|contain`, `bg-pos=`, `dim=0…1`,
 `blur=<px>`, `scrim=bottom|top|left|right`, `text=light|dark`, and `.bleed` to
-run the image to the slide edge (it drops the grid margin — pair with
-`<!-- chrome: none -->`).
+run the image out to the slide edges that pane reaches — all four for a pane
+that is the whole slide (pair that with `<!-- chrome: none -->`), three for a
+pane drawn down one half, which leaves the pane beside it as it was.
 
 ## Inline
 

@@ -140,10 +140,15 @@ section.slide { background: var(--mz-slide-bg); border-radius: inherit; }
 .bg-text-light .small, .bg-text-light blockquote { color: rgba(255,255,255,.78); } /* theme-independent: over a photo */
 .bg-text-light h2 { border-bottom-color: var(--mz-accent2); }
 .bg-text-dark, .bg-text-dark h1, .bg-text-dark h2, .bg-text-dark h3 { color: var(--mz-fg); }
-/* `.bleed` takes a background to the slide edge. It drops the grid's padding,
-   so it belongs on a slide whose background covers everything - a title or a
-   section divider - not on one pane among several. */
-.grid:has(> .pane.bleed) { padding: 0; gap: 0; }
+/* `.bleed` takes a background to the slide edge. The grid's margin is in its
+   way, so the pane steps out over it - on the edges it actually reaches, which
+   the renderer names as `mz-bleed-*` from the drawing. A single pane reaches
+   all four and covers the slide; a photograph down one half reaches three and
+   stops at the pane beside it, which keeps the margin it was drawn with. */
+.pane.bleed.mz-bleed-t { margin-top: calc(-1 * var(--mz-grid-pad-y, 44px)); }
+.pane.bleed.mz-bleed-b { margin-bottom: calc(-1 * var(--mz-grid-pad-y, 44px)); }
+.pane.bleed.mz-bleed-l { margin-left: calc(-1 * var(--mz-grid-pad-x, 60px)); }
+.pane.bleed.mz-bleed-r { margin-right: calc(-1 * var(--mz-grid-pad-x, 60px)); }
 .pane.has-bg.bleed {
   /* place-self, not place-items on the grid: a theme may centre its title
      slide, and an item's own placement wins over the container's default. */

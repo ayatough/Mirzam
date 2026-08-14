@@ -354,8 +354,8 @@ A slide drops both with a comment:
 ```
 
 Use it on a title slide, on a section divider, and on any slide whose
-`.bleed` background covers the whole surface — a bleed pane drops the grid's
-margin, which is the band the footer was going to sit in. There is no automatic
+`.bleed` background covers the whole surface — the photograph is then painted
+over the margin the footer was going to sit in. There is no automatic
 suppression: a rule that silently dropped a confidentiality notice would be
 worse than one that draws it somewhere you can see and fix.
 
@@ -384,7 +384,7 @@ Plain Markdown in. Presentation-grade decks out.
 | `blur=` | pixels | Pushes the photo out of focus so text reads first. |
 | `scrim=` | `bottom` (default), `top`, `left`, `right` | Fades that edge to black, leaving the rest of the photo visible. |
 | `text=` | `light`, `dark` | Overrides the text colour. Light is chosen automatically whenever `dim` or `scrim` is set. |
-| `.bleed` | class | Takes the background to the slide edge. Meant for a slide whose background covers everything, such as a title; it removes the grid's padding. |
+| `.bleed` | class | Takes the background out to the slide edge — the edges this pane reaches. A pane that is the whole slide covers it; a pane drawn down one half bleeds on three sides and leaves the pane beside it alone. See [the layout guide](layout.md#text-over-a-photograph). |
 
 `dim` and `scrim` combine: `dim` sets the floor, `scrim` adds the gradient on top
 of it. If you set only `scrim`, the gradient runs from 0.75 to transparent.

@@ -7,7 +7,22 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
-Nothing yet.
+### Changed
+- **A photograph can take one half of a slide.** `.bleed` used to be a statement
+  about the whole slide: it dropped the grid's margin, and the margin belonged to
+  every pane, so putting a bleeding photo in one column left the words in the
+  next column pressed against the slide edge. It is now a statement about one
+  pane — the background runs out only on the edges that pane actually reaches,
+  and everything beside it keeps the margin it was drawn with. A half-and-half
+  slide needs no stylesheet of its own any more; Rule 7 in
+  `examples/03-layout.md` is one.
+
+  A `.bleed` pane that *is* the whole slide — a title, a section divider — is
+  unchanged: it reaches all four edges and covers the surface exactly as before,
+  so decks like `examples/pitch.md` render the same. The one difference to know
+  about is the grid gap: it now survives, so a half-width photo stops one gutter
+  short of the words instead of running up against them. Set `--mz-grid-gap: 0`
+  if you want the two halves to meet.
 
 ## [0.5.0] - 2026-08-13
 

@@ -32,6 +32,32 @@ impl GridSpec {
         names
     }
 
+    /// Which slide edges a pane reaches.
+    ///
+    /// A pane that bleeds runs its background past the grid's margin, and only
+    /// the edges it actually reaches should be run out: a photograph down the
+    /// left half of a slide bleeds on three sides, and taking it out on the
+    /// fourth would slide it under the pane beside it.
+    ///
+    /// A name that is not in the grid touches nothing.
+    pub fn edges(&self, name: &str) -> Edges {
+        let last_row = self.areas.len().saturating_sub(1);
+        let mut edges = Edges::default();
+        for (r, row) in self.areas.iter().enumerate() {
+            let last_col = row.len().saturating_sub(1);
+            for (c, cell) in row.iter().enumerate() {
+                if cell.as_deref() != Some(name) {
+                    continue;
+                }
+                edges.top |= r == 0;
+                edges.bottom |= r == last_row;
+                edges.left |= c == 0;
+                edges.right |= c == last_col;
+            }
+        }
+        edges
+    }
+
     /// The CSS `grid-template-areas` value (empty cells become `.`).
     pub fn css_areas(&self) -> String {
         self.areas
@@ -58,6 +84,27 @@ impl GridSpec {
             .map(|h| format!("{h}fr"))
             .collect::<Vec<_>>()
             .join(" ")
+    }
+}
+
+/// The slide edges a pane reaches, from [`GridSpec::edges`].
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Edges {
+    pub top: bool,
+    pub right: bool,
+    pub bottom: bool,
+    pub left: bool,
+}
+
+impl Edges {
+    /// Every edge — what a slide with no grid gives its single pane.
+    pub fn all() -> Self {
+        Self {
+            top: true,
+            right: true,
+            bottom: true,
+            left: true,
+        }
     }
 }
 
@@ -262,6 +309,74 @@ mod tests {
         )
         .unwrap();
         assert_eq!(g.css_areas(), "\"nav a\" \"nav b\"");
+    }
+
+    #[test]
+    fn edges_of_a_half_slide_pane() {
+        // A photograph down the left half reaches three edges, not the fourth.
+        let g = parse_grid(
+            "+------+------+\n\
+             | side | main |\n\
+             +------+------+\n",
+        )
+        .unwrap();
+        assert_eq!(
+            g.edges("side"),
+            Edges {
+                top: true,
+                right: false,
+                bottom: true,
+                left: true,
+            }
+        );
+        assert_eq!(
+            g.edges("main"),
+            Edges {
+                left: false,
+                ..Edges::all()
+            }
+        );
+    }
+
+    #[test]
+    fn edges_of_a_pane_in_the_middle() {
+        let g = parse_grid(
+            "+------+------+\n\
+             | head        |\n\
+             +------+------+\n\
+             | mid  | fig  |\n\
+             +------+------+\n\
+             | foot        |\n\
+             +------+------+\n",
+        )
+        .unwrap();
+        // `mid` is boxed in above and below, so it reaches one edge.
+        assert_eq!(
+            g.edges("mid"),
+            Edges {
+                left: true,
+                ..Edges::default()
+            }
+        );
+        assert_eq!(
+            g.edges("head"),
+            Edges {
+                bottom: false,
+                ..Edges::all()
+            }
+        );
+        assert_eq!(g.edges("nobody"), Edges::default());
+    }
+
+    #[test]
+    fn a_single_pane_reaches_every_edge() {
+        let g = parse_grid(
+            "+------+\n\
+             | main |\n\
+             +------+\n",
+        )
+        .unwrap();
+        assert_eq!(g.edges("main"), Edges::all());
     }
 
     #[test]

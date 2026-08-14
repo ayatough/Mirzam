@@ -56,7 +56,7 @@ There are four fixes, in order of preference:
    band.
 4. **Break the pane in two.** `<!-- next -->` inside a pane carries it on to the
    next slide while every other pane stays exactly where it is — the audience
-   sees the words change and nothing else move. Rule 7 in
+   sees the words change and nothing else move. Rule 8 in
    [`examples/03-layout.md`](../examples/03-layout.md) demonstrates it; the
    [syntax reference](syntax.md#carrying-one-pane-on-to-the-next-slide) has the
    rules.
@@ -178,9 +178,36 @@ The failure to look for is *partial* legibility: a heading that is readable over
 the dark half of a photo and invisible over the bright half. Fix it with `dim`,
 not by moving the text, because the crop changes with the pane's aspect ratio.
 
-`.bleed` takes the background to the slide edge. It drops the grid's padding, so
-put it on a slide whose background covers everything — a title or a section
-divider — not on one pane among several.
+`.bleed` takes the background to the slide edge — the edges *that pane* reaches,
+which the renderer works out from the drawing. A pane that is the whole slide
+bleeds on four sides and covers it, which is what a title or a section divider
+wants. A photograph drawn down the left half bleeds on three, and the pane
+beside it keeps the margin it was drawn with:
+
+````markdown
+```pane
++------------------+-----------------+
+|                  |                 |
+|  photo           |  head           |
++------------------+-----------------+
+|                  |                 |
+|  photo           |  body           |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane photo {.bleed bg=media/bg/city.jpg dim=0.45 scrim=bottom valign=bottom}
+:::
+````
+
+Rule 7 in [`examples/03-layout.md`](../examples/03-layout.md) is that slide. The
+grid gap stays, so the photo stops one gutter short of the words rather than
+running under them; close it for the deck with `--mz-grid-gap: 0` if you want
+the two halves to meet.
+
+A full-surface bleed covers the band the footer and slide number sit in, so pair
+it with `<!-- chrome: none -->` — see
+[the syntax reference](syntax.md#a-footer-and-a-slide-number-on-every-slide).
 
 ## Charts and shapes
 

@@ -25,7 +25,7 @@ pub use theme::{contrast_ratio, mode_warning, theme_warning, THEME_NAMES};
 pub use toc::resolve_deck;
 
 use mirzam_core::DeckMeta;
-use mirzam_layout::{parse_grid, GridSpec};
+use mirzam_layout::{parse_grid, Edges, GridSpec};
 use mirzam_syntax::SlideSource;
 use regex::Regex;
 use std::collections::BTreeMap;
@@ -1214,6 +1214,7 @@ fn render_grid_slide(
         if attrs.kv.get("fit").map(String::as_str) == Some("shrink") {
             extra_cls.push_str(" mz-fit");
         }
+        extra_cls.push_str(&bleed_edge_classes(&attrs, || grid.edges(name)));
         let content = toc::extract(&content, errors);
         let content = cite::extract(&content, errors);
         let content = if ctx.citations {
@@ -1261,6 +1262,31 @@ fn render_grid_slide(
         rows = grid.css_rows(),
         areas = grid.css_areas(),
     )
+}
+
+/// The `mz-bleed-*` classes a `.bleed` pane needs, one per slide edge it
+/// reaches.
+///
+/// `.bleed` used to be a statement about the whole slide: the grid dropped its
+/// padding, which took the margin away from every *other* pane too, so a
+/// photograph down one half left the words on the other half against the slide
+/// edge. Naming the edges lets the pane run out on its own — the grid keeps its
+/// margin, and the pane beside the photograph keeps it too.
+///
+/// The edges are computed lazily because most panes are not bleeding and the
+/// grid walk is wasted on them.
+fn bleed_edge_classes(attrs: &inline::Attrs, edges: impl FnOnce() -> Edges) -> String {
+    if !attrs.classes.iter().any(|c| c == "bleed") {
+        return String::new();
+    }
+    let e = edges();
+    let mut cls = String::new();
+    for (touches, name) in [(e.top, "t"), (e.right, "r"), (e.bottom, "b"), (e.left, "l")] {
+        if touches {
+            cls.push_str(&format!(" mz-bleed-{name}"));
+        }
+    }
+    cls
 }
 
 /// The markup a pane needs for a background image: the image itself, an optional
@@ -1454,11 +1480,13 @@ fn render_single_pane_slide(
         .or(all.first())
         .cloned()
         .unwrap_or_default();
-    let extra_cls = attrs
+    let mut extra_cls = attrs
         .classes
         .iter()
         .map(|c| format!(" {c}"))
         .collect::<String>();
+    // The one pane covers the slide, so a bleed here reaches all four edges.
+    extra_cls.push_str(&bleed_edge_classes(&attrs, Edges::all));
     let bg = background_layers(&attrs, errors);
     // A slide with no layout has one pane, so a `theme=` on any of its blocks
     // is a statement about the whole slide; the first one that names a palette
@@ -2207,6 +2235,43 @@ mod tests {
     /// A deck whose frontmatter defines masters, for the layout tests below.
     fn deck_with_masters() -> DeckMeta {
         deck_defining("two-up", "+--------+--------+\n| head            |\n+--------+--------+\n| main   | fig    |\n+--------+--------+\n")
+    }
+
+    /// A photograph down one half runs out on the three edges it reaches, and
+    /// the pane beside it is left exactly as it was drawn — the whole point of
+    /// naming the edges rather than stripping the grid's margin.
+    #[test]
+    fn a_bleeding_pane_names_only_the_edges_it_reaches() {
+        let slide = parse_slide(
+            "```pane\n+-------+-------+\n| photo | body  |\n+-------+-------+\n```\n\n\
+             ::: pane photo {.bleed}\n:::\n\n::: pane body\nwords\n:::\n",
+        );
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        let photo = out
+            .html
+            .lines()
+            .find(|l| l.contains("pane-photo"))
+            .expect("photo pane");
+        assert!(photo.contains("mz-bleed-t"), "{photo}");
+        assert!(photo.contains("mz-bleed-b"), "{photo}");
+        assert!(photo.contains("mz-bleed-l"), "{photo}");
+        assert!(!photo.contains("mz-bleed-r"), "{photo}");
+        let body = out
+            .html
+            .lines()
+            .find(|l| l.contains("pane-body"))
+            .expect("body pane");
+        assert!(!body.contains("mz-bleed"), "{body}");
+    }
+
+    /// A slide with no grid has one pane, and a bleed there covers everything.
+    #[test]
+    fn a_bleeding_slide_without_a_grid_reaches_every_edge() {
+        let slide = parse_slide("::: pane hero {.bleed}\n# Title\n:::\n");
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        for edge in ["mz-bleed-t", "mz-bleed-r", "mz-bleed-b", "mz-bleed-l"] {
+            assert!(out.html.contains(edge), "{edge} missing: {}", out.html);
+        }
     }
 
     /// A deck with one master written inline.

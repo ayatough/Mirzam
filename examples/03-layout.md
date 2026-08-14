@@ -254,6 +254,42 @@ The photo becomes texture, and the words come forward.
 ---
 
 ```pane
++------------------+-----------------+
+|                  |                 |
+|  photo           |  head           |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|                  |                 |
+|  photo           |  body           |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane photo {.bleed bg=media/bg/city-night.jpg dim=0.45 scrim=bottom valign=bottom}
+[Three edges, not four]{.small}
+:::
+
+::: pane head
+[Rule 7]{.eyebrow}
+## A photograph can take one half
+:::
+
+::: pane body {valign=middle}
+`.bleed` runs a background past the grid's margin, on the edges that pane
+reaches. This one is in the left column, so it goes out left, top and bottom,
+and stops where these words begin.
+
+The margin on this side is the one the deck sets, untouched: bleeding is a
+statement about one pane, not about the slide.
+:::
+
+<!-- note: The photo is drawn as a column like any other. Only `.bleed` differs, and it costs the pane beside it nothing. -->
+
+---
+
+```pane
 +------------------------------------+
 |                                    |
 |  head                              |
@@ -267,7 +303,7 @@ The photo becomes texture, and the words come forward.
 ```
 
 ::: pane head
-[Rule 7]{.eyebrow}
+[Rule 8]{.eyebrow}
 ## Break the prose where you want it broken
 :::
 
@@ -307,7 +343,7 @@ When it is not, choose the break yourself instead of letting the box choose it.
 <!-- layout: stated -->
 
 ::: pane head
-[Rule 8]{.eyebrow}
+[Rule 9]{.eyebrow}
 ## Let the checker find what your eye misses
 :::
 
@@ -341,7 +377,7 @@ This deck passes it in CI, which is the only reason to trust the rules above.
 ```
 
 ::: pane head
-[Rule 9]{.eyebrow}
+[Rule 10]{.eyebrow}
 ## Draw a shape once, not once per slide
 :::
 
