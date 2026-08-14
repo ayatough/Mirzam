@@ -3,7 +3,7 @@
 //! A published deck shows what the markup *does* and never what it *says*, so
 //! a reader looking at a slide full of charts and arrows has no way back to
 //! the eight lines that produced it. `mirzam build --embed-source` bakes those
-//! lines into the page: the viewer's `S` key then shows the current slide's
+//! lines into the page: the viewer's `V` key then shows the current slide's
 //! source beside the slide, and `--editor-url` turns that panel into a way out
 //! — one click hands the slide to the browser editor, where it can be changed
 //! and re-rendered by the same core that drew it here.

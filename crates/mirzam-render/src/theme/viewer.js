@@ -71,6 +71,10 @@
     // be read together, and a slide half-covered by the text that produced it
     // would be the wrong half of the point.
     const taken = host ? { x: 0, y: 0 } : panelReserve();
+    // The control cluster is fixed to the viewport rather than to the deck, so
+    // it has to be told the same number in the only language it speaks.
+    html.style.setProperty('--mz-src-x', taken.x + 'px');
+    html.style.setProperty('--mz-src-y', taken.y + 'px');
     const s = Math.min((box.width - taken.x) / (W + 40), (box.height - taken.y) / (H + 40));
     deck.style.width = W + 'px';
     deck.style.height = H + 'px';
@@ -400,7 +404,11 @@
     keysPanel.innerHTML = '<div class="mz-keys-card">' +
       `<div class="mz-keys-cols"><div>${groups}</div>` +
       (fx ? `<div>${fx}</div>` : '') + '</div>' +
-      '<p class="mz-keys-close"><kbd>/</kbd> or <kbd>Esc</kbd> to close</p></div>';
+      // Naming two keys a phone does not have, on the one overlay a reader
+      // opens *because* they do not know how to get out of it.
+      '<p class="mz-keys-close">' +
+      (COARSE ? 'Tap anywhere to close' : '<kbd>/</kbd> or <kbd>Esc</kbd> to close') +
+      '</p></div>';
   }
 
   function toggleKeys(on) {
@@ -431,7 +439,13 @@
     if (tag) SOURCE = JSON.parse(tag.textContent);
   } catch (e) {}
   const hasSource = !!(SOURCE && SOURCE.slides && SOURCE.slides.length);
-  if (hasSource) DISPLAY.splice(1, 0, [['S'], 'The Markdown behind this slide']);
+  if (hasSource) {
+    DISPLAY.splice(1, 0, [['V'], 'The Markdown behind this slide']);
+    // A phone has no `V` to press, so on touch the sheet names the control
+    // that does the same thing. It is the only route there, which is exactly
+    // why it has to be in the list somebody opens to find out what they can do.
+    TOUCH[1].splice(2, 0, [['</> button'], 'The Markdown behind this slide']);
+  }
 
   /** The authored Markdown behind rendered slide `i`, or null. */
   function sourceFor(i) {
@@ -615,7 +629,7 @@
     else if (e.key === 'n' || e.key === 'N') notesPanel.hidden = !notesPanel.hidden;
     // Absent in a deck built without `--embed-source`, where there is nothing
     // to show and the key does nothing at all.
-    else if (e.key === 's' || e.key === 'S') toggleSource();
+    else if (e.key === 'v' || e.key === 'V') toggleSource();
     // Absent in a deck built without the presenter script; the key then does
     // nothing rather than throwing and taking navigation down with it.
     else if (e.key === 'p' || e.key === 'P') { if (window.MZPresenter) window.MZPresenter.open(); }

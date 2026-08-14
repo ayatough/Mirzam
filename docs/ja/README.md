@@ -37,7 +37,7 @@ mirzam export pdf examples/pitch.md
 ビューア操作: `←` `→` ページ送り / `N` スピーカーノート / `F` 全画面 /
 `P` 発表者ウィンドウ(次スライド・ノート・時計・経過時間) /
 `/` ショートカット一覧(そのスライドの `effects` キーも表示)。
-`--embed-source` 付きでビルドしたデッキでは `S` でそのスライドの元 Markdown を
+`--embed-source` 付きでビルドしたデッキでは `V` でそのスライドの元 Markdown を
 スライドの横に表示でき、`--editor-url` を足すとそこからブラウザエディタへ
 そのスライドを渡せます（[公開サイト](https://ayatough.github.io/Mirzam/)の
 デッキはすべてこの形でビルドされています）。

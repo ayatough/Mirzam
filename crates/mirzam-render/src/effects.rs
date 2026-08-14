@@ -44,7 +44,7 @@ const RESERVED: &[&str] = &[
     "f",
     "l",
     "d",
-    "s",
+    "v",
 ];
 
 struct Binding {

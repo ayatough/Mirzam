@@ -10,7 +10,7 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ### Added
 - **A published slide can show the Markdown it was written as, and hand it to
   the browser editor.** `mirzam build --embed-source` carries each slide's
-  source inside the deck; `S` then opens it beside the slide — the deck makes
+  source inside the deck; `V` then opens it beside the slide — the deck makes
   room for the panel rather than being covered by it — with a button that
   copies it. Add `--editor-url <url>` and the panel also carries the slide
   out: one click opens it in the browser editor, where the same core
@@ -28,7 +28,14 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   rendering and prose about it, and nothing on the page said which eight lines
   produced the slide in front of you.
 
-  `s` is now a viewer key, so an `effects` block can no longer bind it — the
+  On a phone the panel has a control rather than a key — `</>` in the cluster,
+  named in the `/` sheet — and it docks along the bottom, with the cluster
+  moving clear of it. Two things a touchscreen was owed anyway came with it:
+  **the control cluster's buttons are 42px on a coarse pointer** instead of
+  30px, and **the shortcut sheet says "tap anywhere to close"** there instead
+  of naming two keys a phone does not have.
+
+  `v` is now a viewer key, so an `effects` block can no longer bind it — the
   same warning the other reserved keys give.
 
 - **A `shape` block written inside a `::: pane` draws in that pane's

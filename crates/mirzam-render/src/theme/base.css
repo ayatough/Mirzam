@@ -638,8 +638,15 @@ aside.notes { display: none; }
 
 /* Viewer chrome: the page counter and the control cluster, in one row outside
    the deck so neither can ever sit over slide content. */
+/* The cluster keeps out of the open source panel's way, by the same numbers
+   the deck does — the viewer measures the panel and writes them here. On a
+   phone this is not cosmetic: these buttons are the only controls there is,
+   every key they stand for being unreachable, and a panel docked over them
+   takes the whole cluster with it. */
 #chrome {
-  position: fixed; right: 18px; bottom: 12px;
+  position: fixed;
+  right: calc(18px + var(--mz-src-x, 0px));
+  bottom: calc(12px + var(--mz-src-y, 0px));
   display: flex; align-items: center; gap: 10px;
   padding: 5px 6px 5px 12px;
   background: var(--mz-ui-chip); color: var(--mz-ui-fg);
@@ -660,6 +667,13 @@ html.mz-awake #controls { opacity: 1; pointer-events: auto; }
   font: inherit; font-size: 16px; cursor: pointer;
   color: var(--mz-ui-fg); background: transparent;
   border: 1px solid var(--mz-ui-line); border-radius: 8px;
+}
+/* On a touchscreen these are the *only* controls — every key they stand for is
+   unreachable — and 30px is below the size a thumb can hit reliably. A pointer
+   is precise and the cluster stays discreet for it. */
+@media (pointer: coarse) {
+  #controls { gap: 8px; }
+  #controls button { width: 42px; height: 42px; font-size: 18px; }
 }
 #controls button:hover { background: var(--mz-ui-bg); }
 #controls button:active { transform: translateY(1px); }

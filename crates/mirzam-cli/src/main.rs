@@ -535,7 +535,7 @@ struct BuildArgs {
     strict: bool,
     base_url: Option<String>,
     /// `--embed-source`: carry each slide's Markdown inside the deck, so the
-    /// viewer's `S` key can show the text the slide was written as. Off by
+    /// viewer's `V` key can show the text the slide was written as. Off by
     /// default: it is the documentation site's need, not every deck's, and a
     /// deck that carries no source is a smaller file.
     embed_source: bool,

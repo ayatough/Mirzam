@@ -317,7 +317,7 @@ m : danmaku "this bit matters"
 One single-character key per line: `flash`, `shake`, `lines`, `boom`,
 `burst <emoji>`, `confetti`, `danmaku "<text>"`. These belong to the
 performance — they never reach the exported file and never change what the deck
-says. `← → Space PageUp PageDown Home End N S F L D Esc` belong to the viewer
+says. `← → Space PageUp PageDown Home End N V F L D Esc` belong to the viewer
 and cannot be bound.
 
 ## `toc` and `bibliography` — inside a pane

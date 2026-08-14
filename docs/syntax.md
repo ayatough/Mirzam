@@ -1382,7 +1382,7 @@ nobody can guess. `Esc` or `/` closes it.
 | `←` `PageUp` | Back a step, then the previous slide |
 | `Home` `End` | First / last slide |
 | `N` | Speaker notes |
-| `S` | The Markdown this slide was written as ([see below](#the-markdown-behind-a-slide)) |
+| `V` | The Markdown this slide was written as ([see below](#the-markdown-behind-a-slide)) |
 | `P` | Presenter window |
 | `F` | Fullscreen |
 | `D` | Dark / light |
@@ -1407,11 +1407,16 @@ A deck built with `--embed-source` carries the text each slide was written as:
 mirzam build deck.md -o out --embed-source
 ```
 
-`S` then opens that Markdown *beside* the slide — the deck makes room for the
+`V` then opens that Markdown *beside* the slide — the deck makes room for the
 panel instead of being covered by it, because the point is reading the two
 together. `Copy` takes the slide's source to the clipboard, `Esc` or `Close`
 puts the slide back to full width. In a deck built without the flag the key
 does nothing and the cheat sheet does not offer it.
+
+On a phone there is no `V` to press, so the panel has a control: `</>` in the
+cluster below the bottom-right corner, which the `/` sheet also names. The
+panel docks along the bottom there rather than at the side, and the cluster
+moves clear of it — those buttons are the only controls a touchscreen has.
 
 A rendered slide is not always an authored one: `<!-- next -->` turns one slide
 into several, and each of them shows the source of the slide they were cut

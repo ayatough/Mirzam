@@ -64,7 +64,7 @@ echo "==> building decks"
 cargo build --release --bin mirzam
 # `--embed-source` is what makes a slide legible as *markup*: the site shows
 # the rendering and the prose about it, and until now nothing on the page said
-# which eight lines produced the slide in front of you. With it, `S` opens the
+# which eight lines produced the slide in front of you. With it, `V` opens the
 # Markdown beside the slide, and the editor link hands that Markdown over.
 for deck in "${DECKS[@]}"; do
   ./target/release/mirzam build "examples/$deck.md" -o "$OUT/decks/$deck" \
@@ -368,7 +368,7 @@ try {
   <p>Six slides between reading about Mirzam and having a deck.
   <span class="kbd">←</span> <span class="kbd">→</span> to navigate,
   <span class="kbd">N</span> for speaker notes, <span class="kbd">/</span> for the rest.</p>
-  <p>Every deck here carries its own Markdown: press <span class="kbd">S</span>
+  <p>Every deck here carries its own Markdown: press <span class="kbd">V</span>
   on any slide to read the source that produced it beside the slide, and from
   there one click opens it in the browser editor, where you can change it and
   watch it re-render.</p>

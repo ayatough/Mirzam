@@ -338,9 +338,9 @@ pub struct PageOptions {
     /// that theme existed in the deck, and the pane would come out in the
     /// deck's palette until the next full reload.
     pub all_themes: bool,
-    /// The deck's own Markdown, for the viewer's `S` panel and the handover to
+    /// The deck's own Markdown, for the viewer's `V` panel and the handover to
     /// the browser editor. Absent — the default — and the deck carries no
-    /// source, has no `S` key, and is the same file it always was.
+    /// source, has no `V` key, and is the same file it always was.
     pub source: Option<source::DeckSource>,
 }
 

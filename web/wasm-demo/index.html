@@ -436,6 +436,10 @@ if (handed) {
     srcEl.value = handed.md;
     localStorage.setItem('mirzam-src', srcEl.value);
     fullRender(srcEl.value);
+    // On a phone the two panes take turns, and the button that got you here
+    // said Edit. The slide has already been read on the deck it came from;
+    // what is new here is being able to change it.
+    setPane('edit');
   } else {
     replaceSource(handed.md, 'Replace your draft with the slide you came from? Your draft is only in this browser — Save .md first if you want to keep it.');
   }
