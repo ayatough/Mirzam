@@ -40,6 +40,7 @@ from a deck someone was actually trying to give.
 | 3 | W14 | Retires an authoring pattern the other streams now cover |
 | 4 | W9 | Integration, benchmark, `v0.1.0` — done; the release is tagged |
 | 5 | W20, W21 | The [market survey](reports/2026-08-market-survey.md)'s P0: visible code, and a loop an agent can close |
+| 6 | W22 | The last frontmatter key that asks the author to know how the CSS is assembled |
 
 ## Assignment
 
@@ -76,6 +77,7 @@ there is. The model column follows from that:
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
 | W20 | Syntax highlighting at build time | B | Opus | — | ✅ |
 | W21 | An authoring contract for agents | B | Opus | — | ✅ |
+| W22 | One door to a deck's look: `theme:` absorbs `css:` | B | Opus | — | |
 
 ### What is deferred, and why
 
@@ -982,6 +984,124 @@ no model calls — Mirzam stays the renderer and the checker; the agent is
 somebody else's process consuming a stable interface. An MCP wrapper stays
 out until a surface that needs one demands it; the two skills cover the
 terminal and the sandbox.
+
+## W22 — One door to a deck's look: `theme:` absorbs `css:`
+
+**Difficulty B** — the token work is mechanical and testable; the frontmatter
+change is a break, and breaks are where a wrong decision is expensive.
+
+`theme:` is a choice of **colour only**, and the identity — the faces, the
+weight ladder, the violet rule under a section heading — lives in
+`examples/themes/mirzam.css` behind a second frontmatter key. That split is an
+artefact of how the CSS is assembled, not a design anybody chose, and it reads
+as a bug from outside: seven of the nine sample decks write `css:` and no
+`theme:` at all, so the key that looks like the way to set a deck's look is the
+one they do not use. The expectation to meet is the obvious one — **`theme: wuwei`
+changes the colours and the type, and nothing else has to be written.**
+
+Two deliverables. The first is what makes the second honest.
+
+1. **Type becomes tokens, and the built-in `mirzam` theme carries its own
+   identity.**
+
+   The mechanism is already here and already documented: `base.css` reads 45
+   distinct `--mz-*` values, and 26 of them are non-palette dials
+   (`--mz-grid-pad-*`, `--mz-pane-border`, `--mz-bullet`, `--mz-slide-chrome-*`)
+   that carry their current value as a fallback and that **no built-in theme
+   sets**. What is missing is type: `base.css` hard-codes the body face, and
+   `h1`/`h2`/`h3` hard-code size, weight and tracking. Add the vocabulary —
+   `--mz-font`, `--mz-font-display`, `--mz-font-mono`; per level `-size`,
+   `-weight`, `-tracking`; `--mz-body-size`/`-leading` — each with today's value
+   as its fallback, so **a deck that sets none renders identically**. That is
+   the acceptance test: the golden snapshots move (the stylesheet is inlined in
+   them) but the pixels do not, and the claim is checked by rendering, not by
+   reading the diff.
+
+   The signature rule joins them: `--mz-h2-rule-w` defaults to `0`, so
+   `base.css` can carry the `h2::after` block and no theme but `mirzam` draws
+   anything. `--mz-h2-border` keeps today's full-width border as its own
+   default. `.eyebrow` and `.metric` move into `base.css` as token-driven
+   vocabulary — `.card` is already there, `docs/syntax.md` already calls all
+   three "utility classes the sample decks use", and eight decks use them.
+
+   Then `themes/mirzam.css` (the built-in, not the sample) sets the type
+   tokens, `examples/themes/mirzam.css` mostly dissolves, and the sample decks
+   write `theme: mirzam`. **That migration is the proof the design works**; if
+   the identity cannot be expressed in tokens, this stream has the wrong shape
+   and should stop rather than grow an escape hatch.
+
+2. **`theme:` takes a built-in name or a path, and `css:` is retired.**
+
+   ```yaml
+   theme: mirzam                        # a built-in
+   theme: themes/acme.css               # a file, relative to the deck
+   theme: [mirzam, themes/tweaks.css]   # a built-in, then a file over it
+   ```
+
+   An entry ending in `.css` is a path; anything else is a built-in name. No
+   built-in is named that way and no stylesheet path is not, so the rule needs
+   no escape syntax — it costs a constraint on future theme names, which is
+   cheap. A list is cascade order; a scalar is a list of one, so every existing
+   `theme: nord` parses unchanged. Paths resolve relative to the deck, the same
+   as `masters:` and `bibliography:`.
+
+   The pipeline barely moves: built-in tokens, then `base.css`, then each `.css`
+   entry in order — the slot `custom_css` occupies today. A file theme has to
+   load *after* `base.css`; that is what lets `css:` override type now, and it
+   is what will let a file theme do it after.
+
+   `css:` becomes an alias for one release: accepted, mapped onto the list, and
+   warned about with the line to write instead. Then removed. Pre-1.0 permits
+   the harder break, but the warning is a few lines and tells a user exactly
+   what to type.
+
+**The asymmetry to document rather than hide.** A built-in theme is tokens,
+loaded before `base.css`; a file theme may write any rule, loaded after. That is
+not arbitrary. Custom properties **inherit**, so a pane's `theme=` resolving
+inwards is free; plain rules cascade by specificity and source order, so it is
+not. Rendered proof: a `mirzam` pane inside a `wuwei` slide keeps the theme's
+type when the theme is expressed as rules and takes its own when it is expressed
+as tokens. So the rule to write down is a gradient, not a wall:
+
+| Written as | Applies to | Works with a pane's `theme=` |
+|---|---|---|
+| tokens (`--mz-*`) | deck, slide, pane | yes |
+| rules (`h1 { }`, `.foo { }`) | the deck | no |
+
+Which is also why deliverable 1 comes first: it is what makes the upper row wide
+enough to hold a real identity. A file theme written in tokens registers under
+its filename stem (`themes/acme.css` → `acme`) and becomes usable in a pane's
+`theme=`, which no custom theme can do today.
+
+**A deck-specific class does not need a file.** A raw `<style>` block in the
+deck reaches the page untouched — verified — which is the right home for the one
+or two classes a single deck invents, and one fewer file than `css:` required.
+`theme: [mirzam, tweaks.css]` is where that goes when it outgrows a block.
+
+**Diagnostics.** An unknown built-in name already warns. An unreadable path
+already warns, under `css:`, and keeps its wording. The addition is that the
+gates `sample_themes.rs` holds the built-in themes to — every token set in one
+mode set in the other, contrast floors — become `check` diagnostics that run
+against a *user's* theme. A one-palette custom theme silently pinning a deck to
+one mode is the trap `docs/syntax.md` spends a section warning about; the
+checker should be the thing that catches it.
+
+Stops at: the frontmatter and the token vocabulary. No theme registry, no
+`@import`, no webfont fetching — the faces stay named-not-fetched, because a
+deck is one self-contained file and a venue may have no network.
+
+**Contention.** `crates/mirzam-render/src/theme/base.css` (every rule that
+gains a token), `theme/themes/*.css`, and `crates/mirzam-cli/tests/snapshots/*.html`
+— every deck's stylesheet changes, so this stream should not share the batch
+with another that moves rendered output. Also touches `mirzam-core`
+(`DeckMeta.css` → a theme list), `mirzam-render` (`themes_used`, `theme_attrs`,
+`page_fingerprint`, `PageOptions.custom_css` → many), `mirzam-cli` (`--css`
+retires with the key), `mirzam-wasm` (a file theme arrives through
+`FileProvider`, the path the `css:` fix already built), and
+`editors/vscode/src/references.js`, whose `frontmatterPath()` reads a scalar and
+must learn the list form — with a case in
+`editors/vscode/test/references.test.js`, since a theme file the host fails to
+collect is a deck that previews unstyled.
 
 ## W5 — Typst-flavoured math ✅
 
