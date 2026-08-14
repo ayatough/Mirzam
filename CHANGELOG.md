@@ -190,6 +190,16 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
   `examples/06-theming.md`'s palette gallery now shows all five built-ins with
   no repeat.
+- **The landing page opens dark, like the deck beside it.** It followed the
+  machine's `prefers-color-scheme` when nothing was stored, while the README
+  deck linked from it is built `--mode dark` — so on a light-preferring machine
+  the front door and the demonstration disagreed. Dark is now the page's own
+  default, reached without asking the system anything. The switch in the corner
+  still wins in both directions, so a reader who chose light keeps light, and
+  the page's mode now rides on the deck links as `?mode=` whether it was chosen
+  or defaulted: what you click looks like what you were looking at. The page
+  and the decks go on sharing one stored preference — pressing `D` in a deck is
+  the same reader saying the same thing.
 - **The sample custom theme looks like a theme in light mode too.**
   `examples/themes/blueprint.css` is the repository's demonstration that a
   theme of your own can carry a real identity, and in light it was near-white

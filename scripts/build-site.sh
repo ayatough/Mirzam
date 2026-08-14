@@ -111,7 +111,9 @@ cat > "$OUT/index.html" <<'HTML'
 
 <script>
 // The stored colour mode, applied before the first paint. Reading it after the
-// body has parsed would show the system's palette and swap it a frame later.
+// body has parsed would show the default palette and swap it a frame later.
+// Only a reader who chose light needs stamping: the page is dark with nothing
+// stored, so dark is already what the stylesheet below paints.
 try {
   var m = localStorage.getItem('mirzam-mode');
   if (m === 'light' || m === 'dark') document.documentElement.dataset.theme = m;
@@ -123,11 +125,24 @@ try {
 <style>
   /* Mirzam Light and Mirzam Dark, straight from docs/brand/mirzam-theme.css.
      Both palettes are written once, as `--l-*` and `--d-*`; what follows only
-     decides which set is in force. The page starts on the reader's system
-     preference and the switch in the corner overrides it - and stores the
-     choice under the key the decks read, so a light page opens a light deck. */
+     decides which set is in force.
+
+     **Dark is the default, and not because a machine asked for it.** This page
+     is the front door of a brand whose mark is drawn on a dark ground, and the
+     deck linked from it is built `--mode dark` - so a page that followed
+     `prefers-color-scheme` disagreed with the deck beside it on every reader
+     whose system prefers light. There is no system route here any more: the
+     page is dark until somebody says otherwise, which is the one thing that
+     cannot drift out of step with the deck.
+
+     The reader's own choice still wins, in both directions, and it is stored
+     under the key a deck's viewer reads: press the switch here and a deck
+     opens the same way, press `D` in a deck and this page opens the way that
+     deck ended up. That key holds a deliberate choice and nothing else -
+     neither side writes it on load - so there is no stale value for it to
+     carry. */
   :root {
-    color-scheme: light dark;
+    color-scheme: dark;
 
     --l-bg:#F7F8FC; --l-surface:#EEF0F7; --l-fg:#17203A; --l-muted:#68708A; --l-line:#D9DDEB;
     --l-accent:#6557D9; --l-accent-2:#8B7CFF; --l-cyan:#4F8CC9;
@@ -155,31 +170,6 @@ try {
     --d-lead-weight: 400;
     --d-switch: "\2600\FE0E";  /* a sun on the dark page: click for light */
 
-    --bg:var(--l-bg); --surface:var(--l-surface); --fg:var(--l-fg);
-    --muted:var(--l-muted); --line:var(--l-line);
-    --accent:var(--l-accent); --accent-2:var(--l-accent-2); --cyan:var(--l-cyan);
-    --btn-bg:var(--l-btn-bg); --btn-bg-hover:var(--l-btn-bg-hover); --btn-ink:var(--l-btn-ink);
-    --hero:var(--l-hero); --wordmark:var(--l-wordmark); --workflow:var(--l-workflow);
-    --code-bg:var(--l-code-bg); --shadow:var(--l-shadow);
-    --lead-weight:var(--l-lead-weight); --switch:var(--l-switch);
-  }
-  /* Dark, reached two ways: the system asks for it and the reader has not said
-     otherwise, or the reader picked it. Only the mapping repeats - the colours
-     above are written once - so the two blocks can disagree about which set is
-     in force, never about what a colour is. Keeping the system route in CSS is
-     what lets the page open in the right palette before any script runs. */
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg:var(--d-bg); --surface:var(--d-surface); --fg:var(--d-fg);
-      --muted:var(--d-muted); --line:var(--d-line);
-      --accent:var(--d-accent); --accent-2:var(--d-accent-2); --cyan:var(--d-cyan);
-      --btn-bg:var(--d-btn-bg); --btn-bg-hover:var(--d-btn-bg-hover); --btn-ink:var(--d-btn-ink);
-      --hero:var(--d-hero); --wordmark:var(--d-wordmark); --workflow:var(--d-workflow);
-      --code-bg:var(--d-code-bg); --shadow:var(--d-shadow);
-      --lead-weight:var(--d-lead-weight); --switch:var(--d-switch);
-    }
-  }
-  :root[data-theme="dark"] {
     --bg:var(--d-bg); --surface:var(--d-surface); --fg:var(--d-fg);
     --muted:var(--d-muted); --line:var(--d-line);
     --accent:var(--d-accent); --accent-2:var(--d-accent-2); --cyan:var(--d-cyan);
@@ -188,8 +178,21 @@ try {
     --code-bg:var(--d-code-bg); --shadow:var(--d-shadow);
     --lead-weight:var(--d-lead-weight); --switch:var(--d-switch);
   }
-  :root[data-theme="light"] { color-scheme: light; }
-  :root[data-theme="dark"] { color-scheme: dark; }
+  /* Light, reached one way: the reader asked for it. Only the mapping repeats
+     - the colours above are written once - so this block and the one above can
+     disagree about which set is in force, never about what a colour is. It is
+     stamped on `<html>` before the first paint by the script in the head, so a
+     reader who chose light never sees a dark frame first. */
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg:var(--l-bg); --surface:var(--l-surface); --fg:var(--l-fg);
+    --muted:var(--l-muted); --line:var(--l-line);
+    --accent:var(--l-accent); --accent-2:var(--l-accent-2); --cyan:var(--l-cyan);
+    --btn-bg:var(--l-btn-bg); --btn-bg-hover:var(--l-btn-bg-hover); --btn-ink:var(--l-btn-ink);
+    --hero:var(--l-hero); --wordmark:var(--l-wordmark); --workflow:var(--l-workflow);
+    --code-bg:var(--l-code-bg); --shadow:var(--l-shadow);
+    --lead-weight:var(--l-lead-weight); --switch:var(--l-switch);
+  }
   * { box-sizing: border-box; }
   body {
     margin: 0; background: var(--bg); color: var(--fg);
@@ -424,11 +427,13 @@ mirzam export pdf deck.md</code></pre>
 </main>
 
 <script>
-// The colour mode. Three states: unset, which follows the machine, and the two
-// the switch picks. The choice is stored under the key a deck's viewer reads,
-// so a deck opened from a light page opens light - and it is put on the deck
-// links as ?mode= too, which covers the reader whose browser refuses storage.
-// Everything here degrades to "the page follows the system", which is what a
+// The colour mode. Two states that matter - dark, which is what this page is
+// until somebody says otherwise, and light, which a reader asks for. The
+// choice is stored under the key a deck's viewer reads, so a deck opened from
+// a light page opens light - and the page's *effective* mode is put on the
+// deck links as ?mode= too, dark included, so what you click looks like what
+// you were looking at. That also covers the reader whose browser refuses
+// storage. Everything here degrades to "the page is dark", which is what a
 // reader with no JavaScript at all gets, because the CSS above says so.
 (() => {
   const KEY = 'mirzam-mode';
@@ -442,9 +447,13 @@ mirzam export pdf deck.md</code></pre>
   const read = () => { try { return localStorage.getItem(KEY); } catch (e) { return null; } };
   const write = (m) => { try { localStorage.setItem(KEY, m); } catch (e) {} };
 
+  // Nothing stored means dark here, not "ask the machine" - the one place that
+  // decision is written down for the script, matching the stylesheet's own.
+  const effective = (mode) => (mode === 'light' ? 'light' : 'dark');
+
   const apply = (mode) => {
     if (mode) root.dataset.theme = mode; else delete root.dataset.theme;
-    const dark = mode ? mode === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    const dark = effective(mode) === 'dark';
     const btn = document.getElementById('switch');
     if (btn) {
       // The glyph is the destination, so the label has to be too.
@@ -455,7 +464,10 @@ mirzam export pdf deck.md</code></pre>
       const base = a.getAttribute('href').split('?')[0];
       const q = [];
       if (BUILD) q.push('v=' + encodeURIComponent(BUILD));
-      if (mode) q.push('mode=' + mode);
+      // The mode the page is actually showing, chosen or not: a reader who has
+      // picked nothing is still looking at a dark page, and a deck that opened
+      // light underneath them would be the same disagreement one level down.
+      q.push('mode=' + effective(mode));
       a.setAttribute('href', q.length ? base + '?' + q.join('&') : base);
     }
   };
@@ -465,8 +477,7 @@ mirzam export pdf deck.md</code></pre>
   apply(mode);
 
   document.getElementById('switch').addEventListener('click', () => {
-    const dark = mode ? mode === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-    mode = dark ? 'light' : 'dark';
+    mode = effective(mode) === 'dark' ? 'light' : 'dark';
     write(mode);
     apply(mode);
   });
