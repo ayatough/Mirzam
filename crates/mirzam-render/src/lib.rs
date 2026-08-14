@@ -10,7 +10,9 @@ mod code;
 mod connect;
 mod effects;
 mod inline;
+mod json;
 mod shapes;
+mod source;
 mod theme;
 mod toc;
 
@@ -22,6 +24,7 @@ pub use code::{highlight as highlight_code, TOKEN_CLASSES};
 pub use inline::{parse_attrs, preprocess, preprocess_math, render_markdown, render_math};
 pub use mirzam_cite::{Bibliography, CiteStyle};
 pub use mirzam_core::MathDialect;
+pub use source::DeckSource;
 pub use theme::{contrast_ratio, mode_warning, theme_warning, THEME_NAMES};
 pub use toc::resolve_deck;
 
@@ -335,6 +338,10 @@ pub struct PageOptions {
     /// that theme existed in the deck, and the pane would come out in the
     /// deck's palette until the next full reload.
     pub all_themes: bool,
+    /// The deck's own Markdown, for the viewer's `S` panel and the handover to
+    /// the browser editor. Absent — the default — and the deck carries no
+    /// source, has no `S` key, and is the same file it always was.
+    pub source: Option<source::DeckSource>,
 }
 
 /// Whether any section contains math, deciding if the math font is bundled.
@@ -456,6 +463,7 @@ pub fn page_fingerprint(meta: &DeckMeta, sections: &[String], opts: &PageOptions
     effects::deck_has_effects(sections).hash(&mut h);
     opts.custom_css.hash(&mut h);
     opts.debug_layout.hash(&mut h);
+    opts.source.hash(&mut h);
     meta.grid_metrics_css().hash(&mut h);
     h.finish()
 }
@@ -501,6 +509,14 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
     } else {
         String::new()
     };
+    // The source payload and the control that opens it travel together: a
+    // button that opens an empty panel is worse than no button.
+    let source_script = opts.source.as_ref().map(|s| s.script()).unwrap_or_default();
+    let source_button = if source_script.is_empty() {
+        String::new()
+    } else {
+        "\n<button id=\"mz-source-btn\" type=\"button\" aria-label=\"The Markdown behind this slide\">&lt;/&gt;</button>".to_string()
+    };
     let transition = transition_attr(meta);
     let (theme_name, mode_attr) = theme_attrs(meta);
     format!(
@@ -513,7 +529,7 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <title>{title}</title>
 <style>{css}</style>
 <style>{math_css}</style>
-<style>{custom_css}</style>
+<style id="mz-css">{custom_css}</style>
 <style>{grid_css}</style>
 </head>
 <body>
@@ -524,13 +540,14 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <div id="controls">
 <button id="mz-prev" type="button" aria-label="Previous">‹</button>
 <button id="mz-next" type="button" aria-label="Next">›</button>
-<button id="mz-mode" type="button" aria-label="Switch colour mode"></button>
+<button id="mz-mode" type="button" aria-label="Switch colour mode"></button>{source_button}
 <button id="mz-help" type="button" aria-label="Keyboard shortcuts">?</button>
 </div>
 </div>
 <div id="keys" hidden></div>
 <div id="notes-panel" hidden></div>
-{fit_js}{anim_js}{annot_js}<script>{js}</script>
+<div id="source-panel" hidden></div>
+{source_script}{fit_js}{anim_js}{annot_js}<script>{js}</script>
 <script>{presenter_js}</script>
 {effects_js}{live_js}</body>
 </html>
@@ -1829,6 +1846,58 @@ mod tests {
         };
         let html = assemble_page(&meta, &[], &PageOptions::default());
         assert!(html.contains("data-theme=\"default\""));
+    }
+
+    /// A deck built without `--embed-source` is the file it always was: no
+    /// payload, and no control offering to open one.
+    #[test]
+    fn a_page_carries_no_source_unless_it_was_asked_for() {
+        let html = assemble_page(&DeckMeta::default(), &[], &PageOptions::default());
+        // The names also appear in the viewer script, which every deck
+        // carries; what a deck without source must not have is the tag and
+        // the button themselves.
+        assert!(!html.contains("<script type=\"application/json\" id=\"mz-source\""));
+        assert!(!html.contains("<button id=\"mz-source-btn\""), "{html}");
+    }
+
+    #[test]
+    fn embedded_source_arrives_with_a_control_that_opens_it() {
+        let opts = PageOptions {
+            source: Some(DeckSource {
+                slides: vec!["# One\n".into()],
+                section_slides: vec![0],
+                editor_url: Some("../../try/".into()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let html = assemble_page(&DeckMeta::default(), &[], &opts);
+        assert!(html.contains("<script type=\"application/json\" id=\"mz-source\""));
+        assert!(html.contains(r##""slides":["# One\n"]"##), "{html}");
+        assert!(html.contains("<button id=\"mz-source-btn\""), "{html}");
+        // The viewer reads the deck's own stylesheet back out of the page
+        // rather than the deck carrying a second copy of it.
+        assert!(html.contains("<style id=\"mz-css\">"), "{html}");
+    }
+
+    /// Two decks that differ only in the source they carry are two different
+    /// pages, and `serve` has to rebuild rather than patch slides into the old
+    /// one.
+    #[test]
+    fn the_page_fingerprint_notices_embedded_source() {
+        let meta = DeckMeta::default();
+        let bare = PageOptions::default();
+        let with = PageOptions {
+            source: Some(DeckSource {
+                slides: vec!["# One\n".into()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        assert_ne!(
+            page_fingerprint(&meta, &[], &bare),
+            page_fingerprint(&meta, &[], &with)
+        );
     }
 
     #[test]

@@ -66,10 +66,16 @@
     const box = host
       ? host.getBoundingClientRect()
       : { width: innerWidth, height: innerHeight };
-    const s = Math.min(box.width / (W + 40), box.height / (H + 40));
+    // The open source panel is the one piece of chrome the deck makes room
+    // for instead of sitting under: the slide and its Markdown are meant to
+    // be read together, and a slide half-covered by the text that produced it
+    // would be the wrong half of the point.
+    const taken = host ? { x: 0, y: 0 } : panelReserve();
+    const s = Math.min((box.width - taken.x) / (W + 40), (box.height - taken.y) / (H + 40));
     deck.style.width = W + 'px';
     deck.style.height = H + 'px';
-    deck.style.transform = `translate(-50%, -50%) scale(${s})`;
+    deck.style.transform =
+      `translate(calc(-50% - ${taken.x / 2}px), calc(-50% - ${taken.y / 2}px)) scale(${s})`;
   }
 
   // `play` is what separates a page turn from a repaint: a resize, a font
@@ -341,19 +347,22 @@
   // opens the sheet, and the click it produces lands on the sheet it just
   // opened.
   let handled = false;
+  // Its own list because a deck built with `--embed-source` adds a row to it
+  // and a deck without one must not advertise a key that does nothing.
+  const DISPLAY = [
+    [['N'], 'Speaker notes'],
+    [['P'], 'Presenter window'],
+    [['F'], 'Fullscreen'],
+    [['D'], 'Dark / light'],
+    [['L'], 'Outline the layout'],
+  ];
   const KEYS = [
     ['Navigate', [
       [['→', 'Space'], 'Next step, then next slide'],
       [['←'], 'Back a step, then back a slide'],
       [['Home', 'End'], 'First / last slide'],
     ]],
-    ['Display', [
-      [['N'], 'Speaker notes'],
-      [['P'], 'Presenter window'],
-      [['F'], 'Fullscreen'],
-      [['D'], 'Dark / light'],
-      [['L'], 'Outline the layout'],
-    ]],
+    ['Display', DISPLAY],
   ];
   // On a phone the keys above are all unreachable, so the sheet leads with the
   // gestures instead. `pointer: coarse` is the primary pointer, so a laptop
@@ -403,6 +412,142 @@
     if (handled) { handled = false; return; }
     toggleKeys(false);
   });
+
+  // ---- The Markdown behind the slide ----
+  // Present only in a deck built with `--embed-source`, which bakes the text
+  // each slide was written as into the page. A published deck otherwise shows
+  // what the markup *does* and never what it *says*, so a reader looking at a
+  // slide of charts and arrows has no way back to the lines that made it.
+  //
+  // The panel is beside the slide rather than over it (see `fit`), and when
+  // the build named an editor it also carries the slide out: the handover is
+  // a fragment on the editor's URL, so nothing is uploaded anywhere and a
+  // deck saved to a phone can still hand a slide to a browser that has one.
+  const sourcePanel = document.getElementById('source-panel');
+  const sourceBtn = document.getElementById('mz-source-btn');
+  let SOURCE = null;
+  try {
+    const tag = document.getElementById('mz-source');
+    if (tag) SOURCE = JSON.parse(tag.textContent);
+  } catch (e) {}
+  const hasSource = !!(SOURCE && SOURCE.slides && SOURCE.slides.length);
+  if (hasSource) DISPLAY.splice(1, 0, [['S'], 'The Markdown behind this slide']);
+
+  /** The authored Markdown behind rendered slide `i`, or null. */
+  function sourceFor(i) {
+    if (!hasSource) return null;
+    // `<!-- next -->` renders one authored slide as several sections, so the
+    // section number is not the slide number; `of` is the way back. A deck
+    // that never breaks a slide omits the detour.
+    const at = SOURCE.of && SOURCE.of.length > i ? SOURCE.of[i] : i;
+    const md = SOURCE.slides[at];
+    return md === undefined ? null : md;
+  }
+
+  /** How much room the open panel wants, as `{x, y}` pixels. */
+  function panelReserve() {
+    if (!sourcePanel || sourcePanel.hidden) return { x: 0, y: 0 };
+    const r = sourcePanel.getBoundingClientRect();
+    // The panel docks right on a wide window and along the bottom on a narrow
+    // one; which one it did is a media query's business, so measure it.
+    return r.width >= innerWidth - 1 ? { x: 0, y: r.height } : { x: r.width, y: 0 };
+  }
+
+  /**
+   * The deck's frontmatter and this slide's Markdown, as a document the
+   * editor can render on its own. Frontmatter carries the deck's `vars:`,
+   * `theme:` and `aspect:` across; without it a slide arrives looking like
+   * somebody else's.
+   */
+  function handoverDoc(md) {
+    const fm = SOURCE && SOURCE.fm;
+    return fm ? `---\n${fm}\n---\n\n${md}` : md;
+  }
+
+  /** base64url of a UTF-8 string: `btoa` alone mangles anything non-ASCII. */
+  function encodePayload(text) {
+    const bytes = new TextEncoder().encode(text);
+    let bin = '';
+    for (const b of bytes) bin += String.fromCharCode(b);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  /**
+   * Where the editor is, with this slide packed into the fragment. The deck's
+   * own stylesheet rides along under the name `css:` gave it, read back out
+   * of the page it is already inlined in — so the handover costs no bytes in
+   * the deck, and the slide renders over there the way it renders here.
+   */
+  function editorLink(md) {
+    if (!SOURCE || !SOURCE.editor) return null;
+    // The bibliography and anything else the deck read by name travelled with
+    // the payload; the stylesheet did not, because it is already here.
+    const files = Object.assign({}, SOURCE.files);
+    const sheet = document.getElementById('mz-css');
+    if (SOURCE.css && sheet && sheet.textContent.trim()) {
+      files[SOURCE.css] = sheet.textContent;
+    }
+    const payload = { md: handoverDoc(md) };
+    if (Object.keys(files).length) payload.files = files;
+    return SOURCE.editor + '#deck=' + encodePayload(JSON.stringify(payload));
+  }
+
+  function renderSource() {
+    const md = sourceFor(cur);
+    if (md === null) {
+      sourcePanel.innerHTML =
+        '<div class="mz-src-bar"><h4>Markdown</h4>' +
+        '<button type="button" data-src-close>Close</button></div>' +
+        '<pre>This slide carries no source.</pre>';
+      return;
+    }
+    const link = editorLink(md);
+    // A new tab: the deck this came from is very likely being presented, and
+    // taking the presenter's window to an editor would be the wrong answer to
+    // a click on a link.
+    const open = link
+      ? `<a href="${esc(link)}" target="_blank" rel="noopener">Edit in the browser</a>`
+      : '';
+    sourcePanel.innerHTML =
+      `<div class="mz-src-bar"><h4>Slide ${cur + 1}</h4>` +
+      '<button type="button" data-src-copy>Copy</button>' + open +
+      '<button type="button" data-src-close>Close</button></div>' +
+      `<pre>${esc(md)}</pre>`;
+  }
+
+  function toggleSource(on) {
+    if (!sourcePanel || !hasSource) return;
+    const want = on === undefined ? sourcePanel.hidden : on;
+    // Closing a closed panel still costs a re-fit and a repaint, and `Esc`
+    // asks for exactly that on every press.
+    if (want === !sourcePanel.hidden) return;
+    if (want) renderSource();
+    sourcePanel.hidden = !want;
+    if (sourceBtn) sourceBtn.setAttribute('aria-pressed', String(want));
+    // Opening the panel takes width from the deck, so the slide has to be
+    // laid out again — and without replaying its entrance, because reading
+    // the source is not arriving at the slide.
+    fit();
+    show(cur, { play: false });
+  }
+
+  if (sourcePanel) {
+    sourcePanel.addEventListener('click', (e) => {
+      if (e.target.closest('[data-src-close]')) { toggleSource(false); return; }
+      const copy = e.target.closest('[data-src-copy]');
+      if (!copy) return;
+      const md = sourceFor(cur);
+      if (md === null || !navigator.clipboard) return;
+      navigator.clipboard.writeText(md).then(
+        () => { copy.textContent = 'Copied'; setTimeout(() => { copy.textContent = 'Copy'; }, 1200); },
+        () => { copy.textContent = 'Press ⌘C'; },
+      );
+    });
+  }
+  if (sourceBtn) sourceBtn.addEventListener('click', () => toggleSource());
+  // Every page turn while the panel is open has to repaint it, or it shows
+  // the Markdown of a slide that is no longer on screen.
+  watchers.push(() => { if (sourcePanel && !sourcePanel.hidden) renderSource(); });
 
   // ---- The control cluster ----
   // Quiet until someone reaches for it. `mz-awake` only drives an opacity, so
@@ -462,12 +607,15 @@
     if (e.key === '/' || e.key === '?') { e.preventDefault(); toggleKeys(); return; }
     // Escape closes the sheet. It also clears effects, which `effects.js`
     // handles on its own listener, so this one only owns the overlay.
-    if (e.key === 'Escape') { toggleKeys(false); return; }
+    if (e.key === 'Escape') { toggleKeys(false); toggleSource(false); return; }
     if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); advance(); }
     else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); retreat(); }
     else if (e.key === 'Home') show(0);
     else if (e.key === 'End') show(slides().length - 1);
     else if (e.key === 'n' || e.key === 'N') notesPanel.hidden = !notesPanel.hidden;
+    // Absent in a deck built without `--embed-source`, where there is nothing
+    // to show and the key does nothing at all.
+    else if (e.key === 's' || e.key === 'S') toggleSource();
     // Absent in a deck built without the presenter script; the key then does
     // nothing rather than throwing and taking navigation down with it.
     else if (e.key === 'p' || e.key === 'P') { if (window.MZPresenter) window.MZPresenter.open(); }

@@ -33,11 +33,42 @@ mkdir -p "$OUT/decks"
 # directory lives on GitHub.
 REPO_BLOB="https://github.com/ayatough/Mirzam/blob/main"
 
+# The browser editor: the same Rust core compiled to WebAssembly, so someone
+# with no toolchain - or no laptop - can still write a deck and download it.
+# Skipped when the WASM toolchain is not available, and the landing page then
+# simply does not offer the card, so a site built without it has no dead link.
+#
+# Built before the decks, because each deck is told where it is: a slide on the
+# site hands itself to this editor, and a site built without one must not link
+# to a page it does not contain.
+TRY_CARD=""
+EDITOR_ARGS=()
+echo "==> building the browser editor"
+if [ "${MIRZAM_SKIP_WASM:-}" != "1" ] && ./scripts/build-wasm.sh web/wasm-demo/pkg; then
+  mkdir -p "$OUT/try"
+  cp -R web/wasm-demo/. "$OUT/try/"
+  cp docs/brand/mirzam-icon-light.svg "$OUT/try/favicon.svg"
+  TRY_CARD='<a class="card" href="try/"><b>Write one in the browser</b><span>The Rust core as WebAssembly: no install, and it runs on a phone</span></a>'
+  # Relative, because both channels publish the same decks: `/decks/x/` and
+  # `/next/decks/x/` each reach their own editor by the same three steps up.
+  EDITOR_ARGS=(--editor-url ../../try/)
+else
+  echo "  (skipped; the landing page will not link to it, and the decks"
+  echo "   carry their source with no way out of the panel)"
+fi
+# Expanded below as `${EDITOR_ARGS[@]+"${EDITOR_ARGS[@]}"}` rather than
+# `"${EDITOR_ARGS[@]}"`: under `set -u` an empty array counts as unbound in
+# bash before 4.4, which is the bash macOS still ships.
+
 echo "==> building decks"
 cargo build --release --bin mirzam
+# `--embed-source` is what makes a slide legible as *markup*: the site shows
+# the rendering and the prose about it, and until now nothing on the page said
+# which eight lines produced the slide in front of you. With it, `S` opens the
+# Markdown beside the slide, and the editor link hands that Markdown over.
 for deck in "${DECKS[@]}"; do
   ./target/release/mirzam build "examples/$deck.md" -o "$OUT/decks/$deck" \
-    --base-url "$REPO_BLOB/examples/"
+    --base-url "$REPO_BLOB/examples/" --embed-source ${EDITOR_ARGS[@]+"${EDITOR_ARGS[@]}"}
 done
 # The README with no Mirzam syntax at all, split at its own headings. The theme
 # and the fit come from the command line for the same reason: frontmatter would
@@ -49,22 +80,7 @@ done
 # whole claim is that an unedited document becomes a deck.
 ./target/release/mirzam build README.md -o "$OUT/decks/readme" --split h2 \
   --theme mirzam --css examples/themes/mirzam.css --fit shrink --mode dark \
-  --base-url "$REPO_BLOB/"
-
-# The browser editor: the same Rust core compiled to WebAssembly, so someone
-# with no toolchain - or no laptop - can still write a deck and download it.
-# Skipped when the WASM toolchain is not available, and the landing page then
-# simply does not offer the card, so a site built without it has no dead link.
-TRY_CARD=""
-echo "==> building the browser editor"
-if [ "${MIRZAM_SKIP_WASM:-}" != "1" ] && ./scripts/build-wasm.sh web/wasm-demo/pkg; then
-  mkdir -p "$OUT/try"
-  cp -R web/wasm-demo/. "$OUT/try/"
-  cp docs/brand/mirzam-icon-light.svg "$OUT/try/favicon.svg"
-  TRY_CARD='<a class="card" href="try/"><b>Write one in the browser</b><span>The Rust core as WebAssembly: no install, and it runs on a phone</span></a>'
-else
-  echo "  (skipped; the landing page will not link to it)"
-fi
+  --base-url "$REPO_BLOB/" --embed-source ${EDITOR_ARGS[@]+"${EDITOR_ARGS[@]}"}
 
 # The brand assets the landing page and the link preview are built from. Copied
 # rather than inlined so the social card has a stable absolute URL - a scraper
@@ -352,6 +368,10 @@ try {
   <p>Six slides between reading about Mirzam and having a deck.
   <span class="kbd">←</span> <span class="kbd">→</span> to navigate,
   <span class="kbd">N</span> for speaker notes, <span class="kbd">/</span> for the rest.</p>
+  <p>Every deck here carries its own Markdown: press <span class="kbd">S</span>
+  on any slide to read the source that produced it beside the slide, and from
+  there one click opens it in the browser editor, where you can change it and
+  watch it re-render.</p>
   <div class="cards">
     <a class="card" href="decks/01-start/"><b>Your first deck</b><span>The smallest file that works, where a page breaks, the three commands</span></a>
     <a class="card" href="decks/readme/"><b>A README, unedited</b><span>What <code>--split h2</code> does to a document nobody wrote for slides</span></a>

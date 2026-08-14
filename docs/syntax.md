@@ -39,7 +39,7 @@ This file runs long; jump straight to the one you need.
 | [Presentation effects](#presentation-effects) | The `effects` block: flourishes bound to a key, fired while presenting |
 | [Annotations](#annotations) | The `annotate` block: circle, underline, box, arrow, pointing at a live element |
 | [Animations](#animations) | The `anim` block: entrances, click steps, exits |
-| [Driving the viewer](#driving-the-viewer) | Keyboard shortcuts, presenter mode, the `/` shortcut sheet |
+| [Driving the viewer](#driving-the-viewer) | Keyboard shortcuts, presenter mode, the `/` shortcut sheet, [the Markdown behind a slide](#the-markdown-behind-a-slide) |
 | [Theming](#theming) | `theme:`, `css:`, `mode:`, [a theme on one pane](#a-theme-smaller-than-a-deck), and the tokens a stylesheet sets |
 
 ## Deck and slides
@@ -1382,6 +1382,7 @@ nobody can guess. `Esc` or `/` closes it.
 | `←` `PageUp` | Back a step, then the previous slide |
 | `Home` `End` | First / last slide |
 | `N` | Speaker notes |
+| `S` | The Markdown this slide was written as ([see below](#the-markdown-behind-a-slide)) |
 | `P` | Presenter window |
 | `F` | Fullscreen |
 | `D` | Dark / light |
@@ -1397,6 +1398,44 @@ A quiet control cluster sits below the bottom-right corner — previous, next an
 the cheat sheet — and fades in when you move the pointer or touch the screen.
 It is outside the deck, so it never covers slide content, and it is never
 printed.
+
+### The Markdown behind a slide
+
+A deck built with `--embed-source` carries the text each slide was written as:
+
+```bash
+mirzam build deck.md -o out --embed-source
+```
+
+`S` then opens that Markdown *beside* the slide — the deck makes room for the
+panel instead of being covered by it, because the point is reading the two
+together. `Copy` takes the slide's source to the clipboard, `Esc` or `Close`
+puts the slide back to full width. In a deck built without the flag the key
+does nothing and the cheat sheet does not offer it.
+
+A rendered slide is not always an authored one: `<!-- next -->` turns one slide
+into several, and each of them shows the source of the slide they were cut
+from. What travels is the Markdown **as authored** — `{{vars}}` unsubstituted,
+`![[includes]]` unexpanded — because the point is the text somebody typed.
+
+Add `--editor-url` and the panel also carries the slide out:
+
+```bash
+mirzam build deck.md -o out --editor-url ../../try/
+```
+
+The link hands the slide to the [browser editor](https://ayatough.github.io/Mirzam/try/),
+where it can be changed and re-rendered by the same core that drew it. The
+deck's frontmatter and the stylesheet `css:` names travel with it, in the URL's
+*fragment* — the part a browser never sends to a server. Nothing is uploaded,
+and a deck saved to a phone hands a slide over exactly like a published one.
+Its images do not travel: they are inlined in the deck as data URIs with the
+path they came from long gone, so a slide that uses one arrives with the
+reference intact and the file missing, which the editor reports the way it
+reports any missing asset. Drag the picture in and it resolves again.
+
+`--editor-url` implies `--embed-source`. Both are `build` only: `serve` already
+has your source open in the editor beside it.
 
 ### The presenter window
 

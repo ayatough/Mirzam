@@ -8,6 +8,29 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- **A published slide can show the Markdown it was written as, and hand it to
+  the browser editor.** `mirzam build --embed-source` carries each slide's
+  source inside the deck; `S` then opens it beside the slide — the deck makes
+  room for the panel rather than being covered by it — with a button that
+  copies it. Add `--editor-url <url>` and the panel also carries the slide
+  out: one click opens it in the browser editor, where the same core
+  re-renders it as you change it.
+
+  The handover travels in the URL's fragment, which a browser never sends to a
+  server, so nothing is uploaded and a deck saved to a phone hands a slide over
+  exactly like a published one. The deck's frontmatter and the stylesheet
+  `css:` names go with it — the stylesheet read back out of the page it is
+  already inlined in, so carrying it costs the deck no bytes. Images do not
+  travel: inlined as data URIs, they have lost the path they came from, and a
+  slide that uses one arrives with the reference intact and the file missing.
+
+  **The site is built this way**, which is what it was for: it showed a
+  rendering and prose about it, and nothing on the page said which eight lines
+  produced the slide in front of you.
+
+  `s` is now a viewer key, so an `effects` block can no longer bind it — the
+  same warning the other reserved keys give.
+
 - **A `shape` block written inside a `::: pane` draws in that pane's
   coordinate space.** `at(50%, 50%)` is the centre of the pane, not of the
   slide, so a diagram written where its content lives resizes with the pane

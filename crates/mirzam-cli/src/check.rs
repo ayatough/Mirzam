@@ -106,6 +106,9 @@ pub(crate) fn check(input: &Path, args: &CheckArgs) -> Result<(), String> {
         debug_layout: args.debug_layout,
         // The page under test is the page `build` writes, palettes included.
         all_themes: false,
+        // The one thing it does not carry: the source panel is hidden, so it
+        // occupies no space on a slide and there is nothing here to check.
+        source: None,
     };
     let html = mirzam_render::assemble_page(&out.meta, &out.sections, &opts);
     let html = inject_before_closing_body(&html, &check_script(args.min_slack.unwrap_or(0)));

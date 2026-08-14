@@ -711,7 +711,7 @@ html.mz-awake #controls { opacity: 1; pointer-events: auto; }
 #keys .mz-keys-close { margin: 16px 0 0; color: var(--mz-ui-dim); font-size: 13px; }
 
 /* Chrome is the viewer, never the document. */
-@media print { #chrome, #keys, #notes-panel, #presenter { display: none !important; } }
+@media print { #chrome, #keys, #notes-panel, #source-panel, #presenter { display: none !important; } }
 
 /* The presenter window: the same file with `?presenter=1`. Only this window
    gets the extra furniture — the audience window is untouched. */
@@ -772,6 +772,60 @@ html[data-presenter] #chrome, html[data-presenter] #notes-panel { display: none;
 }
 #notes-panel h4 { margin: 0 0 6px; color: var(--mz-accent2); font-size: 12px; letter-spacing: .1em; }
 #notes-panel[hidden] { display: none; }
+
+/* The source panel: the Markdown this slide was written as, in a deck built
+   with `--embed-source`. It docks beside the slide rather than over it — the
+   viewer shrinks the deck by the panel's width — because the whole point is
+   reading the two together. The notes panel overlays instead, and rightly:
+   notes are read *instead of* the slide, source is read *against* it.
+
+   Theme-independent, like every other overlay here: a panel that restyled
+   itself per deck would be a second thing to recognise on every deck. */
+#source-panel {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 4;
+  width: min(52ch, 44vw);
+  display: flex; flex-direction: column;
+  /* theme-independent: an overlay panel, deliberately the same in every theme */
+  background: rgba(20, 22, 29, .97); color: #dde1ee;
+  border-left: 2px solid var(--mz-accent2);
+}
+#source-panel[hidden] { display: none; }
+.mz-src-bar {
+  display: flex; align-items: center; gap: 8px;
+  /* theme-independent: the panel's own furniture */
+  padding: 10px 12px; border-bottom: 1px solid rgba(255, 255, 255, .12);
+}
+.mz-src-bar h4 {
+  flex: 1; margin: 0; color: var(--mz-accent2); white-space: nowrap;
+  font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+}
+.mz-src-bar button, .mz-src-bar a {
+  font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 7px;
+  cursor: pointer; text-decoration: none; white-space: nowrap;
+  /* theme-independent: the panel's own furniture */
+  color: #dde1ee; background: rgba(255, 255, 255, .07);
+  /* theme-independent: the panel's own furniture */
+  border: 1px solid rgba(255, 255, 255, .18);
+}
+/* theme-independent: the panel's own furniture */
+.mz-src-bar button:hover, .mz-src-bar a:hover { border-color: var(--mz-accent2); color: #fff; }
+/* The deck's own stylesheet is page-wide and styles `pre` for slides, which
+   caught this one too: a light deck's code block put pale ink on pale paper
+   inside a dark panel. The panel is chrome, so it takes its colours from the
+   panel and nothing else — and it does not wrap, because a pane drawing that
+   reflows is no longer a drawing. */
+#source-panel pre {
+  flex: 1; margin: 0; overflow: auto; padding: 12px 14px;
+  background: none; color: inherit; border: 0; border-radius: 0;
+  font-family: 'SF Mono', Consolas, Menlo, monospace;
+  font-size: 12.5px; line-height: 1.6; tab-size: 2;
+  white-space: pre; -moz-tab-size: 2;
+}
+/* Narrow enough that half the width is not a slide any more: the panel takes
+   the bottom instead, and the deck keeps the whole width above it. */
+@media (max-width: 720px) {
+  #source-panel { top: auto; left: 0; width: auto; height: 46%; border-left: 0; border-top: 2px solid var(--mz-accent2); }
+}
 
 /* Layout debug overlay: `L` toggles `mz-debug` on <html> in the viewer;
    `mirzam build --debug-layout` bakes it on for headless screenshots. Off by

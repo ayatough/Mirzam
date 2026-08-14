@@ -11,6 +11,9 @@ use std::time::SystemTime;
 
 pub struct BuildOutput {
     pub meta: mirzam_core::DeckMeta,
+    /// The deck's frontmatter as written, without the `---` fences. `None`
+    /// when the deck declared none — a README built with `--split`, say.
+    pub frontmatter: Option<String>,
     /// Rendered `<section>` HTML, in slide order.
     pub sections: Vec<String>,
     /// Hash of each slide's rendered HTML, used for change detection.
@@ -178,6 +181,10 @@ pub fn build_deck_with(
         Some(yaml) => mirzam_core::parse_meta(yaml)?,
         None => mirzam_core::DeckMeta::default(),
     };
+    // Kept as text, not only as `meta`: `--embed-source` hands a slide to the
+    // browser editor with the deck's settings attached, and what the editor
+    // needs is the YAML somebody wrote, not this crate's reading of it.
+    let frontmatter = fm.map(str::to_string);
     let mut warnings = Vec::new();
     // Sites are recorded by the index of the warning they belong to, rather
     // than pushed alongside it, so the places that know nothing about location
@@ -488,6 +495,7 @@ pub fn build_deck_with(
 
     Ok(BuildOutput {
         meta,
+        frontmatter,
         sections,
         hashes,
         page_fingerprint,

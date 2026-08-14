@@ -36,6 +36,14 @@ fn main() -> ExitCode {
                             None => return usage("--base-url requires a URL"),
                         }
                     }
+                    "--embed-source" => opts.embed_source = true,
+                    "--editor-url" => {
+                        i += 1;
+                        match args.get(i) {
+                            Some(u) => opts.editor_url = Some(u.clone()),
+                            None => return usage("--editor-url requires a URL"),
+                        }
+                    }
                     "--debug-layout" => opts.debug_layout = true,
                     "--strict" => opts.strict = true,
                     arg => match parse_deck_flag(&args, &mut i, &mut opts.deck) {
@@ -303,7 +311,8 @@ Usage:
   mirzam new <file.md> [--empty]
   mirzam build <input.md> [-o <out_dir>] [--split h1|h2|h3] [--theme <name>]
                [--css <file>] [--fit shrink] [--mode light|dark]
-               [--base-url <url>] [--debug-layout] [--strict]
+               [--base-url <url>] [--embed-source] [--editor-url <url>]
+               [--debug-layout] [--strict]
   mirzam serve <input.md> [-p <port>]
   mirzam export pdf <input.md> [-o <out.pdf>] [--split h1|h2|h3]
                [--theme <name>] [--css <file>] [--fit shrink]
@@ -362,6 +371,15 @@ Usage:
   --base-url is where the input file's directory lives once published, so
           links to other documents still resolve from the deck's own path
           (build and check)
+  --embed-source carries each slide's Markdown, as authored, inside the deck:
+          the viewer's S key then shows the text this slide was written as,
+          beside the slide rather than over it. A published deck otherwise
+          shows what the markup does and never what it says (build only)
+  --editor-url is where the browser editor lives, absolute or relative to the
+          deck. It puts a link in that panel that hands the slide over for
+          editing - the deck's frontmatter and stylesheet travel with it, in
+          the URL's fragment, so nothing is uploaded anywhere. Implies
+          --embed-source (build only)
   --debug-layout bakes on the pane outline overlay, for screenshotting a
           broken deck (toggle it live in the viewer with the L key instead).
           `check` reports it baked on, since it is meant for screenshotting a
@@ -516,6 +534,16 @@ struct BuildArgs {
     /// before it ships. The deck still builds; only the exit code changes.
     strict: bool,
     base_url: Option<String>,
+    /// `--embed-source`: carry each slide's Markdown inside the deck, so the
+    /// viewer's `S` key can show the text the slide was written as. Off by
+    /// default: it is the documentation site's need, not every deck's, and a
+    /// deck that carries no source is a smaller file.
+    embed_source: bool,
+    /// `--editor-url`: where the browser editor lives, which turns the source
+    /// panel into a way out — one click hands the slide over for editing.
+    /// Implies `--embed-source`, since a link with nothing to hand over is
+    /// a link to an empty editor.
+    editor_url: Option<String>,
     deck: DeckArgs,
 }
 
@@ -526,6 +554,8 @@ impl Default for BuildArgs {
             debug_layout: false,
             strict: false,
             base_url: None,
+            embed_source: false,
+            editor_url: None,
             deck: DeckArgs::default(),
         }
     }
@@ -647,6 +677,27 @@ fn apply_deck_overrides(out: &mut pipeline::BuildOutput, deck: &DeckArgs) -> Res
     Ok(())
 }
 
+/// The text files a handed-over slide needs and cannot get anywhere else.
+///
+/// Only the bibliography today. The stylesheet is already inlined in the page
+/// and the viewer reads it back from there; images and chart data go through
+/// the asset table as data URIs, which would put a megabyte in a URL, so a
+/// handed-over slide that uses one arrives with the reference intact and the
+/// file missing — reported by the editor the way any missing asset is.
+///
+/// A file that cannot be read is left out rather than failing the build: the
+/// deck itself has already reported it, and a second copy of the same warning
+/// helps nobody.
+fn embedded_files(input: &Path, meta: &mirzam_core::DeckMeta) -> Vec<(String, String)> {
+    let base = input.parent().unwrap_or(Path::new("."));
+    meta.bibliography_file()
+        .and_then(|rel| {
+            let text = std::fs::read_to_string(base.join(rel)).ok()?;
+            Some(vec![(rel.to_string(), text)])
+        })
+        .unwrap_or_default()
+}
+
 fn build(input: &Path, args: &BuildArgs) -> Result<(), String> {
     let t0 = Instant::now();
     let mut cache = HashMap::new();
@@ -665,6 +716,19 @@ fn build(input: &Path, args: &BuildArgs) -> Result<(), String> {
         // A built deck is assembled in one pass, so it carries the palettes it
         // actually uses and no more.
         all_themes: false,
+        source: (args.embed_source || args.editor_url.is_some()).then(|| {
+            mirzam_render::DeckSource {
+                frontmatter: out.frontmatter.clone(),
+                css_path: out.meta.css.clone(),
+                files: embedded_files(input, &out.meta),
+                // The Markdown as authored: `{{vars}}` unsubstituted and
+                // `![[includes]]` unexpanded, because the point is the text
+                // somebody typed rather than the text the renderer read.
+                slides: out.slides.iter().map(|s| s.text.clone()).collect(),
+                section_slides: out.section_slides.clone(),
+                editor_url: args.editor_url.clone(),
+            }
+        }),
     };
     let html = mirzam_render::assemble_page(&out.meta, &out.sections, &opts);
 

@@ -161,6 +161,23 @@ const renderer = new Renderer();
 const saved = localStorage.getItem('mirzam-src');
 srcEl.value = saved === null ? SAMPLE : saved;
 
+// ---- Files ----
+// Everything the core reads by name that is not a picture: the stylesheet
+// `css:` points at, and any file a deck transcludes. There is no filesystem
+// here, so the host holds the table. It arrives with a slide handed over from
+// a deck (see below) and is kept with the draft, or a reload would render the
+// same Markdown in a different set of clothes.
+const files = JSON.parse(localStorage.getItem('mirzam-files') || '{}');
+function publishFiles() {
+  renderer.set_files(JSON.stringify(files));
+  try {
+    localStorage.setItem('mirzam-files', JSON.stringify(files));
+  } catch (e) {
+    warnEl.textContent = 'The deck’s stylesheet is too large to keep as a draft — it will be gone on reload.';
+  }
+}
+publishFiles();
+
 // ---- Images ----
 // The core has no filesystem here, so the host supplies assets by name. Adding
 // a picture reads it as a data URI and hands it over: from then on the deck
@@ -369,11 +386,60 @@ const setPane = (which) => {
 document.getElementById('tab-edit').addEventListener('click', () => setPane('edit'));
 document.getElementById('tab-preview').addEventListener('click', () => setPane('preview'));
 
+// ---- A slide handed over from a deck ----
+// A deck built with `mirzam build --embed-source --editor-url` carries the
+// Markdown each slide was written as, and offers to hand the slide you are
+// looking at to this editor. It arrives in the URL's fragment - the deck's
+// frontmatter, the slide, and the stylesheet `css:` names - which is the part
+// of a URL a browser never sends anywhere. Nothing is uploaded, and a deck
+// saved to a phone can hand a slide over exactly like a published one.
+//
+//   #md=<base64url of Markdown>
+//   #deck=<base64url of {"md": …, "files": {name: contents}}>
+//
+// Anything that does not decode is ignored: a truncated link should open the
+// editor on the draft that was already there, not on an error.
+function handover() {
+  const m = /[#&](deck|md)=([^&]+)/.exec(location.hash);
+  if (!m) return null;
+  try {
+    const b64 = m[2].replace(/-/g, '+').replace(/_/g, '/');
+    const text = new TextDecoder().decode(
+      Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)),
+    );
+    const payload = m[1] === 'md' ? { md: text } : JSON.parse(text);
+    return payload && typeof payload.md === 'string' ? payload : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 // An empty deck has nothing to preview, so the editor is where the work is.
 // On a phone the panes take turns and the page opens on the preview, which
 // for an empty draft is a blank page hiding the only thing worth touching.
 if (!srcEl.value.trim()) setPane('edit');
 fullRender(srcEl.value);
+
+const handed = handover();
+if (handed) {
+  if (handed.files) {
+    Object.assign(files, handed.files);
+    publishFiles();
+  }
+  // A one-time delivery. Leaving it in the address bar would ask the same
+  // question again on every reload, and the fragment is thousands of
+  // characters of base64 nobody wants to look at.
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+  // The sample is what the editor opens on, so it is not work anybody would
+  // miss - only a draft somebody typed is worth a question.
+  if (!saved || !saved.trim() || saved === SAMPLE) {
+    srcEl.value = handed.md;
+    localStorage.setItem('mirzam-src', srcEl.value);
+    fullRender(srcEl.value);
+  } else {
+    replaceSource(handed.md, 'Replace your draft with the slide you came from? Your draft is only in this browser — Save .md first if you want to keep it.');
+  }
+}
 </script>
 </body>
 </html>

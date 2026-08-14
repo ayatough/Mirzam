@@ -2,7 +2,7 @@
 //!
 //! ```text
 //! 1 : flash
-//! s : shake
+//! 2 : shake
 //! e : burst 🎉
 //! m : danmaku "this bit matters"
 //! ```
@@ -29,7 +29,8 @@ const EFFECTS: &[&str] = &[
 ];
 
 /// Keys the viewer already owns. Binding one of these would shadow navigation,
-/// which the presenter needs far more than a flourish.
+/// the notes, or the source panel — all of which the presenter needs far more
+/// than a flourish.
 const RESERVED: &[&str] = &[
     "arrowleft",
     "arrowright",
@@ -43,6 +44,7 @@ const RESERVED: &[&str] = &[
     "f",
     "l",
     "d",
+    "s",
 ];
 
 struct Binding {
@@ -97,12 +99,12 @@ pub fn extract(slide_index: usize, blocks: &[String], warnings: &mut Vec<String>
         .iter()
         .map(|b| {
             let arg = match &b.arg {
-                Some(a) => format!(",\"arg\":{}", json_string(a)),
+                Some(a) => format!(",\"arg\":{}", crate::json::string(a)),
                 None => String::new(),
             };
             format!(
                 "{{\"key\":{},\"effect\":\"{}\"{arg}}}",
-                json_string(&b.key),
+                crate::json::string(&b.key),
                 b.effect
             )
         })
@@ -125,7 +127,7 @@ fn parse_line(line: &str) -> Result<Binding, String> {
     }
     if RESERVED.contains(&key.to_lowercase().as_str()) {
         return Err(format!(
-            "`{key}` is taken by the viewer (navigation, notes, fullscreen, layout, mode)"
+            "`{key}` is taken by the viewer (navigation, notes, source, fullscreen, layout, mode)"
         ));
     }
 
@@ -158,25 +160,6 @@ fn parse_line(line: &str) -> Result<Binding, String> {
     })
 }
 
-/// A JSON string literal. The result is embedded in a `<script>` element, so
-/// `<` is escaped as well — otherwise a `</script>` inside a danmaku line
-/// would close the block early.
-fn json_string(s: &str) -> String {
-    let mut out = String::from("\"");
-    for c in s.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '<' => out.push_str("\\u003c"),
-            '\n' | '\r' | '\t' => out.push(' '),
-            c if (c as u32) < 0x20 => {}
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
-}
-
 /// Whether any section binds an effect, deciding if `effects.js` is inlined.
 pub fn deck_has_effects(sections: &[String]) -> bool {
     sections.iter().any(|s| s.contains("class=\"mz-fx\""))
@@ -201,11 +184,11 @@ mod tests {
 
     #[test]
     fn binds_keys_to_effects() {
-        let (out, w) = one("1 : flash\ns : shake\ne : burst 🎉\n");
+        let (out, w) = one("1 : flash\n2 : shake\ne : burst 🎉\n");
         assert!(w.is_empty(), "{w:?}");
         assert!(out.starts_with("<script type=\"application/json\" class=\"mz-fx\">["));
         assert!(out.contains(r#"{"key":"1","effect":"flash"}"#), "{out}");
-        assert!(out.contains(r#"{"key":"s","effect":"shake"}"#), "{out}");
+        assert!(out.contains(r#"{"key":"2","effect":"shake"}"#), "{out}");
         assert!(
             out.contains(r#"{"key":"e","effect":"burst","arg":"🎉"}"#),
             "{out}"

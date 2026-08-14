@@ -209,6 +209,7 @@ mirzam export pdf deck.md -o deck.pdf
 |---|---|
 | `→` `←` | next / previous, and step through a build |
 | `N` | speaker notes |
+| `S` | the Markdown behind this slide |
 | `P` | presenter window: next slide, notes, timer |
 | `F` | fullscreen |
 | `D` | dark mode |
