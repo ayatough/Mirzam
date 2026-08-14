@@ -47,6 +47,37 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   that produced it. Additive — the schema is still `version: 1`.
 
 ### Changed
+- **`theme:` sets the type, not just the colours.** A theme was a palette and
+  nothing else, so the part of a deck's look people actually recognise — the
+  faces, the weight ladder, the short violet rule under a section heading —
+  could only be had by writing a stylesheet and naming it in a second
+  frontmatter key. Those are now tokens: `--mz-font`, `--mz-font-display`,
+  `--mz-font-mono`, a size, weight, tracking and leading for each heading
+  level, the body pair, and the marks a theme signs its name with
+  (`--mz-strong-*`, `--mz-quote-*`, `--mz-code-bg`, `--mz-th-fg`,
+  `--mz-h2-rule-*`). Every one carries today's value as its fallback, so **a
+  deck that sets none renders exactly as it did**; the full list is in
+  [docs/syntax.md](docs/syntax.md#the-vocabulary-a-theme-writes-in).
+
+  `theme: mirzam` now carries Mirzam's identity rather than its colours, so a
+  deck that names it — or names nothing, since it is the fallback — gets the
+  type as well. **`examples/seminar.md` is the one sample deck that moves**: it
+  loads no stylesheet, so this is the first thing it has ever had beyond a
+  palette. The other eight still load `examples/themes/mirzam.css`, which says
+  the same thing as rules, and are unchanged to the pixel. The file goes away
+  when `theme:` learns to take a path.
+
+  Because custom properties inherit and rules do not, the type now travels with
+  a pane that carries `theme=` — a re-themed pane used to take the other
+  theme's colours and keep the deck's face.
+- **`.card`, `.eyebrow` and `.metric` come with the renderer now**, next to
+  `.box`, so a slide copied out of a sample deck keeps its shape without a
+  stylesheet behind it. `examples/seminar.md` wrote `[先行研究]{.eyebrow}` and
+  rendered it as plain text; it no longer does. `.box` and `.card` are both
+  bordered blocks and the difference between them is now written down: `.box`
+  is an aside *inside* a pane, measured in `em` so it tracks the text it
+  interrupts; `.card` is the pane, measured in `px` so a row of them agrees,
+  and it is the one with dials.
 - **A photograph can take one half of a slide.** `.bleed` used to be a statement
   about the whole slide: it dropped the grid's margin, and the margin belonged to
   every pane, so putting a bleeding photo in one column left the words in the

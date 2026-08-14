@@ -461,6 +461,51 @@ mod tests {
         assert!(mode_warning(None).is_none());
     }
 
+    /// The promise that makes the token vocabulary safe to grow: a deck whose
+    /// theme sets none of it renders exactly as it did before the dial
+    /// existed. A `var(--mz-h1-size)` with no fallback is not a dial, it is a
+    /// rule that evaporates in every deck that does not set it — and the
+    /// damage is invisible in a diff, because the CSS is still valid and the
+    /// property simply goes missing at computed-value time.
+    ///
+    /// Reading a token without a fallback is fine for the palette, which every
+    /// built-in theme defines in both modes, and for the handful `base.css`
+    /// declares itself.
+    #[test]
+    fn every_dial_base_css_reads_has_a_fallback() {
+        // What base.css declares for itself - the viewer chrome's palette, the
+        // effect colours - is always there to be read.
+        let declared: Vec<&str> = BASE_CSS
+            .lines()
+            .filter_map(|l| l.trim().strip_prefix("--mz-"))
+            .filter_map(|d| d.split(':').next())
+            .collect();
+        let mut offenders = Vec::new();
+        for (i, line) in BASE_CSS.lines().enumerate() {
+            for use_ in line.split("var(--mz-").skip(1) {
+                let name = use_
+                    .split([',', ')', ' '])
+                    .next()
+                    .unwrap_or_default()
+                    .trim_end_matches(|c: char| !c.is_ascii_alphanumeric());
+                let has_fallback = use_[name.len()..].starts_with(',');
+                if has_fallback
+                    || super::contrast_tests::ALL_TOKENS.contains(&name)
+                    || declared.contains(&name)
+                {
+                    continue;
+                }
+                offenders.push(format!("base.css:{}: --mz-{name}", i + 1));
+            }
+        }
+        assert!(
+            offenders.is_empty(),
+            "these reads have neither a fallback nor a theme obliged to define \
+             them, so they render as nothing in a deck that sets no tokens:\n{}",
+            offenders.join("\n")
+        );
+    }
+
     #[test]
     fn base_css_carries_the_debug_overlay_rules() {
         assert!(BASE_CSS.contains("html.mz-debug"));
@@ -778,7 +823,11 @@ mod contrast_tests {
         format!(":where([data-theme=\"{name}\"]:not([data-mode=\"light\"]):not([data-mode=\"light\"] *)) {{")
     }
 
-    const ALL_TOKENS: &[&str] = &[
+    /// The palette contract: what every built-in theme defines in both modes,
+    /// and therefore what `base.css` may read without a fallback.
+    /// `pub(super)` because `every_dial_base_css_reads_has_a_fallback` is the
+    /// other half of that sentence and lives in the module next door.
+    pub(super) const ALL_TOKENS: &[&str] = &[
         "bg",
         "slide-bg",
         "fg",
@@ -827,6 +876,65 @@ mod contrast_tests {
         ("danger-fg", "danger-bg"),
     ];
 
+    /// Colour dials outside the palette contract: a theme may set none of
+    /// them and `base.css` supplies the value, but a theme that sets one has
+    /// put text on a surface and owes the same ratio for it. These are what
+    /// makes a theme an identity rather than a palette, so leaving them
+    /// unmeasured would mean the contrast guarantee shrank as the vocabulary
+    /// grew.
+    ///
+    /// `(foreground, background, minimum)`. The background is looked up
+    /// through [`background`], which knows what `base.css` falls back to, so a
+    /// theme that colours its inline code without moving the paper under it is
+    /// still measured against the paper it will actually be drawn on.
+    const IDENTITY_TEXT_PAIRS: &[(&str, &str, f64)] = &[
+        ("h3-color", "slide-bg", 4.5),
+        ("strong-color", "slide-bg", 4.5),
+        ("quote-fg", "slide-bg", 4.5),
+        ("th-fg", "surface", 4.5),
+        ("code-fg", "code-bg", 4.5),
+        ("metric-color", "card-bg", 4.5),
+        // Not a dial itself, but the colour a code block's unhighlighted text
+        // is drawn in - so moving the code background alone can still make a
+        // block unreadable.
+        ("fg", "code-bg", 4.5),
+    ];
+
+    /// A dial that names another token — `--mz-h3-color: var(--mz-fg)` — read
+    /// back as the colour it will paint with. An identity token is usually
+    /// written in terms of the palette rather than as a literal, precisely so
+    /// that it has both modes for free; without following the reference every
+    /// one of them would be unmeasurable and this test's coverage would be a
+    /// claim about nothing.
+    ///
+    /// Anything that is not a bare `var()` is returned as it stands, and
+    /// `contrast_ratio` declines to measure it: `4px solid var(--mz-accent1)`
+    /// is a border, not a colour.
+    fn resolve(tokens: &BTreeMap<String, String>, value: &str) -> Option<String> {
+        let mut value = value.trim().to_string();
+        for _ in 0..4 {
+            let Some(rest) = value.strip_prefix("var(--mz-") else {
+                return Some(value);
+            };
+            let name = rest.split([',', ')']).next()?.trim().to_string();
+            value = tokens.get(&name)?.trim().to_string();
+        }
+        None
+    }
+
+    /// The surface a pair is measured against, following `base.css`'s own
+    /// fallback when the theme leaves the dial unset.
+    fn background(tokens: &BTreeMap<String, String>, name: &str) -> Option<String> {
+        let value = match tokens.get(name) {
+            Some(v) => v.clone(),
+            // `.card`'s fill and a code block's paper both default to the
+            // raised surface every theme defines.
+            None if matches!(name, "code-bg" | "card-bg") => tokens.get("surface")?.clone(),
+            None => return None,
+        };
+        resolve(tokens, &value)
+    }
+
     /// Highlighted code is text, and it is drawn on `--mz-surface` like the
     /// rest of a `pre` block — so every token kind is held to the 4.5:1 body
     /// threshold there, not to the looser one a chart mark gets. Without this
@@ -872,14 +980,18 @@ mod contrast_tests {
                 ));
             }
         }
-        let surface = &tokens["surface"];
+        // Whatever a code block is actually drawn on. A theme that gives code
+        // paper of its own moves every highlighted token onto it, so measuring
+        // against `--mz-surface` regardless would be measuring a pair that
+        // never meets.
+        let code_bg = background(tokens, "code-bg").unwrap_or_else(|| tokens["surface"].clone());
         for token in CODE_TOKENS {
             let fg = &tokens[*token];
-            let ratio = contrast_ratio(fg, surface);
+            let ratio = contrast_ratio(fg, &code_bg);
             if ratio < 4.5 {
                 failures.push(format!(
-                    "{theme}/{mode}: --mz-{token} ({fg}) on --mz-surface ({surface}) is only \
-                     {ratio:.2}:1, need >= 4.5:1 for code"
+                    "{theme}/{mode}: --mz-{token} ({fg}) on the code background ({code_bg}) is \
+                     only {ratio:.2}:1, need >= 4.5:1 for code"
                 ));
             }
         }
@@ -890,6 +1002,27 @@ mod contrast_tests {
                 failures.push(format!(
                     "{theme}/{mode}: --mz-{fg_token} ({fg}) on --mz-{bg_token} ({on}) is only \
                      {ratio:.2}:1, need >= 4.5:1 for body text"
+                ));
+            }
+        }
+        for (fg_token, bg_token, need) in IDENTITY_TEXT_PAIRS {
+            // A dial the theme never set is `base.css`'s answer, not this
+            // theme's, and is covered by the pairs above.
+            let (Some(fg), Some(on)) = (
+                tokens.get(*fg_token).and_then(|v| resolve(tokens, v)),
+                background(tokens, bg_token),
+            ) else {
+                continue;
+            };
+            // Not a plain colour - a border shorthand, a keyword - so there is
+            // nothing to measure and nothing to complain about.
+            let Some(ratio) = super::contrast_ratio(&fg, &on) else {
+                continue;
+            };
+            if ratio < *need {
+                failures.push(format!(
+                    "{theme}/{mode}: --mz-{fg_token} ({fg}) on --mz-{bg_token} ({on}) is only \
+                     {ratio:.2}:1, need >= {need}:1"
                 ));
             }
         }
@@ -914,18 +1047,16 @@ mod contrast_tests {
     fn every_theme_and_mode_meets_wcag_contrast() {
         let mut failures = Vec::new();
         for (name, css) in THEMES {
-            check_contrast(
-                name,
-                "light",
-                &parse_tokens(css, &light_selector(name)),
-                &mut failures,
-            );
-            check_contrast(
-                name,
-                "dark",
-                &parse_tokens(css, &dark_selector(name)),
-                &mut failures,
-            );
+            let light = parse_tokens(css, &light_selector(name));
+            // The cascade, not the block: the dark selector redefines the
+            // palette and leaves everything mode-independent - the faces, the
+            // weight ladder, a dial written as `var(--mz-fg)` - where it was
+            // declared. Reading the dark block alone would measure a theme
+            // half of which it could not see.
+            let mut dark = light.clone();
+            dark.extend(parse_tokens(css, &dark_selector(name)));
+            check_contrast(name, "light", &light, &mut failures);
+            check_contrast(name, "dark", &dark, &mut failures);
         }
         assert!(failures.is_empty(), "\n{}", failures.join("\n"));
     }

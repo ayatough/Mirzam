@@ -525,7 +525,10 @@ The classes the renderer brings, before any theme adds its own:
 | `.center` `.right` | alignment |
 | `.small` `.big` `.huge` | size |
 | `.muted` `.accent` `.accent2` `.danger` | colour |
-| `.box` | a bordered aside |
+| `.box` | a bordered aside *inside* a pane, sized in `em` so it tracks the text it interrupts |
+| `.card` | a pane raised off the slide, sized in `px` so a row of them agrees |
+| `.eyebrow` | the small tracked label above a heading |
+| `.metric` | one number, at the size a number is worth saying — with `.metric-up` and `.metric-label` |
 
 Every colour here is a theme token, so it moves with the palette and survives
 `D`. That is also why there is no syntax for writing a colour directly: a hex
@@ -1474,12 +1477,22 @@ tells you to write `mirzam`. See
 [`themes/CREDITS.md`](../crates/mirzam-render/src/theme/themes/CREDITS.md) for
 where each palette comes from and how it maps to Mirzam's tokens.
 
-A named theme is a **palette**, not a design. `theme: mirzam` gives a deck
-Mirzam's colours in both modes; the identity's typography — Space Grotesk, the
-weight ladder, the violet rule under a section heading — lives in
-`examples/themes/mirzam.css`, because a built-in theme is loaded before the
-layout stylesheet and can only set tokens. Write `css: themes/mirzam.css` for
-the whole thing.
+A named theme is a **token set**, and a token set is more than a palette:
+`theme: mirzam` gives a deck Mirzam's colours *and* its identity — Space
+Grotesk over Inter, the weight ladder that gets heavier as the type gets
+smaller, the short violet rule under a section heading instead of a full-width
+border. See [the vocabulary](#the-vocabulary-a-theme-writes-in) for the whole
+list of dials.
+
+A built-in theme is still tokens and nothing else, because it is loaded
+*before* the layout stylesheet: a rule written there would be overridden by the
+very stylesheet it is meant to sit on. What changed is how much a token can
+say. `nord`, `solarized`, `vscode` and `wuwei` set colours only, so a deck that
+names one of them keeps the built-in type.
+
+`examples/themes/mirzam.css` is the same identity written as rules, and the
+sample decks still load it with `css:`. The two overlap on purpose, and the two
+agree; the file goes away when `theme:` learns to take a path.
 
 ### Dark mode
 
@@ -1563,9 +1576,12 @@ of whichever `theme:` is selected, built-in or default:
 }
 ```
 
+`.card`, `.eyebrow` and `.metric` are **not** in that file: they come with the
+renderer, like `.box` and `.small`, so a deck that loads no stylesheet at all
+still has an eyebrow and a card to lay a slide out with. What a stylesheet — or
+a theme — changes about them is [their tokens](#the-vocabulary-a-theme-writes-in).
 See [`examples/themes/mirzam.css`](../examples/themes/mirzam.css) for a complete
-theme, including utility classes such as `.card`, `.metric` and `.eyebrow` that
-the sample decks use.
+theme written as rules rather than as tokens.
 
 #### Margins, padding and borders
 
@@ -1612,6 +1628,102 @@ Writing the rule directly still works and always did — `.grid { padding: 48px
 64px; gap: 24px }` — but the tokens are the better route, because the footer
 reads `--mz-grid-pad-x` to stay on the same margin as the words above it, and a
 `padding` shorthand it cannot see leaves it on the old one.
+
+#### The vocabulary a theme writes in
+
+Type is a token too, and so is every mark that carries an identity rather than
+a colour. All of it follows the same rule as the margins above: **every use
+carries today's value as its fallback**, no theme has to set any of it, and a
+deck that sets none renders exactly as it did before the dials existed.
+
+The faces. Nothing is fetched — a deck is one self-contained file, and a
+projector at a venue may have no network — so name a stack that ends in a
+system face, and name the Japanese faces yourself if the deck has any CJK in
+it:
+
+| Token | Default | What it sets |
+|---|---|---|
+| `--mz-font` | Helvetica Neue / Arial + the CJK stack | The deck's text face |
+| `--mz-font-display` | inherited | Headings, `.eyebrow` and `.metric` |
+| `--mz-font-mono` | SF Mono / Consolas / Menlo | Code, `kbd`, an unparsed formula |
+
+The ladder. Each level has the same four dials, and *inherited* means the rule
+declared nothing at all before — so setting `letter-spacing` on a pane still
+reaches the headings inside it:
+
+| Token | Default | What it sets |
+|---|---|---|
+| `--mz-h1-size` `-weight` `-tracking` `-leading` | `2.6em`, `bold`, `.01em`, inherited | `h1` |
+| `--mz-h2-size` `-weight` `-tracking` `-leading` | `1.85em`, `bold`, inherited, `1.25` | `h2` |
+| `--mz-h3-size` `-weight` `-tracking` `-leading` | `1.3em`, `bold`, inherited, inherited | `h3` |
+| `--mz-h3-color` | `var(--mz-accent1)` | `h3`'s colour |
+| `--mz-body-size` `--mz-body-leading` | `1.35em`, `1.65` | Paragraphs, list items, term lists |
+| `--mz-title-size` | `3.4em` | `.title-slide` |
+| `--mz-title-weight` `--mz-title-tracking` | the `h1` pair | `.title-slide`, when it differs from `h1` |
+
+`--mz-title-*` fall through to the `h1` dials, so a theme with one answer for
+display type gives it once.
+
+The marks. A section heading gets a full-width border **or** a short rule under
+it, and the two are the same choice: `--mz-h2-rule-w` is `0`, so nothing is
+drawn until a theme asks, and a theme that asks usually sets the border to
+`none`:
+
+| Token | Default | What it sets |
+|---|---|---|
+| `--mz-h2-border` | `3px solid var(--mz-accent1)` | The rule under every `h2` |
+| `--mz-h2-pad` | `.25em` | The space above that border |
+| `--mz-h2-rule-w` `-h` `-gap` | `0` | The short rule's width, height and the gap above it — set all three, or nothing is drawn |
+| `--mz-h2-rule-radius` | `2px` | Its corners |
+| `--mz-h2-rule-a` `-b` | accent 1 → accent 2 | The gradient it runs |
+| `--mz-strong-color` `-weight` | `var(--mz-accent1)`, `bolder` | Bold text inside a sentence |
+| `--mz-quote-border` | `4px solid var(--mz-accent2)` | A quotation's edge |
+| `--mz-quote-fg` | `var(--mz-muted)` | Its text |
+| `--mz-code-bg` | `var(--mz-surface)` | The paper under a code block *and* an inline span |
+| `--mz-code-fg` | inherited | The inline span's colour only — a block takes the highlighter's `--mz-code-*` colours |
+| `--mz-th-fg` | inherited | A table's header row |
+
+The furniture — the three classes a deck lays a slide out with:
+
+| Token | Default | What it sets |
+|---|---|---|
+| `--mz-card-bg` | `var(--mz-surface)` | `.card`'s fill |
+| `--mz-card-border` | `1px solid var(--mz-border)` | Its edge |
+| `--mz-card-radius` | `12px` | Its corners |
+| `--mz-card-pad` | `24px 26px` | Its padding |
+| `--mz-card-shadow` | `none` | Whether it is raised |
+| `--mz-eyebrow-size` `-weight` `-tracking` `-color` | `.82em`, `500`, `.12em`, `var(--mz-accent1)` | `.eyebrow` |
+| `--mz-metric-size` `-weight` `-tracking` `-color` | `3.2em`, `bold`, inherited, inherited | `.metric` |
+
+`.metric-up` takes `--mz-chart3` and `.metric-label` takes `--mz-muted`, both
+straight from the palette: "up" is a meaning, not a decoration, and a label
+under a number is secondary text like any other.
+
+One thing about a theme's own identity is **not** a token, because it is
+selector logic rather than a value: a centred heading needs its short rule
+centred under it, and `text-align` cannot move a block box. `base.css` carries
+that one rule, and a heading in a pane with `align=center` gets it for free.
+
+```css
+/* A theme in tokens: the faces, the ladder, the mark under a heading. */
+:root {
+  --mz-font: Inter, "IBM Plex Sans", sans-serif;
+  --mz-font-display: "Space Grotesk", sans-serif;
+  --mz-h1-weight: 300;
+  --mz-h1-tracking: -0.03em;
+  --mz-h2-weight: 400;
+  --mz-h2-border: none;
+  --mz-h2-pad: 0;
+  --mz-h2-rule-w: 64px;
+  --mz-h2-rule-h: 4px;
+  --mz-h2-rule-gap: 14px;
+}
+```
+
+Because custom properties inherit, that block works at any scale — on `:root`
+it moves the deck, on a class you put on one pane it moves that pane. It is
+also what a pane's `theme=` carries, which is why the type now travels with a
+re-themed pane and a rule never could.
 
 #### A custom theme needs both modes, or it has none
 

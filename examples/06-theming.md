@@ -15,9 +15,10 @@ slide-number: "{n} / {total}"
 # Theming and settings {.title-slide}
 
 Every knob a deck has, and the order they are read in. This deck sets four of
-them on itself: `theme: mirzam` for the palette, `css: themes/mirzam.css` for
-the typography on top of it, `math: typst` for how its one formula is written,
-and `footer:` for the line along the bottom of every slide after this one.
+them on itself: `theme: mirzam` for the colours and the type, `css:
+themes/mirzam.css` for the same identity written as rules, `math: typst` for
+how its one formula is written, and `footer:` for the line along the bottom of
+every slide after this one.
 
 <!-- note: Press D. The whole deck flips, because the stylesheet defines both modes. This slide says `chrome: none`, which is why the footer starts on slide 2. -->
 
@@ -58,8 +59,7 @@ theme: nord
 ---
 ```
 
-- A theme is a **palette**, not a design: it sets colour tokens and nothing
-  else
+- A theme is a **token set**, not only a palette: `mirzam` sets the type too
 - Each one defines a light and a dark variant
 - Name none and you get `mirzam`; an unknown name warns and falls back to it
 
@@ -355,8 +355,8 @@ pairs.
 - On a **heading or a span**: the id a connector or an annotation points at,
   and the classes your stylesheet styles
 - On a **pane**: `align`, `valign`, `bg`, `dim`, `blur`, `scrim`, `fit`
-- `.center`, `.right`, `.small` and `.u` come with the renderer; anything else
-  is yours to define
+- `.center`, `.right`, `.small`, `.u`, `.box`, `.card`, `.eyebrow` and
+  `.metric` come with the renderer; anything else is yours to define
 
 *In a plain Markdown reader the braces are literal text — that is the price,
 and the reason the syntax is this quiet.*
@@ -462,6 +462,57 @@ Because custom properties inherit, the same names work at any scale: on
 
 <!-- note: The stylesheet this deck loads sets the first three as CSS. A deck anchoring shapes to panes declares them in frontmatter instead, because the build computes pane rectangles from those numbers and CSS-only margins would move the panes out from under the shapes. -->
 
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|  src             |  out            |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Custom CSS]{.eyebrow}
+## So is the type
+:::
+
+::: pane src {.card valign=middle}
+```css
+:root {
+  --mz-font: Inter, sans-serif;
+  --mz-font-display: "Space Grotesk";
+  --mz-h1-weight: 300;
+  --mz-h2-weight: 400;
+  --mz-h2-border: none;
+  --mz-h2-rule-w: 64px;
+  --mz-h2-rule-h: 4px;
+  --mz-h2-rule-gap: 14px;
+}
+```
+
+*This is what `theme: mirzam` sets — the rule under the heading above is that
+last group.*
+:::
+
+::: pane out {valign=middle}
+The faces, a size, weight, tracking and leading per heading level, and the
+marks: `--mz-strong-*`, `--mz-quote-*`, `--mz-code-bg`, `--mz-card-*`,
+`--mz-eyebrow-*`, `--mz-metric-*`.
+
+Every one carries today's value as its fallback, so a deck that sets none is
+unchanged — and one that sets some **is an identity, not a repaint**.
+
+[The whole list is in `docs/syntax.md`.]{.small}
+:::
+
+<!-- note: The point of this slide is that a theme is no longer a palette. A pane carrying theme= takes the type with it, because tokens inherit and rules do not. -->
 
 ---
 

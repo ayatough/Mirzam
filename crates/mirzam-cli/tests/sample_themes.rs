@@ -113,6 +113,18 @@ fn a_sample_theme_is_legible_in_both_modes() {
         // counter is `--mz-muted` on a `--mz-surface` pill.
         ("--mz-muted", "--mz-surface", 4.5),
         ("--mz-danger-fg", "--mz-danger-bg", 4.5),
+        // The identity dials. A theme sets none of these and the renderer
+        // supplies the value; a theme that sets one has put text on a surface
+        // and owes the same ratio for it. Each pair is skipped unless the
+        // theme defines both halves, so this is coverage for the day a sample
+        // theme writes its identity in tokens rather than in rules.
+        ("--mz-h3-color", "--mz-slide-bg", 4.5),
+        ("--mz-strong-color", "--mz-slide-bg", 4.5),
+        ("--mz-quote-fg", "--mz-slide-bg", 4.5),
+        ("--mz-th-fg", "--mz-surface", 4.5),
+        ("--mz-code-fg", "--mz-code-bg", 4.5),
+        ("--mz-fg", "--mz-code-bg", 4.5),
+        ("--mz-fg", "--mz-card-bg", 4.5),
     ];
 
     let mut failures = Vec::new();

@@ -9,11 +9,18 @@ html, body {
      and keeps pinch zoom. */
   touch-action: pan-y;
   overscroll-behavior: none;
-  /* Name Japanese fonts explicitly: without them, some systems fall back to a
-     non-Japanese CJK font and render kanji with the wrong glyph shapes.
-     PDF export uses the fonts installed on the exporting machine. */
-  font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans',
-    'Noto Sans CJK JP', 'Noto Sans JP', 'Yu Gothic Medium', 'Yu Gothic', Meiryo, sans-serif;
+  /* The deck's text face. A theme sets `--mz-font`; the fallback is what every
+     deck rendered before the token existed, so a deck whose theme names no
+     face is unchanged.
+     Name Japanese fonts explicitly: without them, some systems fall back to a
+     non-Japanese CJK font and render kanji with the wrong glyph shapes. A
+     theme replacing this stack has to name them too — none of the Latin faces
+     covers Japanese. PDF export uses the fonts installed on the exporting
+     machine, and nothing here is fetched: a deck is one self-contained file
+     and a venue may have no network. */
+  font-family: var(--mz-font, 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN',
+    'Hiragino Sans', 'Noto Sans CJK JP', 'Noto Sans JP', 'Yu Gothic Medium', 'Yu Gothic',
+    Meiryo, sans-serif);
 }
 #deck {
   position: absolute; top: 50%; left: 50%;
@@ -78,6 +85,12 @@ section.slide { background: var(--mz-slide-bg); border-radius: inherit; }
 .pane[data-theme], .pane[data-mode] {
   background: var(--mz-slide-bg);
   color: var(--mz-fg);
+  /* And its own type. `font-family` is declared on `body`, so a pane carrying
+     another theme's tokens would otherwise keep the deck's face while taking
+     its colours — a theme is not only a palette. `inherit` as the fallback,
+     not a stack: a deck whose stylesheet sets the face with a rule of its own
+     must keep it here too. */
+  font-family: var(--mz-font, inherit);
   /* Its own edge, in its own palette. Without it a pane whose paper happens to
      match the slide's — the same theme in the same mode, one theme's dark
      against another's — reads as a hole rather than as a sample. */
@@ -161,14 +174,70 @@ section.slide { background: var(--mz-slide-bg); border-radius: inherit; }
 /* The title slide dims its subtitle, which is the wrong contrast over a photo. */
 section.slide:has(.title-slide) .bg-text-light p { color: rgba(255,255,255,.82); } /* theme-independent: over a photo */
 
-h1 { font-size: 2.6em; margin: .2em 0; letter-spacing: .01em; }
-h2 {
-  font-size: 1.85em; margin: 0 0 .4em; line-height: 1.25;
-  padding-bottom: .25em;
-  border-bottom: 3px solid var(--mz-accent1);
+/* The type ladder. Every step is a dial, and every dial carries as its
+   fallback exactly what this file declared before it was one — so a deck whose
+   theme names no type renders as it always did, and a theme that names some
+   moves the ladder without restating the rules that position it.
+   `inherit` rather than a value is the fallback wherever the rule declared
+   nothing at all: a deck's own stylesheet setting `letter-spacing` on `.grid`
+   used to reach the headings, and a literal here would have cut it off.
+   `bold` is what a browser gives a heading, spelled out so the weight is
+   reachable; `--mz-strong-weight` below is `bolder` for the same reason. */
+h1 {
+  font-family: var(--mz-font-display, inherit);
+  font-size: var(--mz-h1-size, 2.6em);
+  font-weight: var(--mz-h1-weight, bold);
+  letter-spacing: var(--mz-h1-tracking, .01em);
+  line-height: var(--mz-h1-leading, inherit);
+  margin: .2em 0;
 }
-h3 { font-size: 1.3em; color: var(--mz-accent1); }
-p, li { font-size: 1.35em; line-height: 1.65; }
+h2 {
+  font-family: var(--mz-font-display, inherit);
+  font-size: var(--mz-h2-size, 1.85em);
+  font-weight: var(--mz-h2-weight, bold);
+  letter-spacing: var(--mz-h2-tracking, inherit);
+  line-height: var(--mz-h2-leading, 1.25);
+  margin: 0 0 .4em;
+  padding-bottom: var(--mz-h2-pad, .25em);
+  border-bottom: var(--mz-h2-border, 3px solid var(--mz-accent1));
+}
+h3 {
+  font-family: var(--mz-font-display, inherit);
+  font-size: var(--mz-h3-size, 1.3em);
+  font-weight: var(--mz-h3-weight, bold);
+  letter-spacing: var(--mz-h3-tracking, inherit);
+  line-height: var(--mz-h3-leading, inherit);
+  color: var(--mz-h3-color, var(--mz-accent1));
+}
+/* The mark under a section heading, for a theme whose signature is a short
+   rule rather than a full-width border. All three lengths default to `0`,
+   which is what lets `base.css` carry the block and no deck draw it: a box
+   with no width, no height and no gap above it paints nothing and takes no
+   space. A theme that wants one sets the three together, and usually sets
+   `--mz-h2-border: none` and `--mz-h2-pad: 0` alongside — the rule and the
+   border are two answers to the same question. */
+h2::after {
+  content: "";
+  display: block;
+  width: var(--mz-h2-rule-w, 0);
+  height: var(--mz-h2-rule-h, 0);
+  margin-top: var(--mz-h2-rule-gap, 0);
+  border-radius: var(--mz-h2-rule-radius, 2px);
+  background: linear-gradient(90deg,
+    var(--mz-h2-rule-a, var(--mz-accent1)), var(--mz-h2-rule-b, var(--mz-accent2)));
+}
+/* The one thing about that mark which is not a dial. A centred heading needs
+   its rule centred under it, and `text-align` cannot move a block box — the
+   auto margins can. Selector logic, not a value, so there is nothing to put in
+   a token, and it is deliberately the only rule of its kind here.
+   `examples/themes/mirzam.css` carries a second of the same shape, for
+   `align=right`. It is not copied in: one carve-out was the budget, a right
+   -aligned heading with a rule under it appears in no deck, and a stylesheet
+   that grows a rule per alignment has stopped being a token set. Widening this
+   to a two-line "the rule follows the heading" block is a decision to take on
+   purpose rather than by drift. */
+:is(.center, [style*="text-align:center"]) h2::after { margin-inline: auto; }
+p, li { font-size: var(--mz-body-size, 1.35em); line-height: var(--mz-body-leading, 1.65); }
 li { margin: .25em 0; }
 /* A browser puts a blank line above and below a list, which is right for a page
    and wasteful on a slide — three of them cost a bullet's worth of height. A
@@ -222,7 +291,10 @@ li:has(> input[type="checkbox"]:checked)::after {
   border: solid var(--mz-bg); border-width: 0 .14em .14em 0;
   transform: rotate(45deg);
 }
-strong { color: var(--mz-accent1); }
+/* `bolder` rather than `bold`: it is what the browser gives `strong`, and it
+   is relative — bold text inside a heading has to get heavier than the heading
+   rather than lighter. */
+strong { color: var(--mz-strong-color, var(--mz-accent1)); font-weight: var(--mz-strong-weight, bolder); }
 a { color: var(--mz-accent1); }
 
 .u { text-decoration: underline; text-decoration-color: var(--mz-accent2); text-decoration-thickness: 3px; text-underline-offset: 4px; }
@@ -266,7 +338,10 @@ ins { text-decoration: underline; text-decoration-thickness: 2px; text-underline
    theme has to win, and a declaration on the element itself beats anything it
    would otherwise inherit. `--mz-terms-hang: 0` turns the hanging indent off. */
 dl {
-  margin: .55em 0; font-size: 1.35em; line-height: 1.65;
+  margin: .55em 0;
+  /* A term list is body text, so it moves with the body dials rather than
+     with a second pair of numbers that would drift from them. */
+  font-size: var(--mz-body-size, 1.35em); line-height: var(--mz-body-leading, 1.65);
   padding-left: var(--mz-terms-hang, 2em);
 }
 /* No colon is drawn after the term. The `:` is how a definition line is
@@ -319,9 +394,18 @@ dl > dd:last-child::after { content: none; }
 .accent2 { color: var(--mz-accent2); }
 .danger { color: var(--mz-danger-fg); }
 
-/* A bordered block, for the aside that is not a quotation. `.card` in the
-   sample themes is this with a shadow and a fill; this one is in base so a
-   deck that picked no stylesheet still has somewhere to put a caveat. */
+/* Two bordered blocks, and the difference between them is what each one is
+   put on rather than how it is drawn.
+   `.box` is an aside *inside* a pane — `<div class="box">` around the caveat
+   that interrupts a paragraph. It is measured in `em`, so it tracks the type
+   it interrupts, and it is deliberately not a dial: a deck writes one in the
+   middle of its prose and expects it to look the same in every theme.
+   `.card` is the pane — `::: pane src {.card}` — a whole block of content
+   raised off the slide. It is measured in `px`, because a row of cards has to
+   agree with its neighbours whatever each of them holds, and it *is* a dial:
+   its fill, edge, corner and padding are how a theme says what raised looks
+   like. It used to live in the sample stylesheet, which meant a deck that
+   picked none had nothing to lay a slide out with. */
 .box {
   border: 1px solid var(--mz-border);
   border-radius: 10px;
@@ -331,6 +415,49 @@ dl > dd:last-child::after { content: none; }
 .box > :first-child { margin-top: 0; }
 .box > :last-child { margin-bottom: 0; }
 
+.card {
+  background: var(--mz-card-bg, var(--mz-surface));
+  border: var(--mz-card-border, 1px solid var(--mz-border));
+  border-radius: var(--mz-card-radius, 12px);
+  padding: var(--mz-card-pad, 24px 26px);
+  /* Off by default: a card is a surface, and whether it is a raised one is the
+     theme's answer rather than this file's. */
+  box-shadow: var(--mz-card-shadow, none);
+}
+.card > :first-child { margin-top: 0; }
+.card > :last-child { margin-bottom: 0; }
+
+/* A label over a heading — the word that says which of nine slides this is.
+   It is the one place a display face is set below body size, so it goes up a
+   weight and opens its tracking out to stay a label rather than a word.
+   Inline, and staying inline: it is written as `[Step 1]{.eyebrow}`, which is
+   a span, and a deck that puts one at the head of a sentence rather than above
+   a heading must not have that sentence broken in half. */
+.eyebrow {
+  font-family: var(--mz-font-display, inherit);
+  font-size: var(--mz-eyebrow-size, .82em);
+  font-weight: var(--mz-eyebrow-weight, 500);
+  letter-spacing: var(--mz-eyebrow-tracking, .12em);
+  text-transform: uppercase;
+  color: var(--mz-eyebrow-color, var(--mz-accent1));
+  margin-bottom: .4em;
+}
+
+/* One number, said once, at the size a number is worth saying. Display type by
+   any measure, so it takes the display face and the display weight. */
+.metric {
+  font-family: var(--mz-font-display, inherit);
+  font-size: var(--mz-metric-size, 3.2em);
+  font-weight: var(--mz-metric-weight, bold);
+  letter-spacing: var(--mz-metric-tracking, inherit);
+  line-height: 1;
+  color: var(--mz-metric-color, inherit);
+}
+/* Green rather than the accent: the semantic colours are reserved for meaning,
+   and "up" is the one thing this class means. */
+.metric-up { color: var(--mz-chart3); }
+.metric-label { font-size: 1em; color: var(--mz-muted); margin-top: .3em; }
+
 /* Title slide */
 section.slide:has(.title-slide) .grid {
   place-items: center; text-align: center;
@@ -339,7 +466,15 @@ section.slide:has(.title-slide) .grid {
 section.slide:has(.title-slide) .pane { overflow: visible; }
 /* except a background pane, which has to clip its photo */
 section.slide:has(.title-slide) .pane.has-bg { overflow: hidden; }
-.title-slide { font-size: 3.4em; border: none; }
+/* The deck's one oversized heading. Weight and tracking fall through to the
+   `h1` dials when a theme sets nothing here, so a theme that has one answer
+   for display type does not have to give it twice. */
+.title-slide {
+  font-size: var(--mz-title-size, 3.4em);
+  font-weight: var(--mz-title-weight, var(--mz-h1-weight, bold));
+  letter-spacing: var(--mz-title-tracking, var(--mz-h1-tracking, .01em));
+  border: none;
+}
 section.slide:has(.title-slide) p { color: var(--mz-muted); font-size: 1.5em; }
 
 /* Deck chrome: the footer and slide number `footer:` and `slide-number:` ask
@@ -369,7 +504,7 @@ math { font-size: 1.15em; }
 math[display="block"] { font-size: 1.35em; margin: .5em 0; }
 /* Fallback when conversion fails: show the TeX source */
 .math-error {
-  font-family: 'SF Mono', Consolas, monospace; font-style: normal;
+  font-family: var(--mz-font-mono, 'SF Mono', Consolas, Menlo, monospace); font-style: normal;
   background: var(--mz-danger-bg); color: var(--mz-danger-fg);
   border-radius: 4px; padding: 0 .3em;
 }
@@ -378,11 +513,17 @@ math[display="block"] { font-size: 1.35em; margin: .5em 0; }
 /* Tables */
 table { border-collapse: collapse; font-size: 1.15em; margin: .5em 0; }
 th, td { border: 1px solid var(--mz-border); padding: .35em .8em; }
-th { background: var(--mz-surface); }
+th { background: var(--mz-surface); color: var(--mz-th-fg, inherit); }
 
-/* Code */
+/* Code. `--mz-code-bg` is one dial for both the block and the inline span,
+   because a theme that gives code its own paper means both; it falls back to
+   the raised surface every theme already defines. `--mz-code-fg` colours the
+   inline span only — a `pre` takes its colours from the highlighter's
+   `--mz-code-*` tokens, and a colour laid over the whole block would flatten
+   them. */
 pre {
-  background: var(--mz-surface); border: 1px solid var(--mz-border); border-radius: 8px;
+  background: var(--mz-code-bg, var(--mz-surface));
+  border: 1px solid var(--mz-border); border-radius: 8px;
   padding: .8em 1em; font-size: 1.05em; overflow: auto;
 }
 /* On a slide a code block must not be its own scroll box. `overflow: auto`
@@ -394,7 +535,11 @@ pre {
    failure — it is what every other element does, it is visible, and it is
    what both of those already act on. */
 .pane pre { overflow: visible; }
-code { font-family: 'SF Mono', Consolas, Menlo, monospace; }
+/* The code face, in one dial. The four places that set a monospace stack -
+   a code span, a failed formula, a key in the cheat sheet, the debug overlay's
+   pane labels - are one decision written four times, so a theme that names a
+   mono face moves all of them at once. */
+code { font-family: var(--mz-font-mono, 'SF Mono', Consolas, Menlo, monospace); }
 /* Syntax highlighting, coloured at build time. The classes come from
    `code.rs`; the colours come from the deck's palette and never from the
    highlighter, which is what keeps Nord code reading as Nord and keeps the
@@ -413,8 +558,15 @@ code { font-family: 'SF Mono', Consolas, Menlo, monospace; }
 .tok-function { color: var(--mz-code-function, var(--mz-accent2)); }
 .tok-number { color: var(--mz-code-number, var(--mz-chart5)); }
 .tok-operator { color: var(--mz-code-operator, var(--mz-fg)); }
-p code, li code { background: var(--mz-surface); border-radius: 4px; padding: .1em .35em; font-size: .9em; }
-blockquote { border-left: 4px solid var(--mz-accent2); margin: .5em 0; padding: .1em 1em; color: var(--mz-muted); }
+p code, li code {
+  background: var(--mz-code-bg, var(--mz-surface)); color: var(--mz-code-fg, inherit);
+  border-radius: 4px; padding: .1em .35em; font-size: .9em;
+}
+blockquote {
+  border-left: var(--mz-quote-border, 4px solid var(--mz-accent2));
+  margin: .5em 0; padding: .1em 1em;
+  color: var(--mz-quote-fg, var(--mz-muted));
+}
 
 /* Citations. `[^key]` marks the claim and the note lands at the foot of the
    slide that made it — a reference on a slide belongs on that slide, not in a
@@ -703,7 +855,7 @@ html.mz-awake #controls { opacity: 1; pointer-events: auto; }
 #keys kbd {
   display: inline-block; min-width: 1.2em; text-align: center;
   padding: 2px 7px; margin-right: 4px;
-  font-family: 'SF Mono', Consolas, Menlo, monospace; font-size: 13px;
+  font-family: var(--mz-font-mono, 'SF Mono', Consolas, Menlo, monospace); font-size: 13px;
   color: var(--mz-ui-fg); background: var(--mz-ui-chip);
   border: 1px solid var(--mz-ui-line); border-radius: 6px;
   font-weight: 600;
@@ -787,7 +939,7 @@ html.mz-debug .pane::before {
   content: attr(data-pane);
   position: absolute; top: 0; left: 0; z-index: 1000;
   background: rgba(255, 45, 120, .9); color: #fff; /* theme-independent: debug aid */
-  font: 11px/1.4 'SF Mono', Consolas, monospace;
+  font: 11px/1.4 var(--mz-font-mono, 'SF Mono', Consolas, Menlo, monospace);
   padding: 1px 5px; border-radius: 0 0 4px 0;
   pointer-events: none;
 }
