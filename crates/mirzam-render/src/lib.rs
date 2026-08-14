@@ -533,10 +533,25 @@ pub fn page_fingerprint(meta: &DeckMeta, sections: &[String], opts: &PageOptions
 /// only thing several elements would add is several places to look. Each is
 /// labelled with the path it came from, because the page *is* the artefact
 /// somebody debugs.
+///
+/// A theme that scopes its tokens to its own stem is a scope like a built-in
+/// one, and gets the same reset block first — see [`theme::scope_defaults`].
+/// Without it a pane wearing somebody's theme would still inherit the deck's
+/// type and marks for everything that theme happens not to set, which is the
+/// one form of the bug the author of the file cannot fix by editing a built-in.
+/// It goes *before* their declarations, so their values still win; a file that
+/// does not scope to its stem gets none, because nothing on the page carries
+/// the name and the block would answer to no element.
 fn file_themes_css(themes: &[FileTheme]) -> String {
     themes
         .iter()
-        .map(|t| format!("/* {} */\n{}", t.path, t.css))
+        .map(|t| {
+            let defaults = match t.scopes_to_stem() {
+                true => theme::scope_defaults(&t.name),
+                false => String::new(),
+            };
+            format!("/* {} */\n{defaults}{}", t.path, t.css)
+        })
         .collect::<Vec<_>>()
         .join("\n")
 }
@@ -1982,6 +1997,50 @@ mod tests {
         let print = assemble_print_page(&meta, &[], std::slice::from_ref(&acme));
         assert!(print.contains("<body data-theme=\"acme\">"), "{print}");
         assert!(print.contains("--mz-accent1: #6557d9"), "{print}");
+    }
+
+    /// A theme somebody wrote is a scope like a built-in, so it opens with the
+    /// same reset — and it is the one case the author of a built-in cannot fix
+    /// for them. Their own declarations come after it and still win.
+    #[test]
+    fn a_file_theme_scoped_to_its_stem_starts_from_the_same_defaults() {
+        let acme = FileTheme::new(
+            "themes/acme.css",
+            "[data-theme=\"acme\"] { --mz-h3-color: #6557d9; }".to_string(),
+        );
+        let meta = mirzam_core::DeckMeta::default();
+        let html = assemble_page(
+            &meta,
+            &[],
+            &PageOptions {
+                file_themes: vec![acme],
+                ..Default::default()
+            },
+        );
+        let reset = html
+            .find(":where([data-theme=\"acme\"]) {")
+            .expect("acme's reset block");
+        let own = html
+            .find("[data-theme=\"acme\"] { --mz-h3-color: #6557d9; }")
+            .expect("acme's own block");
+        assert!(
+            reset < own,
+            "the reset must not overwrite the theme's values"
+        );
+
+        // A file that sets its tokens on `:root` registers a name nothing on
+        // the page carries, so a block for that name would answer to no
+        // element — and the diagnostic already tells the author to scope it.
+        let loose = FileTheme::new("themes/loose.css", ":root { --mz-h3-color: #6557d9; }");
+        let html = assemble_page(
+            &meta,
+            &[],
+            &PageOptions {
+                file_themes: vec![loose],
+                ..Default::default()
+            },
+        );
+        assert!(!html.contains(":where([data-theme=\"loose\"])"), "{html}");
     }
 
     #[test]

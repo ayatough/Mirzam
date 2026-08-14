@@ -1548,6 +1548,21 @@ That selector is the one the built-ins use, minus the `:where()` — they need
 that so your stylesheet can outrank them, and yours is the one doing the
 outranking.
 
+**A scope starts from the defaults, not from the deck.** Every element that
+carries a `data-theme` — the page, a slide, a pane — begins with the whole
+derived vocabulary undefined, and then that theme's own declarations run. So a
+token your theme sets is yours, and a token it does not set falls back to the
+shared stylesheet's default resolved in *your* palette and *your* mode, rather
+than to whatever the deck around it happened to say. Custom properties inherit,
+so without that a pane wearing your theme would take the deck's subheading
+colour, its faces and its margins for everything you left alone — in the deck's
+mode, which put a colour mixed for a dark slide on a light pane. This costs a
+theme nothing: your values are emitted after the reset and win over it.
+
+The palette itself is not reset, because there is nothing to fall back to: the
+colour tokens are the contract every theme keeps in both modes. The rest —
+type, weights, tracking, marks, margins — is what a theme may leave unsaid.
+
 Two more rules worth knowing:
 
 - A stem that collides with a built-in (`themes/nord.css`) does **not** take

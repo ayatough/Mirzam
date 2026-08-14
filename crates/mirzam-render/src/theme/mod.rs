@@ -106,6 +106,85 @@ pub fn theme_tokens(name: &str) -> &'static str {
         .map_or(FALLBACK_TOKENS, |(_, css)| css)
 }
 
+/// Every dial `base.css` reads through a fallback — `var(--mz-h3-color,
+/// var(--mz-accent1))` contributes `h3-color`.
+///
+/// Read out of the stylesheet rather than kept as a list beside it, because a
+/// list would be a second place to remember: a dial added to `base.css` and
+/// forgotten here would be a token that leaks again, and the leak is invisible
+/// in a diff. Comments are skipped so a dial merely *described* in prose is not
+/// counted, the same care [`file_theme`] takes for the same reason.
+///
+/// The palette tokens are not in here and do not need to be: every theme
+/// defines the whole of [`contrast_tests::ALL_TOKENS`] in both modes, so there
+/// is nothing for an outer theme to supply. What is in here is exactly the half
+/// a theme may leave unset.
+fn derived_tokens() -> &'static [&'static str] {
+    static TOKENS: std::sync::OnceLock<Vec<&'static str>> = std::sync::OnceLock::new();
+    TOKENS.get_or_init(|| {
+        let mut out: Vec<&'static str> = Vec::new();
+        let mut rest = BASE_CSS;
+        while !rest.is_empty() {
+            let (code, after) = rest.split_at(rest.find("/*").unwrap_or(rest.len()));
+            for read in code.split("var(--mz-").skip(1) {
+                let len = read
+                    .find(|c: char| !c.is_ascii_alphanumeric() && c != '-')
+                    .unwrap_or(read.len());
+                // A read with no fallback is a palette token, and a theme that
+                // left it out has broken the contract rather than chosen a
+                // default; resetting it would paint nothing at all.
+                if len > 0 && read[len..].starts_with(',') {
+                    out.push(&read[..len]);
+                }
+            }
+            rest = match after.strip_prefix("/*").and_then(|t| t.split_once("*/")) {
+                Some((_, tail)) => tail,
+                None => "",
+            };
+        }
+        out.sort_unstable();
+        out.dedup();
+        out
+    })
+}
+
+/// The block that makes a theme a *scope*: every derived token set back to
+/// `initial`, written for `name` and emitted immediately before that theme's
+/// own declarations.
+///
+/// Custom properties inherit, and `base.css` writes its defaults as the
+/// fallback half of a `var()` — so a pane wearing a theme that sets no
+/// `--mz-h3-color` used to resolve the deck's, in the deck's mode: a heading
+/// coloured for a dark slide, drawn on a light pane. The fallback could never
+/// fire, because the token was still *defined*, just defined by somebody else.
+///
+/// `initial` is the one value that undefines a custom property: it is the
+/// guaranteed-invalid value, so `var(--mz-h3-color, var(--mz-accent1))` falls
+/// through to the fallback again — resolved on the element that carries the
+/// scope, and therefore in that scope's own palette and its own mode. That is
+/// also why this is a list of names and not a list of values: the defaults stay
+/// written once, in `base.css`, and no theme file has to repeat them.
+pub fn scope_defaults(name: &str) -> String {
+    let mut out = format!(
+        "/* Every derived token, undefined for `{name}` so it cannot be \
+         inherited from the theme around it; `base.css`'s own fallback \
+         answers instead, in this scope's palette and mode. */\n\
+         :where([data-theme=\"{name}\"]) {{\n "
+    );
+    let mut col = 1;
+    for token in derived_tokens() {
+        let decl = format!(" --mz-{token}: initial;");
+        if col + decl.len() > 78 {
+            out.push_str("\n ");
+            col = 1;
+        }
+        col += decl.len();
+        out.push_str(&decl);
+    }
+    out.push_str("\n}\n");
+    out
+}
+
 /// Full CSS for a page: the token set of every theme it uses, then the shared
 /// layout rules.
 ///
@@ -114,6 +193,10 @@ pub fn theme_tokens(name: &str) -> &'static str {
 /// panes could re-theme themselves. Repeats and unknown names are dropped;
 /// an empty list still yields `mirzam`, because `base.css` reads tokens that
 /// have to come from somewhere.
+///
+/// Each theme is its reset block and then its own declarations, in that order:
+/// both carry no specificity, so source order is what makes the theme's own
+/// values win over the defaults it starts from.
 pub fn theme_css_for(names: &[&str]) -> String {
     let mut out = String::new();
     let mut seen: Vec<&str> = Vec::new();
@@ -125,9 +208,11 @@ pub fn theme_css_for(names: &[&str]) -> String {
             continue;
         }
         seen.push(name);
+        out.push_str(&scope_defaults(name));
         out.push_str(theme_tokens(name));
     }
     if seen.is_empty() {
+        out.push_str(&scope_defaults(FALLBACK_THEME));
         out.push_str(FALLBACK_TOKENS);
     }
     out.push_str(BASE_CSS);
@@ -391,6 +476,13 @@ mod tests {
             "the theme's tokens must come before base.css, or base cannot read them"
         );
         assert!(css.contains("--mz-accent1"));
+        // And the scope's reset opens it: both blocks carry no specificity, so
+        // source order is the whole of why the theme's own values win.
+        let reset = css.find("--mz-h3-color: initial;").expect("a reset block");
+        let own = css
+            .find("--mz-h3-color: var(--mz-fg);")
+            .expect("mirzam's own");
+        assert!(reset < own && reset < base.unwrap());
     }
 
     /// A deck's own theme file overrides tokens with a plain `:root { }`
@@ -448,10 +540,13 @@ mod tests {
         );
     }
 
+    /// Twice, not once, because a theme is now two blocks under one selector:
+    /// the reset that opens the scope and the theme's own declarations. Naming
+    /// it twice in the list still emits one of each.
     #[test]
     fn theme_css_for_drops_repeats_and_unknown_names_and_never_ends_up_empty() {
         let css = theme_css_for(&["nord", "nord", "nope"]);
-        assert_eq!(css.matches(":where([data-theme=\"nord\"])").count(), 1);
+        assert_eq!(css.matches(":where([data-theme=\"nord\"]) {").count(), 2);
         assert!(!css.contains("data-theme=\"nope\""));
         // Nothing usable named: base.css still needs tokens to read.
         let fallback = format!(":where([data-theme=\"{FALLBACK_THEME}\"])");
@@ -885,7 +980,7 @@ mod tests {
 #[cfg(test)]
 mod contrast_tests {
     use super::THEMES;
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, BTreeSet};
 
     /// The shared implementation, so this test and the one guarding the sample
     /// themes in `examples/themes/` measure the same thing.
@@ -1200,6 +1295,119 @@ mod contrast_tests {
                 auto, explicit,
                 "{name}: the @media (prefers-color-scheme: dark) block must match \
                  the explicit [data-mode=\"dark\"] block exactly"
+            );
+        }
+    }
+
+    /// Every `--mz-*` a theme's scope declares: the reset block that opens it,
+    /// plus everything the theme's own file says in either mode.
+    fn declared_in_scope(name: &str, css: &str) -> BTreeSet<String> {
+        let mut out: BTreeSet<String> = super::scope_defaults(name)
+            .lines()
+            .flat_map(|l| l.split(';'))
+            .filter_map(|d| d.trim().split_once(':'))
+            .filter_map(|(n, _)| n.trim().strip_prefix("--mz-").map(str::to_string))
+            .collect();
+        out.extend(declared_anywhere(css));
+        out
+    }
+
+    /// Every `--mz-*` a stylesheet declares, whichever block it is in.
+    fn declared_anywhere(css: &str) -> BTreeSet<String> {
+        strip_comments(css)
+            .split(';')
+            .filter_map(|d| d.trim().split_once(':'))
+            .filter_map(|(n, _)| n.trim().strip_prefix("--mz-").map(str::to_string))
+            .collect()
+    }
+
+    /// **The leak this stream had to answer.** Custom properties inherit, so a
+    /// pane wearing theme A inside a deck of theme B saw B's value for every
+    /// dial A left unset — a subheading colour, a face, a weight, a margin —
+    /// and saw it in B's *mode*, which is how `### Day` in a light `wuwei` pane
+    /// came out in a violet mixed for a dark slide. `base.css` writing its
+    /// defaults as `var(--mz-h3-color, var(--mz-accent1))` could not help: the
+    /// fallback only fires when the token is undefined, and the token was
+    /// defined — by the deck.
+    ///
+    /// So every scope has to declare every dial, and this is that promise as
+    /// one assertion: for any pair of built-ins, nothing theme B can set is
+    /// left for theme A's scope to inherit. It fails on the token the author
+    /// found — `mirzam` sets `--mz-h3-color`, `wuwei` does not — for as long as
+    /// the reset block is not there.
+    #[test]
+    fn no_theme_scope_can_inherit_a_dial_from_the_theme_around_it() {
+        let mut leaks = Vec::new();
+        for (a, css_a) in THEMES {
+            let scope = declared_in_scope(a, css_a);
+            for (b, css_b) in THEMES {
+                if a == b {
+                    continue;
+                }
+                for token in declared_anywhere(css_b).difference(&scope) {
+                    leaks.push(format!(
+                        "a pane of `{a}` inside a deck of `{b}` resolves --mz-{token} from \
+                         `{b}`, in `{b}`'s mode"
+                    ));
+                }
+            }
+        }
+        assert!(
+            leaks.is_empty(),
+            "a theme scope must start from the same defaults as every other, or it \
+             wears the deck's type where its own theme is silent:\n{}",
+            leaks.join("\n")
+        );
+    }
+
+    /// The reset undefines rather than restates. A block that pasted
+    /// `base.css`'s defaults in as values would be a second copy to keep in
+    /// step — and a colour written out as a literal would be a colour for one
+    /// mode, which is the half of the bug that made a light pane wear a dark
+    /// deck's ink. `initial` is the guaranteed-invalid value, so the fallback
+    /// in `base.css` fires again and resolves on the element carrying the
+    /// scope: that scope's palette, in that scope's mode.
+    #[test]
+    fn the_reset_undefines_a_dial_rather_than_restating_its_value() {
+        let block = super::scope_defaults("wuwei");
+        assert!(block.contains(":where([data-theme=\"wuwei\"]) {"));
+        for decl in block.split(';').filter(|d| d.contains("--mz-")) {
+            let (_, value) = decl.rsplit_once(':').expect("a declaration");
+            assert_eq!(value.trim(), "initial", "in `{}`", decl.trim());
+        }
+        // And it is the whole vocabulary, read out of `base.css` rather than
+        // listed beside it: the dials the author counted are all in here.
+        for token in [
+            "h3-color",
+            "strong-color",
+            "strong-weight",
+            "th-fg",
+            "quote-fg",
+            "code-bg",
+            "code-fg",
+            "font",
+            "font-display",
+            "h1-size",
+            "h2-rule-w",
+            "title-weight",
+            "metric-color",
+            "body-leading",
+            "grid-pad-x",
+            "grid-pad-y",
+            "grid-gap",
+        ] {
+            assert!(
+                block.contains(&format!("--mz-{token}: initial;")),
+                "the reset block leaves --mz-{token} to be inherited"
+            );
+        }
+        // The palette is not reset: every theme defines all of it in both
+        // modes, so there is nothing to inherit and undefining it would paint
+        // nothing at all.
+        for token in ["bg", "slide-bg", "fg", "muted", "accent1", "accent2"] {
+            assert!(
+                !block.contains(&format!("--mz-{token}: initial;")),
+                "--mz-{token} is a palette token and must not be undefined"
             );
         }
     }

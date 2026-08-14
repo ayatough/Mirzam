@@ -462,6 +462,15 @@ impl DeckMeta {
     /// theme's overrides) then apply, exactly as before the keys existed.
     /// Emitted after the theme and any custom stylesheet, so a frontmatter
     /// declaration wins over both.
+    ///
+    /// `:root` is not enough on its own. A theme scope undefines every dial it
+    /// does not set, so a slide or a pane carrying `theme=` would stop
+    /// inheriting these three from the document and fall back to the
+    /// stylesheet's numbers — while the core went on computing that slide's
+    /// pane rectangles from the declared ones. Naming the scopes as well keeps
+    /// one set of numbers for the whole deck, which is what the pane geometry
+    /// already assumes; the selector also outranks a theme's own
+    /// zero-specificity block, which is the promise above.
     pub fn grid_metrics_css(&self) -> String {
         let mut props = String::new();
         for (field, prop) in [
@@ -476,7 +485,7 @@ impl DeckMeta {
         if props.is_empty() {
             String::new()
         } else {
-            format!(":root{{{props}}}")
+            format!(":root,[data-theme],[data-mode]{{{props}}}")
         }
     }
 
@@ -758,7 +767,8 @@ mod tests {
         assert_eq!((m.pad_x, m.pad_y, m.gap), (64.0, 48.0, 24.0));
         assert_eq!(
             meta.grid_metrics_css(),
-            ":root{--mz-grid-pad-x:64px;--mz-grid-pad-y:48px;--mz-grid-gap:24px;}"
+            ":root,[data-theme],[data-mode]\
+             {--mz-grid-pad-x:64px;--mz-grid-pad-y:48px;--mz-grid-gap:24px;}"
         );
 
         let meta = parse_meta("grid-gap: wide\n").unwrap();
@@ -772,7 +782,21 @@ mod tests {
     #[test]
     fn grid_metrics_css_is_partial() {
         let meta = parse_meta("grid-gap: 24px\n").unwrap();
-        assert_eq!(meta.grid_metrics_css(), ":root{--mz-grid-gap:24px;}");
+        assert_eq!(
+            meta.grid_metrics_css(),
+            ":root,[data-theme],[data-mode]{--mz-grid-gap:24px;}"
+        );
+    }
+
+    /// A slide or a pane wearing a theme of its own is a scope that undefines
+    /// every dial the theme leaves unset, this trio included — so declared
+    /// metrics have to be written for those elements too, or the browser lays
+    /// that slide's grid out with numbers the core never used.
+    #[test]
+    fn declared_grid_metrics_reach_a_re_themed_slide() {
+        let css = parse_meta("grid-gap: 24px\n").unwrap().grid_metrics_css();
+        assert!(css.contains("[data-theme]"), "{css}");
+        assert!(css.contains("[data-mode]"), "{css}");
     }
 
     #[test]

@@ -192,6 +192,30 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   no repeat.
 
 ### Fixed
+- **A pane wearing a theme no longer borrows the deck's type and colour.** On
+  the "Two palettes on one slide" slide of `examples/06-theming.md`, the `###
+  Day` heading in the `wuwei` pane came out a pale violet on wuwei's cream
+  paper — very nearly invisible — and flipping the deck to light did the mirror
+  image to `### Night`. The pane was taking a colour mixed for the deck's theme
+  *and the deck's mode*, which is the opposite of what asking for a theme by
+  name is supposed to mean.
+
+  It was never one token or one slide. A theme is a token set, custom
+  properties inherit, and 36 of them are set by some built-ins and not others —
+  a subheading's colour, bold's colour and weight, a table header, a quotation,
+  code's paper and ink, both faces, the whole `h1`/`h2` ladder, the mark under
+  a section heading, a title, a metric, body leading, the grid's margins. Every
+  one of those leaked into any pane or slide whose theme happened not to set
+  it.
+
+  Every theme scope now opens by undefining the whole derived vocabulary, so it
+  starts from the same defaults as every other scope and falls back to its
+  *own* palette in its *own* mode for anything it does not set. That covers a
+  theme you wrote as well: a file theme scoped to its stem gets the same block,
+  ahead of your declarations, so your values still win. Two consequences worth
+  knowing: a pane wearing a theme that names no face now shows the shared
+  default face rather than the deck's, and a pane wearing a theme with no
+  signature rule no longer inherits the deck's.
 - **The pitch deck's "How it works" diagram stays inside the deck margin.** The
   WASM box reached 99% of the slide width, 47px past the right margin every
   other slide aligns to. Shapes are free to cross pane borders — that layer
