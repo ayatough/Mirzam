@@ -62,11 +62,10 @@ them as representative of the VS Code look rather than a pixel-exact extract.
 ## `mirzam`
 
 Ours, from [`docs/brand/palette.md`](../../../../../docs/brand/palette.md), and
-now the whole identity rather than the token half of
-`examples/themes/mirzam.css`: type is a token too, so the faces (Space Grotesk
-over Inter), the weight ladder and the short violet rule are set here. The
-sample file says the same thing as rules and still exists while `theme:` learns
-to take a path.
+the whole identity rather than a palette: type is a token too, so the faces
+(Space Grotesk over Inter), the weight ladder and the short violet rule are set
+here. It was once only the token half of a sample stylesheet the decks loaded
+beside it; that file is gone, and `theme: mirzam` is the whole of it.
 
 Also the palette a deck gets when it names no theme, which is the common case —
 a quick note, a README turned into slides, a sample showing one piece of markup

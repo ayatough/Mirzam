@@ -21,7 +21,7 @@ struct Snapshot {
     sections: Vec<String>,
     hashes: Vec<u64>,
     page_fingerprint: u64,
-    custom_css: Option<String>,
+    file_themes: Vec<mirzam_render::FileTheme>,
     /// Hash lists from previous versions, used to compute diffs.
     history: VecDeque<(u64, Vec<u64>)>,
 }
@@ -45,7 +45,7 @@ pub fn serve(input: &Path, port: u16) -> Result<(), String> {
             sections: first.sections,
             hashes: first.hashes.clone(),
             page_fingerprint: first.page_fingerprint,
-            custom_css: first.custom_css,
+            file_themes: first.file_themes,
             history: VecDeque::from([(1, first.hashes)]),
         }),
         changed: Condvar::new(),
@@ -118,7 +118,7 @@ fn publish(shared: &Shared, out: BuildOutput, t0: Instant) {
     snap.sections = out.sections;
     snap.hashes = out.hashes.clone();
     snap.page_fingerprint = out.page_fingerprint;
-    snap.custom_css = out.custom_css;
+    snap.file_themes = out.file_themes;
     let v = snap.version;
     snap.history.push_back((v, out.hashes));
     while snap.history.len() > HISTORY_LIMIT {
@@ -146,7 +146,7 @@ fn handle(request: tiny_http::Request, shared: Arc<Shared>) {
             let snap = shared.snap.lock().unwrap();
             let opts = mirzam_render::PageOptions {
                 live_version: Some(snap.version),
-                custom_css: snap.custom_css.clone(),
+                file_themes: snap.file_themes.clone(),
                 // The preview patches single slides into a page whose <head>
                 // was assembled before the edit, so it carries every palette:
                 // adding `theme=` to a pane is otherwise a change the page

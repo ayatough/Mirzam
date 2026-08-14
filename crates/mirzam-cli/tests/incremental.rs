@@ -121,12 +121,22 @@ fn include_and_assets_are_tracked_for_watching() {
         .collect();
     assert!(names.contains(&"pitch.md".to_string()));
     assert!(
-        names.contains(&"mirzam.css".to_string()),
-        "custom stylesheet is missing from the watch set: {names:?}"
-    );
-    assert!(
         names.contains(&"adoption.csv".to_string()),
         "chart data file is missing from the watch set: {names:?}"
+    );
+
+    // A theme the deck loads from a file is watched like any other source, so
+    // editing it re-renders the deck under `serve`.
+    let path = repo_root().join("examples/06-theming.md");
+    let out = mirzam_cli::pipeline::build_deck(&path, &mut cache).unwrap();
+    let names: Vec<String> = out
+        .files
+        .iter()
+        .map(|p| p.file_name().unwrap().to_string_lossy().into_owned())
+        .collect();
+    assert!(
+        names.contains(&"blueprint.css".to_string()),
+        "a theme named by `theme:` is missing from the watch set: {names:?}"
     );
 }
 

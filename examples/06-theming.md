@@ -2,9 +2,8 @@
 title: Mirzam - Theming and settings
 author: Mirzam
 aspect: "16:9"
-theme: mirzam
+theme: [mirzam, themes/blueprint.css]
 mode: dark
-css: themes/mirzam.css
 math: typst
 footer: Theming and settings
 slide-number: "{n} / {total}"
@@ -15,12 +14,12 @@ slide-number: "{n} / {total}"
 # Theming and settings {.title-slide}
 
 Every knob a deck has, and the order they are read in. This deck sets four of
-them on itself: `theme: mirzam` for the colours and the type, `css:
-themes/mirzam.css` for the same identity written as rules, `math: typst` for
-how its one formula is written, and `footer:` for the line along the bottom of
-every slide after this one.
+them on itself: `theme: [mirzam, themes/blueprint.css]` — the built-in for its
+own colours and type, and a theme of somebody's own for one pane to wear later
+— `math: typst` for how its one formula is written, and `footer:` for the line
+along the bottom of every slide after this one.
 
-<!-- note: Press D. The whole deck flips, because the stylesheet defines both modes. This slide says `chrome: none`, which is why the footer starts on slide 2. -->
+<!-- note: Press D. The whole deck flips, because every theme defines both modes - the built-in one this deck wears, and the one it loads from a file for a single pane. This slide says `chrome: none`, which is why the footer starts on slide 2. -->
 
 ---
 
@@ -239,10 +238,9 @@ Warm greys in roman, [a link](https://example.com), **bold**.
 ---
 title: Quarterly review
 author: Your Name
-theme: mirzam
+theme: [mirzam, themes/house.css]
 mode: dark
 aspect: "16:9"
-css: themes/mirzam.css
 split: h2
 transition: fade 240ms
 fit: shrink
@@ -255,7 +253,8 @@ vars:
 
 ::: pane what {valign=middle}
 - All optional; a deck with no frontmatter builds
-- `css:` is resolved **relative to the deck file**
+- `theme:` takes a built-in name, a `.css` path **relative to the deck file**,
+  or a list of both in cascade order
 - `split:` starts a slide at every heading of that level
 - `transition:` is the deck-wide page turn; a slide can override its half
 - `math:` picks the formula syntax, `latex` (the default) or `typst`
@@ -365,6 +364,56 @@ and the reason the syntax is this quiet.*
 ---
 
 ```pane
++--------------------------------------------+
+|                                            |
+|  head                                      |
++--------------------+-----------------------+
+|                    |                       |
+|                    |                       |
+|  src               |  out                  |
+|                    |                       |
+|                    |                       |
++--------------------+-----------------------+
+```
+
+::: pane head
+[A theme of your own]{.eyebrow}
+## `theme:` takes a file, and the file gets a name
+:::
+
+::: pane src {.card valign=middle}
+```yaml
+---
+theme: [mirzam, themes/blueprint.css]
+---
+```
+
+```markdown
+::: pane fig {theme=blueprint}
+```
+
+- An entry ending in `.css` is a **path**, relative to the deck
+- A list is **cascade order**; your file loads last, over the type
+:::
+
+::: pane out {theme=blueprint valign=middle}
+### This pane is `theme=blueprint`
+
+A stem is only a name if the file **scopes its tokens to it**:
+`[data-theme="blueprint"] { … }`. A file that writes `:root` themes the whole
+deck and answers to nobody — and `mirzam check` says so.
+
+- Mono display type, an em-dash bullet
+- Square cards, a hairline rule
+
+[`examples/themes/blueprint.css` is the whole theme, in tokens.]{.small}
+:::
+
+<!-- note: The right-hand pane is the point of the whole feature: a theme nobody built in, applied to one pane by name, carrying its type as well as its colours. That works because tokens inherit and rules do not. -->
+
+---
+
+```pane
 +------------------------------------+
 |                                    |
 |  head                              |
@@ -378,7 +427,7 @@ and the reason the syntax is this quiet.*
 ```
 
 ::: pane head
-[Custom CSS]{.eyebrow}
+[A theme of your own]{.eyebrow}
 ## Override the tokens, not the layout
 :::
 
@@ -406,7 +455,7 @@ deck to one mode. `D` then changes `data-mode` and nothing moves.
 
 Set every token in both blocks, or set none and let the theme do it.
 
-[A test holds `examples/themes/*.css` to that rule, in both modes.]{.small}
+[`mirzam check` holds your theme to that rule, and a test holds `examples/themes/*.css` to it.]{.small}
 :::
 
 ---
@@ -425,7 +474,7 @@ Set every token in both blocks, or set none and let the theme do it.
 ```
 
 ::: pane head
-[Custom CSS]{.eyebrow}
+[A theme of your own]{.eyebrow}
 ## Margins are tokens too
 :::
 
@@ -460,7 +509,7 @@ Because custom properties inherit, the same names work at any scale: on
 `:root` they move the deck, on a class you put on one pane they move that pane.
 :::
 
-<!-- note: The stylesheet this deck loads sets the first three as CSS. A deck anchoring shapes to panes declares them in frontmatter instead, because the build computes pane rectangles from those numbers and CSS-only margins would move the panes out from under the shapes. -->
+<!-- note: The theme this deck wears sets the first three as tokens. A deck anchoring shapes to panes declares them in frontmatter instead, because the build computes pane rectangles from those numbers and CSS-only margins would move the panes out from under the shapes. -->
 
 
 ---
@@ -479,7 +528,7 @@ Because custom properties inherit, the same names work at any scale: on
 ```
 
 ::: pane head
-[Custom CSS]{.eyebrow}
+[A theme of your own]{.eyebrow}
 ## So is the type
 :::
 
@@ -530,7 +579,7 @@ unchanged — and one that sets some **is an identity, not a repaint**.
 ```
 
 ::: pane head
-[Custom CSS]{.eyebrow}
+[One class, in the deck]{.eyebrow}
 ## Bullets are a choice, not a default
 :::
 
@@ -544,9 +593,22 @@ unchanged — and one that sets some **is an identity, not a repaint**.
 }
 ```
 
-A quoted string is a marker too — and **carries its own trailing space**, since
-the browser adds none after one.
+That block is a `<style>` in this deck's own source — **one or two classes do
+not need a file**. A quoted string is a marker too, and **carries its own
+trailing space**, since the browser adds none after one.
 :::
+
+<style>
+/* The class the pane on the right carries. It reaches the page untouched, so
+   the deck stays one file: `theme: [mirzam, tweaks.css]` is where this goes
+   when a deck outgrows a block. */
+.markers {
+  --mz-bullet: "→  ";
+  --mz-bullet-2: "·  ";
+  --mz-number: upper-roman;
+  --mz-marker: var(--mz-accent2);
+}
+</style>
 
 ::: pane out {.markers valign=middle}
 - A point, and under it
@@ -672,5 +734,5 @@ frontmatter · `{#id .class key=value}` · a stylesheet of your own
 :::
 
 ::: pane foot {align=right}
-<span class="foot">examples/06-theming.md</span>
+[examples/06-theming.md]{.small}
 :::

@@ -18,17 +18,20 @@
    the identity below is expressed as values rather than as rules. That is the
    whole point of the exercise — a theme that can only repaint is an ornament.
 
-   `examples/themes/mirzam.css` still exists and the sample decks still load it
-   through `css:`; the two overlap on purpose while `theme:` learns to take a
-   path. Where they overlap they agree, and the sample's rules land after
-   `base.css`, so a deck loading both looks the way it always did.
+   The same identity used to live beside this file as a stylesheet the sample
+   decks loaded — `examples/themes/mirzam.css`, reached through the retired
+   `css:` key. It is gone: everything it said is said here, in tokens, and the
+   decks now write `theme: mirzam`. What replaced it under `examples/themes/`
+   is a theme that is deliberately *not* this one, because that is what a
+   sample custom theme is for.
 
-   The other translation is which mode comes first. The sample file is written
-   dark-first, because that is how the mark is drawn and how a deck is usually
-   shown. A built-in cannot make that choice: the bare selector is what a
-   reader whose system prefers light gets, so light lives there and dark is
-   reached through `prefers-color-scheme` or an explicit `data-mode`. A deck
-   that wants dark on every machine writes `mode: dark`.
+   The one translation that migration made is which mode comes first. That file
+   was written dark-first, because that is how the mark is drawn and how a deck
+   is usually shown. A built-in cannot make that choice: the bare selector is
+   what a reader whose system prefers light gets, so light lives there and dark
+   is reached through `prefers-color-scheme` or an explicit `data-mode`. A deck
+   that wants dark on every machine writes `mode: dark`, and the eight sample
+   decks that were dark by accident of their stylesheet now say so.
 
    Palette: docs/brand/palette.md. Type: docs/brand/README.md. Where a value
    differs from the brand sheet, the reason is a deck's contrast floor rather

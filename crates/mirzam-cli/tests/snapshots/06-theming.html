@@ -2,12 +2,13 @@
 <div class="grid" style='grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"'>
 <div class="pane pane-main" data-pane="main" style="grid-area:main"><h1 class="title-slide">Theming and settings</h1>
 <p>Every knob a deck has, and the order they are read in. This deck sets four of
-them on itself: <code>theme: mirzam</code> for the colours and the type, <code>css: themes/mirzam.css</code> for the same identity written as rules, <code>math: typst</code> for
-how its one formula is written, and <code>footer:</code> for the line along the bottom of
-every slide after this one.</p>
+them on itself: <code>theme: [mirzam, themes/blueprint.css]</code> — the built-in for its
+own colours and type, and a theme of somebody's own for one pane to wear later
+— <code>math: typst</code> for how its one formula is written, and <code>footer:</code> for the line
+along the bottom of every slide after this one.</p>
 </div>
 </div>
-<aside class="notes"><p>Press D. The whole deck flips, because the stylesheet defines both modes. This slide says <code>chrome: none</code>, which is why the footer starts on slide 2.</p>
+<aside class="notes"><p>Press D. The whole deck flips, because every theme defines both modes - the built-in one this deck wears, and the one it loads from a file for a single pane. This slide says <code>chrome: none</code>, which is why the footer starts on slide 2.</p>
 </aside>
 </section>
 <section class="slide" data-index="1">
@@ -58,7 +59,7 @@ every slide after this one.</p>
 <p><em>On the command line: <code>mirzam build deck.md --theme nord</code>.</em></p>
 </div>
 </div>
-<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">2 / 15</span></div>
+<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">2 / 16</span></div>
 </section>
 <section class="slide" data-index="2">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "order why"'>
@@ -81,7 +82,7 @@ somebody.</p>
 <p><code>D</code> only lasts for that reading session; it changes nothing on disk.</p>
 </div>
 </div>
-<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">3 / 15</span></div>
+<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">3 / 16</span></div>
 </section>
 <section class="slide" data-index="3">
 <div class="grid" style='grid-template-columns:20fr 11fr 11fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head head" "src day night"'>
@@ -105,7 +106,7 @@ Read at a desk.
 <p>The same theme drawn again for dark, rather than inverted.</p>
 </div>
 </div>
-<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">4 / 15</span></div>
+<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">4 / 16</span></div>
 </section>
 <section class="slide" data-index="4">
 <div class="grid" style='grid-template-columns:16fr 16fr 16fr;grid-template-rows:1fr 3fr 3fr;grid-template-areas:"head head head" "one two three" "four five how"'>
@@ -138,7 +139,7 @@ names a mode, so <code>D</code> flips all five along with the slide around them.
 </ul>
 </div>
 </div>
-<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">5 / 15</span></div>
+<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">5 / 16</span></div>
 </section>
 <section class="slide" data-index="5">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src what"'>
@@ -148,10 +149,9 @@ names a mode, so <code>D</code> flips all five along with the slide around them.
 <div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-yaml">---
 <span class="tok-function">title:</span> Quarterly review
 <span class="tok-function">author:</span> Your Name
-<span class="tok-function">theme:</span> mirzam
+<span class="tok-function">theme:</span> [mirzam, themes/house.css]
 <span class="tok-function">mode:</span> dark
 <span class="tok-function">aspect:</span> <span class="tok-string">&quot;16:9&quot;</span>
-<span class="tok-function">css:</span> themes/mirzam.css
 <span class="tok-function">split:</span> h2
 <span class="tok-function">transition:</span> fade <span class="tok-number">240</span>ms
 <span class="tok-function">fit:</span> shrink
@@ -163,7 +163,8 @@ names a mode, so <code>D</code> flips all five along with the slide around them.
 </div>
 <div class="pane pane-what" data-pane="what" style="grid-area:what;display:flex;flex-direction:column;justify-content:center"><ul>
 <li>All optional; a deck with no frontmatter builds</li>
-<li><code>css:</code> is resolved <strong>relative to the deck file</strong></li>
+<li><code>theme:</code> takes a built-in name, a <code>.css</code> path <strong>relative to the deck file</strong>,
+or a list of both in cascade order</li>
 <li><code>split:</code> starts a slide at every heading of that level</li>
 <li><code>transition:</code> is the deck-wide page turn; a slide can override its half</li>
 <li><code>math:</code> picks the formula syntax, <code>latex</code> (the default) or <code>typst</code></li>
@@ -171,7 +172,7 @@ names a mode, so <code>D</code> flips all five along with the slide around them.
 </ul>
 </div>
 </div>
-<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">6 / 15</span></div>
+<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">6 / 16</span></div>
 </section>
 <section class="slide" data-index="6">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 6fr;grid-template-areas:"head head" "src what"'>
@@ -205,7 +206,7 @@ under it is the drawing. A mapping written here works for a short set</li>
 </ul>
 </div>
 </div>
-<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">7 / 15</span></div>
+<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">7 / 16</span></div>
 </section>
 <section class="slide" data-index="7">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src what"'>
@@ -234,11 +235,42 @@ and the classes your stylesheet styles</li>
 and the reason the syntax is this quiet.</em></p>
 </div>
 </div>
-<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">8 / 15</span></div>
+<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">8 / 16</span></div>
 </section>
 <section class="slide" data-index="8">
+<div class="grid" style='grid-template-columns:20fr 23fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">A theme of your own</span></p>
+<h2><code>theme:</code> takes a file, and the file gets a name</h2>
+</div>
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-yaml">---
+<span class="tok-function">theme:</span> [mirzam, themes/blueprint.css]
+---
+</code></pre>
+<pre><code class="language-markdown">::: pane fig {theme=blueprint}
+</code></pre>
+<ul>
+<li>An entry ending in <code>.css</code> is a <strong>path</strong>, relative to the deck</li>
+<li>A list is <strong>cascade order</strong>; your file loads last, over the type</li>
+</ul>
+</div>
+<div class="pane pane-out" data-pane="out" data-theme="blueprint" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><h3>This pane is <code>theme=blueprint</code></h3>
+<p>A stem is only a name if the file <strong>scopes its tokens to it</strong>:
+<code>[data-theme=&quot;blueprint&quot;] { … }</code>. A file that writes <code>:root</code> themes the whole
+deck and answers to nobody — and <code>mirzam check</code> says so.</p>
+<ul>
+<li>Mono display type, an em-dash bullet</li>
+<li>Square cards, a hairline rule</li>
+</ul>
+<p><span class="small"><code>examples/themes/blueprint.css</code> is the whole theme, in tokens.</span></p>
+</div>
+</div>
+<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">9 / 16</span></div>
+<aside class="notes"><p>The right-hand pane is the point of the whole feature: a theme nobody built in, applied to one pane by name, carrying its type as well as its colours. That works because tokens inherit and rules do not.</p>
+</aside>
+</section>
+<section class="slide" data-index="9">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src warn"'>
-<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Custom CSS</span></p>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">A theme of your own</span></p>
 <h2>Override the tokens, not the layout</h2>
 </div>
 <div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-css"><span class="tok-keyword">:root</span> {
@@ -259,14 +291,14 @@ and the reason the syntax is this quiet.</em></p>
 beat them — and is why a stylesheet that sets its colours <strong>once</strong> pins the
 deck to one mode. <code>D</code> then changes <code>data-mode</code> and nothing moves.</p>
 <p>Set every token in both blocks, or set none and let the theme do it.</p>
-<p><span class="small">A test holds <code>examples/themes/*.css</code> to that rule, in both modes.</span></p>
+<p><span class="small"><code>mirzam check</code> holds your theme to that rule, and a test holds <code>examples/themes/*.css</code> to it.</span></p>
 </div>
 </div>
-<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">9 / 15</span></div>
+<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">10 / 16</span></div>
 </section>
-<section class="slide" data-index="9">
+<section class="slide" data-index="10">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
-<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Custom CSS</span></p>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">A theme of your own</span></p>
 <h2>Margins are tokens too</h2>
 </div>
 <div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-css"><span class="tok-keyword">:root</span> {
@@ -292,13 +324,13 @@ stays a choice of colour.</p>
 <code>:root</code> they move the deck, on a class you put on one pane they move that pane.</p>
 </div>
 </div>
-<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">10 / 15</span></div>
-<aside class="notes"><p>The stylesheet this deck loads sets the first three as CSS. A deck anchoring shapes to panes declares them in frontmatter instead, because the build computes pane rectangles from those numbers and CSS-only margins would move the panes out from under the shapes.</p>
+<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">11 / 16</span></div>
+<aside class="notes"><p>The theme this deck wears sets the first three as tokens. A deck anchoring shapes to panes declares them in frontmatter instead, because the build computes pane rectangles from those numbers and CSS-only margins would move the panes out from under the shapes.</p>
 </aside>
 </section>
-<section class="slide" data-index="10">
+<section class="slide" data-index="11">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
-<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Custom CSS</span></p>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">A theme of your own</span></p>
 <h2>So is the type</h2>
 </div>
 <div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-css"><span class="tok-keyword">:root</span> {
@@ -323,13 +355,24 @@ unchanged — and one that sets some <strong>is an identity, not a repaint</stro
 <p><span class="small">The whole list is in <code>docs/syntax.md</code>.</span></p>
 </div>
 </div>
-<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">11 / 15</span></div>
+<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">12 / 16</span></div>
 <aside class="notes"><p>The point of this slide is that a theme is no longer a palette. A pane carrying theme= takes the type with it, because tokens inherit and rules do not.</p>
 </aside>
 </section>
-<section class="slide" data-index="11">
+<section class="slide" data-index="12">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
-<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Custom CSS</span></p>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><style>
+/* The class the pane on the right carries. It reaches the page untouched, so
+   the deck stays one file: `theme: [mirzam, tweaks.css]` is where this goes
+   when a deck outgrows a block. */
+.markers {
+  --mz-bullet: "→  ";
+  --mz-bullet-2: "·  ";
+  --mz-number: upper-roman;
+  --mz-marker: var(--mz-accent2);
+}
+</style>
+<p><span class="eyebrow">One class, in the deck</span></p>
 <h2>Bullets are a choice, not a default</h2>
 </div>
 <div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-css"><span class="tok-keyword">.markers</span> {
@@ -339,8 +382,9 @@ unchanged — and one that sets some <strong>is an identity, not a repaint</stro
   --mz-marker<span class="tok-keyword">:</span> <span class="tok-keyword">var</span>(--mz-accent<span class="tok-number">2</span>);
 }
 </code></pre>
-<p>A quoted string is a marker too — and <strong>carries its own trailing space</strong>, since
-the browser adds none after one.</p>
+<p>That block is a <code>&lt;style&gt;</code> in this deck's own source — <strong>one or two classes do
+not need a file</strong>. A quoted string is a marker too, and <strong>carries its own
+trailing space</strong>, since the browser adds none after one.</p>
 </div>
 <div class="pane pane-out markers" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><ul>
 <li>A point, and under it
@@ -356,9 +400,9 @@ the browser adds none after one.</p>
 <p><span class="small">Each depth reads its own dial, so the level under this one keeps its own mark.</span></p>
 </div>
 </div>
-<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">12 / 15</span></div>
+<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">13 / 16</span></div>
 </section>
-<section class="slide" data-index="12">
+<section class="slide" data-index="13">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src what"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Overflow</span></p>
 <h2>When a slide has too much on it</h2>
@@ -381,9 +425,9 @@ cut something.</p>
 <p><em><code>node scripts/check-layout.mjs</code> finds them either way.</em></p>
 </div>
 </div>
-<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">13 / 15</span></div>
+<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">14 / 16</span></div>
 </section>
-<section class="slide" data-index="13">
+<section class="slide" data-index="14">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src what"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Math</span></p>
 <h2>A dialect for formulas</h2>
@@ -407,16 +451,16 @@ identical down to the font</li>
 </ul>
 </div>
 </div>
-<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">14 / 15</span></div>
+<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">15 / 16</span></div>
 </section>
-<section class="slide" data-index="14">
+<section class="slide" data-index="15">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:3fr 1fr;grid-template-areas:"main" "foot"'>
 <div class="pane pane-main" data-pane="main" style="grid-area:main;text-align:center;display:flex;flex-direction:column;justify-content:center"><h2>That is every setting</h2>
 <p>frontmatter · <code>{#id .class key=value}</code> · a stylesheet of your own</p>
 <p><em>Read in that order, last one wins.</em></p>
 </div>
-<div class="pane pane-foot" data-pane="foot" style="grid-area:foot;text-align:right"><p><span class="foot">examples/06-theming.md</span></p>
+<div class="pane pane-foot" data-pane="foot" style="grid-area:foot;text-align:right"><p><span class="small">examples/06-theming.md</span></p>
 </div>
 </div>
-<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">15 / 15</span></div>
+<div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">16 / 16</span></div>
 </section>

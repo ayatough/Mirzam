@@ -1,7 +1,6 @@
 * { box-sizing: border-box; }
 html, body {
   margin: 0; height: 100%;
-  background: var(--mz-bg);
   overflow: hidden;
   /* A horizontal swipe is a page turn, so claim it before the browser reads it
      as back/forward. Without this, swiping right on a phone leaves the deck.
@@ -22,6 +21,12 @@ html, body {
     'Hiragino Sans', 'Noto Sans CJK JP', 'Noto Sans JP', 'Yu Gothic Medium', 'Yu Gothic',
     Meiryo, sans-serif);
 }
+/* The page's own paper, declared on `body` and not on `html`: with `html`
+   transparent the browser propagates this to the canvas, so one element decides
+   the colour behind the slide. It matters for a deck wearing a theme of its
+   own — the stem goes on `body`, so `html` would otherwise answer with the
+   built-in palette and leave a band of the wrong colour under the deck. */
+body { background: var(--mz-bg); }
 #deck {
   position: absolute; top: 50%; left: 50%;
   transform-origin: center center;

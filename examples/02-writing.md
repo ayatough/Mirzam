@@ -2,7 +2,7 @@
 title: Mirzam - Writing a slide
 author: Mirzam
 aspect: "16:9"
-css: themes/mirzam.css
+theme: mirzam
 mode: dark
 ---
 
@@ -454,5 +454,5 @@ Every mark above renders on GitHub. The four Mirzam adds — `==`, `++`,
 :::
 
 ::: pane foot {align=right}
-<span class="foot">examples/02-writing.md</span>
+[examples/02-writing.md]{.small}
 :::

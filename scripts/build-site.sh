@@ -42,14 +42,14 @@ done
 # The README with no Mirzam syntax at all, split at its own headings. The theme
 # and the fit come from the command line for the same reason: frontmatter would
 # show up as a stray table at the top of the README on GitHub, so the one thing
-# this deck cannot do is carry its own settings. `--theme` is redundant with
-# the fallback and kept for the reader's benefit; `--css` is not, and is what
-# gives this deck the identity's type rather than only its colours. Without
-# `--fit` four of its sections are longer than a slide and the
+# this deck cannot do is carry its own settings. `--theme mirzam` is redundant
+# with the fallback and kept for the reader's benefit - it now carries the
+# identity's type as well as its colours, so there is no second stylesheet to
+# name. Without `--fit` four of its sections are longer than a slide and the
 # viewer simply cuts them off - which is the worst outcome for the deck whose
 # whole claim is that an unedited document becomes a deck.
 ./target/release/mirzam build README.md -o "$OUT/decks/readme" --split h2 \
-  --theme mirzam --css examples/themes/mirzam.css --fit shrink --mode dark \
+  --theme mirzam --fit shrink --mode dark \
   --base-url "$REPO_BLOB/"
 
 # The browser editor: the same Rust core compiled to WebAssembly, so someone

@@ -102,7 +102,7 @@ pub(crate) fn check(input: &Path, args: &CheckArgs) -> Result<(), String> {
 
     let opts = mirzam_render::PageOptions {
         live_version: None,
-        custom_css: out.custom_css.clone(),
+        file_themes: out.file_themes.clone(),
         debug_layout: args.debug_layout,
         // The page under test is the page `build` writes, palettes included.
         all_themes: false,
@@ -337,7 +337,19 @@ fn build_kind(message: &str) -> &'static str {
         // needs its own needle or it would classify as `build.other`.
         ("no longer a theme name", "build.theme"),
         ("unknown mode", "build.theme"),
+        // The stem rule, reported against the slide or pane that named a
+        // theme file which cannot answer to a name.
+        ("file theme is usable", "build.theme"),
+        // A stylesheet the deck named and the host could not read, under
+        // either key. `build.css` is the code for a stylesheet either way.
+        ("theme: cannot read", "build.css"),
+        // Everything else a theme file has to say about itself: a stem that
+        // collides with a built-in, one palette where two are needed, text
+        // that cannot be read on its own background.
+        ("theme: `", "build.theme"),
         ("transition:", "build.transition"),
+        // The retired `css:` key: its own unreadable-path warning, and the
+        // note saying what to write instead. Goes when the alias goes.
         ("css:", "build.css"),
         ("no slides:", "build.deck"),
         ("<!-- next -->", "build.continuation"),
@@ -584,7 +596,23 @@ mod tests {
                 "transition: unknown transition `wobble`",
                 "build.transition",
             ),
+            ("theme: cannot read missing.css", "build.css"),
             ("css: cannot read missing.css", "build.css"),
+            (
+                "`css:` is retired and goes away in the next release: `theme:` takes a \
+                 stylesheet path as well as a built-in name. Write `theme: acme.css` instead.",
+                "build.css",
+            ),
+            (
+                "theme: `themes/acme.css` paints in one palette: 12 colour tokens",
+                "build.theme",
+            ),
+            (
+                "slide 2, pane `fig`: `acme` is loaded from `themes/acme.css`, but that file \
+                 sets its tokens outside `[data-theme=\"acme\"]`. A file theme is usable by \
+                 name only if it scopes its tokens to its own stem",
+                "build.theme",
+            ),
             ("no slides: deck.md is empty", "build.deck"),
             ("nope.png: file not found", "build.asset"),
         ] {

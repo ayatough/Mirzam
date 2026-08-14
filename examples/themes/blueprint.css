@@ -1,0 +1,199 @@
+/* Blueprint — a theme of your own, in a file.
+   Use it with `theme: themes/blueprint.css` in a deck's frontmatter.
+
+   This is the sample custom theme: a whole identity, in tokens, in a file the
+   renderer knows nothing about. It is deliberately *not* Mirzam's — a drawing
+   office rather than a studio. Monospace display type, a hairline rule under a
+   section heading instead of a coloured mark, square cards on ruled paper, and
+   an em dash for a bullet. Put it beside `theme: mirzam` and the difference is
+   legible before a colour registers.
+
+   ## Every token is scoped to `[data-theme="blueprint"]`, and that is the rule
+
+   A file theme registers under its filename stem — `themes/blueprint.css`
+   becomes `blueprint` — and a slide or a pane can then ask for it by name:
+
+       ::: pane fig {theme=blueprint}
+
+   But registering a stem does not make a stylesheet scopable. A file that
+   writes `:root { --mz-… }` sets its tokens on the *document*, and a pane
+   carrying `data-theme="blueprint"` picks up nothing at all. So the rule is:
+   **a file theme is usable by name if, and only if, it scopes its tokens to
+   its own stem.** `mirzam check` says so when a deck gets it wrong.
+
+   That is the selector the built-in themes use, minus their `:where()` — they
+   need that so a deck's own stylesheet can outrank them, and this file *is*
+   the deck's own stylesheet.
+
+   A deck that names this theme and no built-in — `theme: themes/blueprint.css`
+   — wears it: the renderer writes the stem onto the page, because a deck that
+   names its own theme and nothing else means it. A deck that names a built-in
+   as well — `theme: [mirzam, themes/blueprint.css]`, as `examples/06-theming.md`
+   does — has already said which palette it is in, and this one is then loaded
+   for the panes that ask for it by name.
+
+   ## Both modes, or none
+
+   The tokens below outrank the built-in ones in *both* modes, so a theme that
+   painted once would pin its deck to one palette and make `D` in the viewer
+   look broken. Light is the bare block, because a reader whose system prefers
+   light should get light; dark arrives through `prefers-color-scheme` or an
+   explicit `data-mode`, exactly as a built-in theme does.
+
+   Every colour is named twice and nothing is a literal buried in a rule, which
+   is what `cargo test -p mirzam-cli --test sample_themes` — and `mirzam check`,
+   for your own deck — holds this file to.
+
+   The faces are named, not fetched: a deck is one self-contained file, and a
+   projector at a venue may have no network. Japanese is named after the Latin
+   faces in each stack, because neither covers it. */
+
+[data-theme="blueprint"] {
+  --mz-bg: #d9dee4;
+  --mz-slide-bg: #fbfbf9;
+  --mz-fg: #1b2733;
+  --mz-muted: #56616e;
+  --mz-border: #c9d0d8;
+  --mz-surface: #eef1f4;
+  --mz-shape-fill: #eef1f4;
+
+  /* Ink blue leads, and a drawing-office teal answers it. */
+  --mz-accent1: #14568c;
+  --mz-accent2: #0d6a63;
+  --mz-chart3: #8a4a12;
+  --mz-chart4: #6b3fa0;
+  --mz-chart5: #9c2a4a;
+  --mz-chart6: #2a6f8f;
+
+  --mz-danger-bg: #fbeceb;
+  --mz-danger-fg: #9c2222;
+  --mz-danger-border: #c98a8a;
+
+  --mz-code-bg: #eef1f4;
+  --mz-code-fg: #14568c;
+  --mz-code-keyword: #14568c;
+  --mz-code-string: #2d6a4a;
+  --mz-code-comment: #56616e;
+  --mz-code-function: #6b3fa0;
+  --mz-code-number: #9c2a4a;
+  --mz-code-operator: #1b2733;
+
+  /* Type. The display face is the mono one — headings set in the same face as
+     the drawing notes is the whole idea. */
+  --mz-font: "IBM Plex Sans", "Helvetica Neue", 'Hiragino Kaku Gothic ProN',
+    'Noto Sans CJK JP', 'Yu Gothic Medium', Meiryo, sans-serif;
+  --mz-font-display: "IBM Plex Mono", "SF Mono", Consolas, 'Hiragino Kaku Gothic ProN',
+    'Noto Sans CJK JP', 'Yu Gothic Medium', Meiryo, monospace;
+  --mz-font-mono: "IBM Plex Mono", "SF Mono", Consolas, Menlo, monospace;
+
+  /* A drawing is annotated, not shouted at: the ladder separates levels by
+     tracking and rule rather than by weight. */
+  --mz-h1-size: 2.5em;
+  --mz-h1-weight: 500;
+  --mz-h1-tracking: -0.01em;
+  --mz-h1-leading: 1.2;
+  --mz-h2-size: 1.45em;
+  --mz-h2-weight: 500;
+  --mz-h2-tracking: 0.02em;
+  --mz-h3-size: 1.1em;
+  --mz-h3-weight: 600;
+  --mz-h3-tracking: 0.06em;
+  --mz-h3-color: var(--mz-accent2);
+  --mz-title-size: 2.9em;
+  --mz-title-weight: 500;
+  --mz-title-tracking: -0.01em;
+  --mz-body-size: 1.3em;
+  --mz-body-leading: 1.6;
+
+  /* A hairline under a section heading, the width of the pane: this is a
+     ruled sheet, so the mark is the rule the sheet already had. */
+  --mz-h2-border: 1px solid var(--mz-border);
+  --mz-h2-pad: 0.3em;
+
+  --mz-strong-color: var(--mz-accent1);
+  --mz-strong-weight: 600;
+  --mz-quote-border: 2px solid var(--mz-accent2);
+  --mz-quote-fg: var(--mz-fg);
+  --mz-th-fg: var(--mz-accent1);
+
+  /* Square corners, a hairline edge, and paper rather than a raised panel. */
+  --mz-card-bg: var(--mz-slide-bg);
+  --mz-card-border: 1px solid var(--mz-border);
+  --mz-card-radius: 0;
+  --mz-card-pad: 20px 22px;
+  --mz-card-shadow: none;
+
+  --mz-eyebrow-size: 0.76em;
+  --mz-eyebrow-weight: 600;
+  --mz-eyebrow-tracking: 0.2em;
+  --mz-eyebrow-color: var(--mz-accent2);
+  --mz-metric-weight: 500;
+  --mz-metric-tracking: -0.01em;
+  --mz-metric-color: var(--mz-accent1);
+
+  /* An em dash for a bullet, in the drawing's own ink. A string marker carries
+     its own trailing space — the browser adds none. */
+  --mz-bullet: "—  ";
+  --mz-marker: var(--mz-accent2);
+
+  --mz-grid-pad-y: 44px;
+  --mz-grid-pad-x: 56px;
+  --mz-grid-gap: 20px;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="blueprint"]:not([data-mode="light"]):not([data-mode="light"] *) {
+    --mz-bg: #060d14;
+    --mz-slide-bg: #0b1826;
+    --mz-fg: #e6edf5;
+    --mz-muted: #94a5b6;
+    --mz-border: #24384b;
+    --mz-surface: #11222f;
+    --mz-shape-fill: #142a3a;
+    --mz-accent1: #7fb4f5;
+    --mz-accent2: #59c6be;
+    --mz-chart3: #dcae6a;
+    --mz-chart4: #b39ae8;
+    --mz-chart5: #eb8fa6;
+    --mz-chart6: #6fc4e0;
+    --mz-danger-bg: #2a1416;
+    --mz-danger-fg: #f0a3a3;
+    --mz-danger-border: #a55c5c;
+    --mz-code-bg: #0d1f2c;
+    --mz-code-fg: #7fb4f5;
+    --mz-code-keyword: #7fb4f5;
+    --mz-code-string: #59c6be;
+    --mz-code-comment: #94a5b6;
+    --mz-code-function: #b39ae8;
+    --mz-code-number: #eb8fa6;
+    --mz-code-operator: #e6edf5;
+  }
+}
+
+[data-mode="dark"] [data-theme="blueprint"]:not([data-mode="light"]):not([data-mode="light"] *),
+[data-theme="blueprint"][data-mode="dark"] {
+  --mz-bg: #060d14;
+  --mz-slide-bg: #0b1826;
+  --mz-fg: #e6edf5;
+  --mz-muted: #94a5b6;
+  --mz-border: #24384b;
+  --mz-surface: #11222f;
+  --mz-shape-fill: #142a3a;
+  --mz-accent1: #7fb4f5;
+  --mz-accent2: #59c6be;
+  --mz-chart3: #dcae6a;
+  --mz-chart4: #b39ae8;
+  --mz-chart5: #eb8fa6;
+  --mz-chart6: #6fc4e0;
+  --mz-danger-bg: #2a1416;
+  --mz-danger-fg: #f0a3a3;
+  --mz-danger-border: #a55c5c;
+  --mz-code-bg: #0d1f2c;
+  --mz-code-fg: #7fb4f5;
+  --mz-code-keyword: #7fb4f5;
+  --mz-code-string: #59c6be;
+  --mz-code-comment: #94a5b6;
+  --mz-code-function: #b39ae8;
+  --mz-code-number: #eb8fa6;
+  --mz-code-operator: #e6edf5;
+}

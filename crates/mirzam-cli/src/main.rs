@@ -301,14 +301,14 @@ fn help_text() -> String {
         r#"
 Usage:
   mirzam new <file.md> [--empty]
-  mirzam build <input.md> [-o <out_dir>] [--split h1|h2|h3] [--theme <name>]
-               [--css <file>] [--fit shrink] [--mode light|dark]
+  mirzam build <input.md> [-o <out_dir>] [--split h1|h2|h3]
+               [--theme <name|file.css>]... [--fit shrink] [--mode light|dark]
                [--base-url <url>] [--debug-layout] [--strict]
   mirzam serve <input.md> [-p <port>]
   mirzam export pdf <input.md> [-o <out.pdf>] [--split h1|h2|h3]
-               [--theme <name>] [--css <file>] [--fit shrink]
+               [--theme <name|file.css>]... [--fit shrink]
                [--mode light|dark] [--chromium <bin>]
-  mirzam check <input.md> [--split h1|h2|h3] [--theme <name>] [--css <file>]
+  mirzam check <input.md> [--split h1|h2|h3] [--theme <name|file.css>]...
                [--fit shrink] [--mode light|dark] [--base-url <url>]
                [--debug-layout] [--chromium <bin>] [--min-slack <px>]
                [--format text|json]
@@ -349,9 +349,14 @@ Usage:
           ordinary document into a deck without editing it. `build` and
           `export pdf` take it the same way, so a deck assembled with --split
           exports to PDF with the same slide breaks in one command
-  --theme and --css override the deck's frontmatter, so a document that
-          carries none still gets an identity: --theme takes a built-in
-          palette, --css a stylesheet with the type and furniture as well
+  --theme overrides the deck's frontmatter, so a document that carries none
+          still gets an identity. It takes a built-in palette or a path
+          ending in .css, and repeating it is a cascade:
+          `--theme mirzam --theme house.css`. A file named here re-themes
+          the deck; naming it in the deck's own `theme:` is what also
+          registers its stem for a slide's or a pane's `theme=`.
+          (--css is the old spelling of --theme <file.css>. It still works
+          for this release and says what to write instead.)
   --fit shrink scales an overfull pane's text down instead of clipping it,
           which is what a section of prose that was never written to be a
           slide usually needs
@@ -404,11 +409,16 @@ Examples:
 #[derive(Default)]
 struct DeckArgs {
     split: Option<u8>,
-    /// Overrides frontmatter `theme:`.
-    theme: Option<String>,
-    /// Overrides frontmatter `css:`. Resolved against the working directory,
-    /// not the deck's, because it is a path the caller typed.
-    css: Option<PathBuf>,
+    /// Overrides frontmatter `theme:`, in cascade order: a built-in name, or a
+    /// path ending in `.css`. Repeating `--theme` appends, so
+    /// `--theme mirzam --theme house.css` is the frontmatter list on the
+    /// command line. A path is resolved against the working directory, not the
+    /// deck's, because it is a path the caller typed.
+    theme: Vec<String>,
+    /// Whether any of it arrived as the retired `--css`, which is `--theme`
+    /// with a path. Kept only so the deck can be told what to write instead;
+    /// it goes when the alias does.
+    css_alias: bool,
     /// Overrides frontmatter `fit:`.
     fit: Option<String>,
     /// Overrides frontmatter `mode:`.
@@ -431,23 +441,31 @@ fn parse_deck_flag(
             // A flag is typed, not authored, so an unknown name is a typo to
             // report rather than something to fall back from: silently
             // rendering in the fallback theme is exactly what the flag was
-            // reached for to avoid.
+            // reached for to avoid. A path is not checked here — whether the
+            // file reads is a question for the filesystem, and the answer is
+            // an error there.
             match args.get(*i) {
-                Some(name) if mirzam_render::THEME_NAMES.contains(&name.as_str()) => {
-                    opts.theme = Some(name.clone());
+                Some(entry)
+                    if mirzam_core::is_theme_path(entry)
+                        || mirzam_render::THEME_NAMES.contains(&entry.as_str()) =>
+                {
+                    opts.theme.push(entry.clone());
                     Some(Ok(()))
                 }
                 _ => Some(Err(format!(
-                    "--theme takes one of: {}",
+                    "--theme takes a stylesheet path ending in .css, or one of: {}",
                     mirzam_render::THEME_NAMES.join(", ")
                 ))),
             }
         }
+        // The retired half of the same flag, accepted for one release: `--css
+        // x.css` is `--theme x.css`, and says so when it is used.
         "--css" => {
             *i += 1;
             match args.get(*i) {
                 Some(p) => {
-                    opts.css = Some(PathBuf::from(p));
+                    opts.theme.push(p.clone());
+                    opts.css_alias = true;
                     Some(Ok(()))
                 }
                 None => Some(Err("--css requires a stylesheet path".to_string())),
@@ -612,37 +630,55 @@ fn new_deck(path: &Path, empty: bool) -> Result<(), String> {
     Ok(())
 }
 
-/// Applies `--theme`/`--css`/`--fit`/`--mode` on top of the deck's own
-/// frontmatter. Shared by `build` and `export pdf`, which render the same
-/// deck to different formats and so must resolve these identically.
+/// Applies `--theme`/`--fit`/`--mode` on top of the deck's own frontmatter.
+/// Shared by `build` and `export pdf`, which render the same deck to different
+/// formats and so must resolve these identically.
 fn apply_deck_overrides(out: &mut pipeline::BuildOutput, deck: &DeckArgs) -> Result<(), String> {
-    // `--theme` and `--css` override the frontmatter, which is what lets a
-    // document carrying none - a README published as a deck - still be given
-    // an identity without editing the document to get one.
-    if let Some(name) = &deck.theme {
-        out.meta.theme = Some(name.clone());
+    // `--theme` overrides the frontmatter, which is what lets a document
+    // carrying none - a README published as a deck - still be given an
+    // identity without editing the document to get one. It replaces the list
+    // rather than adding to it: a flag that half-overrode would leave the
+    // caller unable to say "not that one".
+    if !deck.theme.is_empty() {
+        out.meta.theme = mirzam_core::ThemeSpec::Many(deck.theme.clone());
+        out.meta.css = None;
+        // An unreadable frontmatter path is a warning, because the deck is
+        // still a deck without it. An unreadable one here is an error: it is
+        // the whole reason this invocation exists, and a wrong path would
+        // otherwise publish a deck that looks nothing like the one asked for.
+        out.file_themes = Vec::new();
+        for entry in deck.theme.iter().filter(|e| mirzam_core::is_theme_path(e)) {
+            let css = std::fs::read_to_string(entry)
+                .map_err(|e| format!("--theme: cannot read {entry}: {e}"))?;
+            out.file_themes
+                .push(mirzam_render::FileTheme::new(entry, css));
+        }
+        for warning in mirzam_render::file_theme_warnings(&out.file_themes) {
+            out.warnings.push(warning);
+            out.warning_sites.push(pipeline::WarningSite::default());
+        }
+    }
+    if deck.css_alias {
+        // No slide and no file: this is a property of the command line, not of
+        // a line anybody wrote in the deck.
+        out.warnings.push(
+            "`--css` is retired and goes away in the next release: `--theme` takes a \
+             stylesheet path as well as a built-in name. Write `--theme <file.css>` instead."
+                .to_string(),
+        );
+        out.warning_sites.push(pipeline::WarningSite::default());
     }
     if let Some(fit) = &deck.fit {
         out.meta.fit = Some(fit.clone());
     }
     // `--mode` matters most for the deck that cannot say it any other way. A
-    // stylesheet may rest in either mode - `examples/themes/mirzam.css` is dark
-    // by default and says so - but nothing in the CSS tells the renderer which,
+    // stylesheet may rest in either mode - a theme of your own may define one
+    // palette and mean it - but nothing in the CSS tells the renderer which,
     // and an unset mode means "follow the reader's machine". So a dark-resting
     // deck left unset paints dark while every per-mode asset in it, a
     // `<picture>` or a `bg-light=`/`bg-dark=` pane, shows its light copy.
     if let Some(mode) = &deck.mode {
         out.meta.mode = Some(mode.clone());
-    }
-    if let Some(path) = &deck.css {
-        // Unreadable frontmatter `css:` is a warning, because the deck is still
-        // a deck without it. An unreadable `--css` is an error: it is the whole
-        // reason this invocation exists, and a wrong path would otherwise
-        // publish a deck that looks nothing like the one that was asked for.
-        out.custom_css = Some(
-            std::fs::read_to_string(path)
-                .map_err(|e| format!("cannot read {}: {e}", path.display()))?,
-        );
     }
     Ok(())
 }
@@ -660,7 +696,7 @@ fn build(input: &Path, args: &BuildArgs) -> Result<(), String> {
 
     let opts = mirzam_render::PageOptions {
         live_version: None,
-        custom_css: out.custom_css.clone(),
+        file_themes: out.file_themes.clone(),
         debug_layout: args.debug_layout,
         // A built deck is assembled in one pass, so it carries the palettes it
         // actually uses and no more.
@@ -704,8 +740,7 @@ fn export_pdf(
     let mut cache = HashMap::new();
     let mut out = pipeline::build_deck_with(input, &mut cache, deck.split, None)?;
     apply_deck_overrides(&mut out, deck)?;
-    let html =
-        mirzam_render::assemble_print_page(&out.meta, &out.sections, out.custom_css.as_deref());
+    let html = mirzam_render::assemble_print_page(&out.meta, &out.sections, &out.file_themes);
     for w in &out.warnings {
         println!("  ⚠ {w}");
     }
@@ -827,8 +862,10 @@ mod tests {
             i += 1;
         }
         assert_eq!(opts.split, Some(2));
-        assert_eq!(opts.theme.as_deref(), Some("nord"));
-        assert_eq!(opts.css.as_deref(), Some(Path::new("x.css")));
+        // One list, in the order the flags were typed: `--css` is `--theme`
+        // with a path, for the release the old spelling is still accepted.
+        assert_eq!(opts.theme, ["nord", "x.css"]);
+        assert!(opts.css_alias);
         assert_eq!(opts.fit.as_deref(), Some("shrink"));
         assert_eq!(opts.mode.as_deref(), Some("dark"));
     }

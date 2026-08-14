@@ -4,9 +4,9 @@
 //! - `themes/*.css` — one file per built-in theme, each defining the full
 //!   token set for both light and dark mode ([C3] in `docs/workstreams.md`).
 //!   Every selector is wrapped in `:where()`, which contributes no
-//!   specificity: a deck's own `css:` overrides tokens with a plain `:root`
-//!   block, and `[data-theme="x"]` would otherwise outrank it no matter
-//!   what order the stylesheets appear in.
+//!   specificity: a theme of the deck's own overrides tokens with a plain
+//!   `:root` block, and `[data-theme="x"]` would otherwise outrank it no
+//!   matter what order the stylesheets appear in.
 //!
 //!   The selectors are written against *any* element rather than `:root`,
 //!   because a theme is not only a property of the deck: a slide or a single
@@ -18,12 +18,18 @@
 //!   from being pulled dark by the deck around it.
 //! - `base.css` — layout, typography, panes; everything that reads a token
 //!   rather than defining one, shared by every theme
+//! - a deck's own `.css` entries, loaded *after* `base.css` — see
+//!   [`file_theme`] for what a theme somebody wrote can and cannot do
 //! - `print.css` — overrides applied for PDF export
 //! - `viewer.js` — the runtime shipped inside every deck
 //! - `anim.js` — the animation runtime, shipped only when a deck animates
 //! - `presenter.js` — the presenter window, and the link between two windows
 //!
 //! [C3]: ../../../docs/workstreams.md#c3-theme-tokens
+
+pub mod file_theme;
+
+pub use file_theme::{file_theme_warnings, FileTheme};
 
 pub const BASE_CSS: &str = include_str!("base.css");
 pub const VIEWER_JS: &str = concat!("\n", include_str!("viewer.js"));
@@ -90,7 +96,7 @@ pub fn known_theme(name: &str) -> Option<&'static str> {
 
 /// Token CSS for a named theme. Unknown names fall back to
 /// [`FALLBACK_THEME`]'s tokens directly, so this is total for every string
-/// and cannot call itself; call [`theme_warning`] first if the name came from
+/// and cannot call itself; call [`theme_warnings`] first if the name came from
 /// frontmatter and an unknown name should be reported rather than silently
 /// substituted.
 pub fn theme_tokens(name: &str) -> &'static str {
@@ -128,17 +134,39 @@ pub fn theme_css_for(names: &[&str]) -> String {
     out
 }
 
+/// A name a slide or a pane may write in `theme=`: a built-in, or the stem of
+/// a stylesheet this deck loaded (`themes/acme.css` → `acme`).
+///
+/// A built-in wins a collision. The alternative lets a file sitting in the
+/// deck's directory silently redefine what `theme: nord` means, and a name
+/// that means different things in different directories is worse than a name
+/// that is taken; [`file_theme_warnings`] reports the clash.
+fn scope_name<'a>(name: &str, files: &'a [FileTheme]) -> Option<&'a str> {
+    if let Some(built_in) = known_theme(name) {
+        return Some(built_in);
+    }
+    files
+        .iter()
+        .find(|f| f.name == name)
+        .map(|f| f.name.as_str())
+}
+
 /// The `data-theme`/`data-mode` attributes for an element *inside* the deck —
 /// a slide or a pane that asks for a palette of its own.
 ///
-/// Silently drops anything that is not a built-in theme or a known mode, the
-/// same way [`theme_attrs`](crate::assemble_page) does for the deck: an
+/// Silently drops anything that is not a theme this deck has or a known mode,
+/// the same way [`theme_attrs`](crate::assemble_page) does for the deck: an
 /// element renders in the palette it inherits rather than failing the build.
 /// [`scope_warnings`] is what reports the dropped name, and is called where
 /// the slide is parsed rather than here.
-pub fn scope_attrs(theme: Option<&str>, mode: Option<&str>) -> String {
+///
+/// `files` is the deck's own themes. The attribute is written for one of those
+/// even when the file does not scope its tokens to its own stem — the name is
+/// registered either way, and the selector that would answer it is one line in
+/// a file the author can edit. Writing nothing would make the fix invisible.
+pub fn scope_attrs(theme: Option<&str>, mode: Option<&str>, files: &[FileTheme]) -> String {
     let mut out = String::new();
-    if let Some(name) = theme.and_then(known_theme) {
+    if let Some(name) = theme.and_then(|t| scope_name(t, files)) {
         out.push_str(&format!(" data-theme=\"{name}\""));
     }
     if let Some(m) = normalize_mode(mode) {
@@ -165,19 +193,48 @@ fn retired_name_note(retired: &str, write: &str) -> Option<String> {
     })
 }
 
-/// Warnings for a `theme=`/`mode=` pair that named something unknown, prefixed
-/// with `where` so the author is told which pane or slide to look at.
-pub fn scope_warnings(where_: &str, theme: Option<&str>, mode: Option<&str>) -> Vec<String> {
+/// Warnings for a `theme=`/`mode=` pair that named something unknown — or
+/// something this deck loaded but wrote in a way that cannot answer to a name.
+/// Prefixed with `where` so the author is told which pane or slide to look at.
+pub fn scope_warnings(
+    where_: &str,
+    theme: Option<&str>,
+    mode: Option<&str>,
+    files: &[FileTheme],
+) -> Vec<String> {
     let mut out = Vec::new();
     if let Some(name) = theme {
-        if known_theme(name).is_none() {
+        let own = files.iter().find(|f| f.name == name);
+        if let Some(file) = own.filter(|f| known_theme(name).is_none() && !f.scopes_to_stem()) {
+            // The trap this exists for: the stem is registered, the attribute
+            // is written, and the stylesheet answers to nobody — so the pane
+            // renders in the deck's palette and nothing says why.
+            out.push(format!(
+                "{where_}: `{name}` is loaded from `{}`, but that file sets its tokens outside \
+                 `[data-theme=\"{name}\"]`, so this `theme={name}` picks up nothing. A file \
+                 theme is usable by name only if it scopes its tokens to its own stem: wrap \
+                 the token block in `[data-theme=\"{name}\"] {{ … }}`.",
+                file.path
+            ));
+        } else if scope_name(name, files).is_none() {
             out.push(
                 match retired_name_note(name, &format!("theme={FALLBACK_THEME}")) {
                     Some(note) => format!("{where_}: {note} Keeping the surrounding theme."),
                     None => format!(
                         "{where_}: unknown theme `{name}`; keeping the surrounding theme. \
-                     Built-in themes: {}",
-                        THEME_NAMES.join(", ")
+                     Built-in themes: {}{}",
+                        THEME_NAMES.join(", "),
+                        match files.is_empty() {
+                            true => String::new(),
+                            false => format!(
+                                ". This deck also loads: {}",
+                                files
+                                    .iter()
+                                    .map(|f| f.name.as_str())
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            ),
+                        }
                     ),
                 },
             );
@@ -193,10 +250,23 @@ pub fn scope_warnings(where_: &str, theme: Option<&str>, mode: Option<&str>) -> 
     out
 }
 
+/// What frontmatter's `theme:` has to say for itself: an unknown built-in
+/// name, and the note that `css:` has been retired.
+///
+/// The stylesheets themselves are read by the host, so what a file theme has
+/// to say arrives separately through [`file_theme_warnings`].
+pub fn theme_warnings(meta: &mirzam_core::DeckMeta) -> Vec<String> {
+    meta.theme_names()
+        .into_iter()
+        .filter_map(|name| theme_warning(Some(name)))
+        .chain(meta.css_alias_warning())
+        .collect()
+}
+
 /// `None` when there is nothing to report (no theme requested, or a known
 /// one); `Some(message)` when frontmatter named a theme that is not a
 /// built-in, which falls back to [`FALLBACK_THEME`].
-pub fn theme_warning(requested: Option<&str>) -> Option<String> {
+fn theme_warning(requested: Option<&str>) -> Option<String> {
     let name = requested?;
     if THEME_NAMES.contains(&name) {
         return None;
@@ -323,7 +393,8 @@ mod tests {
         assert!(css.contains("--mz-accent1"));
     }
 
-    /// A deck's own `css:` overrides tokens with a plain `:root { }` block.
+    /// A deck's own theme file overrides tokens with a plain `:root { }`
+    /// block.
     /// `:root[data-theme="x"]` outranks that on specificity, so wrapping the
     /// built-in selectors in the zero-specificity `:where()` is the only thing
     /// keeping custom themes working - a bare selector here silently reverts
@@ -335,7 +406,7 @@ mod tests {
                 assert!(
                     line.trim_start().starts_with(":where("),
                     "{name}: `{}` must be wrapped in :where(), or a deck's own \
-                     css: can no longer override the palette",
+                     theme file can no longer override the palette",
                     line.trim()
                 );
             }
@@ -391,26 +462,29 @@ mod tests {
     #[test]
     fn scope_attrs_emits_only_what_it_recognises() {
         assert_eq!(
-            scope_attrs(Some("nord"), Some("Dark")),
+            scope_attrs(Some("nord"), Some("Dark"), &[]),
             " data-theme=\"nord\" data-mode=\"dark\""
         );
-        assert_eq!(scope_attrs(Some("wuwei"), None), " data-theme=\"wuwei\"");
+        assert_eq!(
+            scope_attrs(Some("wuwei"), None, &[]),
+            " data-theme=\"wuwei\""
+        );
         // An unknown name leaves the element inheriting what surrounds it,
         // rather than dropping it to the fallback the way the deck's own
         // theme does: a pane has something to inherit and a page does not.
-        assert_eq!(scope_attrs(Some("nope"), Some("sideways")), "");
-        assert_eq!(scope_attrs(None, None), "");
+        assert_eq!(scope_attrs(Some("nope"), Some("sideways"), &[]), "");
+        assert_eq!(scope_attrs(None, None, &[]), "");
     }
 
     #[test]
     fn scope_warnings_name_the_place_and_the_alternatives() {
-        assert!(scope_warnings("slide 2, pane `fig`", Some("nord"), Some("dark")).is_empty());
-        let w = scope_warnings("slide 2, pane `fig`", Some("nope"), None);
+        assert!(scope_warnings("slide 2, pane `fig`", Some("nord"), Some("dark"), &[]).is_empty());
+        let w = scope_warnings("slide 2, pane `fig`", Some("nope"), None, &[]);
         assert_eq!(w.len(), 1);
         assert!(w[0].contains("pane `fig`"));
         assert!(w[0].contains("nope"));
         assert!(w[0].contains("wuwei"));
-        let w = scope_warnings("slide 2", None, Some("sideways"));
+        let w = scope_warnings("slide 2", None, Some("sideways"), &[]);
         assert_eq!(w.len(), 1);
         assert!(w[0].contains("light` or `dark"));
     }
@@ -438,7 +512,7 @@ mod tests {
         assert!(w.contains("theme: mirzam"), "{w}");
         assert!(w.contains("remove the key"), "{w}");
 
-        let w = scope_warnings("slide 3, pane `fig`", Some("default"), None);
+        let w = scope_warnings("slide 3, pane `fig`", Some("default"), None, &[]);
         assert_eq!(w.len(), 1);
         assert!(w[0].starts_with("slide 3, pane `fig`: "), "{}", w[0]);
         assert!(!w[0].contains("unknown theme"), "{}", w[0]);
@@ -448,6 +522,58 @@ mod tests {
         assert!(theme_warning(Some("defaults"))
             .unwrap()
             .contains("unknown theme"));
+    }
+
+    /// The stem rule, from the two sides a slide sees it from: a file theme
+    /// that scopes its tokens to its own stem is a name a pane can use, and
+    /// one that does not is the failure the diagnostics exist for — the
+    /// attribute is written either way, so fixing the file is all it takes.
+    #[test]
+    fn a_file_theme_is_usable_by_name_only_when_it_scopes_to_its_stem() {
+        let scoped = FileTheme::new(
+            "themes/acme.css",
+            "[data-theme=\"acme\"] { --mz-accent1: #6557d9; }",
+        );
+        let loose = FileTheme::new("themes/loose.css", ":root { --mz-accent1: #6557d9; }");
+        let files = vec![scoped, loose];
+
+        assert_eq!(
+            scope_attrs(Some("acme"), None, &files),
+            " data-theme=\"acme\""
+        );
+        assert!(scope_warnings("slide 1, pane `a`", Some("acme"), None, &files).is_empty());
+
+        assert_eq!(
+            scope_attrs(Some("loose"), None, &files),
+            " data-theme=\"loose\"",
+            "the name is registered, so the attribute is written and the fix is one line \
+             in the file"
+        );
+        let w = scope_warnings("slide 1, pane `a`", Some("loose"), None, &files);
+        assert_eq!(w.len(), 1);
+        assert!(w[0].contains("themes/loose.css"), "{}", w[0]);
+        assert!(w[0].contains("[data-theme=\"loose\"]"), "{}", w[0]);
+
+        // A name that is neither built-in nor loaded is still dropped, and the
+        // deck's own themes join the list of what it could have meant.
+        let w = scope_warnings("slide 1", Some("nope"), None, &files);
+        assert_eq!(scope_attrs(Some("nope"), None, &files), "");
+        assert!(w[0].contains("acme, loose"), "{}", w[0]);
+    }
+
+    /// A file whose stem is a built-in's name does not get to redefine it.
+    #[test]
+    fn a_built_in_wins_a_name_collision() {
+        let files = vec![FileTheme::new(
+            "themes/nord.css",
+            "[data-theme=\"nord\"] { --mz-accent1: #f00; }",
+        )];
+        assert_eq!(
+            scope_attrs(Some("nord"), None, &files),
+            " data-theme=\"nord\""
+        );
+        assert!(scope_warnings("slide 1", Some("nord"), None, &files).is_empty());
+        assert!(file_theme_warnings(&files)[0].contains("built-in theme"));
     }
 
     #[test]

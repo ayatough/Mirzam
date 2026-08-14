@@ -14,13 +14,20 @@ use std::path::{Path, PathBuf};
 pub struct DeckMeta {
     pub title: Option<String>,
     pub author: Option<String>,
-    pub theme: Option<String>,
+    /// The deck's look, in cascade order: built-in theme names and paths to
+    /// stylesheets of your own. See [`ThemeSpec`].
+    pub theme: ThemeSpec,
     /// Forces light or dark mode. Unset defers to the viewer's
     /// `prefers-color-scheme`, overridable there with `?mode=` or `D`.
     pub mode: Option<String>,
     /// Aspect ratio, e.g. "16:9" or "4:3".
     pub aspect: Option<String>,
     /// Path to a custom stylesheet, relative to the input file.
+    ///
+    /// **Retired**: this is `theme:` with one entry, and it is accepted for
+    /// one release so a deck written against the old key still builds. It
+    /// warns with the line to write instead ([`DeckMeta::css_alias_warning`]),
+    /// and then this field and every branch that reads it go together.
     pub css: Option<String>,
     /// Start a new slide at every heading of this level: "h1", "h2", "h3".
     /// Slides always break on `---` as well.
@@ -68,6 +75,65 @@ pub struct DeckMeta {
     #[serde(rename = "grid-gap", alias = "grid_gap")]
     pub grid_gap: Option<PxLength>,
     pub vars: BTreeMap<String, serde_yaml::Value>,
+}
+
+/// What `theme:` holds: built-in names and paths to stylesheets, in cascade
+/// order.
+///
+/// ```yaml
+/// theme: mirzam                        # a built-in
+/// theme: themes/acme.css               # a file, relative to the deck
+/// theme: [mirzam, themes/tweaks.css]   # a built-in, then a file over it
+/// ```
+///
+/// An entry ending in `.css` is a path and anything else is a built-in name —
+/// see [`is_theme_path`]. No built-in is named that way and no stylesheet path
+/// is not, so the rule needs no escape syntax; it costs a constraint on future
+/// theme names, which is cheap.
+///
+/// A scalar is a list of one, so every deck that already wrote `theme: nord`
+/// parses unchanged.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(untagged)]
+pub enum ThemeSpec {
+    /// `theme: nord`, or `theme: themes/acme.css`.
+    One(String),
+    /// `theme: [nord, themes/acme.css]`, in cascade order.
+    Many(Vec<String>),
+    /// The key absent, or written with nothing after it.
+    #[default]
+    Unset,
+}
+
+impl ThemeSpec {
+    /// The entries as written, in order.
+    pub fn entries(&self) -> &[String] {
+        match self {
+            ThemeSpec::One(one) => std::slice::from_ref(one),
+            ThemeSpec::Many(many) => many,
+            ThemeSpec::Unset => &[],
+        }
+    }
+}
+
+/// Whether an entry of `theme:` names a stylesheet rather than a built-in
+/// theme. The whole of the grammar's ambiguity, in one place: an entry ending
+/// in `.css` is a path, and anything else is a name.
+pub fn is_theme_path(entry: &str) -> bool {
+    entry.trim().to_ascii_lowercase().ends_with(".css")
+}
+
+/// A stylesheet a deck loads, and the frontmatter key that named it.
+///
+/// The key is carried so a path that cannot be read is reported against what
+/// the author actually wrote — `theme:` for the current key, `css:` for the
+/// retired one, which is still accepted for this release.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ThemeSheet<'a> {
+    /// The path as written, relative to the deck.
+    pub path: &'a str,
+    /// `"theme"` or `"css"`.
+    pub key: &'static str,
 }
 
 /// A pixel length in frontmatter: `64px`, `"64px"` or bare `64`.
@@ -245,6 +311,81 @@ impl DeckMeta {
                  rendering as latex"
             )),
         }
+    }
+
+    /// Every entry of `theme:`, in cascade order, with a retired `css:`
+    /// appended — that key is `theme:` with one more entry on the end, which
+    /// is the whole of what the alias means.
+    ///
+    /// Empty entries are dropped, so `theme:` written with nothing after it,
+    /// or a list with a stray blank in it, is the same as not writing the key.
+    pub fn theme_entries(&self) -> Vec<&str> {
+        self.theme
+            .entries()
+            .iter()
+            .map(String::as_str)
+            .chain(self.css.as_deref())
+            .map(str::trim)
+            .filter(|e| !e.is_empty())
+            .collect()
+    }
+
+    /// The built-in names among them, in the order written.
+    pub fn theme_names(&self) -> Vec<&str> {
+        self.theme_entries()
+            .into_iter()
+            .filter(|e| !is_theme_path(e))
+            .collect()
+    }
+
+    /// The built-in palette the deck renders in: the **last** built-in named,
+    /// because the list is a cascade and a later entry overrides an earlier
+    /// one. `None` when the deck names only stylesheets of its own, or
+    /// nothing at all — the renderer's fallback theme, whose tokens the shared
+    /// stylesheet reads, then applies.
+    pub fn theme_name(&self) -> Option<&str> {
+        self.theme_names().pop()
+    }
+
+    /// The stylesheets this deck loads, in cascade order. Reading them is the
+    /// caller's job, like `masters:` and `bibliography:`: the core has no
+    /// filesystem, and both hosts already carry a `FileProvider`.
+    pub fn theme_sheets(&self) -> Vec<ThemeSheet<'_>> {
+        let mut out: Vec<ThemeSheet<'_>> = self
+            .theme
+            .entries()
+            .iter()
+            .map(|e| e.trim())
+            .filter(|e| !e.is_empty() && is_theme_path(e))
+            .map(|path| ThemeSheet { path, key: "theme" })
+            .collect();
+        if let Some(path) = self.css.as_deref().map(str::trim).filter(|p| !p.is_empty()) {
+            out.push(ThemeSheet { path, key: "css" });
+        }
+        out
+    }
+
+    /// `Some(message)` when the deck wrote the retired `css:` key, naming the
+    /// exact `theme:` line to write instead.
+    ///
+    /// The alias exists so a deck written against the old key still builds for
+    /// one release. It costs this function and one field; what it buys is that
+    /// nobody has to guess the new spelling, because the warning is the
+    /// replacement line.
+    pub fn css_alias_warning(&self) -> Option<String> {
+        self.css
+            .as_deref()
+            .map(str::trim)
+            .filter(|p| !p.is_empty())?;
+        let entries = self.theme_entries();
+        let line = match entries.len() {
+            1 => format!("theme: {}", entries[0]),
+            _ => format!("theme: [{}]", entries.join(", ")),
+        };
+        Some(format!(
+            "`css:` is retired and goes away in the next release: `theme:` takes a \
+             stylesheet path as well as a built-in name. Write `{line}` instead."
+        ))
     }
 
     /// The masters file this deck names, if it names one rather than writing
@@ -466,8 +607,77 @@ mod tests {
     #[test]
     fn theme_and_mode_are_parsed_from_frontmatter() {
         let meta = parse_meta("theme: nord\nmode: dark\n").unwrap();
-        assert_eq!(meta.theme.as_deref(), Some("nord"));
+        assert_eq!(meta.theme_names(), ["nord"]);
+        assert_eq!(meta.theme_name(), Some("nord"));
+        assert!(meta.theme_sheets().is_empty());
         assert_eq!(meta.mode.as_deref(), Some("dark"));
+    }
+
+    /// A scalar is a list of one, so every deck written before `theme:` took a
+    /// list parses unchanged; a list is cascade order; and an entry ending in
+    /// `.css` is a path rather than a name.
+    #[test]
+    fn theme_takes_a_name_a_path_or_a_list() {
+        let one = parse_meta("theme: themes/acme.css\n").unwrap();
+        assert!(one.theme_names().is_empty());
+        assert_eq!(one.theme_name(), None);
+        assert_eq!(
+            one.theme_sheets(),
+            [ThemeSheet {
+                path: "themes/acme.css",
+                key: "theme"
+            }]
+        );
+
+        let list = parse_meta("theme: [nord, themes/acme.css]\n").unwrap();
+        assert_eq!(list.theme_entries(), ["nord", "themes/acme.css"]);
+        assert_eq!(list.theme_name(), Some("nord"));
+        assert_eq!(list.theme_sheets()[0].path, "themes/acme.css");
+
+        // A block list is the same list.
+        let block = parse_meta("theme:\n  - nord\n  - themes/acme.css\n").unwrap();
+        assert_eq!(block.theme_entries(), list.theme_entries());
+
+        // Two built-ins is a cascade, and the last one is the deck's palette.
+        assert_eq!(
+            parse_meta("theme: [nord, wuwei]\n").unwrap().theme_name(),
+            Some("wuwei")
+        );
+
+        // The key with nothing after it is the key not written.
+        let empty = parse_meta("theme:\n").unwrap();
+        assert!(empty.theme_entries().is_empty());
+        assert_eq!(empty.theme_name(), None);
+    }
+
+    /// `css:` is `theme:` with one more entry on the end, for one release, and
+    /// the warning is the line to write instead.
+    #[test]
+    fn css_is_an_alias_for_the_theme_list() {
+        let both = parse_meta("theme: mirzam\ncss: themes/acme.css\n").unwrap();
+        assert_eq!(both.theme_entries(), ["mirzam", "themes/acme.css"]);
+        assert_eq!(both.theme_name(), Some("mirzam"));
+        assert_eq!(
+            both.theme_sheets(),
+            [ThemeSheet {
+                path: "themes/acme.css",
+                key: "css"
+            }]
+        );
+        let warning = both.css_alias_warning().expect("the alias warns");
+        assert!(
+            warning.contains("theme: [mirzam, themes/acme.css]"),
+            "the warning has to carry the replacement line: {warning}"
+        );
+
+        // On its own, the replacement is a scalar rather than a list of one.
+        let alone = parse_meta("css: themes/acme.css\n").unwrap();
+        assert!(alone
+            .css_alias_warning()
+            .unwrap()
+            .contains("theme: themes/acme.css"));
+
+        assert_eq!(DeckMeta::default().css_alias_warning(), None);
     }
 
     #[test]

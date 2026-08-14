@@ -271,24 +271,24 @@ struct Built {
     meta: mirzam_core::DeckMeta,
     sections: Vec<String>,
     warnings: Vec<String>,
-    /// Contents of the stylesheet named by `css:`, when the host supplied it.
-    custom_css: Option<String>,
+    /// The stylesheets named by `theme:`, when the host supplied them.
+    file_themes: Vec<mirzam_render::FileTheme>,
     /// Everything the assembled page carries around the slides.
     page_fingerprint: u64,
 }
 
 impl Built {
     fn page_options(&self) -> mirzam_render::PageOptions {
-        page_options(self.custom_css.clone())
+        page_options(self.file_themes.clone())
     }
 }
 
-/// The page settings this renderer has: the deck's own stylesheet, and nothing
+/// The page settings this renderer has: the deck's own stylesheets, and nothing
 /// a browser host can ask for. Assembling the page and fingerprinting it read
-/// the same value, or an edit to the stylesheet is one the host never hears about.
-fn page_options(custom_css: Option<String>) -> mirzam_render::PageOptions {
+/// the same value, or an edit to a stylesheet is one the host never hears about.
+fn page_options(file_themes: Vec<mirzam_render::FileTheme>) -> mirzam_render::PageOptions {
     mirzam_render::PageOptions {
-        custom_css,
+        file_themes,
         ..Default::default()
     }
 }
@@ -307,7 +307,7 @@ impl Renderer {
             },
             None => mirzam_core::DeckMeta::default(),
         };
-        warnings.extend(mirzam_render::theme_warning(meta.theme.as_deref()));
+        warnings.extend(mirzam_render::theme_warnings(&meta));
         warnings.extend(mirzam_render::mode_warning(meta.mode.as_deref()));
         if let Err(w) = meta.math_dialect() {
             warnings.push(w);
@@ -360,21 +360,22 @@ impl Renderer {
             MapFiles(&self.files).read(Path::new(rel))
         });
         warnings.extend(bib_warnings);
-        // And so does the stylesheet named by `css:`. It carries the deck's
+        // And so do the stylesheets named by `theme:`. They carry the deck's
         // own type, colour and any class its slides use, so a preview that
-        // ignored it — as this one did — is not the deck slightly off, it is a
-        // different deck, and every difference from the CLI looks like a bug
-        // in something else.
-        let custom_css =
-            meta.css
-                .as_ref()
-                .and_then(|rel| match MapFiles(&self.files).read(Path::new(rel)) {
-                    Ok(css) => Some(css),
-                    Err(e) => {
-                        warnings.push(format!("css: cannot read {rel}: {e}"));
-                        None
-                    }
-                });
+        // ignored them — as this one did — is not the deck slightly off, it is
+        // a different deck, and every difference from the CLI looks like a bug
+        // in something else. The retired `css:` arrives here too, under the
+        // key the deck wrote, so the message names what the author can see.
+        let mut file_themes = Vec::new();
+        for sheet in meta.theme_sheets() {
+            match MapFiles(&self.files).read(Path::new(sheet.path)) {
+                Ok(css) => file_themes.push(mirzam_render::FileTheme::new(sheet.path, css)),
+                Err(e) => warnings.push(format!("{}: cannot read {}: {e}", sheet.key, sheet.path)),
+            }
+        }
+        warnings.extend(mirzam_render::file_theme_warnings(&file_themes));
+        // A slide reads them for one thing only: whether a `theme=` names one.
+        ctx.file_themes = file_themes.clone();
         let (cite_style, style_warning) = mirzam_render::citation_style(&meta);
         warnings.extend(style_warning);
         for text in [&mut ctx.footer, &mut ctx.slide_number]
@@ -413,12 +414,12 @@ impl Renderer {
             warnings.push("no slides: nothing outside the frontmatter".to_string());
         }
         let page_fingerprint =
-            mirzam_render::page_fingerprint(&meta, &sections, &page_options(custom_css.clone()));
+            mirzam_render::page_fingerprint(&meta, &sections, &page_options(file_themes.clone()));
         Built {
             meta,
             sections,
             warnings,
-            custom_css,
+            file_themes,
             page_fingerprint,
         }
     }
@@ -509,23 +510,44 @@ mod tests {
         assert_eq!(out.warnings, "[]");
     }
 
-    /// So does the stylesheet in `css:` — the last of the four files a deck
-    /// names in its frontmatter, and the one this renderer used to drop on the
-    /// floor. `examples/pitch.md` is written against its own stylesheet, so
-    /// without this the preview showed the deck with none of its own type or
-    /// colour and said nothing about why.
+    /// So do the stylesheets in `theme:` — the last of the four kinds of file
+    /// a deck names in its frontmatter, and the one this renderer used to drop
+    /// on the floor. A deck written against a theme of its own would otherwise
+    /// preview with none of its type or colour and say nothing about why.
     #[test]
     fn the_stylesheet_comes_out_of_the_host_table() {
         let mut r = Renderer::new();
         r.set_files(r#"{"themes/deck.css": ".metric { font-size: 4rem }"}"#)
             .unwrap();
-        let out = r.render_page("---\ntitle: T\ncss: themes/deck.css\n---\n\n# H\n");
+        let out = r.render_page("---\ntitle: T\ntheme: themes/deck.css\n---\n\n# H\n");
         assert!(
             out.html.contains(".metric { font-size: 4rem }"),
             "{}",
             out.html
         );
         assert_eq!(out.warnings, "[]");
+
+        // A list is cascade order, and the built-in comes first because its
+        // tokens are what the shared stylesheet reads.
+        let out = r.render_page("---\ntitle: T\ntheme: [nord, themes/deck.css]\n---\n\n# H\n");
+        assert!(out.html.contains("data-theme=\"nord\""), "{}", out.html);
+        assert!(out.html.contains(".metric { font-size: 4rem }"));
+        assert_eq!(out.warnings, "[]");
+    }
+
+    /// The retired key is the same path with an older name, and says so.
+    #[test]
+    fn the_css_alias_still_loads_the_stylesheet_and_warns() {
+        let mut r = Renderer::new();
+        r.set_files(r#"{"themes/deck.css": ".metric { font-size: 4rem }"}"#)
+            .unwrap();
+        let out = r.render_page("---\ntitle: T\ncss: themes/deck.css\n---\n\n# H\n");
+        assert!(out.html.contains(".metric { font-size: 4rem }"));
+        assert!(
+            out.warnings.contains("theme: themes/deck.css"),
+            "{}",
+            out.warnings
+        );
     }
 
     /// A stylesheet edit changes no slide at all, so the diff has to come back
@@ -533,7 +555,7 @@ mod tests {
     #[test]
     fn a_stylesheet_edit_asks_for_a_rebuild() {
         let mut r = Renderer::new();
-        let src = "---\ncss: deck.css\n---\n\n# A\n";
+        let src = "---\ntheme: deck.css\n---\n\n# A\n";
         r.set_files(r#"{"deck.css": "h1 { color: red }"}"#).unwrap();
         r.render_changed(src);
         r.set_files(r#"{"deck.css": "h1 { color: blue }"}"#)
@@ -549,9 +571,9 @@ mod tests {
     #[test]
     fn a_stylesheet_the_host_did_not_supply_warns() {
         let r = Renderer::new();
-        let out = r.render_page("---\ncss: deck.css\n---\n\n# H\n");
+        let out = r.render_page("---\ntheme: deck.css\n---\n\n# H\n");
         assert!(
-            out.warnings.contains("css: cannot read deck.css"),
+            out.warnings.contains("theme: cannot read deck.css"),
             "{}",
             out.warnings
         );
