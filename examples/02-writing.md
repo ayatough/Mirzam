@@ -3,6 +3,7 @@ title: Mirzam - Writing a slide
 author: Mirzam
 aspect: "16:9"
 css: themes/mirzam.css
+mode: dark
 ---
 
 # Writing a slide {.title-slide}

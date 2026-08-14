@@ -3,6 +3,7 @@ title: Compensating thermal drift in a fibre Bragg grating strain array
 author: R. Wren(Instrumentation Group)
 aspect: "16:9"
 css: themes/mirzam.css
+mode: dark
 bibliography: refs-research.bib
 citation-style: numeric
 vars:

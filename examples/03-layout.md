@@ -3,6 +3,7 @@ title: Mirzam Layout Cookbook
 author: Mirzam
 aspect: "16:9"
 css: themes/mirzam.css
+mode: dark
 masters: masters/cookbook.md
 ---
 

@@ -75,14 +75,14 @@ pub fn known_theme(name: &str) -> Option<&'static str> {
     THEME_NAMES.iter().find(|n| **n == name).copied()
 }
 
-/// Token CSS for a named theme. Unknown names fall back to `default`; call
+/// Token CSS for a named theme. Unknown names fall back to `mirzam`; call
 /// [`theme_warning`] first if the name came from frontmatter and an unknown
 /// name should be reported rather than silently substituted.
 pub fn theme_tokens(name: &str) -> &'static str {
     THEMES
         .iter()
         .find(|(n, _)| *n == name)
-        .map_or(THEMES[0].1, |(_, css)| css)
+        .map_or_else(|| theme_tokens("mirzam"), |(_, css)| css)
 }
 
 /// Full CSS for a page: the token set of every theme it uses, then the shared
@@ -91,7 +91,7 @@ pub fn theme_tokens(name: &str) -> &'static str {
 /// A deck carries the tokens of the themes it actually mentions, in the order
 /// given, so a deck that names none is no larger than it was before slides and
 /// panes could re-theme themselves. Repeats and unknown names are dropped;
-/// an empty list still yields `default`, because `base.css` reads tokens that
+/// an empty list still yields `mirzam`, because `base.css` reads tokens that
 /// have to come from somewhere.
 pub fn theme_css_for(names: &[&str]) -> String {
     let mut out = String::new();
@@ -107,7 +107,7 @@ pub fn theme_css_for(names: &[&str]) -> String {
         out.push_str(theme_tokens(name));
     }
     if seen.is_empty() {
-        out.push_str(theme_tokens("default"));
+        out.push_str(theme_tokens("mirzam"));
     }
     out.push_str(BASE_CSS);
     out
@@ -157,14 +157,14 @@ pub fn scope_warnings(where_: &str, theme: Option<&str>, mode: Option<&str>) -> 
 
 /// `None` when there is nothing to report (no theme requested, or a known
 /// one); `Some(message)` when frontmatter named a theme that is not a
-/// built-in, which falls back to `default`.
+/// built-in, which falls back to `mirzam`.
 pub fn theme_warning(requested: Option<&str>) -> Option<String> {
     let name = requested?;
     if THEME_NAMES.contains(&name) {
         None
     } else {
         Some(format!(
-            "unknown theme `{name}`; using `default`. Built-in themes: {}",
+            "unknown theme `{name}`; using `mirzam`. Built-in themes: {}",
             THEME_NAMES.join(", ")
         ))
     }
@@ -300,8 +300,8 @@ mod tests {
     }
 
     #[test]
-    fn unknown_theme_falls_back_to_default_css() {
-        assert_eq!(theme_tokens("nope"), theme_tokens("default"));
+    fn unknown_theme_falls_back_to_the_default_palette() {
+        assert_eq!(theme_tokens("nope"), theme_tokens("mirzam"));
     }
 
     /// A page carries the tokens of every theme it uses and no others: that is
@@ -326,8 +326,8 @@ mod tests {
         assert_eq!(css.matches(":where([data-theme=\"nord\"])").count(), 1);
         assert!(!css.contains("data-theme=\"nope\""));
         // Nothing usable named: base.css still needs tokens to read.
-        assert!(theme_css_for(&["nope"]).contains(":where([data-theme=\"default\"])"));
-        assert!(theme_css_for(&[]).contains(":where([data-theme=\"default\"])"));
+        assert!(theme_css_for(&["nope"]).contains(":where([data-theme=\"mirzam\"])"));
+        assert!(theme_css_for(&[]).contains(":where([data-theme=\"mirzam\"])"));
     }
 
     #[test]
@@ -386,7 +386,7 @@ mod tests {
         assert!(theme_warning(Some("nord")).is_none());
         let w = theme_warning(Some("nope")).unwrap();
         assert!(w.contains("nope"));
-        assert!(w.contains("default"));
+        assert!(w.contains("mirzam"));
     }
 
     #[test]

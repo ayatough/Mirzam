@@ -3,6 +3,7 @@ title: Mirzam - Start here
 author: Mirzam
 aspect: "16:9"
 css: themes/mirzam.css
+mode: dark
 ---
 
 # Start here {.title-slide}

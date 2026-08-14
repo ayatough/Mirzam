@@ -1081,16 +1081,29 @@ Two deliverables. The first is what makes the second honest.
    `theme: mirzam` turns eight dark decks into decks that follow the viewer's
    system — including in PDF export, where there is no viewer to follow.
 
-   **Decided: the renderer keeps following the viewer, and the decks say what
-   they want.** An unset `mode:` continues to mean `prefers-color-scheme`; no
-   default changes in `theme_attrs`. What changes is that a deck which is dark
-   today stops being dark by accident of which stylesheet it loaded and writes
-   `mode: dark` itself. Most of the sample decks should; **a few should
-   deliberately omit it**, because "this deck follows the room it is opened in"
-   is a property worth demonstrating in the samples rather than only describing
-   in `docs/syntax.md`. `examples/seminar.md` is already that deck — it names no
-   theme, no stylesheet and no mode — so the split exists today and only needs
-   to survive the migration on purpose instead of by omission.
+   **Decided, and already done: the renderer keeps following the viewer, and
+   the decks say what they want.** An unset `mode:` still means
+   `prefers-color-scheme`. What changed is that a deck which is dark stopped
+   being dark by accident of which stylesheet it loaded: `01-start`,
+   `02-writing`, `03-layout`, `05-motion` and `research` now write `mode: dark`
+   themselves, joining `04-components`, `06-theming` and `pitch`, which already
+   did. Nothing moved a pixel — `examples/themes/mirzam.css` was pinning them
+   dark through its own `:root` — which is the point: the same rendering now
+   survives the loss of that file.
+
+   `examples/seminar.md` is deliberately left naming no theme, no stylesheet
+   and no mode, because "this deck follows the room it is opened in" is worth
+   demonstrating in a sample rather than only describing in `docs/syntax.md`.
+   So the split this migration has to preserve is eight-to-one, and it is now
+   written in the decks rather than implied by a stylesheet.
+
+   The other half is also in: the fallback theme name is `mirzam`, not
+   `default`. That is a rename and not a repaint — `theme_tokens("default")`
+   and `theme_tokens("mirzam")` are 66 identical token values, and a test in
+   `theme/mod.rs` already fails if they drift, since a built-in is selected by
+   an attribute carrying its own name and so has to be written twice. Both
+   fallbacks (`theme_attrs`, `theme_css_for`), `theme_tokens` and the unknown-
+   theme warning now name the same one.
 
    Worth knowing while judging how much any of this matters: **on screen it
    mostly does not.** The viewer carries a mode toggle (`D`, and a button,

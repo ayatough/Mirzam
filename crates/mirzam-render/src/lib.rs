@@ -387,16 +387,22 @@ fn transition_attr(meta: &DeckMeta) -> String {
 }
 
 /// Resolves frontmatter `theme:`/`mode:` to the attributes baked onto
-/// `<html>`. Always valid, silently falling back to `default`/no mode
+/// `<html>`. Always valid, silently falling back to `mirzam`/no mode
 /// attribute for a name that is not a built-in: a caller that wants to
 /// report an unknown name calls [`theme_warning`]/[`mode_warning`] where
 /// `meta` was parsed, since this function has no warning channel of its own.
+///
+/// The fallback is `mirzam` rather than `default` because the two are the
+/// same palette — 66 token declarations, every value identical — and only one
+/// of the names says whose palette it is. An unset `mode:` stays unset, and
+/// so keeps meaning `prefers-color-scheme`: the room a deck is opened in is
+/// something the viewer can see and the renderer cannot.
 fn theme_attrs(meta: &DeckMeta) -> (&'static str, String) {
     let name = theme::THEME_NAMES
         .iter()
         .find(|n| Some(**n) == meta.theme.as_deref())
         .copied()
-        .unwrap_or("default");
+        .unwrap_or("mirzam");
     let mode_attr = match theme::normalize_mode(meta.mode.as_deref()) {
         Some(m) => format!(" data-mode=\"{m}\""),
         None => String::new(),
@@ -1627,7 +1633,7 @@ mod tests {
             .contains("data-pane=\"a\" data-theme=\"wuwei\" data-mode=\"dark\""));
         assert!(out.html.contains("data-pane=\"b\" style="));
         assert!(out.html.contains(":where([data-theme=\"wuwei\"])"));
-        assert!(out.html.contains(":where([data-theme=\"default\"])"));
+        assert!(out.html.contains(":where([data-theme=\"mirzam\"])"));
         assert!(!out.html.contains(":where([data-theme=\"nord\"])"));
     }
 
@@ -1645,7 +1651,7 @@ mod tests {
         // The deck around it is untouched.
         assert!(out
             .html
-            .contains("<html lang=\"en\" data-theme=\"default\">"));
+            .contains("<html lang=\"en\" data-theme=\"mirzam\">"));
     }
 
     /// A typo names no palette, so the pane keeps the one it inherits — and
@@ -1800,13 +1806,13 @@ mod tests {
             ..Default::default()
         };
         let html = assemble_page(&DeckMeta::default(), &[], &opts);
-        assert!(html.contains("<html lang=\"en\" data-theme=\"default\" class=\"mz-debug\">"));
+        assert!(html.contains("<html lang=\"en\" data-theme=\"mirzam\" class=\"mz-debug\">"));
     }
 
     #[test]
     fn debug_layout_off_by_default() {
         let html = assemble_page(&DeckMeta::default(), &[], &PageOptions::default());
-        assert!(html.contains("<html lang=\"en\" data-theme=\"default\">"));
+        assert!(html.contains("<html lang=\"en\" data-theme=\"mirzam\">"));
         assert!(!html.contains("class=\"mz-debug\""));
     }
 
@@ -1822,13 +1828,13 @@ mod tests {
     }
 
     #[test]
-    fn unknown_theme_falls_back_to_default_silently_in_assemble_page() {
+    fn unknown_theme_falls_back_to_the_default_palette_silently_in_assemble_page() {
         let meta = DeckMeta {
             theme: Some("does-not-exist".into()),
             ..Default::default()
         };
         let html = assemble_page(&meta, &[], &PageOptions::default());
-        assert!(html.contains("data-theme=\"default\""));
+        assert!(html.contains("data-theme=\"mirzam\""));
     }
 
     #[test]
