@@ -46,6 +46,27 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   short of the words instead of running up against them. Set `--mz-grid-gap: 0`
   if you want the two halves to meet.
 
+### Fixed
+- **The VS Code preview reads every file a deck names.** Open
+  `examples/pitch.md` with **Mirzam: Open Preview** and it came up with two
+  missing photographs, an empty chart and a connector pointing at a mark that
+  was never drawn — while the same deck built cleanly from the CLI. The preview
+  renders in a webview, which has no filesystem, so the extension reads the
+  deck's files and hands them over; it knew about transclusions, images,
+  `masters:` and `bibliography:`, and about nothing else. A pane's background
+  photograph (`bg=`, `bg-light=`, `bg-dark=`), a video's `poster=`, the CSV a
+  chart names in `data:`, and the sources inside raw HTML — a `<picture>`
+  picking artwork by colour scheme — are now read too, and markup a deck merely
+  *quotes* inside a code fence is no longer mistaken for markup it writes.
+
+  **The stylesheet in `css:` reaches the preview as well**, which it never had:
+  the preview was showing every deck with a custom stylesheet stripped of its
+  own type and colour and saying nothing about why. A deck whose host cannot
+  supply it now warns instead, the way a missing `masters:` file already did.
+
+  `examples/pitch.md` now previews byte-for-byte identical to what `mirzam
+  build` produces for it.
+
 ## [0.5.0] - 2026-08-13
 
 ### Added

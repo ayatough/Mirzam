@@ -50,6 +50,21 @@ jobs:
       # nothing was broken, only untrue.
       - run: ./scripts/check-versions.sh
 
+  extension:
+    name: editor host
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # The webview has no filesystem, so the extension host decides which of a
+      # deck's files ever reach the renderer. Nothing else can see that list
+      # drift: a form it misses previews as a broken deck and builds perfectly
+      # from the CLI. No dependencies - it is node's own test runner.
+      - name: extension host tests
+        run: node --test editors/vscode/test/*.test.js
+
   msrv:
     name: minimum supported Rust
     runs-on: ubuntu-latest

@@ -8,6 +8,7 @@
 const vscode = require("vscode");
 const path = require("path");
 const fs = require("fs");
+const { references, isTextFile } = require("./references");
 
 /** Open previews, keyed by document URI. */
 const panels = new Map();
@@ -173,8 +174,15 @@ async function exportHtml(context) {
 }
 
 /**
- * Collects transcluded files (`![[...]]`) and referenced assets from the source
- * into tables the webview can consume, following references recursively.
+ * Collects the files a deck reads and the assets it references into tables the
+ * webview can consume, following references recursively.
+ *
+ * Which paths those are is `references()`; this decides which table each one
+ * goes in. Text the core reads through `FileProvider` — a transcluded section,
+ * a masters file, a bibliography, the `css:` stylesheet — goes in `files` as
+ * itself. Everything else is an asset and goes in `assets` as a data URI,
+ * a chart's CSV included: the core reads chart data through the same
+ * `AssetSource` it reads images through.
  *
  * `sources` maps each file's absolute path to the key the core knows it by,
  * which is how an edit anywhere in the workspace finds the previews it belongs
@@ -206,11 +214,12 @@ function collectResources(text, baseDir) {
         files[key] = content;
         sources.set(abs, key);
         walk(content, path.dirname(abs));
-      } else if (rel.endsWith(".bib")) {
-        // Text, not an asset: the core reads a bibliography through the same
-        // `FileProvider` as a transclusion, so it belongs in the file table
-        // and not in the data-URI table beside the images. Nothing inside it
-        // references anything, so there is nothing to walk.
+      } else if (isTextFile(rel)) {
+        // Text, not an asset: the core reads a bibliography and a stylesheet
+        // through the same `FileProvider` as a transclusion, so they belong in
+        // the file table and not in the data-URI table beside the images.
+        // Nothing inside either references anything, so there is nothing to
+        // walk.
         files[key] = readText(abs);
         sources.set(abs, key);
       } else if (stat.size <= maxSize) {
@@ -238,55 +247,17 @@ function readText(file) {
   return open ? open.getText() : fs.readFileSync(file, "utf8");
 }
 
-/**
- * Targets of `![[a.md]]`, `![alt](path)`, frontmatter `masters:` and
- * frontmatter `bibliography:`, excluding URLs and data URIs.
- *
- * The two frontmatter files are here because the core reads them through the
- * same `FileProvider` a transclusion uses, and in this host that provider is
- * the table below. Miss one and the preview disagrees with the CLI while
- * looking perfectly fine: every slide drawn as a single pane, or every
- * `[@key]` left as bracket text with no reference list.
- */
-function references(source) {
-  const out = [];
-  const include = /^!\[\[([^\]]+)\]\]\s*$/gm;
-  const media = /!\[[^\]]*\]\(([^()\s"]+)\)/g;
-  for (const re of [include, media]) {
-    let m;
-    while ((m = re.exec(source))) {
-      const p = m[1].trim();
-      if (!p || p.startsWith("data:") || p.includes("://")) continue;
-      out.push(p);
-    }
-  }
-  for (const key of ["masters", "bibliography"]) {
-    const named = frontmatterPath(source, key);
-    if (named) out.push(named);
-  }
-  return out;
-}
-
-/**
- * The path in a frontmatter setting that names one, or null when the deck
- * writes the thing inline (a mapping, so the value is empty and the entries
- * are indented under it) or names none.
- */
-function frontmatterPath(source, key) {
-  const front = /^---\r?\n([\s\S]*?)\r?\n---\s*$/m.exec(source);
-  if (!front || front.index !== 0) return null;
-  const m = new RegExp(`^${key}:[ \\t]*(\\S.*)$`, "m").exec(front[1]);
-  if (!m) return null;
-  const value = m[1].trim().replace(/^["']|["']$/g, "");
-  return value && !value.startsWith("{") ? value : null;
-}
-
 /** Matches the core's key format: a path relative to the deck. */
 function normalize(rel, dir, baseDir) {
   const abs = path.resolve(dir, rel);
   return path.relative(baseDir, abs).split(path.sep).join("/");
 }
 
+/**
+ * An asset as the core wants it: a base64 data URI. The types mirror
+ * `mirzam-render`'s own table, because the browser plays a recording served as
+ * octet-stream no more readily here than it does in an exported deck.
+ */
 function dataUri(file) {
   const ext = path.extname(file).toLowerCase();
   const mime =
@@ -297,8 +268,23 @@ function dataUri(file) {
       ".jpeg": "image/jpeg",
       ".gif": "image/gif",
       ".webp": "image/webp",
+      ".avif": "image/avif",
       ".mp4": "video/mp4",
+      ".m4v": "video/mp4",
       ".webm": "video/webm",
+      ".ogv": "video/ogg",
+      ".mov": "video/quicktime",
+      ".mp3": "audio/mpeg",
+      ".m4a": "audio/mp4",
+      ".aac": "audio/mp4",
+      ".wav": "audio/wav",
+      ".oga": "audio/ogg",
+      ".ogg": "audio/ogg",
+      ".opus": "audio/ogg",
+      ".flac": "audio/flac",
+      // Chart data. Not media, but it travels the same way: the core decodes
+      // it back out of the data URI.
+      ".csv": "text/csv",
     }[ext] || "application/octet-stream";
   return `data:${mime};base64,${fs.readFileSync(file).toString("base64")}`;
 }

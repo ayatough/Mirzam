@@ -39,6 +39,13 @@ transclusion, frontmatter variables and arithmetic, math, video and GIF, custom
 themes, `[@key]` references against a `bibliography:` file, and speaker notes. See the [syntax
 reference](https://github.com/ayatough/Mirzam/blob/main/docs/syntax.md).
 
+Rendering happens in the webview, which has no filesystem of its own, so the
+extension reads the deck's files and hands them over: transcluded sections, a
+`masters:` file, a `bibliography:`, the `css:` stylesheet, images and video, a
+pane's background photograph, and the CSV a chart names in `data:`. A file the
+extension cannot read is reported in the strip under the preview rather than
+left to look like a rendering bug.
+
 ## Building locally
 
 ```bash
