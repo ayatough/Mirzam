@@ -294,6 +294,7 @@ impl Renderer {
         if let Err(w) = meta.math_dialect() {
             warnings.push(w);
         }
+        warnings.extend(meta.grid_metrics().1);
         // There is no current directory in WASM, so the base is an empty path.
         let expanded = mirzam_syntax::expand_includes_mapped(
             body,

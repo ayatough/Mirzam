@@ -85,6 +85,66 @@ impl GridSpec {
             .collect::<Vec<_>>()
             .join(" ")
     }
+
+    /// The rectangle a pane occupies on a `w`×`h` slide, in pixels, given the
+    /// grid's margin (`pad_x`/`pad_y`) and gutter (`gap`).
+    ///
+    /// This mirrors what CSS Grid does with the emitted template: the gutters
+    /// come off the content box first, the rest splits by `fr` ratio, and a
+    /// merged region keeps the gutters interior to its span. `None` for a name
+    /// the grid does not define.
+    pub fn pane_rect(
+        &self,
+        name: &str,
+        w: f64,
+        h: f64,
+        pad_x: f64,
+        pad_y: f64,
+        gap: f64,
+    ) -> Option<PaneRect> {
+        // The pane's cell span. Regions are validated rectangular at parse
+        // time, so the bounding box of its cells is the region.
+        let (mut r0, mut c0, mut r1, mut c1) = (usize::MAX, usize::MAX, 0usize, 0usize);
+        for (r, row) in self.areas.iter().enumerate() {
+            for (c, cell) in row.iter().enumerate() {
+                if cell.as_deref() == Some(name) {
+                    r0 = r0.min(r);
+                    c0 = c0.min(c);
+                    r1 = r1.max(r);
+                    c1 = c1.max(c);
+                }
+            }
+        }
+        if r0 == usize::MAX {
+            return None;
+        }
+
+        let span = |ratios: &[usize], i0: usize, i1: usize, total: f64, pad: f64| {
+            let sum: f64 = ratios.iter().map(|r| *r as f64).sum();
+            let avail = total - 2.0 * pad - gap * (ratios.len() as f64 - 1.0);
+            let track = |i: usize| avail * ratios[i] as f64 / sum;
+            let start = pad + (0..i0).map(|i| track(i) + gap).sum::<f64>();
+            let size = (i0..=i1).map(track).sum::<f64>() + gap * (i1 - i0) as f64;
+            (start, size)
+        };
+        let (x, width) = span(&self.cols, c0, c1, w, pad_x);
+        let (y, height) = span(&self.rows, r0, r1, h, pad_y);
+        Some(PaneRect {
+            x,
+            y,
+            w: width,
+            h: height,
+        })
+    }
+}
+
+/// A pane's pixel rectangle on the slide, from [`GridSpec::pane_rect`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PaneRect {
+    pub x: f64,
+    pub y: f64,
+    pub w: f64,
+    pub h: f64,
 }
 
 /// The slide edges a pane reaches, from [`GridSpec::edges`].
@@ -404,6 +464,38 @@ mod tests {
         // A band with two content lines has height 2.
         let g = g.unwrap();
         assert_eq!(g.rows, vec![2, 1]);
+    }
+
+    /// The rect math has to agree with what CSS Grid does with the emitted
+    /// template: gutters off first, the rest split by `fr`, merged regions
+    /// keeping their interior gutters.
+    #[test]
+    fn pane_rect_matches_css_grid_arithmetic() {
+        let g = parse_grid(
+            "+--------------------+-------------+\n\
+             |  head                            |\n\
+             +--------------------+-------------+\n\
+             |  main              |  fig        |\n\
+             +--------------------+-------------+\n",
+        )
+        .unwrap();
+        // cols 20fr/13fr, rows 1fr/1fr; slide 1280x720, pad 60/44, gap 20.
+        // Column space: 1280 - 120 - 20 = 1140 → 690.909… and 449.090…
+        let fig = g.pane_rect("fig", 1280.0, 720.0, 60.0, 44.0, 20.0).unwrap();
+        assert!((fig.x - (60.0 + 1140.0 * 20.0 / 33.0 + 20.0)).abs() < 0.01);
+        assert!((fig.w - 1140.0 * 13.0 / 33.0).abs() < 0.01);
+        // Row space: 720 - 88 - 20 = 612, split 1:1.
+        assert!((fig.y - (44.0 + 306.0 + 20.0)).abs() < 0.01);
+        assert!((fig.h - 306.0).abs() < 0.01);
+
+        // `head` spans both columns: full content width, gutter included.
+        let head = g
+            .pane_rect("head", 1280.0, 720.0, 60.0, 44.0, 20.0)
+            .unwrap();
+        assert!((head.x - 60.0).abs() < 0.01);
+        assert!((head.w - 1160.0).abs() < 0.01);
+
+        assert_eq!(g.pane_rect("nobody", 1280.0, 720.0, 60.0, 44.0, 20.0), None);
     }
 
     #[test]

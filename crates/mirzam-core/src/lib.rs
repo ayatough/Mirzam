@@ -56,7 +56,71 @@ pub struct DeckMeta {
     /// `[Vaswani+17]`. Per deck, because a deck cites one way.
     #[serde(rename = "citation-style", alias = "citation_style")]
     pub citation_style: Option<String>,
+    /// The grid's horizontal margin, e.g. `64px` (or bare `64`). One number
+    /// behind the `--mz-grid-pad-x` custom property; see [`GridMetrics`] for
+    /// why the core reads it rather than leaving it to a stylesheet.
+    #[serde(rename = "grid-pad-x", alias = "grid_pad_x")]
+    pub grid_pad_x: Option<PxLength>,
+    /// The grid's vertical margin — `--mz-grid-pad-y`.
+    #[serde(rename = "grid-pad-y", alias = "grid_pad_y")]
+    pub grid_pad_y: Option<PxLength>,
+    /// The gutter between panes — `--mz-grid-gap`.
+    #[serde(rename = "grid-gap", alias = "grid_gap")]
+    pub grid_gap: Option<PxLength>,
     pub vars: BTreeMap<String, serde_yaml::Value>,
+}
+
+/// A pixel length in frontmatter: `64px`, `"64px"` or bare `64`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+pub enum PxLength {
+    Num(f64),
+    Str(String),
+}
+
+impl PxLength {
+    /// The value in pixels, or an explanation of why it is not one.
+    pub fn px(&self) -> Result<f64, String> {
+        match self {
+            PxLength::Num(n) => Ok(*n),
+            PxLength::Str(s) => s
+                .trim()
+                .trim_end_matches("px")
+                .trim()
+                .parse::<f64>()
+                .map_err(|_| format!("`{s}` is not a pixel length (write `64px` or `64`)")),
+        }
+    }
+}
+
+/// The grid's margin and gutter in slide pixels — the numbers behind the
+/// `--mz-grid-pad-x/y` and `--mz-grid-gap` custom properties, with the
+/// stylesheet's defaults.
+///
+/// The core reads these because pane rectangles are computed at build time —
+/// a `shape` block inside a `::: pane` is drawn in that pane's coordinate
+/// space, and the pane's rectangle is margin and gutter arithmetic. A value
+/// declared in frontmatter is also emitted as CSS so the browser lays the
+/// grid out with the same numbers; a stylesheet that overrides the custom
+/// properties instead moves the panes without telling the core, and anchored
+/// shapes drift by the difference — which is why frontmatter is the
+/// supported place to change them.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct GridMetrics {
+    pub pad_x: f64,
+    pub pad_y: f64,
+    pub gap: f64,
+}
+
+impl Default for GridMetrics {
+    /// The values `base.css` falls back to when no custom property is set.
+    fn default() -> Self {
+        Self {
+            pad_x: 60.0,
+            pad_y: 44.0,
+            gap: 20.0,
+        }
+    }
 }
 
 /// Where a deck's references come from.
@@ -228,6 +292,50 @@ impl DeckMeta {
             "h2" | "2" => Some(2),
             "h3" | "3" => Some(3),
             _ => None,
+        }
+    }
+
+    /// The grid metrics this deck declares, with the stylesheet defaults for
+    /// anything unsaid. A value that does not parse keeps its default and is
+    /// returned as a warning; the deck still renders.
+    pub fn grid_metrics(&self) -> (GridMetrics, Vec<String>) {
+        let mut m = GridMetrics::default();
+        let mut warnings = Vec::new();
+        let mut take = |field: &Option<PxLength>, name: &str, slot: &mut f64| {
+            if let Some(v) = field {
+                match v.px() {
+                    Ok(px) => *slot = px,
+                    Err(e) => warnings.push(format!("{name}: {e}")),
+                }
+            }
+        };
+        take(&self.grid_pad_x, "grid-pad-x", &mut m.pad_x);
+        take(&self.grid_pad_y, "grid-pad-y", &mut m.pad_y);
+        take(&self.grid_gap, "grid-gap", &mut m.gap);
+        (m, warnings)
+    }
+
+    /// The CSS that carries declared grid metrics to the browser, so the grid
+    /// is laid out with the same numbers the core computed pane rectangles
+    /// from. Empty when the deck declares none — the stylesheet defaults (or a
+    /// theme's overrides) then apply, exactly as before the keys existed.
+    /// Emitted after the theme and any custom stylesheet, so a frontmatter
+    /// declaration wins over both.
+    pub fn grid_metrics_css(&self) -> String {
+        let mut props = String::new();
+        for (field, prop) in [
+            (&self.grid_pad_x, "--mz-grid-pad-x"),
+            (&self.grid_pad_y, "--mz-grid-pad-y"),
+            (&self.grid_gap, "--mz-grid-gap"),
+        ] {
+            if let Some(px) = field.as_ref().and_then(|v| v.px().ok()) {
+                props.push_str(&format!("{prop}:{px}px;"));
+            }
+        }
+        if props.is_empty() {
+            String::new()
+        } else {
+            format!(":root{{{props}}}")
         }
     }
 
@@ -422,6 +530,39 @@ mod tests {
         let out = transclusion_warnings(&root, Path::new(""), &[same, differs, silent]);
         assert_eq!(out.len(), 1, "{out:?}");
         assert!(out[0].contains("sections/b.md"), "{out:?}");
+    }
+
+    /// The three grid keys accept `64px`, `"64px"` and bare numbers; anything
+    /// unsaid keeps the stylesheet default, and a bad value warns instead of
+    /// failing the deck.
+    #[test]
+    fn grid_metrics_parse_declared_values_and_keep_defaults() {
+        let (m, w) = DeckMeta::default().grid_metrics();
+        assert_eq!(m, GridMetrics::default());
+        assert!(w.is_empty());
+        assert_eq!(DeckMeta::default().grid_metrics_css(), "");
+
+        let meta = parse_meta("grid-pad-x: 64px\ngrid-pad-y: \"48px\"\ngrid-gap: 24\n").unwrap();
+        let (m, w) = meta.grid_metrics();
+        assert!(w.is_empty(), "{w:?}");
+        assert_eq!((m.pad_x, m.pad_y, m.gap), (64.0, 48.0, 24.0));
+        assert_eq!(
+            meta.grid_metrics_css(),
+            ":root{--mz-grid-pad-x:64px;--mz-grid-pad-y:48px;--mz-grid-gap:24px;}"
+        );
+
+        let meta = parse_meta("grid-gap: wide\n").unwrap();
+        let (m, w) = meta.grid_metrics();
+        assert_eq!(m.gap, GridMetrics::default().gap);
+        assert!(w.iter().any(|e| e.contains("grid-gap")), "{w:?}");
+    }
+
+    /// A partial declaration emits only what was declared — the other custom
+    /// properties stay the stylesheet's business.
+    #[test]
+    fn grid_metrics_css_is_partial() {
+        let meta = parse_meta("grid-gap: 24px\n").unwrap();
+        assert_eq!(meta.grid_metrics_css(), ":root{--mz-grid-gap:24px;}");
     }
 
     #[test]

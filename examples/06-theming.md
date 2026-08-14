@@ -462,7 +462,7 @@ Because custom properties inherit, the same names work at any scale: on
 `:root` they move the deck, on a class you put on one pane they move that pane.
 :::
 
-<!-- note: The stylesheet this deck loads sets the first three. Compare the margins here with 04-components.md, which does not. -->
+<!-- note: The stylesheet this deck loads sets the first three as CSS. A deck anchoring shapes to panes declares them in frontmatter instead, because the build computes pane rectangles from those numbers and CSS-only margins would move the panes out from under the shapes. -->
 
 
 ---

@@ -30,7 +30,7 @@ This file runs long; jump straight to the one you need.
 | [Layout](#layout) | The `pane` grid and `::: pane` — see also the dedicated [layout guide](layout.md) |
 | [Inline syntax](#inline-syntax) | Plain CommonMark on a slide, headings, `{#id .class}` attributes, the marks a slide reaches for (`==highlight==`, term lists, …), syntax-highlighted code, variables, transclusion |
 | [Charts](#charts) | The `chart` block: types, CSV data, per-mark ids for `connect` |
-| [Shapes](#shapes) | The `shape` block — **slide top level only**, drawn on a layer above the panes |
+| [Shapes](#shapes) | The `shape` block — page coordinates at slide top level, pane coordinates inside a `::: pane` |
 | [Connectors](#connectors) | The `connect` block: arrows between text anchors, shapes and chart marks |
 | [When a slide has too much on it](#when-a-slide-has-too-much-on-it) | `--fit shrink`, `<!-- next -->`, and when to just make another pane |
 | [Table of contents](#table-of-contents) | The `toc` block — an agenda slide that links to itself |
@@ -59,6 +59,9 @@ footer: Internal      # drawn on every slide, and in the PDF
 slide-number: "{n} / {total}"
 bibliography: refs.bib   # references `[@key]` can cite; see References below
 citation-style: numeric  # `[1]`, or `author` for `[Vaswani+17]`
+grid-pad-x: 60px      # the grid's margin and gutter; see Shapes below for
+grid-pad-y: 44px      # why these are deck settings rather than CSS
+grid-gap: 20px
 vars:
   product: Mirzam
   price: 1200
@@ -816,7 +819,17 @@ its value label, so animating a mark moves the number with the bar.
 
 ## Shapes
 
-Shapes are drawn in page coordinates (percentages), on a layer above the panes.
+Shapes are drawn on a layer above the panes. Where the block is written
+decides what its percentages mean:
+
+- **At slide top level**, coordinates are page coordinates — percentages of
+  the whole slide. The drawing ignores the grid deliberately; this is the form
+  for a figure that spans panes or annotates the slide as a whole.
+- **Inside a `::: pane`**, coordinates are percentages of *that pane's
+  rectangle*: `at(50%, 50%)` is the centre of the pane, and resizing the pane
+  in the ASCII grid moves the whole drawing with it. Nothing clips at the
+  pane's edges — `at(110%, …)` deliberately reaches out of it, the way a
+  page-level shape may reach across one.
 
 ````markdown
 ```shape
@@ -828,15 +841,34 @@ text    #cap   at(72%, 88%) "95% hit rate" .small
 ```
 ````
 
+````markdown
+::: pane fig
+```shape
+rect #in  at(50%, 20%) size(70%, 22%) label="Input"
+rect #out at(50%, 80%) size(70%, 22%) label="Output" stroke=@accent2
+arrow from(#in.s) to(#out.n)
+```
+:::
+````
+
 - Shapes: `rect`, `ellipse`, `text`, `arrow`, `line`.
 - Edges for endpoints: `.n`, `.s`, `.e`, `.w`, `.c`.
 - Colors: `@accent1`, `@accent2`, `@shape-fill`, … resolve to theme variables, so
   shapes follow a theme change. Literal CSS colors also work.
-- **A ```shape``` block only parses at slide top level**, the same as `pane` and
-  `connect` — written inside a `::: pane`, the fence is just Markdown to
-  `comrak`, so it renders as an ordinary code block instead of the SVG layer
-  it asked for. `mirzam build` warns when this happens (`--strict` fails the
-  build on it), but the fix is to move the block out of the pane.
+- Both forms draw into one layer, and ids resolve across it: an arrow in a
+  page-level block may end on a shape a pane block drew.
+- Labels, stroke widths and arrowheads keep their size in either form — a
+  pane's frame scales coordinates, not typography.
+
+Pane rectangles are computed at build time from the grid's ratios and its
+margin and gutter, which is why those two numbers are deck settings
+(`grid-pad-x`, `grid-pad-y`, `grid-gap` in frontmatter) rather than something
+a stylesheet is free to move: a theme that overrides the `--mz-grid-*` custom
+properties in CSS moves the panes without telling the build, and pane-anchored
+shapes drift by the difference. Declare the metrics in frontmatter and the
+build emits the CSS itself, so the browser and the shape layer always agree.
+Decks that never anchor a shape to a pane can keep adjusting the custom
+properties in CSS, exactly as before.
 
 ## Connectors
 

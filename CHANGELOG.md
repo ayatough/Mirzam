@@ -7,6 +7,25 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+### Added
+- **A `shape` block written inside a `::: pane` draws in that pane's
+  coordinate space.** `at(50%, 50%)` is the centre of the pane, not of the
+  slide, so a diagram written where its content lives resizes with the pane
+  that holds it — the way a chart already does. The pane's edges do not clip:
+  past 100% deliberately hangs out, the same freedom page-level shapes keep.
+  Both forms draw into the slide's one shape layer and ids resolve across it,
+  so an arrow in a page-level block can end on a box a pane drew. Previously
+  the fence was a warning and rendered as a literal code block.
+
+  Pane rectangles are computed at build time, which needs the grid's margin
+  and gutter as numbers the build can see: **`grid-pad-x`, `grid-pad-y` and
+  `grid-gap` are now frontmatter keys**, emitted as the matching `--mz-grid-*`
+  CSS so the browser lays the grid out from the same values. Decks that
+  adjust the custom properties in CSS keep working as before — but a deck
+  that anchors shapes to panes should declare the numbers in frontmatter,
+  because a margin moved only in CSS moves the panes out from under the
+  build's arithmetic.
+
 ### Changed
 - **A photograph can take one half of a slide.** `.bleed` used to be a statement
   about the whole slide: it dropped the grid's margin, and the margin belonged to

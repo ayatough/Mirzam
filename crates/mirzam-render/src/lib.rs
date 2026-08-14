@@ -10,6 +10,7 @@ mod code;
 mod connect;
 mod effects;
 mod inline;
+mod shapes;
 mod theme;
 mod toc;
 
@@ -44,10 +45,17 @@ pub struct RenderResult {
 /// unchanged slide while one re-renders — so nothing about the deck is in
 /// reach from inside `render_slide`. Everything that is a property of the
 /// deck and changes a slide's HTML arrives here instead, explicitly.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct DeckContext {
     /// Which syntax `$...$` holds, from frontmatter `math:`.
     pub math: MathDialect,
+    /// Logical slide size from frontmatter `aspect:`. The shape layer's
+    /// viewBox and every pane rectangle are computed in this space.
+    pub slide_size: (u32, u32),
+    /// The grid's margin and gutter, from frontmatter `grid-pad-x/-y` and
+    /// `grid-gap` (stylesheet defaults otherwise). Pane rectangles — the
+    /// frames pane-anchored `shape` blocks draw in — are arithmetic on these.
+    pub grid: mirzam_core::GridMetrics,
     /// Named layouts a slide can be drawn on. Either frontmatter `masters:`
     /// written inline, or the file it named — resolved by the caller, which
     /// is the half of this that needs a filesystem.
@@ -89,6 +97,10 @@ impl DeckContext {
             // A bad dialect renders as LaTeX and is reported where the
             // frontmatter was parsed; there is no warning channel here.
             math: meta.math_dialect().unwrap_or_default(),
+            slide_size: meta.slide_size(),
+            // Bad pixel values keep the defaults and are reported where the
+            // frontmatter was parsed, like `math:`.
+            grid: meta.grid_metrics().0,
             masters: meta.inline_masters().cloned().unwrap_or_default(),
             layout: meta.layout.clone(),
             footer: meta.footer.clone(),
@@ -158,6 +170,10 @@ impl DeckContext {
     pub fn fingerprint(&self) -> u64 {
         let mut h = std::collections::hash_map::DefaultHasher::new();
         self.math.hash(&mut h);
+        self.slide_size.hash(&mut h);
+        for v in [self.grid.pad_x, self.grid.pad_y, self.grid.gap] {
+            v.to_bits().hash(&mut h);
+        }
         self.masters.hash(&mut h);
         self.layout.hash(&mut h);
         self.footer.hash(&mut h);
@@ -174,6 +190,13 @@ impl DeckContext {
             .into_iter()
             .flatten()
             .any(|t| t.contains("{total}"))
+    }
+}
+
+impl Default for DeckContext {
+    /// The context of a deck whose frontmatter says nothing.
+    fn default() -> Self {
+        Self::new(&DeckMeta::default(), 0)
     }
 }
 
@@ -433,6 +456,7 @@ pub fn page_fingerprint(meta: &DeckMeta, sections: &[String], opts: &PageOptions
     effects::deck_has_effects(sections).hash(&mut h);
     opts.custom_css.hash(&mut h);
     opts.debug_layout.hash(&mut h);
+    meta.grid_metrics_css().hash(&mut h);
     h.finish()
 }
 
@@ -490,6 +514,7 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <style>{css}</style>
 <style>{math_css}</style>
 <style>{custom_css}</style>
+<style>{grid_css}</style>
 </head>
 <body>
 <div id="deck" data-slide-w="{w}" data-slide-h="{h}"{transition}{fit}>
@@ -513,6 +538,10 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
         title = inline::html_escape(title),
         css = theme::theme_css_for(&themes_used(meta, sections, opts.all_themes)),
         custom_css = opts.custom_css.as_deref().unwrap_or(""),
+        // Last, so declared grid metrics beat a theme's or stylesheet's own
+        // custom-property overrides: the core computed pane rectangles from
+        // these numbers, and the browser has to lay the grid out from them too.
+        grid_css = meta.grid_metrics_css(),
         js = theme::VIEWER_JS,
         presenter_js = theme::PRESENTER_JS,
         fit = deck_fit_attr(meta),
@@ -702,6 +731,7 @@ pub fn assemble_print_page(
 section.slide {{ width: {w}px; height: {h}px; }}
 </style>
 <style>{custom_css}</style>
+<style>{grid_css}</style>
 </head>
 <body>
 <div id="deck"{fit}>
@@ -714,6 +744,9 @@ section.slide {{ width: {w}px; height: {h}px; }}
         print_css = theme::PRINT_CSS,
         fit = deck_fit_attr(meta),
         custom_css = custom_css.unwrap_or(""),
+        // Same placement and reason as `assemble_page`: the PDF's grid must
+        // come out of the numbers pane rectangles were computed from.
+        grid_css = meta.grid_metrics_css(),
         sections = sections.concat(),
     )
 }
@@ -727,6 +760,7 @@ pub fn render_deck(meta: &DeckMeta, slides: &[SlideSource], asset_dir: &Path) ->
     if let Err(w) = meta.math_dialect() {
         warnings.push(w);
     }
+    warnings.extend(meta.grid_metrics().1);
     let ctx = DeckContext::new(meta, slides.len());
     warnings.extend(ctx.warnings());
     let mut sections = Vec::with_capacity(slides.len());
@@ -750,12 +784,6 @@ fn render_slide(
     ctx: &DeckContext,
 ) -> String {
     let mut errors: Vec<String> = Vec::new();
-
-    // A `shape` fence only parses at slide top level - `mirzam_syntax::parse_slide`
-    // never looks for one inside a `::: pane` body, so it reaches `comrak` as
-    // an ordinary fence and renders as a literal code block. The render is
-    // unchanged; this only says so.
-    warn_shape_in_pane(index, slide, warnings);
 
     // A palette this slide, or one pane of it, asks for. Checked here rather
     // than where the attribute is written, so every unknown name is reported
@@ -792,9 +820,29 @@ fn render_slide(
         None => None,
     };
 
+    // Pane-anchored shape blocks surface here: each pane's sources with the
+    // frame — the pane's rectangle — its percentages map into.
+    let mut pane_shapes: Vec<(mirzam_shape::Frame, String)> = Vec::new();
     let mut body = match &grid {
-        Some(g) => render_grid_slide(g, slide, index, &mut errors, asset_source, chart_files, ctx),
-        None => render_single_pane_slide(slide, index, &mut errors, asset_source, chart_files, ctx),
+        Some(g) => render_grid_slide(
+            g,
+            slide,
+            index,
+            &mut errors,
+            asset_source,
+            chart_files,
+            ctx,
+            &mut pane_shapes,
+        ),
+        None => render_single_pane_slide(
+            slide,
+            index,
+            &mut errors,
+            asset_source,
+            chart_files,
+            ctx,
+            &mut pane_shapes,
+        ),
     };
 
     // A `[^key]` with no definition on this slide is left as literal text by
@@ -803,12 +851,28 @@ fn render_slide(
     warn_unrendered_spans(index, &body, warnings);
     warn_wide_braces(index, &body, warnings);
 
-    // shape blocks become a static SVG layer in page coordinates, scaling with the slide.
+    // shape blocks become one static SVG layer, scaling with the slide.
+    // Top-level blocks draw in page coordinates; blocks written inside a
+    // `::: pane` draw in that pane's rectangle. Ids resolve across the whole
+    // layer, so an arrow in one block may end on a shape another one drew.
     let mut shapes_html = String::new();
+    let mut shape_docs: Vec<(mirzam_shape::ShapeDoc, mirzam_shape::Frame)> = Vec::new();
     if !slide.shapes.is_empty() {
         let src = slide.shapes.join("\n");
-        let doc = mirzam_shape::parse_shapes(&src);
-        let (svg, shape_errors) = mirzam_shape::render_svg(&doc, 1280, 720);
+        let (w, h) = ctx.slide_size;
+        shape_docs.push((
+            mirzam_shape::parse_shapes(&src),
+            mirzam_shape::Frame::page(w, h),
+        ));
+    }
+    for (frame, src) in &pane_shapes {
+        shape_docs.push((mirzam_shape::parse_shapes(src), *frame));
+    }
+    if !shape_docs.is_empty() {
+        let blocks: Vec<(&mirzam_shape::ShapeDoc, mirzam_shape::Frame)> =
+            shape_docs.iter().map(|(d, f)| (d, *f)).collect();
+        let (svg, shape_errors) =
+            mirzam_shape::render_layer(&blocks, ctx.slide_size.0, ctx.slide_size.1);
         for e in shape_errors {
             errors.push(format!("slide {}: {e}", index + 1));
         }
@@ -981,46 +1045,6 @@ fn chrome_html(
     )
 }
 
-/// Warns about every `::: pane` whose body opens a real `shape` fence: shape
-/// only parses at slide top level, so this one reaches `comrak` untouched
-/// and renders as a plain code block instead of the SVG layer it asked for.
-fn warn_shape_in_pane(index: usize, slide: &SlideSource, warnings: &mut Vec<String>) {
-    for pb in &slide.panes {
-        if pane_body_opens_a_shape_fence(&pb.body) {
-            warnings.push(format!(
-                "slide {}: pane `{}` contains a `shape` block, but shape only \
-                 renders at slide top level - it will show as a code block",
-                index + 1,
-                pb.name
-            ));
-        }
-    }
-}
-
-/// Whether `body` (a pane's raw Markdown) opens a real, exactly-three-backtick
-/// `shape` fence outside any other fence. A longer fence quotes the block as
-/// an example instead of using it - the same rule `mirzam_syntax::parse_slide`
-/// applies for the fences it does recognise, at slide top level.
-fn pane_body_opens_a_shape_fence(body: &str) -> bool {
-    let mut open_fence: Option<usize> = None;
-    for line in body.lines() {
-        let t = line.trim();
-        match open_fence {
-            Some(open) if mirzam_syntax::closes_fence(t, open) => open_fence = None,
-            Some(_) => {}
-            None => {
-                if let Some(open) = mirzam_syntax::fence_len(t) {
-                    if open == 3 && t[open..].trim() == "shape" {
-                        return true;
-                    }
-                    open_fence = Some(open);
-                }
-            }
-        }
-    }
-    false
-}
-
 /// Warns about every `[^key]` left as literal text after rendering: `comrak`
 /// only turns a reference into a link when its `[^key]:` definition is in the
 /// same source it rendered, so a definition elsewhere - another slide, or (in
@@ -1150,6 +1174,9 @@ fn footnote_ref_regex() -> &'static Regex {
     RE.get_or_init(|| Regex::new(r"\[\^([A-Za-z0-9_-]+)\]").expect("static regex"))
 }
 
+// Out-channels (errors, chart files, pane shapes) are parameters by design,
+// like the syntax crate's slide walker.
+#[allow(clippy::too_many_arguments)]
 fn render_grid_slide(
     grid: &GridSpec,
     slide: &SlideSource,
@@ -1158,6 +1185,7 @@ fn render_grid_slide(
     asset_source: &dyn AssetSource,
     chart_files: &mut Vec<std::path::PathBuf>,
     ctx: &DeckContext,
+    pane_shapes: &mut Vec<(mirzam_shape::Frame, String)>,
 ) -> String {
     let names = grid.pane_names();
     let mut panes_html = String::new();
@@ -1223,6 +1251,43 @@ fn render_grid_slide(
             content
         };
         let (content, chart_blocks) = charts::extract(&content);
+        // A shape fence in a pane draws in the pane's coordinate space. The
+        // pane's rectangle is computed here — the name is from the grid, so
+        // the rect always resolves — and a `.bleed` pane's frame runs out to
+        // the slide edges its box actually reaches, like its background does.
+        let (content, shape_srcs) = shapes::extract(&content);
+        if !shape_srcs.is_empty() {
+            let (w, h) = (ctx.slide_size.0 as f64, ctx.slide_size.1 as f64);
+            let m = ctx.grid;
+            if let Some(mut r) = grid.pane_rect(name, w, h, m.pad_x, m.pad_y, m.gap) {
+                if attrs.classes.iter().any(|c| c == "bleed") {
+                    let e = grid.edges(name);
+                    if e.left {
+                        r.w += r.x;
+                        r.x = 0.0;
+                    }
+                    if e.top {
+                        r.h += r.y;
+                        r.y = 0.0;
+                    }
+                    if e.right {
+                        r.w = w - r.x;
+                    }
+                    if e.bottom {
+                        r.h = h - r.y;
+                    }
+                }
+                pane_shapes.push((
+                    mirzam_shape::Frame {
+                        x: r.x,
+                        y: r.y,
+                        w: r.w,
+                        h: r.h,
+                    },
+                    shape_srcs.join("\n"),
+                ));
+            }
+        }
         let mut body = render_markdown(&preprocess_math(&content, ctx.math));
         if !chart_blocks.is_empty() {
             let (with_charts, files) =
@@ -1445,6 +1510,7 @@ fn render_single_pane_slide(
     asset_source: &dyn AssetSource,
     chart_files: &mut Vec<std::path::PathBuf>,
     ctx: &DeckContext,
+    pane_shapes: &mut Vec<(mirzam_shape::Frame, String)>,
 ) -> String {
     let mut content = slide.loose.clone();
     // Without a layout, `::: pane` blocks are simply concatenated.
@@ -1460,6 +1526,7 @@ fn render_single_pane_slide(
         content
     };
     let (content, chart_blocks) = charts::extract(&content);
+    let (content, shape_srcs) = shapes::extract(&content);
     let mut body = render_markdown(&preprocess_math(&content, ctx.math));
     if !chart_blocks.is_empty() {
         let (with_charts, files) =
@@ -1487,6 +1554,23 @@ fn render_single_pane_slide(
         .collect::<String>();
     // The one pane covers the slide, so a bleed here reaches all four edges.
     extra_cls.push_str(&bleed_edge_classes(&attrs, Edges::all));
+    // A pane shape's frame is the content box — or the whole slide when the
+    // pane bleeds, since a bleed on a one-pane slide reaches every edge.
+    if !shape_srcs.is_empty() {
+        let (w, h) = (ctx.slide_size.0 as f64, ctx.slide_size.1 as f64);
+        let m = ctx.grid;
+        let frame = if attrs.classes.iter().any(|c| c == "bleed") {
+            mirzam_shape::Frame::page(ctx.slide_size.0, ctx.slide_size.1)
+        } else {
+            mirzam_shape::Frame {
+                x: m.pad_x,
+                y: m.pad_y,
+                w: w - 2.0 * m.pad_x,
+                h: h - 2.0 * m.pad_y,
+            }
+        };
+        pane_shapes.push((frame, shape_srcs.join("\n")));
+    }
     let bg = background_layers(&attrs, errors);
     // A slide with no layout has one pane, so a `theme=` on any of its blocks
     // is a statement about the whole slide; the first one that names a palette
@@ -2013,32 +2097,77 @@ mod tests {
         assert!(out.warnings.iter().any(|w| w.contains("zzz")));
     }
 
+    /// A shape block inside a `::: pane` used to be a warning and a literal
+    /// code block; it is now the pane-anchored form — percentages of the
+    /// pane's rectangle, drawn into the slide's one shape layer.
     #[test]
-    fn a_shape_block_inside_a_pane_warns_but_still_renders_as_a_code_block() {
-        let slide =
-            parse_slide("::: pane main\n```shape\nrect #r at(10%, 10%) size(20%, 20%)\n```\n:::\n");
+    fn a_shape_block_inside_a_pane_draws_in_the_panes_frame() {
+        let slide = parse_slide(
+            "```pane\n+---+---+\n| a | b |\n+---+---+\n```\n\n\
+             ::: pane b\n```shape\nrect #r at(50%, 50%) size(50%, 20%)\n```\n:::\n",
+        );
         let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
         assert!(
-            out.warnings
-                .iter()
-                .any(|w| w.contains("pane `main`") && w.contains("shape") && w.contains("slide 1")),
+            !out.warnings.iter().any(|w| w.contains("shape")),
             "{:?}",
             out.warnings
         );
-        // The constraint stays a warning only: the fence still degrades to an
-        // ordinary code block exactly as it did before.
-        assert!(out.html.contains("language-shape"));
+        // Not a code block any more - a rect in the SVG layer.
+        assert!(!out.html.contains("language-shape"));
+        assert!(out.html.contains("<g id=\"r\">"));
+        // Pane `b` is the right half: cols 1fr/1fr, pad 60, gap 20 →
+        // b spans x 650..1220, so 50% of it centres at 935; 50% wide = 285.
+        assert!(out.html.contains("x=\"792.5\""), "{}", out.html);
+        assert!(out.html.contains("width=\"285.0\""), "{}", out.html);
     }
 
+    /// The same drawing at slide top level maps into the page, as ever.
     #[test]
-    fn a_shape_block_at_slide_top_level_does_not_warn() {
+    fn a_shape_block_at_slide_top_level_draws_in_page_coordinates() {
         let slide = parse_slide("```shape\nrect #r at(10%, 10%) size(20%, 20%)\n```\n");
         let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
         assert!(!out.warnings.iter().any(|w| w.contains("shape")));
+        assert!(out.html.contains("width=\"256.0\""), "{}", out.html);
+    }
+
+    /// An arrow in a page block may end on a shape a pane block drew: ids
+    /// resolve across the whole layer, whatever frame each block used.
+    #[test]
+    fn a_page_arrow_reaches_a_pane_anchored_shape() {
+        let slide = parse_slide(
+            "```pane\n+---+---+\n| a | b |\n+---+---+\n```\n\n\
+             ::: pane b\n```shape\nrect #target at(50%, 50%) size(50%, 20%)\n```\n:::\n\n\
+             ```shape\narrow from(10%, 50%) to(#target.w)\n```\n",
+        );
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(
+            !out.warnings.iter().any(|w| w.contains("no element")),
+            "{:?}",
+            out.warnings
+        );
+        // West edge of #target: centre 935 minus half of 285 = 792.5.
+        assert!(out.html.contains("x2=\"792.5\""), "{}", out.html);
+    }
+
+    /// Declared grid metrics move the frame: the same pane, a wider margin.
+    #[test]
+    fn grid_metrics_from_frontmatter_move_a_pane_frame() {
+        let slide = parse_slide(
+            "```pane\n+---+---+\n| a | b |\n+---+---+\n```\n\n\
+             ::: pane a\n```shape\nrect #r at(0%, 0%) size(10%, 10%)\n```\n:::\n",
+        );
+        let meta = mirzam_core::parse_meta("grid-pad-x: 100px\n").unwrap();
+        let out = render_deck(&meta, &[slide], Path::new("."));
+        // Pane `a` starts at the horizontal margin: x = 100, so a rect centred
+        // there starts at 100 - half its width (10% of the 530px pane = 53).
+        assert!(out.html.contains("x=\"73.5\""), "{}", out.html);
+        // The declared value reaches the page CSS too, so the browser lays the
+        // grid out from the same number.
+        assert!(out.html.contains("--mz-grid-pad-x:100px"), "{}", out.html);
     }
 
     #[test]
-    fn a_shape_fence_quoted_inside_a_longer_fence_does_not_warn() {
+    fn a_shape_fence_quoted_inside_a_longer_fence_stays_markdown() {
         // A four-backtick fence quotes the block as an example, the same rule
         // the top-level parser applies - so this must not be mistaken for the
         // real thing.
@@ -2047,6 +2176,10 @@ mod tests {
         );
         let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
         assert!(!out.warnings.iter().any(|w| w.contains("shape")));
+        // The example is a `markdown` code block with the fence as its text,
+        // not an SVG layer.
+        assert!(out.html.contains("language-markdown"), "{}", out.html);
+        assert!(!out.html.contains("<g id=\"r\">"), "{}", out.html);
     }
 
     /// The brace is a stretchy operator the browser stops extending, and its

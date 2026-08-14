@@ -59,11 +59,13 @@ is broken, check the three limits that produce this most often:
   alike. `mirzam build` warns about this one, naming the slide. Brackets
   *inside* a span are fine — a footnote reference, a nested span and inline
   maths all work — so a span that failed is nearly always the line break.
-- **`shape` only parses at slide top level**, never inside `::: pane`. Written
-  inside a pane, the fence reaches the Markdown renderer untouched and shows
-  as an ordinary code block. `mirzam build` warns about this one (see below)
-  — the fix is to move the block out of the pane, after the `:::` that closes
-  it.
+- **`shape` changes coordinate space with where it is written.** At slide top
+  level its percentages are of the whole slide; inside a `::: pane` they are
+  of that pane's rectangle. A diagram that lands somewhere unexpected is
+  usually in the other space from the one its coordinates were written for —
+  moving the block in or out of the pane is the fix, not rescaling every
+  number. (Before v0.6 the in-pane form was a warning and rendered as a code
+  block.)
 - **A footnote's `[^key]:` definition has to be on the same slide as its
   `[^key]` reference** — each slide renders on its own, so a definition left
   on another slide (or, in a `pane` grid layout, a *different pane* of the
@@ -126,7 +128,7 @@ since it changes how urgent the fix is:
 
 | Warning (paraphrased) | Category | Cause | What happens |
 |---|---|---|---|
-| pane "x" contains a shape block, but shape only renders at slide top level | Shape | A `shape` fence sits inside `::: pane` | Note only — still renders as a code block |
+| grid-pad-x: `wide` is not a pixel length | Layout | A `grid-pad-x`/`grid-pad-y`/`grid-gap` value that is not `64px` or `64` | Note only — that key keeps the stylesheet default |
 | footnote reference "[^key]" has no definition on this slide | Citations | `[^key]` with no `[^key]:` on the same slide | Note only — bracket text stays literal, once per key |
 | slide N: "[text]{.class}" is still on the slide as text | Spans | An attribute span split across a line break | Note only — it stays literal bracket text |
 | slide N: the brace over "…" will stop short of it | Math | An `underbrace`/`overbrace` base wider than about 8em, where the browser stops stretching the brace | Note only — the formula renders, with the end of the base uncovered. Move the words into the label |

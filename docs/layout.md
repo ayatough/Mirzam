@@ -213,10 +213,23 @@ it with `<!-- chrome: none -->` — see
 
 - A chart fills its pane and keeps its aspect ratio. Give it a band at least three
   lines tall; below that the labels crowd.
-- Shapes use page coordinates (percentages of the whole slide), not pane
-  coordinates. They ignore the grid deliberately, which is what makes free
-  placement possible — and what makes it your job to keep them clear of the text.
-  Reserve the area with an empty pane so nothing else is laid out there.
+- A `shape` block written **inside a `::: pane`** draws in that pane's
+  coordinate space: `at(50%, 50%)` is the pane's centre, and resizing the pane
+  in the ASCII drawing resizes the figure with it. The pane's edges do not
+  clip — coordinates past 100% deliberately hang out of it. This is the form
+  to reach for when a diagram *is* a pane's content, the way a chart is.
+- A `shape` block at **slide top level** uses page coordinates (percentages of
+  the whole slide). It ignores the grid deliberately, which is what makes free
+  placement and pane-spanning figures possible — and what makes it your job to
+  keep it clear of the text. Reserve the area with an empty pane so nothing
+  else is laid out there.
+- Pane rectangles are computed at build time from the grid's ratios, margin
+  and gutter. That is why the margin and gutter are frontmatter settings
+  (`grid-pad-x`, `grid-pad-y`, `grid-gap`) — the build emits the CSS for them,
+  so the browser lays the grid out from the same numbers. A stylesheet that
+  overrides the `--mz-grid-*` custom properties instead moves the panes
+  without telling the build, and pane-anchored shapes drift by the
+  difference; keep CSS overrides to decks that never anchor a shape to a pane.
 
 ## Checking a deck
 

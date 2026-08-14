@@ -1,7 +1,11 @@
 //! Parser for the `shape` block DSL, plus build-time SVG layer generation.
 //!
-//! Coordinates are percentages of the page (0-100). They are converted to the
-//! slide's logical pixels inside a fixed `viewBox`, so shapes scale with the slide.
+//! Coordinates are percentages (0-100) of a [`Frame`] — the whole slide for a
+//! top-level block, a pane's rectangle for a block written inside one. They
+//! are converted to the slide's logical pixels inside a fixed `viewBox`, so
+//! shapes scale with the slide; labels, stroke widths and arrowheads are in
+//! those pixels directly, so a small frame scales a drawing's geometry
+//! without shrinking its typography.
 //!
 //! ```text
 //! rect    #cache at(70%, 30%) size(30%, 14%) label="Cache layer" fill=@accent2
@@ -281,97 +285,143 @@ impl Box_ {
     }
 }
 
-/// Generates the SVG layer. `(w, h)` is the slide's logical pixel size.
-pub fn render_svg(doc: &ShapeDoc, w: u32, h: u32) -> (String, Vec<String>) {
-    let mut errors = doc.errors.clone();
-    let (wf, hf) = (w as f64, h as f64);
-    let px = |p: (f64, f64)| (p.0 / 100.0 * wf, p.1 / 100.0 * hf);
+/// The rectangle a block's percentages map into: the whole slide for a
+/// top-level `shape` block, the pane's rectangle for one written inside a
+/// `::: pane`. Coordinates are not clamped to it — a shape may deliberately
+/// reach past the frame, the way a page-level shape may reach past a pane.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Frame {
+    pub x: f64,
+    pub y: f64,
+    pub w: f64,
+    pub h: f64,
+}
 
-    // Pass 1: map ids to boxes.
-    let mut boxes: BTreeMap<&str, Box_> = BTreeMap::new();
-    for s in &doc.shapes {
-        if let (Some(id), Some(at)) = (&s.id, s.at) {
-            let (cx, cy) = px(at);
-            let (bw, bh) = s.size.map(px).unwrap_or((0.0, 0.0));
-            boxes.insert(
-                id,
-                Box_ {
-                    cx,
-                    cy,
-                    w: bw,
-                    h: bh,
-                },
-            );
+impl Frame {
+    /// The whole slide.
+    pub fn page(w: u32, h: u32) -> Self {
+        Self {
+            x: 0.0,
+            y: 0.0,
+            w: w as f64,
+            h: h as f64,
         }
     }
-    let resolve = |r: &EndRef, errors: &mut Vec<String>| -> Option<(f64, f64)> {
-        match r {
-            EndRef::Point(x, y) => Some(px((*x, *y))),
-            EndRef::Anchor { id, edge } => match boxes.get(id.as_str()) {
-                Some(b) => Some(b.edge(*edge)),
-                None => {
-                    errors.push(format!("shape: no element with id `#{id}`"));
-                    None
-                }
-            },
+
+    fn px(&self, p: (f64, f64)) -> (f64, f64) {
+        (self.x + p.0 / 100.0 * self.w, self.y + p.1 / 100.0 * self.h)
+    }
+
+    /// A size has no origin: only the frame's scale applies.
+    fn px_size(&self, p: (f64, f64)) -> (f64, f64) {
+        (p.0 / 100.0 * self.w, p.1 / 100.0 * self.h)
+    }
+}
+
+/// Generates the SVG layer for one page-coordinate block. `(w, h)` is the
+/// slide's logical pixel size.
+pub fn render_svg(doc: &ShapeDoc, w: u32, h: u32) -> (String, Vec<String>) {
+    render_layer(&[(doc, Frame::page(w, h))], w, h)
+}
+
+/// Generates one SVG layer from several blocks, each drawn in its own frame.
+/// Ids are resolved across the whole layer, so an arrow in one block may end
+/// on a shape another block drew — a pane-anchored box and a page-anchored
+/// caption are still one picture.
+pub fn render_layer(blocks: &[(&ShapeDoc, Frame)], w: u32, h: u32) -> (String, Vec<String>) {
+    let mut errors: Vec<String> = Vec::new();
+
+    // Pass 1: map ids to boxes, in final pixels, across every block.
+    let mut boxes: BTreeMap<&str, Box_> = BTreeMap::new();
+    for (doc, frame) in blocks {
+        errors.extend(doc.errors.iter().cloned());
+        for s in &doc.shapes {
+            if let (Some(id), Some(at)) = (&s.id, s.at) {
+                let (cx, cy) = frame.px(at);
+                let (bw, bh) = s.size.map(|p| frame.px_size(p)).unwrap_or((0.0, 0.0));
+                boxes.insert(
+                    id,
+                    Box_ {
+                        cx,
+                        cy,
+                        w: bw,
+                        h: bh,
+                    },
+                );
+            }
         }
-    };
+    }
 
     // Pass 2: emit the elements.
     let mut body = String::new();
-    for s in &doc.shapes {
-        // A shape's parts are emitted together and, when it has an id, wrapped
-        // in a group carrying it. A labelled box is a box *and* its text, and
-        // an arrow is a line *and* its head: an id on the geometry alone would
-        // let `anim` move half a shape and leave the rest behind.
-        let mut part = String::new();
-        let id_attr = String::new();
-        let cls_attr = if s.classes.is_empty() {
-            String::new()
-        } else {
-            format!(" class=\"{}\"", esc(&s.classes.join(" ")))
+    for (doc, frame) in blocks {
+        let px = |p: (f64, f64)| frame.px(p);
+        let resolve = |r: &EndRef, errors: &mut Vec<String>| -> Option<(f64, f64)> {
+            match r {
+                EndRef::Point(x, y) => Some(px((*x, *y))),
+                EndRef::Anchor { id, edge } => match boxes.get(id.as_str()) {
+                    Some(b) => Some(b.edge(*edge)),
+                    None => {
+                        errors.push(format!("shape: no element with id `#{id}`"));
+                        None
+                    }
+                },
+            }
         };
-        let stroke_w = s.kv.get("width").map(String::as_str).unwrap_or("2.5");
-        let dash = if s.kv.get("style").map(String::as_str) == Some("dashed") {
-            " stroke-dasharray=\"8 6\""
-        } else {
-            ""
-        };
-        match s.kind.unwrap() {
-            ShapeKind::Rect | ShapeKind::Ellipse => {
-                let (cx, cy) = px(s.at.unwrap());
-                let (bw, bh) = px(s.size.unwrap());
-                let fill = color(
-                    s.kv.get("fill")
-                        .map(String::as_str)
-                        .unwrap_or("@shape-fill"),
-                );
-                let stroke = color(s.kv.get("stroke").map(String::as_str).unwrap_or("@accent1"));
-                if s.kind == Some(ShapeKind::Rect) {
-                    let rx = s.kv.get("radius").map(String::as_str).unwrap_or("10");
-                    part.push_str(&format!(
+        for s in &doc.shapes {
+            // A shape's parts are emitted together and, when it has an id, wrapped
+            // in a group carrying it. A labelled box is a box *and* its text, and
+            // an arrow is a line *and* its head: an id on the geometry alone would
+            // let `anim` move half a shape and leave the rest behind.
+            let mut part = String::new();
+            let id_attr = String::new();
+            let cls_attr = if s.classes.is_empty() {
+                String::new()
+            } else {
+                format!(" class=\"{}\"", esc(&s.classes.join(" ")))
+            };
+            let stroke_w = s.kv.get("width").map(String::as_str).unwrap_or("2.5");
+            let dash = if s.kv.get("style").map(String::as_str) == Some("dashed") {
+                " stroke-dasharray=\"8 6\""
+            } else {
+                ""
+            };
+            match s.kind.unwrap() {
+                ShapeKind::Rect | ShapeKind::Ellipse => {
+                    let (cx, cy) = px(s.at.unwrap());
+                    let (bw, bh) = frame.px_size(s.size.unwrap());
+                    let fill = color(
+                        s.kv.get("fill")
+                            .map(String::as_str)
+                            .unwrap_or("@shape-fill"),
+                    );
+                    let stroke =
+                        color(s.kv.get("stroke").map(String::as_str).unwrap_or("@accent1"));
+                    if s.kind == Some(ShapeKind::Rect) {
+                        let rx = s.kv.get("radius").map(String::as_str).unwrap_or("10");
+                        part.push_str(&format!(
                         "<rect{id_attr}{cls_attr} x=\"{:.1}\" y=\"{:.1}\" width=\"{bw:.1}\" height=\"{bh:.1}\" rx=\"{rx}\" style=\"fill:{fill};stroke:{stroke}\" stroke-width=\"{stroke_w}\"{dash}/>\n",
                         cx - bw / 2.0,
                         cy - bh / 2.0,
                     ));
-                } else {
-                    part.push_str(&format!(
+                    } else {
+                        part.push_str(&format!(
                         "<ellipse{id_attr}{cls_attr} cx=\"{cx:.1}\" cy=\"{cy:.1}\" rx=\"{:.1}\" ry=\"{:.1}\" style=\"fill:{fill};stroke:{stroke}\" stroke-width=\"{stroke_w}\"{dash}/>\n",
                         bw / 2.0,
                         bh / 2.0,
                     ));
-                }
-                if let Some(label) = &s.label {
-                    part.push_str(&format!(
+                    }
+                    if let Some(label) = &s.label {
+                        part.push_str(&format!(
                         "<text x=\"{cx:.1}\" y=\"{cy:.1}\" text-anchor=\"middle\" dominant-baseline=\"central\" class=\"mz-shape-label\">{}</text>\n",
                         esc(label)
                     ));
+                    }
                 }
-            }
-            ShapeKind::Text => {
-                let (cx, cy) = px(s.at.unwrap());
-                let fill = color(s.kv.get("color").map(String::as_str).unwrap_or("@fg"));
-                part.push_str(&format!(
+                ShapeKind::Text => {
+                    let (cx, cy) = px(s.at.unwrap());
+                    let fill = color(s.kv.get("color").map(String::as_str).unwrap_or("@fg"));
+                    part.push_str(&format!(
                     "<text{id_attr}{cls_attr} x=\"{cx:.1}\" y=\"{cy:.1}\" text-anchor=\"middle\" dominant-baseline=\"central\" class=\"mz-shape-label{}\" style=\"fill:{fill}\">{}</text>\n",
                     s.classes
                         .iter()
@@ -379,31 +429,32 @@ pub fn render_svg(doc: &ShapeDoc, w: u32, h: u32) -> (String, Vec<String>) {
                         .collect::<String>(),
                     esc(s.label.as_deref().unwrap_or(""))
                 ));
-            }
-            ShapeKind::Arrow | ShapeKind::Line => {
-                let (Some(a), Some(b)) = (
-                    resolve(s.from.as_ref().unwrap(), &mut errors),
-                    resolve(s.to.as_ref().unwrap(), &mut errors),
-                ) else {
-                    continue;
-                };
-                let stroke = color(s.kv.get("color").map(String::as_str).unwrap_or("@accent1"));
-                part.push_str(&format!(
+                }
+                ShapeKind::Arrow | ShapeKind::Line => {
+                    let (Some(a), Some(b)) = (
+                        resolve(s.from.as_ref().unwrap(), &mut errors),
+                        resolve(s.to.as_ref().unwrap(), &mut errors),
+                    ) else {
+                        continue;
+                    };
+                    let stroke = color(s.kv.get("color").map(String::as_str).unwrap_or("@accent1"));
+                    part.push_str(&format!(
                     "<line{id_attr}{cls_attr} x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" style=\"stroke:{stroke}\" stroke-width=\"{stroke_w}\"{dash}/>\n",
                     a.0, a.1, b.0, b.1
                 ));
-                if s.kind == Some(ShapeKind::Arrow) {
-                    part.push_str(&arrow_head(a, b, &stroke));
+                    if s.kind == Some(ShapeKind::Arrow) {
+                        part.push_str(&arrow_head(a, b, &stroke));
+                    }
                 }
             }
-        }
-        match &s.id {
-            Some(id) => {
-                body.push_str(&format!("<g id=\"{}\">\n", esc(id)));
-                body.push_str(&part);
-                body.push_str("</g>\n");
+            match &s.id {
+                Some(id) => {
+                    body.push_str(&format!("<g id=\"{}\">\n", esc(id)));
+                    body.push_str(&part);
+                    body.push_str("</g>\n");
+                }
+                None => body.push_str(&part),
             }
-            None => body.push_str(&part),
         }
     }
 
@@ -493,5 +544,46 @@ mod tests {
         let doc = parse_shapes("arrow from(#nope) to(50,50)");
         let (_, errors) = render_svg(&doc, 1280, 720);
         assert!(errors.iter().any(|e| e.contains("#nope")));
+    }
+
+    /// A framed block's percentages map into its frame — origin for positions,
+    /// scale alone for sizes — and nothing clamps to the frame's edges.
+    #[test]
+    fn a_framed_block_draws_in_its_frame_without_clamping() {
+        let doc = parse_shapes("rect #a at(50,50) size(20,20)\nrect #b at(110,50) size(20,20)");
+        let frame = Frame {
+            x: 640.0,
+            y: 360.0,
+            w: 500.0,
+            h: 300.0,
+        };
+        let (svg, errors) = render_layer(&[(&doc, frame)], 1280, 720);
+        assert!(errors.is_empty(), "{errors:?}");
+        // #a: centre (640 + 250, 360 + 150), size (100, 60) → x = 840, y = 480.
+        assert!(svg.contains("x=\"840.0\" y=\"480.0\" width=\"100.0\" height=\"60.0\""));
+        // #b sits at 110% of the frame — past its edge, kept as written.
+        assert!(svg.contains("x=\"1140.0\""));
+    }
+
+    /// Ids resolve across the whole layer: an arrow in a page block may end on
+    /// a shape a pane block drew, and the endpoint is in final pixels.
+    #[test]
+    fn refs_resolve_across_blocks_in_different_frames() {
+        let pane = parse_shapes("rect #target at(50,50) size(20,20)");
+        let page = parse_shapes("arrow from(10%, 50%) to(#target.w)");
+        let frame = Frame {
+            x: 640.0,
+            y: 0.0,
+            w: 640.0,
+            h: 720.0,
+        };
+        let (svg, errors) = render_layer(
+            &[(&page, Frame::page(1280, 720)), (&pane, frame)],
+            1280,
+            720,
+        );
+        assert!(errors.is_empty(), "{errors:?}");
+        // #target centre x = 640 + 320 = 960, west edge = 960 - 64 = 896.
+        assert!(svg.contains("x2=\"896.0\""), "{svg}");
     }
 }

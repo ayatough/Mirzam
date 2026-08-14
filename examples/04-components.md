@@ -196,6 +196,45 @@ arrow from(#origin.s) to(#db.n) style=dashed
 +------------------+-----------------+
 |                  |                 |
 |                  |                 |
+|  text            |  fig            |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Shapes]{.eyebrow}
+## A diagram that lives in its pane
+:::
+
+::: pane text {valign=middle}
+The previous slide placed its boxes in page coordinates. This one writes the `shape` block *inside* the `fig` pane, so every percentage is of the pane itself - `at(50%, 12%)` is the top centre of `fig`, wherever the grid puts it.
+
+Resize the pane in the ASCII drawing and the whole diagram follows. Nothing clips at the pane's edges; past 100% is allowed, and deliberate.
+:::
+
+::: pane fig
+```shape
+rect #req  at(50%, 12%) size(64%, 18%) label="Request"
+rect #hit  at(26%, 55%) size(40%, 18%) label="Hit" stroke=@accent2
+rect #miss at(74%, 55%) size(40%, 18%) label="Miss"
+arrow from(#req.s) to(#hit.n)
+arrow from(#req.s) to(#miss.n)
+text at(50%, 88%) "percentages of the pane, not the page" .small
+```
+:::
+
+<!-- note: Same DSL as the page-level form; only the coordinate space changes. -->
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
 |  type            |  math           |
 |                  |                 |
 |                  |                 |

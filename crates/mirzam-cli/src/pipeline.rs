@@ -193,6 +193,10 @@ pub fn build_deck_with(
         warnings.push(w);
     }
 
+    // Same rule for the grid keys: a value that is not a pixel length keeps
+    // the stylesheet default, and the warning says which key to fix.
+    warnings.extend(meta.grid_metrics().1);
+
     // A transition that does not parse leaves the deck with plain cuts, which
     // is the right outcome for a typo in a decoration - but say so, because
     // otherwise it looks like the feature is broken.

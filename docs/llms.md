@@ -213,9 +213,12 @@ name a `.csv` file. Each mark gets the id `<chart-id>-<series>-<row>`, so
 `#latency-0-1` is the second bar of the first series — that is what an arrow or
 an annotation points at.
 
-## `shape` — slide top level only
+## `shape` — page or pane coordinates
 
-Page coordinates (percentages of the whole slide), on a layer above the panes.
+At slide top level, percentages of the whole slide, on a layer above the
+panes. Inside a `::: pane`, percentages of that pane's rectangle — resize the
+pane and the drawing follows. Neither form clips: coordinates past 100%
+deliberately reach outside the frame.
 
 ````markdown
 ```shape
@@ -229,7 +232,11 @@ text    #cap   at(72%, 88%) "95% hit rate" .small
 
 Kinds `rect`, `ellipse`, `text`, `arrow`, `line`; edges `.n` `.s` `.e` `.w`
 `.c`; colours `@accent1`, `@accent2`, `@shape-fill`, … resolve to theme tokens.
-Shapes ignore the grid — reserve their area with an empty pane.
+Both forms are one layer: ids resolve across it. Page-level shapes ignore the
+grid — reserve their area with an empty pane, or write the block in the pane.
+Pane rectangles come from the grid's margin and gutter, so change those with
+frontmatter `grid-pad-x`/`grid-pad-y`/`grid-gap` (not CSS) in a deck that
+anchors shapes to panes.
 
 ## `connect` — slide top level only
 
