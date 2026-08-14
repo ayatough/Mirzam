@@ -6,7 +6,7 @@ Where Mirzam is and what comes next. Design rationale lives in
 
 ## Status
 
-`v0.5.0` is the current release: everything below marked Done is in it, built
+`v0.6.0` is the current release: everything below marked Done is in it, built
 by CI and published as a prebuilt binary. It is still `0.x` — the markup will
 keep changing.
 

@@ -7,6 +7,10 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.6.0] - 2026-08-14
+
 ### Added
 - **A `shape` block written inside a `::: pane` draws in that pane's
   coordinate space.** `at(50%, 50%)` is the centre of the pane, not of the
