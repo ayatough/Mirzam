@@ -160,13 +160,13 @@ charts already work — no client-side JavaScript, nothing fetched at present
 time. A `mermaid` fence stays a plain code block for any renderer that does not
 know it, and for `mirzam-wasm`, which has no process to shell out to.
 
-**More themes and custom themes.** There is one sample stylesheet now —
-`examples/themes/mirzam.css` — because the second, `pitch.css`, turned out to be
-a copy of it that had drifted rather than a second identity. That is the right
-floor to build from, not the ceiling. What is wanted above it: a gallery of
-built-in themes worth choosing between, and a documented contract for writing
-one, so a custom theme is a supported artefact rather than a stylesheet that
-happens to override the right tokens. Slide masters — the layout half of the
+**More themes.** The contract for writing one landed: `theme:` takes a `.css`
+path as readily as a built-in name, a theme of your own registers under its
+filename stem and can be worn by a single pane, and `check` holds it to the
+standard the built-ins are held to — so a custom theme is a supported artefact
+rather than a stylesheet that happens to override the right tokens.
+`examples/themes/blueprint.css` is the sample. What is still wanted: a gallery
+of built-in themes worth choosing between. Slide masters — the layout half of the
 same question — landed in `v0.4.0`: `masters:` names the shapes and a slide
 picks one with `<!-- layout: -->`.
 

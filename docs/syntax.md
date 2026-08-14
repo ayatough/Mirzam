@@ -40,7 +40,7 @@ This file runs long; jump straight to the one you need.
 | [Annotations](#annotations) | The `annotate` block: circle, underline, box, arrow, pointing at a live element |
 | [Animations](#animations) | The `anim` block: entrances, click steps, exits |
 | [Driving the viewer](#driving-the-viewer) | Keyboard shortcuts, presenter mode, the `/` shortcut sheet |
-| [Theming](#theming) | `theme:`, `css:`, `mode:`, [a theme on one pane](#a-theme-smaller-than-a-deck), and the tokens a stylesheet sets |
+| [Theming](#theming) | `theme:` — a built-in name or [a theme of your own](#a-theme-of-your-own-in-a-file) — `mode:`, [a theme on one pane](#a-theme-smaller-than-a-deck), and the tokens a theme writes in |
 
 ## Deck and slides
 
@@ -51,7 +51,7 @@ This file runs long; jump straight to the one you need.
 title: Quarterly review
 author: Your Name
 aspect: "16:9"        # or "4:3"
-css: themes/dark.css  # custom stylesheet, relative to this file
+theme: mirzam         # a built-in name, a .css path, or a list of both
 transition: fade      # how pages turn; see Animations below
 masters: masters.md   # named slide shapes; see Slide masters below
 layout: body          # the master a slide takes when it draws no grid
@@ -153,8 +153,9 @@ Ordinary Markdown goes here.
 
 Pane attributes: `align=left|center|right`, `valign=middle|bottom`,
 `theme=`/`mode=` ([a palette for one pane](#a-theme-smaller-than-a-deck)), and
-any extra `.class` names your stylesheet defines. Content that is not assigned
-to a pane flows into `main`, or the first pane if there is none.
+any extra `.class` names your own theme or a `<style>` block defines. Content
+that is not assigned to a pane flows into `main`, or the first pane if there
+is none.
 
 ### Slide masters
 
@@ -162,7 +163,7 @@ Most decks use three or four shapes over and over, and redrawing the same ASCII
 on every slide is the part nobody enjoys. Name the shapes once, and slides pick
 one instead.
 
-The shapes usually go in a file of their own, named like `css:` is:
+The shapes usually go in a file of their own, named the way a theme file is:
 
 ```yaml
 ---
@@ -406,7 +407,7 @@ same handling. `text=dark` is often the right one here: it takes the theme's own
 foreground colour, which flips with the mode the way the photo does.
 
 A PDF has no reader to ask, so the export follows the deck's `mode:` and prints
-the light image when there is none. A deck whose stylesheet is dark by default
+the light image when there is none. A deck whose theme is dark by default
 should say `mode: dark`, or its PDF will pair the light photo with light text.
 
 Photographs are the one asset that can dominate a deck's file size. A
@@ -497,15 +498,15 @@ them, so code in a `nord` deck reads Nord and code follows the deck through
 | `--mz-code-operator` | operators, punctuation, list and table markup |
 
 Every built-in theme sets all six, in both modes, and the contrast test holds
-them to 4.5:1 against the code block's background. Override one in a deck's
-own stylesheet like any other token:
+them to 4.5:1 against the code block's background. Override one in a theme of
+your own like any other token:
 
 ```css
 :root { --mz-code-comment: #7a8b9a; }
 ```
 
-A deck whose stylesheet sets none of them still gets coloured code: each token
-falls back to a colour the theme already defines.
+A deck whose theme sets none of them still gets coloured code: each token
+falls back to a colour the palette already defines.
 
 ### Attributes
 
@@ -1497,9 +1498,90 @@ very stylesheet it is meant to sit on. What changed is how much a token can
 say. `nord`, `solarized` and `vscode` set colours only, so a deck that names one
 of them keeps the built-in type.
 
-`examples/themes/mirzam.css` is the same identity written as rules, and the
-sample decks still load it with `css:`. The two overlap on purpose, and the two
-agree; the file goes away when `theme:` learns to take a path.
+### A theme of your own, in a file
+
+`theme:` takes a **path** as readily as a name. An entry ending in `.css` is a
+stylesheet of yours, resolved relative to the deck the way `masters:` and
+`bibliography:` are; anything else is a built-in name. A list is cascade order,
+and a scalar is a list of one:
+
+```yaml
+theme: mirzam                        # a built-in
+theme: themes/acme.css               # a theme of your own, beside the deck
+theme: [mirzam, themes/tweaks.css]   # a built-in, then your file over it
+```
+
+The order the page is assembled in is: the built-in's tokens, then the shared
+stylesheet, then each `.css` entry in turn. Your file loads **after** the
+shared stylesheet — that is what lets it override the type and not only the
+colours, and it is why a built-in cannot: a built-in is a token set loaded
+*before* the sheet that reads it.
+
+A deck that names only its own theme wears it; a deck that names a built-in as
+well has said which palette it is in, and its own file is then there for the
+slides and panes that ask for it by name.
+
+**`css:` was the old spelling of this**, and it is accepted for one release:
+writing it still loads the stylesheet, and the warning says the exact `theme:`
+line to write instead. Then it goes, along with `--css` on the command line.
+`--theme` takes a path too, and repeating it is a list:
+`mirzam build deck.md --theme mirzam --theme house.css`.
+
+#### A file theme gets a name — if it scopes its tokens to it
+
+`themes/acme.css` registers under its filename stem, `acme`, which a slide or a
+pane can then write in `theme=`. That only means something if the file says so:
+
+```css
+[data-theme="acme"] { --mz-accent1: #6557d9; }   /* usable in a pane's theme= */
+:root            { --mz-accent1: #6557d9; }      /* the deck, and nothing smaller */
+```
+
+Custom properties set on `:root` are set on the *document*. A pane carrying
+`data-theme="acme"` picks up nothing from them, and nothing on the page says
+why — so the rule is: **a file theme is usable in a `theme=` if, and only if,
+it scopes its tokens to its own stem.** `mirzam check` reports a `theme=` that
+names a file which cannot answer to it, because a pane that silently stays in
+the deck's palette is exactly the kind of failure a checker is for.
+
+That selector is the one the built-ins use, minus the `:where()` — they need
+that so your stylesheet can outrank them, and yours is the one doing the
+outranking.
+
+Two more rules worth knowing:
+
+- A stem that collides with a built-in (`themes/nord.css`) does **not** take
+  the name: `theme=nord` keeps meaning the built-in, and the collision warns.
+  A file in one directory quietly redefining what `theme: nord` means
+  everywhere is worse than a name being taken.
+- A deck-specific class does not need a file at all. A raw `<style>` block in
+  the deck reaches the page untouched, which is the right home for the one or
+  two classes a single deck invents; `examples/06-theming.md` does that for its
+  list-marker demonstration. `theme: [mirzam, tweaks.css]` is where it goes
+  when it outgrows a block.
+
+[`examples/themes/blueprint.css`](../examples/themes/blueprint.css) is a
+complete one: a whole identity — mono display type, a hairline rule under a
+section heading, square cards, an em-dash bullet — written in tokens and
+scoped to its stem, so `examples/06-theming.md` can wear `mirzam` and still
+hand one pane to it.
+
+#### Tokens travel; rules do not
+
+The asymmetry above is worth stating on its own, because it decides how to
+write a theme rather than only where to put it:
+
+| Written as | Applies to | Works with a pane's `theme=` |
+|---|---|---|
+| tokens (`--mz-*`) | deck, slide, pane | yes |
+| rules (`h1 { }`, `.foo { }`) | the deck | no |
+
+Custom properties **inherit**, so setting them on an element re-themes
+everything inside it — a pane's `theme=` resolves inwards for free. Plain rules
+cascade by specificity and source order, which have nothing to do with where
+the element is, so a rule that styles `h1` styles every `h1` in the deck. A
+theme written in tokens works at every scale; the same theme written as rules
+works at one.
 
 ### Dark mode
 
@@ -1548,10 +1630,10 @@ The rules:
   `theme=` shows the surrounding theme's other half, and stays there.
 - Following the deck means following what the deck *declares* — `mode:` in
   frontmatter, `?mode=`, `D`, and otherwise the reader's `prefers-color-scheme`.
-  A deck whose `css:` file pins a palette at a bare `:root` has chosen a mode
+  A theme of your own that pins a palette at a bare `:root` has chosen a mode
   without declaring one, and a pane that follows will follow the reader's
-  machine instead. **Write `mode:` in frontmatter when your stylesheet has
-  already decided**; `examples/06-theming.md` does exactly that.
+  machine instead. **Write `mode:` in frontmatter when your theme has already
+  decided**; `examples/06-theming.md` does exactly that.
 - The palette is set **on that element**, and custom properties inherit, so
   everything inside it — headings, code, tables, chart series — is drawn from
   the other theme's tokens.
@@ -1561,20 +1643,21 @@ The rules:
   deck's.
 - An unknown name is a warning naming the slide and the pane, and that element
   simply keeps what it inherited. A deck never fails to build over a palette.
-- Only **built-in** themes can be named this way. A `css:` stylesheet of your
-  own is loaded once for the whole page; to re-theme one pane with your own
-  colours, set the tokens under a class and put the class on the pane.
+- A theme of your own can be named this way too, under its filename stem —
+  but only if it [scopes its tokens to that stem](#a-file-theme-gets-a-name--if-it-scopes-its-tokens-to-it).
+  A file that sets them at `:root` is loaded once for the whole page, and a
+  pane naming it picks up nothing; `check` says so.
 
 A deck carries the tokens of the themes it actually names and no others, so
 none of this costs anything to a deck that uses one palette.
 
-### Custom CSS
+### What a theme sets
 
-Set `css:` in frontmatter and override the theme tokens - this layers on top
-of whichever `theme:` is selected, built-in or default:
+Name a `.css` file in `theme:` and override the tokens — this layers on top of
+whichever built-in the deck named, or on top of `mirzam` if it named none:
 
 ```css
-:root {
+[data-theme="acme"] {
   --mz-slide-bg: #0d1117;
   --mz-fg: #e9edf5;
   --mz-accent1: #5b8cff;
@@ -1583,12 +1666,12 @@ of whichever `theme:` is selected, built-in or default:
 }
 ```
 
-`.card`, `.eyebrow` and `.metric` are **not** in that file: they come with the
-renderer, like `.box` and `.small`, so a deck that loads no stylesheet at all
-still has an eyebrow and a card to lay a slide out with. What a stylesheet — or
-a theme — changes about them is [their tokens](#the-vocabulary-a-theme-writes-in).
-See [`examples/themes/mirzam.css`](../examples/themes/mirzam.css) for a complete
-theme written as rules rather than as tokens.
+`.card`, `.eyebrow` and `.metric` are **not** something a theme has to define:
+they come with the renderer, like `.box` and `.small`, so a deck that names no
+theme at all still has an eyebrow and a card to lay a slide out with. What a
+theme changes about them is [their tokens](#the-vocabulary-a-theme-writes-in).
+See [`examples/themes/blueprint.css`](../examples/themes/blueprint.css) for a
+complete one.
 
 #### Margins, padding and borders
 
@@ -1712,7 +1795,7 @@ alignment**. It is a block box of a fixed width and `text-align` cannot move
 one, so the alignment has to be read off a selector and answered with a margin.
 `base.css` carries that one rule, so a heading in a pane with `align=center`
 gets its mark centred under the words and one with `align=right` gets it at the
-right edge — both for free, and neither needing a stylesheet of your own.
+right edge — both for free, and neither needing a theme of your own.
 
 ```css
 /* A theme in tokens: the faces, the ladder, the mark under a heading. */
@@ -1731,9 +1814,10 @@ right edge — both for free, and neither needing a stylesheet of your own.
 ```
 
 Because custom properties inherit, that block works at any scale — on `:root`
-it moves the deck, on a class you put on one pane it moves that pane. It is
-also what a pane's `theme=` carries, which is why the type now travels with a
-re-themed pane and a rule never could.
+it moves the deck, on `[data-theme="acme"]` it moves whatever carries that
+name, on a class you put on one pane it moves that pane. It is also what a
+pane's `theme=` carries, which is why the type now travels with a re-themed
+pane and a rule never could.
 
 #### A custom theme needs both modes, or it has none
 
@@ -1749,15 +1833,29 @@ nothing on screen moves. Give the second mode a selector that outranks your own
 :root[data-mode="light"]  { --mz-slide-bg: #ffffff; --mz-fg: #10151f; }
 ```
 
-Two rules follow from that, and both are checked for the sample themes by
-`cargo test -p mirzam-cli --test sample_themes`:
+A theme scoped to its own stem writes the same pair one level in:
 
-- **Every token set in one mode must be set in the other.** A token you set
+```css
+[data-theme="acme"]                    { --mz-slide-bg: #ffffff; --mz-fg: #10151f; }
+[data-theme="acme"][data-mode="dark"]  { --mz-slide-bg: #0d1117; --mz-fg: #e9edf5; }
+```
+
+Three rules follow, and **`mirzam check` reports all three against your own
+theme** — they used to be a test that only the sample themes could fail:
+
+- **Every colour set in one mode must be set in the other.** A colour you set
   once keeps its other-mode value — which is how a dark panel ends up on a
   white slide.
-- **Name a colour once.** A literal buried in a rule (`p { color: #c7cede }`)
-  cannot have a second mode. Put it in a token of your own — `--aurora-body`
-  in the sample — and set that token twice.
+- **A theme with one palette and no second mode is reported as such**, with
+  the block to add. Type, sizes and spacing are not colours and need saying
+  only once.
+- **Text has to be legible on its own background**: the same contrast floors
+  the built-in themes are held to — 4.5:1 for text, 3:1 for a chart mark — are
+  measured on the colours your theme actually resolves to in each mode.
+
+One consequence: **name a colour once**. A literal buried in a rule
+(`p { color: #c7cede }`) cannot have a second mode and cannot be checked. Put
+it in a token of your own and set that token twice.
 
 A theme that deliberately only ever appears one way is fine; write `mode:` in
 the deck's frontmatter and say so.

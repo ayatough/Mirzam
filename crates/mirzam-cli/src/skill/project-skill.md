@@ -100,8 +100,10 @@ binary compares stamps.
   and `check` is the only thing that will tell you.
 - **Draw the grid first.** Row heights come from how many lines you drew,
   column widths from the character widths — so the drawing is the design.
-- **Prefer the deck's own theme** over a custom stylesheet. `.metric`, `.card`
-  and `.eyebrow` come with the renderer, so a slide copied out of a sample deck
-  keeps its shape without `examples/themes/mirzam.css` behind it.
+- **Prefer a built-in `theme:`** over a theme of your own. `.metric`, `.card`
+  and `.eyebrow` come with the renderer and read the theme's tokens, so a slide
+  copied out of a sample deck keeps its shape with no stylesheet behind it.
+  When a deck does need its own, `theme:` takes the `.css` path — and one or
+  two classes need only a `<style>` block in the deck.
 - **Put the spoken sentence in a speaker note** (`<!-- note: … -->`) rather than
   crowding the slide with it.

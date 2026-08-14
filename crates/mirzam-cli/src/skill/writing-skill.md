@@ -20,9 +20,9 @@ instead, and hand the rendering to the person.
    the whole markup on one page: every fence, every frontmatter field, every
    attribute, and the traps that fail silently. Start with the "Traps" section.
 2. **Write the deck as one `.md` file.** Keep it to one file: transclusion
-   (`![[section.md]]`), `data:` pointing at a `.csv`, and `css:` pointing at a
-   stylesheet all need a filesystem, and the browser editor has none either.
-   Inline the CSV inside the `chart` block and use a built-in `theme:`.
+   (`![[section.md]]`), `data:` pointing at a `.csv`, and `theme:` pointing at
+   a `.css` all need a filesystem, and the browser editor has none either.
+   Inline the CSV inside the `chart` block and name a built-in in `theme:`.
 3. **Be conservative about fit.** Nothing here measures a slide, so leave room:
    one idea per pane, short lines, no ten-paragraph pane under a one-line band.
    A pane clips silently what does not fit in it.

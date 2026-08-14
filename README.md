@@ -205,7 +205,7 @@ source beside the slides is the example.
 
 | Deck | What it is |
 |---|---|
-| [`examples/pitch.md`](examples/pitch.md) | A sales pitch: metric tiles, charts from CSV, a custom dark theme |
+| [`examples/pitch.md`](examples/pitch.md) | A sales pitch: metric tiles, charts from CSV, the project's own theme in dark |
 | [`examples/research.md`](examples/research.md) | A research report: maths, a chart, and a bibliography cited from four slides |
 | [`examples/seminar.md`](examples/seminar.md) | The same shape in Japanese: maths, a quoted figure, footnotes beside a cited bibliography, CJK typography |
 
@@ -228,10 +228,10 @@ Run `./scripts/build-site.sh` to build the same site locally.
   flavour, charts, shapes, live connectors, video, audio and embeds, citations,
   references from a BibTeX file, background images, animation and slide
   transitions, annotations, effects, shrink-to-fit and author-chosen pane
-  breaks, named themes and dark mode down to a single pane, custom themes,
-  footers and slide numbers, speaker notes and a presenter window, touch and
-  gesture controls, a table of contents from headings, VS Code extension,
-  WebAssembly core and a browser editor
+  breaks, named themes and dark mode down to a single pane, a theme of your own
+  in a file, footers and slide numbers, speaker notes and a presenter window,
+  touch and gesture controls, a table of contents from headings, VS Code
+  extension, WebAssembly core and a browser editor
 - **Next:** carrying an element from one slide to the next, dragging an
   annotation back into the Markdown, PowerPoint export
 - **Performance:** a 500-slide deck builds in 76 ms; a single-slide edit

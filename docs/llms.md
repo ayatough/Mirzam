@@ -28,7 +28,7 @@ author a slide.
 4. **A `connect` endpoint naming an id that does not exist draws nothing.** No
    arrow, no gap, no error on the slide. Same for an `annotate` anchor.
 5. **`.metric`, `.card`, `.eyebrow` are renderer classes**, along with `.box`
-   and the rest listed below — a slide copied without its `css:` keeps them.
+   and the rest listed below — a slide copied out of its deck keeps them.
    What a theme changes about them is their `--mz-card-*`, `--mz-eyebrow-*`
    and `--mz-metric-*` tokens, not the classes.
 6. **`---` breaks a slide.** A horizontal rule inside a slide is `***`.
@@ -49,8 +49,10 @@ aspect: "16:9"              # or "4:3"
 theme: nord                 # mirzam (default) | nord | solarized | vscode | wuwei
                             #   a token set: colours, and for mirzam and wuwei
                             #   the type too (sans and roman respectively)
+                            # also takes a .css path of your own, relative to
+                            #   this file, or a list in cascade order:
+                            #   theme: [mirzam, themes/house.css]
 mode: dark                  # light | dark; unset follows the reader's machine
-css: themes/dark.css        # custom stylesheet, relative to this file
 split: h2                   # also start a new slide at every h1/h2/h3
 fit: shrink                 # scale an overfull pane's text down instead of clipping
 math: typst                 # latex (default) | typst
@@ -185,7 +187,8 @@ not write a palette into the deck.
 `#id` names an element so `connect`, `anim` and `annotate` can target it. One
 source line only.
 
-Classes the **renderer** provides — everything else comes from your `css:`:
+Classes the **renderer** provides — everything else comes from your own theme
+or a `<style>` block in the deck:
 `.u` (accent rule under the words) · `.center` `.right` · `.small` `.big`
 `.huge` · `.muted` `.accent` `.accent2` `.danger` · `.box` (an aside inside a
 pane) · `.card` (a pane raised off the slide) · `.eyebrow` (the label over a

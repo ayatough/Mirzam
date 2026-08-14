@@ -47,8 +47,38 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   that produced it. Additive — the schema is still `version: 1`.
 
 ### Changed
-- **`theme:` sets the type, not just the colours.** A theme was a palette and
-  nothing else, so the part of a deck's look people actually recognise — the
+- **`theme:` takes a theme of your own, in a file — and gives it a name.**
+  A custom theme was a stylesheet named in a second key, which meant it could
+  repaint a deck and nothing more. It is a supported artefact now:
+
+  ```yaml
+  theme: mirzam                        # a built-in
+  theme: themes/acme.css               # your own, beside the deck
+  theme: [mirzam, themes/tweaks.css]   # a built-in, then yours over it
+  ```
+
+  An entry ending in `.css` is a path, resolved relative to the deck the way
+  `masters:` and `bibliography:` are; anything else is a built-in name. A list
+  is cascade order, and a scalar is a list of one — so every deck that already
+  wrote `theme: nord` is unchanged. Your file loads *after* the shared
+  stylesheet, which is what lets it set the type and not only the colours.
+
+  **`themes/acme.css` also registers as `acme`**, a name a slide or one pane
+  can wear: `::: pane fig {theme=acme}`. That works only if the file scopes its
+  tokens to its own stem — `[data-theme="acme"] { … }` — because tokens written
+  at `:root` are set on the document and a pane asking for the name would pick
+  up nothing. `mirzam check` says so when a deck gets it wrong, rather than
+  leaving a pane silently in the deck's palette.
+
+  Two more things `check` now says about a theme of your own, both of them
+  gates the built-in themes have always been held to: a theme that paints in
+  **one palette** pins the deck to one mode and makes `D` in the viewer look
+  broken, and a colour pair under the **contrast floor** is text an audience
+  cannot read. `examples/themes/blueprint.css` is a complete example to copy —
+  deliberately not Mirzam's identity, so it shows what a theme is free to
+  change.
+- **`theme: mirzam` sets the type, not just the colours.** A theme was a
+  palette and nothing else, so the part of a deck's look people recognise — the
   faces, the weight ladder, the short violet rule under a section heading —
   could only be had by writing a stylesheet and naming it in a second
   frontmatter key. Those are now tokens: `--mz-font`, `--mz-font-display`,
@@ -61,11 +91,11 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
   `theme: mirzam` now carries Mirzam's identity rather than its colours, so a
   deck that names it — or names nothing, since it is the fallback — gets the
-  type as well. **`examples/seminar.md` is the one sample deck that moves**: it
-  loads no stylesheet, so this is the first thing it has ever had beyond a
-  palette. The other eight still load `examples/themes/mirzam.css`, which says
-  the same thing as rules, and are unchanged to the pixel. The file goes away
-  when `theme:` learns to take a path.
+  type as well. **`examples/seminar.md` is the one sample deck that moves for
+  this**: it loads no stylesheet, so this is the first thing it has ever had
+  beyond a palette. The other eight said the same thing as rules, in
+  `examples/themes/mirzam.css`; they now write `theme: mirzam` and that file is
+  gone (below).
 
   Because custom properties inherit and rules do not, the type now travels with
   a pane that carries `theme=` — a re-themed pane used to take the other
@@ -119,7 +149,30 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   short of the words instead of running up against them. Set `--mz-grid-gap: 0`
   if you want the two halves to meet.
 
+### Deprecated
+- **`css:` is retired. Write `theme:` instead — the same path, in the list.**
+  It still works for **this release**, and every build that sees it prints the
+  exact line to write:
+
+  ```yaml
+  css: themes/house.css                  # before
+  theme: [mirzam, themes/house.css]      # after
+  ```
+
+  `--css` on the command line goes the same way; `--theme` takes a path now,
+  and repeating it is a list. Both are removed in the next release, so a deck
+  or a script that writes either has one release to move. Nothing changes about
+  what is loaded or in what order in the meantime.
+
 ### Removed
+- **`examples/themes/mirzam.css` is gone**, and the eight sample decks that
+  loaded it write `theme: mirzam`. Everything in it is in the built-in theme's
+  tokens now, so nothing repaints — with two exceptions worth knowing if you
+  copied from those decks: `.foot` was `.small` under another name and is now
+  written `{.small}`, and `.markers`, one deck's list-marker demonstration, is
+  a `<style>` block in that deck, which is where a class or two belongs.
+  `examples/themes/` still ships a custom theme, `blueprint.css`, because a
+  theme of your own is now a documented feature and a feature wants a sample.
 - **The `default` theme is gone. Write `theme: mirzam`, or nothing at all.**
   There were six built-in themes and only five palettes: `default` and `mirzam`
   were the same sheet under two names — 66 token declarations, every value
