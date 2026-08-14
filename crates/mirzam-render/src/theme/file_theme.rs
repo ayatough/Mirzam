@@ -317,10 +317,21 @@ pub fn file_theme_warnings(themes: &[FileTheme]) -> Vec<String> {
         // exists for.
         let unmoded = colours(&both);
         if light.is_empty() && dark.is_empty() && !unmoded.is_empty() {
+            // Which half is missing is a question the file already answers: a
+            // theme painting a dark slide is missing its light mode. Read off
+            // the slide's own background, so the block the message names is
+            // the block the author has to write.
+            let missing = match both
+                .get("--mz-slide-bg")
+                .and_then(|bg| super::contrast_ratio(bg, "#ffffff"))
+            {
+                Some(against_white) if against_white > 2.0 => "light",
+                _ => "dark",
+            };
             let scope = if theme.scopes_to_stem() {
-                format!("[data-theme=\"{name}\"][data-mode=\"light\"]")
+                format!("[data-theme=\"{name}\"][data-mode=\"{missing}\"]")
             } else {
-                ":root[data-mode=\"light\"]".to_string()
+                format!(":root[data-mode=\"{missing}\"]")
             };
             out.push(format!(
                 "theme: `{path}` paints in one palette: {} colour tokens, and no second mode \
@@ -427,6 +438,7 @@ mod tests {
         let warnings = file_theme_warnings(&[theme]);
         assert_eq!(warnings.len(), 1, "{warnings:?}");
         assert!(warnings[0].contains("one palette"), "{}", warnings[0]);
+        // The theme paints a dark slide, so the half it is missing is light.
         assert!(
             warnings[0].contains(":root[data-mode=\"light\"]"),
             "{}",
@@ -445,12 +457,14 @@ mod tests {
         );
         assert!(file_theme_warnings(&[ok]).is_empty());
 
+        // And a theme painting a white slide is told to write the dark half,
+        // not the one it already has.
         let one = FileTheme::new(
             "acme.css",
             "[data-theme=\"acme\"] { --mz-slide-bg: #ffffff; --mz-fg: #101010; }",
         );
         assert!(
-            file_theme_warnings(&[one])[0].contains("[data-theme=\"acme\"][data-mode=\"light\"]")
+            file_theme_warnings(&[one])[0].contains("[data-theme=\"acme\"][data-mode=\"dark\"]")
         );
     }
 
