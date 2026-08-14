@@ -24,6 +24,13 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   short of the words instead of running up against them. Set `--mz-grid-gap: 0`
   if you want the two halves to meet.
 
+### Fixed
+- **The pitch deck's "How it works" diagram stays inside the deck margin.** The
+  WASM box reached 99% of the slide width, 47px past the right margin every
+  other slide aligns to. Shapes are free to cross pane borders — that layer
+  ignores the grid deliberately — but nothing in this composition meant to
+  break the margin line.
+
 ## [0.5.0] - 2026-08-13
 
 ### Added

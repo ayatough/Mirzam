@@ -171,8 +171,8 @@ Same input, same pixels - terminal, VS Code, or a phone.
 
 ```shape
 rect #core   at(74%, 32%) size(34%, 14%) label="Rust core" stroke=@accent1
-rect #native at(60%, 62%) size(22%, 13%) label="CLI"
-rect #wasm   at(88%, 62%) size(22%, 13%) label="WASM" stroke=@accent2
+rect #native at(63%, 62%) size(20%, 13%) label="CLI"
+rect #wasm   at(85%, 62%) size(20%, 13%) label="WASM" stroke=@accent2
 arrow from(#core.s) to(#native.n)
 arrow from(#core.s) to(#wasm.n)
 text at(74%, 82%) "identical output" .small
