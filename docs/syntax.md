@@ -1467,7 +1467,7 @@ theme: nord
 | `nord` | [Nord](https://www.nordtheme.com/), MIT |
 | `solarized` | [Solarized](https://ethanschoonover.com/solarized/), MIT |
 | `vscode` | VS Code Light+/Dark+, MIT |
-| `wuwei` | ours — warm greyscale, minimal, deliberately low contrast |
+| `wuwei` | ours — warm greyscale and roman type, minimal, deliberately low contrast |
 
 Leaving `theme:` out is the same as writing `theme: mirzam`, so the key is a
 choice to look like something else. An unknown name is a warning, not a build
@@ -1484,11 +1484,18 @@ smaller, the short violet rule under a section heading instead of a full-width
 border. See [the vocabulary](#the-vocabulary-a-theme-writes-in) for the whole
 list of dials.
 
+`theme: wuwei` is the other one, and it is the demonstration that a theme is an
+identity rather than a palette: warm greys **and roman type** — an old-style
+serif, Mincho named after it so Japanese stays roman too, one face for headings
+and text alike, and a ladder that separates them by size and space rather than
+by weight. Put the two side by side and the difference is legible before a
+colour registers.
+
 A built-in theme is still tokens and nothing else, because it is loaded
 *before* the layout stylesheet: a rule written there would be overridden by the
 very stylesheet it is meant to sit on. What changed is how much a token can
-say. `nord`, `solarized`, `vscode` and `wuwei` set colours only, so a deck that
-names one of them keeps the built-in type.
+say. `nord`, `solarized` and `vscode` set colours only, so a deck that names one
+of them keeps the built-in type.
 
 `examples/themes/mirzam.css` is the same identity written as rules, and the
 sample decks still load it with `css:`. The two overlap on purpose, and the two

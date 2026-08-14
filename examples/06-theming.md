@@ -49,7 +49,7 @@ every slide after this one.
 | `nord` | Nord |
 | `solarized` | Solarized |
 | `vscode` | VS Code Light+/Dark+ |
-| `wuwei` | warm greyscale |
+| `wuwei` | warm greys, roman type |
 :::
 
 ::: pane how {valign=middle}
@@ -165,7 +165,7 @@ The same theme drawn again for dark, rather than inverted.
 ```
 
 ::: pane head
-[Gallery]{.eyebrow} **Every palette, in the deck's own mode** — no pane below
+[Gallery]{.eyebrow} **Every theme, in the deck's own mode** — no pane below
 names a mode, so `D` flips all five along with the slide around them.
 :::
 
@@ -204,9 +204,9 @@ Editor colours, [a link](https://example.com), **bold**.
 ::: pane five {theme=wuwei valign=middle}
 [wuwei]{.eyebrow}
 
-Warm greyscale, [a link](https://example.com), **bold**.
+Warm greys in roman, [a link](https://example.com), **bold**.
 
-[No accent colour, and quiet on purpose.]{.small}
+[A serif; quiet on purpose.]{.small}
 :::
 
 ::: pane how {.card valign=middle}

@@ -70,6 +70,24 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   Because custom properties inherit and rules do not, the type now travels with
   a pane that carries `theme=` — a re-themed pane used to take the other
   theme's colours and keep the deck's face.
+- **`theme: wuwei` is now set in roman type.** The quiet greyscale theme was a
+  palette; it is an identity now — an old-style serif for headings and text
+  alike, more air between the lines, and a ladder that tells a heading from a
+  paragraph by size and space rather than by weight. Put it beside `mirzam`,
+  which is Inter and Space Grotesk, and you can see which theme a deck is in
+  before you notice a colour: slide 5 of `examples/06-theming.md` shows all
+  five side by side.
+
+  Nothing is downloaded — a deck is one file and a venue may have no network —
+  so the theme names faces a machine is likely to have (Charter, Iowan Old
+  Style, Palatino, Georgia, Noto Serif) and ends in the generic `serif`. Mincho
+  and Song faces are named after them, so Japanese stays roman instead of
+  falling back to a gothic. Code keeps the monospaced face it had.
+
+  Two marks change with the type: bold text is drawn in the ink colour rather
+  than the accent, and a quotation's bar is half the weight it was. `wuwei`
+  still draws no short rule under a section heading — a theme with no accent
+  colour has nothing to sign its name with, so the plain border stays.
 - **The rule under a section heading follows the heading's alignment.** A theme
   that signs its name with a short rule rather than a full-width border drew it
   at the left edge whatever the heading did, so a centred or right-aligned `##`
