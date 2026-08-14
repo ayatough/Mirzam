@@ -41,6 +41,7 @@ keep changing.
 | Slide masters (`masters:`, `<!-- layout: -->`) | Done |
 | Footers and slide numbers | Done |
 | A theme per slide, and per pane | Done |
+| A theme sets type, not only colour; `theme:` takes a path | Done |
 | Carrying an element from one slide to the next | Next |
 | Demo recording and a generated themes gallery | Next |
 | Dragging an annotation back into the Markdown | Next |

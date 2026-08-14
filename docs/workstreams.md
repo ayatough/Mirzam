@@ -78,7 +78,7 @@ there is. The model column follows from that:
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
 | W20 | Syntax highlighting at build time | B | Opus | — | ✅ |
 | W21 | An authoring contract for agents | B | Opus | — | ✅ |
-| W22 | One door to a deck's look: `theme:` absorbs `css:` | B | Opus | — | |
+| W22 | One door to a deck's look: `theme:` absorbs `css:` | B | Opus | — | ✅ |
 | W23 | Mermaid diagrams, rendered at build time | B | Opus | — | |
 
 ### What is deferred, and why
@@ -988,7 +988,7 @@ somebody else's process consuming a stable interface. An MCP wrapper stays
 out until a surface that needs one demands it; the two skills cover the
 terminal and the sandbox.
 
-## W22 — One door to a deck's look: `theme:` absorbs `css:`
+## W22 — One door to a deck's look: `theme:` absorbs `css:` ✅
 
 **Difficulty B** — the token work is mechanical and testable; the frontmatter
 change is a break, and breaks are where a wrong decision is expensive.
