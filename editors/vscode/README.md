@@ -41,10 +41,10 @@ reference](https://github.com/ayatough/Mirzam/blob/main/docs/syntax.md).
 
 Rendering happens in the webview, which has no filesystem of its own, so the
 extension reads the deck's files and hands them over: transcluded sections, a
-`masters:` file, a `bibliography:`, the `css:` stylesheet, images and video, a
-pane's background photograph, and the CSV a chart names in `data:`. A file the
-extension cannot read is reported in the strip under the preview rather than
-left to look like a rendering bug.
+`masters:` file, a `bibliography:`, the stylesheets `theme:` names, images and
+video, a pane's background photograph, and the CSV a chart names in `data:`. A
+file the extension cannot read is reported in the strip under the preview
+rather than left to look like a rendering bug.
 
 ## Building locally
 
