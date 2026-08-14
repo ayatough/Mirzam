@@ -1013,22 +1013,78 @@ Two deliverables. The first is what makes the second honest.
    `--mz-font`, `--mz-font-display`, `--mz-font-mono`; per level `-size`,
    `-weight`, `-tracking`; `--mz-body-size`/`-leading` — each with today's value
    as its fallback, so **a deck that sets none renders identically**. That is
-   the acceptance test: the golden snapshots move (the stylesheet is inlined in
-   them) but the pixels do not, and the claim is checked by rendering, not by
-   reading the diff.
+   the acceptance test for *this step*: the golden snapshots move (the
+   stylesheet is inlined in them) but the pixels do not, and the claim is
+   checked by rendering, not by reading the diff. It is not the acceptance test
+   for the migration below, which changes how nine decks look on purpose — the
+   two are separate gates and conflating them hides a real break.
 
    The signature rule joins them: `--mz-h2-rule-w` defaults to `0`, so
    `base.css` can carry the `h2::after` block and no theme but `mirzam` draws
    anything. `--mz-h2-border` keeps today's full-width border as its own
-   default. `.eyebrow` and `.metric` move into `base.css` as token-driven
-   vocabulary — `.card` is already there, `docs/syntax.md` already calls all
-   three "utility classes the sample decks use", and eight decks use them.
+   default.
+
+   **The vocabulary is larger than the type ladder, and the whole of it has to
+   be listed before the work starts** — deliverable 1 is a promise to stop if
+   the identity does not fit in tokens, and that promise is worthless if the
+   list is written as the work goes. Auditing every rule
+   `examples/themes/mirzam.css` overrides against the `base.css` rule it
+   overrides gives, beyond the type ladder above:
+
+   | What the sample theme moves | `base.css` today | Token needed |
+   |---|---|---|
+   | `h1`/`h2` line-height | `h2` sets `1.25`, `h1` none | per-level `-leading`, not just `--mz-body-leading` |
+   | `h3 { color: fg }` | `color: var(--mz-accent1)` | `--mz-h3-color` |
+   | the violet rule's gradient | — | 2 colours + height, radius, `margin-top`; `--mz-h2-rule-w` alone draws a rule with no colour |
+   | `strong { color: fg; weight: 600 }` | `color: var(--mz-accent1)` | `--mz-strong-color`, `--mz-strong-weight` |
+   | `blockquote { border: accent1; color: fg }` | `border: 4px solid var(--mz-accent2)`, `color: var(--mz-muted)` | `--mz-quote-border`, `--mz-quote-fg` |
+   | `pre`, `p code`, `li code` background | `var(--mz-surface)` for both | `--mz-code-bg`, `--mz-code-fg` |
+   | `th { color: fg }` | background matches; no colour | `--mz-th-fg` |
+   | `.card` radius, padding, fill | — (see below) | `--mz-card-*` |
+   | `.title-slide` weight, tracking | sets `font-size` only | `--mz-title-weight`, `--mz-title-tracking` |
+
+   One rule in that file is **not** expressible as a token and must land in
+   `base.css` as a rule: `:is(.center, [style*="text-align:center"]) h2::after
+   { margin-inline: auto }` centres a block box under a centred heading, which
+   is selector logic, not a dial. That is the one carve-out; if a second one
+   appears, the stop condition has been met.
+
+   `.eyebrow`, `.metric` (with `.metric-up` and `.metric-label`) and `.card`
+   move into `base.css` as token-driven vocabulary. Note that **`.card` is not
+   already there** — `base.css` has `.box`, whose own comment reads "`.card` in
+   the sample themes is this with a shadow and a fill; this one is in base so a
+   deck that picked no stylesheet still has somewhere to put a caveat." Moving
+   `.card` in means deciding what `.box` is for afterwards; two near-identical
+   bordered blocks in one stylesheet is the `pitch.css` mistake again.
+   `docs/syntax.md:1564` points at the *sample file* for all three rather than
+   calling them base vocabulary, so that paragraph is rewritten, not cited.
+
+   The case for moving them is stronger than "eight decks use them": all nine
+   do, and `examples/seminar.md` — which loads no stylesheet at all — writes
+   `[先行研究]{.eyebrow}` on line 288 and renders it unstyled today. That is a
+   live bug this deliverable closes.
 
    Then `themes/mirzam.css` (the built-in, not the sample) sets the type
    tokens, `examples/themes/mirzam.css` mostly dissolves, and the sample decks
    write `theme: mirzam`. **That migration is the proof the design works**; if
    the identity cannot be expressed in tokens, this stream has the wrong shape
    and should stop rather than grow an escape hatch.
+
+   **The migration flips the sample decks' default mode, and that decision
+   comes first.** The two files disagree about which mode is bare, deliberately
+   and with the reason written in both headers: `examples/themes/mirzam.css` is
+   dark-first (`:root` is dark; light needs `mode: light`) because that is how
+   the mark is drawn and how a deck is shown, while `themes/mirzam.css` is
+   light-first (`:where([data-theme="mirzam"])` is light; dark arrives through
+   `prefers-color-scheme` or `data-mode`) because a built-in cannot impose a
+   preference on a reader whose system has one. So `css: themes/mirzam.css` →
+   `theme: mirzam` turns eight dark decks into decks that follow the viewer's
+   system — including in PDF export, where there is no viewer to follow. Pick
+   one before touching a stylesheet: either the decks gain `mode: dark` (keeps
+   both files' reasoning intact, costs a line per deck) or the built-in goes
+   dark-first (costs the reasoning in its header). The first is recommended;
+   the second makes `mirzam` the only built-in that ignores
+   `prefers-color-scheme`.
 
 2. **`theme:` takes a built-in name or a path, and `css:` is retired.**
 
@@ -1051,9 +1107,14 @@ Two deliverables. The first is what makes the second honest.
    is what will let a file theme do it after.
 
    `css:` becomes an alias for one release: accepted, mapped onto the list, and
-   warned about with the line to write instead. Then removed. Pre-1.0 permits
-   the harder break, but the warning is a few lines and tells a user exactly
-   what to type.
+   warned about with the line to write instead. Then removed. Pre-1.0 is why
+   the window is one release rather than several — not a licence to skip it;
+   the warning tells a user exactly what to type, and that is worth more than
+   the lines it costs. What those lines actually cost is worth stating, because
+   the alias is not one branch in the parser: `--css` on the CLI, the `css:`
+   arm in `check.rs`'s diagnostic-code table, the wasm `FileProvider` path and
+   `references.js` all have to accept both forms for that release and drop the
+   old one together.
 
 **The asymmetry to document rather than hide.** A built-in theme is tokens,
 loaded before `base.css`; a file theme may write any rule, loaded after. That is
@@ -1072,6 +1133,28 @@ Which is also why deliverable 1 comes first: it is what makes the upper row wide
 enough to hold a real identity. A file theme written in tokens registers under
 its filename stem (`themes/acme.css` → `acme`) and becomes usable in a pane's
 `theme=`, which no custom theme can do today.
+
+**That last sentence hides a requirement on the author, and it has to be
+written down or it reads as a promise the renderer cannot keep.** Registering a
+stem does not make a stylesheet scopable: a file that writes `:root { --mz-accent1:
+… }` sets the tokens on the document, and a pane carrying `data-theme="acme"`
+picks up nothing. For the stem to mean anything the file must write
+`[data-theme="acme"] { … }` itself — the selector the built-ins use, minus the
+`:where()`, which they only need because a deck's own stylesheet has to be able
+to outrank them. So the rule is: **a file theme is usable in a pane's `theme=`
+if, and only if, it scopes its tokens to its own stem.** Say so where the stem
+rule is documented, and have `check` say it too — a `theme=acme` that silently
+does nothing is exactly the class of failure the diagnostics below exist for.
+
+Two more consequences of registering stems, neither costed above. A stem that
+collides with a built-in (`themes/nord.css`) needs a rule; the cheap one is
+that the built-in wins and the collision warns, because the alternative lets a
+file in the deck's directory silently redefine what `theme: nord` means. And
+`known_theme()` / `scope_attrs()` / `scope_warnings()` are pure functions over
+a static list today — `scope_attrs` silently drops any name that is not
+built-in, which is precisely what would drop every file theme. Making them
+deck-aware is a signature change in `mirzam-render`, not a table edit, and it
+is the one part of this stream that is not mechanical.
 
 **A deck-specific class does not need a file.** A raw `<style>` block in the
 deck reaches the page untouched — verified — which is the right home for the one
@@ -1101,7 +1184,18 @@ retires with the key), `mirzam-wasm` (a file theme arrives through
 `editors/vscode/src/references.js`, whose `frontmatterPath()` reads a scalar and
 must learn the list form — with a case in
 `editors/vscode/test/references.test.js`, since a theme file the host fails to
-collect is a deck that previews unstyled.
+collect is a deck that previews unstyled. Also `known_theme`, `scope_attrs` and
+`scope_warnings` in `theme/mod.rs`, per the stem rule above, and `check.rs`'s
+`("css:", "build.css")` diagnostic-code mapping.
+
+Every deck and every page that writes the key moves with it, and the list is
+longer than the sample decks: `examples/*.md` (eight decks), `docs/syntax.md`
+(the theming section and the utility-class paragraph), `docs/llms.md` (three
+places), `docs/quickstart.md`, `docs/troubleshooting.md`, `docs/agents.md`,
+`docs/ja/quickstart.md`, `docs/ja/README.md`, and
+`crates/mirzam-cli/src/skill/writing-skill.md` — the last of those is W21's
+authoring contract, so leaving it stale means agents keep writing a key that no
+longer exists.
 
 ## W5 — Typst-flavoured math ✅
 
