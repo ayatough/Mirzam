@@ -84,9 +84,9 @@ fn kinds(report: &serde_json::Value) -> Vec<String> {
         .collect()
 }
 
-/// A deck carrying one of each failure the two passes can see: a shape block
-/// inside a pane and a connector to nothing (the build notices both), and a
-/// body pane with far more text than its one-line band can hold (only a
+/// A deck carrying one of each failure the two passes can see: a shape line
+/// naming no known kind and a connector to nothing (the build notices both),
+/// and a body pane with far more text than its one-line band can hold (only a
 /// browser notices that).
 const BROKEN: &str = r#"---
 title: Known problems
@@ -116,11 +116,11 @@ Latency fell in every region we measured, and the cache hit rate rose with it.
 Latency fell in every region we measured, and the cache hit rate rose with it.
 Latency fell in every region we measured, and the cache hit rate rose with it.
 Latency fell in every region we measured, and the cache hit rate rose with it.
+:::
 
 ```shape
-rect #box at(50%, 50%) size(10%, 10%)
+boxx #box at(50%, 50%) size(10%, 10%)
 ```
-:::
 
 ```connect
 #nowhere -> #alsonowhere

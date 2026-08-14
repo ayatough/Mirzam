@@ -295,8 +295,10 @@ impl LineIndex {
 /// added here.
 fn build_kind(message: &str) -> &'static str {
     const TABLE: &[(&str, &str)] = &[
-        ("`shape` block", "build.shape"),
         ("shape line ", "build.shape"),
+        ("shape:", "build.shape"),
+        ("grid-pad", "build.layout"),
+        ("grid-gap", "build.layout"),
         ("anim ", "build.anim"),
         ("cannot split", "build.anim"),
         ("a target is split", "build.anim"),
@@ -515,8 +517,13 @@ mod tests {
     fn every_family_of_build_warning_has_its_own_kind() {
         for (message, kind) in [
             (
-                "slide 1: pane `main` contains a `shape` block, but shape only renders at slide top level",
+                "slide 1: shape line 1: unknown shape kind `boxx`",
                 "build.shape",
+            ),
+            ("slide 1: shape: no element with id `#nope`", "build.shape"),
+            (
+                "grid-gap: `wide` is not a pixel length (write `64px` or `64`)",
+                "build.layout",
             ),
             (
                 "slide 1: footnote reference `[^gone]` has no definition on this slide",
@@ -548,9 +555,15 @@ mod tests {
             ("bibliography: nothing to list", "build.bibliography"),
             ("masters: cannot read masters.md", "build.master"),
             ("unknown theme `nope`; using `default`", "build.theme"),
-            ("unknown mode `sideways`; expected `light` or `dark`", "build.theme"),
+            (
+                "unknown mode `sideways`; expected `light` or `dark`",
+                "build.theme",
+            ),
             ("math: unknown dialect `maple`", "build.math"),
-            ("transition: unknown transition `wobble`", "build.transition"),
+            (
+                "transition: unknown transition `wobble`",
+                "build.transition",
+            ),
             ("css: cannot read missing.css", "build.css"),
             ("no slides: deck.md is empty", "build.deck"),
             ("nope.png: file not found", "build.asset"),

@@ -53,7 +53,7 @@ output is safe to pipe.
     {
       "kind": "build.shape",
       "severity": "warning",
-      "message": "slide 2: pane `main` contains a `shape` block, but shape only renders at slide top level - it will show as a code block",
+      "message": "slide 2: shape line 1: unknown shape kind `boxx`",
       "slide": 2,
       "file": "examples/sections/method.md",
       "line": 14

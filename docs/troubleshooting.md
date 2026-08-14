@@ -64,8 +64,8 @@ is broken, check the three limits that produce this most often:
   of that pane's rectangle. A diagram that lands somewhere unexpected is
   usually in the other space from the one its coordinates were written for —
   moving the block in or out of the pane is the fix, not rescaling every
-  number. (Before v0.6 the in-pane form was a warning and rendered as a code
-  block.)
+  number. (In earlier releases the in-pane form was a warning and rendered as
+  a code block.)
 - **A footnote's `[^key]:` definition has to be on the same slide as its
   `[^key]` reference** — each slide renders on its own, so a definition left
   on another slide (or, in a `pane` grid layout, a *different pane* of the
