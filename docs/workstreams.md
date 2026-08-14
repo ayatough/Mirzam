@@ -1079,12 +1079,31 @@ Two deliverables. The first is what makes the second honest.
    `prefers-color-scheme` or `data-mode`) because a built-in cannot impose a
    preference on a reader whose system has one. So `css: themes/mirzam.css` →
    `theme: mirzam` turns eight dark decks into decks that follow the viewer's
-   system — including in PDF export, where there is no viewer to follow. Pick
-   one before touching a stylesheet: either the decks gain `mode: dark` (keeps
-   both files' reasoning intact, costs a line per deck) or the built-in goes
-   dark-first (costs the reasoning in its header). The first is recommended;
-   the second makes `mirzam` the only built-in that ignores
-   `prefers-color-scheme`.
+   system — including in PDF export, where there is no viewer to follow.
+
+   **Decided: the renderer keeps following the viewer, and the decks say what
+   they want.** An unset `mode:` continues to mean `prefers-color-scheme`; no
+   default changes in `theme_attrs`. What changes is that a deck which is dark
+   today stops being dark by accident of which stylesheet it loaded and writes
+   `mode: dark` itself. Most of the sample decks should; **a few should
+   deliberately omit it**, because "this deck follows the room it is opened in"
+   is a property worth demonstrating in the samples rather than only describing
+   in `docs/syntax.md`. `examples/seminar.md` is already that deck — it names no
+   theme, no stylesheet and no mode — so the split exists today and only needs
+   to survive the migration on purpose instead of by omission.
+
+   Worth knowing while judging how much any of this matters: **on screen it
+   mostly does not.** The viewer carries a mode toggle (`D`, and a button,
+   deliberately — `viewer.js` notes a phone has no keyboard), it reads
+   `prefers-color-scheme` when no `data-mode` is set so the first toggle goes
+   the way the reader expects, and the choice persists in `localStorage` across
+   decks. The toggle also keeps working on the eight decks precisely because
+   `examples/themes/mirzam.css` defines both modes — a one-palette stylesheet is
+   what makes `D` appear dead, which is the trap the diagnostics below catch.
+   Where the frontmatter is the only lever is **PDF export and print**: there is
+   no viewer, no toggle and no `localStorage`, and `mirzam export pdf` takes the
+   baked mode or its own `--mode`. So the decision above is really a decision
+   about what a deck's PDF looks like.
 
 2. **`theme:` takes a built-in name or a path, and `css:` is retired.**
 
