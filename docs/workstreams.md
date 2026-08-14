@@ -75,7 +75,7 @@ there is. The model column follows from that:
 | W19 | Structural math editing: tap and place, not type | S | Fable | W5 | withdrawn |
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
 | W20 | Syntax highlighting at build time | B | Opus | — | ✅ |
-| W21 | An authoring contract for agents | B | Opus | — | 1–2 ✅ |
+| W21 | An authoring contract for agents | B | Opus | — | ✅ |
 
 ### What is deferred, and why
 
@@ -911,7 +911,9 @@ regenerated deliberately, since every code block in every deck changes.
 
 ## W21 — An authoring contract for agents
 
-**Difficulty B · 1 and 2 landed in `v0.5.0`; 3 is in progress**
+**Difficulty B · landed** — 1 and 2 in `v0.5.0`; 3, the installed skill,
+followed: `mirzam skill install` with stamp, hash guard and drift diagnostic
+(`build.skill`), plus the `mirzam-writing` zip for surfaces without a terminal.
 
 The second P0 from the [market survey](reports/2026-08-market-survey.md). The
 visible trend behind it: "the AI drafts, the human reviews the diff" is
