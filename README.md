@@ -11,7 +11,7 @@ single HTML file or a PDF.
 
 **[See the decks running →](https://ayatough.github.io/Mirzam/)**
 
-[Quick start](docs/quickstart.md) · [Syntax](docs/syntax.md) · [Syntax card](docs/llms.md) · [Layout guide](docs/layout.md) · [Troubleshooting](docs/troubleshooting.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](CONTRIBUTING.md) · [Development](docs/development.md) · [Brand](docs/brand/README.md) · [Agents](AGENTS.md) · [日本語](docs/ja/README.md)
+[Quick start](docs/quickstart.md) · [Syntax](docs/syntax.md) · [Syntax card](docs/llms.md) · [Writing decks with an agent](docs/agents.md) · [Layout guide](docs/layout.md) · [Troubleshooting](docs/troubleshooting.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](CONTRIBUTING.md) · [Development](docs/development.md) · [Brand](docs/brand/README.md) · [Agents](AGENTS.md) · [日本語](docs/ja/README.md)
 
 <a href="https://www.buymeacoffee.com/qython" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-violet.png" alt="Buy Me a Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
@@ -144,7 +144,13 @@ mirzam build README.md --split h2    # any document becomes a deck, unedited
 mirzam serve deck.md                 # live preview at localhost:4321
 mirzam export pdf deck.md -o deck.pdf
 mirzam check deck.md                 # clipped panes, unresolved connectors, and the rest
+mirzam skill install                 # teach Claude Code to write decks in this repository
 ```
+
+That last one writes `.claude/skills/mirzam/` from files embedded in the binary,
+so the syntax a model reads is the syntax it drives —
+[docs/agents.md](docs/agents.md) covers it, the machine-readable checker
+`mirzam check --format json`, and the `.zip` for claude.ai and phones.
 
 In the viewer: `←` `→` to navigate (and to step through a slide's animation),
 `N` for speaker notes, `F` for fullscreen, `D` for dark mode, `L` to outline the

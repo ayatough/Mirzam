@@ -1,10 +1,12 @@
 # Mirzam for agents
 
-Two files make Mirzam usable by a model that writes decks:
+Three things make Mirzam usable by a model that writes decks:
 [`llms.md`](llms.md) — the whole markup on one page, small enough to hand to a
 model as context, also published as
-[`/llms.txt`](https://ayatough.github.io/Mirzam/llms.txt) — and
-`mirzam check --format json`, which is this page.
+[`/llms.txt`](https://ayatough.github.io/Mirzam/llms.txt) —
+`mirzam check --format json`, which is most of this page, and
+[`mirzam skill install`](#the-skill), which writes both of them into an agent's
+own conventions so nobody has to remember to paste anything.
 
 > Not to be confused with [AGENTS.md](../AGENTS.md) at the repository root.
 > That is for an agent changing *Mirzam*; this is for an agent writing a *deck*.
@@ -37,6 +39,7 @@ output is safe to pipe.
 {
   "schema": "mirzam-check",
   "version": 1,
+  "mirzam": "0.5.0",
   "deck": "examples/pitch.md",
   "slides": 9,
   "ok": false,
@@ -69,6 +72,7 @@ output is safe to pipe.
 |---|---|
 | `schema` | Always `mirzam-check`. Check it before anything else: it is how a caller knows the document is one of these |
 | `version` | The integer below. `1` today |
+| `mirzam` | The version of the binary that produced this document, as a string. Not the schema version: it is what a caller repairs a [drifted skill card](#the-skill) *to*, and what to name when reporting a bug |
 | `deck` | The input path, exactly as it was given on the command line |
 | `slides` | How many slides were rendered and measured |
 | `ok` | `true` when no diagnostic has severity `error` — the same verdict the exit code carries |
@@ -143,6 +147,7 @@ what each one does to the slide.
 | `build.css` | An unreadable `css:` |
 | `build.continuation` | `<!-- next -->` in more than one pane on a slide |
 | `build.deck` | The deck as a whole — a file with no slides in it |
+| `build.skill` | The installed [skill card](#the-skill) and this binary are different versions |
 | `build.other` | A warning this list has not been taught yet. Read `message` |
 
 **Handle an unknown kind.** `build.other` exists so a new warning is never
@@ -161,6 +166,89 @@ rather than dropping the record.
   told plainly that it does not.
 - `kind` values are part of the contract in the same way: a new one may appear,
   an existing one does not change meaning.
+
+## The skill
+
+The loop above only runs if the agent knows about it. So the binary installs
+the instructions, rather than this repository holding a skill for people to
+find and copy:
+
+```bash
+mirzam skill install          # .claude/skills/mirzam/ in this repository
+mirzam skill install --user   # ~/.claude/skills/mirzam/, in every directory
+```
+
+It writes two files: `SKILL.md`, which is the loop — check `mirzam --version`
+and say how to install it if it is missing, write the deck, run
+`mirzam check --format json`, fix what it names, repeat — and
+`references/llms.md`, the syntax card, which `SKILL.md` points at rather than
+inlining, so the instructions stay short and the card is opened when markup is
+about to be written.
+
+**Both are embedded in the binary.** The card is `docs/llms.md` itself, compiled
+in, so the markup a model reads is the markup the binary beside it implements.
+That is the whole reason this is a command and not a file in a repository:
+while Mirzam is `0.x`, a card copied once is a card that will be wrong later.
+
+**A project install beats a user install** when you have both — Claude Code
+resolves the project skill first — so `--user` is the one to reach for if you
+write decks in directories that are not repositories, and the plain form is the
+one to commit, so a teammate cloning the repository gets the same instructions.
+
+### The stamp, and the drift it catches
+
+The generated `SKILL.md` ends with the version that wrote it, in a sentence and
+again in a comment:
+
+```html
+<!-- mirzam-skill version="0.5.0" hash="…" card="…" -->
+```
+
+`build` and `check` look for that comment: up from the deck's directory, one
+`.claude/skills/mirzam/SKILL.md` at a time, stopping at a `.git` directory
+(the repository is where "near the deck" ends), then `~/.claude/skills/`. When
+the version they find is not their own, they emit a `build.skill` warning — an
+ordinary one, in the same list as the rest, because the agent is already
+reading that list:
+
+- **card older than the binary** — "run `mirzam skill install`". The agent can
+  do this itself; it is the repair the diagnostic is asking for.
+- **card newer than the binary** — "this binary is older than the skill card;
+  upgrade the binary". Nothing an agent should fix by downgrading the card.
+
+So the update story is: upgrade the binary, run `mirzam skill install` again,
+and if you forget, the next `check` says so.
+
+`hash` is the file's own contents, `card` is the syntax card's. A reinstall over
+a skill somebody has *edited* refuses, and says how to go ahead anyway:
+
+```
+error: .claude/skills/mirzam/SKILL.md has been edited since it was installed.
+       `mirzam skill install --force` overwrites it (your edits are lost); …
+```
+
+An unmodified card from an older version is not somebody's work, and is
+replaced without a word.
+
+### Where no binary can run
+
+claude.ai, the desktop app and phones execute a skill in a sandbox with no
+filesystem and no network to fetch a release into, so the checking half of the
+loop is simply not available there. The honest degradation is a second,
+smaller skill that says so:
+
+```bash
+mirzam skill install --zip            # mirzam-writing-skill.zip
+mirzam skill install --zip out/s.zip  # or wherever you want it
+```
+
+`mirzam-writing` carries the same syntax card and tells the model to write
+correct Mirzam markdown, hand the `.md` back, and point the person at the
+[browser editor](https://ayatough.github.io/Mirzam/try/) — which renders the
+deck with nothing installed and works on a phone — or at the CLI for checking
+and PDF. Upload the archive under Settings → Capabilities → Skills; phones
+receive it by account sync. Each release attaches it, so it can also be
+downloaded rather than built.
 
 ## What this is not
 

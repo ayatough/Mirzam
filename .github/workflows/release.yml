@@ -143,6 +143,21 @@ jobs:
           path: dist/${{ steps.package.outputs.asset }}*
           if-no-files-found: error
 
+      # The skill for claude.ai, the desktop app and phones, where nothing can
+      # run a binary — so the archive has to arrive already built. Its contents
+      # are the same on every platform, so one job makes it: the native Linux
+      # build, which is the one whose binary actually runs here.
+      - name: package the sandbox skill
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        run: target/${{ matrix.target }}/release/mirzam skill install --zip dist/skill/mirzam-writing-skill.zip
+
+      - uses: actions/upload-artifact@v4
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        with:
+          name: skill
+          path: dist/skill/mirzam-writing-skill.zip
+          if-no-files-found: error
+
   publish:
     name: publish release
     needs: build

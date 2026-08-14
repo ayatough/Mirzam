@@ -4,3 +4,4 @@
 pub mod pipeline;
 pub mod scaffold;
 pub mod serve;
+pub mod skill;
