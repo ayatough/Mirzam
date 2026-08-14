@@ -993,6 +993,16 @@ terminal and the sandbox.
 **Difficulty B** — the token work is mechanical and testable; the frontmatter
 change is a break, and breaks are where a wrong decision is expensive.
 
+**What this stream is actually for, decided by the author in August 2026.** Not
+"`theme:` should set more things" — **a custom theme should be a supported
+artefact**. A theme that can only repaint is an ornament; the feature is that
+somebody writes their own identity, in a file, and Mirzam treats it the way it
+treats a built-in. That reframes both deliverables and their order: 1 exists to
+make the token vocabulary wide enough to hold an identity rather than a palette,
+and 2 exists to give that file a door, a name, and a checker that tells its
+author when it is wrong. Judge each by that, not by the diff size. Taking
+longer is explicitly preferred to arriving with colour-only theming again.
+
 `theme:` is a choice of **colour only**, and the identity — the faces, the
 weight ladder, the violet rule under a section heading — lives in
 `examples/themes/mirzam.css` behind a second frontmatter key. That split is an
@@ -1016,11 +1026,21 @@ Two deliverables. The first is what makes the second honest.
    `--mz-font`, `--mz-font-display`, `--mz-font-mono`; per level `-size`,
    `-weight`, `-tracking`; `--mz-body-size`/`-leading` — each with today's value
    as its fallback, so **a deck that sets none renders identically**. That is
-   the acceptance test for *this step*: the golden snapshots move (the
-   stylesheet is inlined in them) but the pixels do not, and the claim is
-   checked by rendering, not by reading the diff. It is not the acceptance test
-   for the migration below, which changes how nine decks look on purpose — the
-   two are separate gates and conflating them hides a real break.
+   the acceptance test for *this step*, and the way to check it is not the one
+   this brief first named: the golden snapshots do **not** move, because
+   `golden.rs` compares `out.sections.concat()` — the slide sections alone,
+   with neither the inlined stylesheet nor the `<html>` tag in them. Retiring
+   the `default` theme name moved every deck's stylesheet and touched exactly
+   one snapshot, which is the proof. So the gate is a **declaration-set
+   comparison**: build a deck that names no theme before and after, strip CSS
+   comments, collect every `--mz-*` declaration from the inlined stylesheet,
+   and require the two sets to be identical. That check found nothing wrong
+   with the `default` retirement (77 declarations, identical) and it is the
+   only thing that would have. Screenshots stay the second half of it, because
+   a token can be spelled right and still be read by no rule. It is not the
+   acceptance test for the migration below, which changes how nine decks look
+   on purpose — the two are separate gates and conflating them hides a real
+   break.
 
    The signature rule joins them: `--mz-h2-rule-w` defaults to `0`, so
    `base.css` can carry the `h2::after` block and no theme but `mirzam` draws
