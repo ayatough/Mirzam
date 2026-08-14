@@ -387,32 +387,21 @@ fn transition_attr(meta: &DeckMeta) -> String {
 }
 
 /// Resolves frontmatter `theme:`/`mode:` to the attributes baked onto
-/// `<html>`. Always valid, silently falling back to the defaults below for a
-/// name that is not a built-in: a caller that wants to report an unknown name
-/// calls [`theme_warning`]/[`mode_warning`] where `meta` was parsed, since
-/// this function has no warning channel of its own.
-///
-/// **A deck that names neither gets `mirzam` in dark.** Both defaults are
-/// deliberate and neither is the web's answer:
-///
-/// - `mirzam` rather than `default`, because a deck that says nothing should
-///   look like the project's own decks look. Every sample deck reached that
-///   identity through a stylesheet instead, which is what made `theme:` read
-///   as the key nobody uses.
-/// - dark rather than "whatever the machine prefers", because a deck is
-///   projected. `prefers-color-scheme` reports the *presenter's laptop*, which
-///   has nothing to do with the room the audience is sitting in, and a theme
-///   file cannot tell the difference. The themes keep their
-///   `prefers-color-scheme` blocks for the deck that opts back out with
-///   `mode:`; they simply stop deciding for a deck that said nothing.
+/// `<html>`. Always valid, silently falling back to `default`/no mode
+/// attribute for a name that is not a built-in: a caller that wants to
+/// report an unknown name calls [`theme_warning`]/[`mode_warning`] where
+/// `meta` was parsed, since this function has no warning channel of its own.
 fn theme_attrs(meta: &DeckMeta) -> (&'static str, String) {
     let name = theme::THEME_NAMES
         .iter()
         .find(|n| Some(**n) == meta.theme.as_deref())
         .copied()
-        .unwrap_or("mirzam");
-    let mode = theme::normalize_mode(meta.mode.as_deref()).unwrap_or("dark");
-    (name, format!(" data-mode=\"{mode}\""))
+        .unwrap_or("default");
+    let mode_attr = match theme::normalize_mode(meta.mode.as_deref()) {
+        Some(m) => format!(" data-mode=\"{m}\""),
+        None => String::new(),
+    };
+    (name, mode_attr)
 }
 
 /// Every built-in theme the page has to carry tokens for: the deck's own,
@@ -1638,7 +1627,7 @@ mod tests {
             .contains("data-pane=\"a\" data-theme=\"wuwei\" data-mode=\"dark\""));
         assert!(out.html.contains("data-pane=\"b\" style="));
         assert!(out.html.contains(":where([data-theme=\"wuwei\"])"));
-        assert!(out.html.contains(":where([data-theme=\"mirzam\"])"));
+        assert!(out.html.contains(":where([data-theme=\"default\"])"));
         assert!(!out.html.contains(":where([data-theme=\"nord\"])"));
     }
 
@@ -1656,7 +1645,7 @@ mod tests {
         // The deck around it is untouched.
         assert!(out
             .html
-            .contains("<html lang=\"en\" data-theme=\"mirzam\" data-mode=\"dark\">"));
+            .contains("<html lang=\"en\" data-theme=\"default\">"));
     }
 
     /// A typo names no palette, so the pane keeps the one it inherits — and
@@ -1716,12 +1705,9 @@ mod tests {
                 },
             ),
             (
-                // `light`, not `dark`: dark is what an unset `mode:` already
-                // resolves to, so `mode: dark` is the one edit here that
-                // genuinely does not change the page.
                 "mode",
                 DeckMeta {
-                    mode: Some("light".into()),
+                    mode: Some("dark".into()),
                     ..Default::default()
                 },
             ),
@@ -1814,15 +1800,13 @@ mod tests {
             ..Default::default()
         };
         let html = assemble_page(&DeckMeta::default(), &[], &opts);
-        assert!(html.contains(
-            "<html lang=\"en\" data-theme=\"mirzam\" data-mode=\"dark\" class=\"mz-debug\">"
-        ));
+        assert!(html.contains("<html lang=\"en\" data-theme=\"default\" class=\"mz-debug\">"));
     }
 
     #[test]
     fn debug_layout_off_by_default() {
         let html = assemble_page(&DeckMeta::default(), &[], &PageOptions::default());
-        assert!(html.contains("<html lang=\"en\" data-theme=\"mirzam\" data-mode=\"dark\">"));
+        assert!(html.contains("<html lang=\"en\" data-theme=\"default\">"));
         assert!(!html.contains("class=\"mz-debug\""));
     }
 
@@ -1844,7 +1828,7 @@ mod tests {
             ..Default::default()
         };
         let html = assemble_page(&meta, &[], &PageOptions::default());
-        assert!(html.contains("data-theme=\"mirzam\""));
+        assert!(html.contains("data-theme=\"default\""));
     }
 
     #[test]
@@ -1858,20 +1842,18 @@ mod tests {
     }
 
     #[test]
-    fn mode_is_always_baked_onto_html_and_defaults_to_dark() {
-        let light = DeckMeta {
-            mode: Some("light".into()),
+    fn explicit_mode_is_baked_onto_html_and_unset_mode_is_not() {
+        let dark = DeckMeta {
+            mode: Some("dark".into()),
             ..Default::default()
         };
-        let html = assemble_page(&light, &[], &PageOptions::default());
+        let html = assemble_page(&dark, &[], &PageOptions::default());
         let html_tag = html.lines().nth(1).unwrap();
-        assert!(html_tag.contains("data-mode=\"light\""));
+        assert!(html_tag.contains("data-mode=\"dark\""));
 
-        // An unset `mode:` is not "whatever the machine prefers" — a deck is
-        // projected, and `prefers-color-scheme` reports the presenter's laptop.
         let unset = assemble_page(&DeckMeta::default(), &[], &PageOptions::default());
         let unset_html_tag = unset.lines().nth(1).unwrap();
-        assert!(unset_html_tag.contains("data-mode=\"dark\""));
+        assert!(!unset_html_tag.contains("data-mode"));
     }
 
     #[test]

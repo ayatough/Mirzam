@@ -150,12 +150,10 @@ fn theme_and_mode_change_bump_the_page_fingerprint() {
         "a theme-only edit must still invalidate the assembled page"
     );
 
-    // `light`, because dark is what an unset `mode:` already resolves to:
-    // writing `mode: dark` asks for the page the deck was already getting.
-    deck.write(&deck_source(&["A"]).replacen("title: T", "title: T\ntheme: nord\nmode: light", 1));
-    let relit = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).unwrap();
+    deck.write(&deck_source(&["A"]).replacen("title: T", "title: T\ntheme: nord\nmode: dark", 1));
+    let dark = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).unwrap();
     assert_ne!(
-        themed.page_fingerprint, relit.page_fingerprint,
+        themed.page_fingerprint, dark.page_fingerprint,
         "a mode-only edit must still invalidate the assembled page"
     );
 }
