@@ -1971,6 +1971,17 @@ mod tests {
         let loose = FileTheme::new("acme.css", ":root { --mz-accent1: #6557d9; }".to_string());
         let html = assemble_page(&meta, &[], &opts(vec![loose]));
         assert!(html.contains("<body>"), "{html}");
+
+        // The print page wears it too. A PDF has no viewer to re-theme it
+        // afterwards, so a deck exported without its own theme is a deck
+        // nobody can fix from the file they were sent.
+        let acme = FileTheme::new(
+            "themes/acme.css",
+            "[data-theme=\"acme\"] { --mz-accent1: #6557d9; }".to_string(),
+        );
+        let print = assemble_print_page(&meta, &[], std::slice::from_ref(&acme));
+        assert!(print.contains("<body data-theme=\"acme\">"), "{print}");
+        assert!(print.contains("--mz-accent1: #6557d9"), "{print}");
     }
 
     #[test]
