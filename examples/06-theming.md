@@ -44,11 +44,10 @@ and `footer:` for the line along the bottom of every slide after this one.
 ::: pane list {valign=middle}
 | `theme:` | Palette |
 |---|---|
-| `default` | ours |
+| `mirzam` | ours, and the fallback |
 | `nord` | Nord |
 | `solarized` | Solarized |
 | `vscode` | VS Code Light+/Dark+ |
-| `mirzam` | Mirzam's own |
 | `wuwei` | warm greyscale |
 :::
 
@@ -62,8 +61,7 @@ theme: nord
 - A theme is a **palette**, not a design: it sets colour tokens and nothing
   else
 - Each one defines a light and a dark variant
-- An unknown name is a warning, not a failed build, and falls back to
-  `default`
+- Name none and you get `mirzam`; an unknown name warns and falls back to it
 
 *On the command line: `mirzam build deck.md --theme nord`.*
 :::
@@ -171,12 +169,12 @@ The same theme drawn again for dark, rather than inverted.
 names a mode, so `D` flips all five along with the slide around them.
 :::
 
-::: pane one {theme=default valign=middle}
-[default]{.eyebrow}
+::: pane one {theme=mirzam valign=middle}
+[mirzam]{.eyebrow}
 
 Ink on paper, [a link](https://example.com), **bold**.
 
-[`default` and `mirzam`: one palette.]{.small}
+[Ours, and what naming nothing gets.]{.small}
 :::
 
 ::: pane two {theme=nord valign=middle}

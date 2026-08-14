@@ -593,7 +593,7 @@ mod tests {
     #[test]
     fn a_page_level_setting_asks_for_a_rebuild() {
         let r = Renderer::new();
-        r.render_changed("---\ntheme: default\n---\n\n# A\n");
+        r.render_changed("---\ntheme: wuwei\n---\n\n# A\n");
         let out: serde_json::Value =
             serde_json::from_str(&r.render_changed("---\ntheme: nord\n---\n\n# A\n")).unwrap();
         assert_eq!(out["structural"], true);

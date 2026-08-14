@@ -430,8 +430,8 @@ fn parse_deck_flag(
             *i += 1;
             // A flag is typed, not authored, so an unknown name is a typo to
             // report rather than something to fall back from: silently
-            // rendering in `default` is exactly what the flag was reached
-            // for to avoid.
+            // rendering in the fallback theme is exactly what the flag was
+            // reached for to avoid.
             match args.get(*i) {
                 Some(name) if mirzam_render::THEME_NAMES.contains(&name.as_str()) => {
                     opts.theme = Some(name.clone());

@@ -392,17 +392,17 @@ fn transition_attr(meta: &DeckMeta) -> String {
 /// report an unknown name calls [`theme_warning`]/[`mode_warning`] where
 /// `meta` was parsed, since this function has no warning channel of its own.
 ///
-/// The fallback is `mirzam` rather than `default` because the two are the
-/// same palette — 66 token declarations, every value identical — and only one
-/// of the names says whose palette it is. An unset `mode:` stays unset, and
-/// so keeps meaning `prefers-color-scheme`: the room a deck is opened in is
-/// something the viewer can see and the renderer cannot.
+/// `mirzam` is the fallback because there is no longer a `default` to be one:
+/// the two names carried the same 66 token declarations, and the one that
+/// survived is the one that says whose palette it is. An unset `mode:` stays
+/// unset, and so keeps meaning `prefers-color-scheme`: the room a deck is
+/// opened in is something the viewer can see and the renderer cannot.
 fn theme_attrs(meta: &DeckMeta) -> (&'static str, String) {
     let name = theme::THEME_NAMES
         .iter()
         .find(|n| Some(**n) == meta.theme.as_deref())
         .copied()
-        .unwrap_or("mirzam");
+        .unwrap_or(theme::FALLBACK_THEME);
     let mode_attr = match theme::normalize_mode(meta.mode.as_deref()) {
         Some(m) => format!(" data-mode=\"{m}\""),
         None => String::new(),

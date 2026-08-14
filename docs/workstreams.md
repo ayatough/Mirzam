@@ -209,8 +209,9 @@ A theme is a set of CSS custom properties, defined for both modes:
 :root[data-theme="nord"][data-mode="dark"]  { --mz-slide-bg: …; --mz-fg: …; … }
 ```
 
-The token list is whatever `crates/mirzam-render/src/theme/themes/default.css`
-defines; extending it means extending every built-in theme in the same commit.
+The token list is whatever `crates/mirzam-render/src/theme/themes/mirzam.css`
+defines — the fallback theme, and so the one every other has to match;
+extending it means extending every built-in theme in the same commit.
 
 ### C4. Effect registry
 
@@ -1101,11 +1102,16 @@ Two deliverables. The first is what makes the second honest.
 
    The other half is also in: the fallback theme name is `mirzam`, not
    `default`. That is a rename and not a repaint — `theme_tokens("default")`
-   and `theme_tokens("mirzam")` are 66 identical token values, and a test in
-   `theme/mod.rs` already fails if they drift, since a built-in is selected by
-   an attribute carrying its own name and so has to be written twice. Both
-   fallbacks (`theme_attrs`, `theme_css_for`), `theme_tokens` and the unknown-
-   theme warning now name the same one.
+   and `theme_tokens("mirzam")` were 66 identical token values. Both fallbacks
+   (`theme_attrs`, `theme_css_for`), `theme_tokens` and the unknown-theme
+   warning now name the same one.
+
+   And then `default` went entirely: a name that only ever meant "the other
+   one" is the duplication this stream exists to remove. `themes/default.css`
+   is deleted, `mirzam` is the single name, and `theme: default` takes the
+   unknown-name path with a message that says what to write instead rather than
+   "unknown theme". Nothing repaints, because the sheet it stopped loading was
+   the one it now loads under another name.
 
    Worth knowing while judging how much any of this matters: **on screen it
    mostly does not.** The viewer carries a mode toggle (`D`, and a button,

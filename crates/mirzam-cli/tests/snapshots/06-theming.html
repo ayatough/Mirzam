@@ -24,8 +24,8 @@ and <code>footer:</code> for the line along the bottom of every slide after this
 </thead>
 <tbody>
 <tr>
-<td><code>default</code></td>
-<td>ours</td>
+<td><code>mirzam</code></td>
+<td>ours, and the fallback</td>
 </tr>
 <tr>
 <td><code>nord</code></td>
@@ -38,10 +38,6 @@ and <code>footer:</code> for the line along the bottom of every slide after this
 <tr>
 <td><code>vscode</code></td>
 <td>VS Code Light+/Dark+</td>
-</tr>
-<tr>
-<td><code>mirzam</code></td>
-<td>Mirzam's own</td>
 </tr>
 <tr>
 <td><code>wuwei</code></td>
@@ -58,8 +54,7 @@ and <code>footer:</code> for the line along the bottom of every slide after this
 <li>A theme is a <strong>palette</strong>, not a design: it sets colour tokens and nothing
 else</li>
 <li>Each one defines a light and a dark variant</li>
-<li>An unknown name is a warning, not a failed build, and falls back to
-<code>default</code></li>
+<li>Name none and you get <code>mirzam</code>; an unknown name warns and falls back to it</li>
 </ul>
 <p><em>On the command line: <code>mirzam build deck.md --theme nord</code>.</em></p>
 </div>
@@ -118,9 +113,9 @@ Read at a desk.
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Gallery</span> <strong>Every palette, in the deck's own mode</strong> — no pane below
 names a mode, so <code>D</code> flips all five along with the slide around them.</p>
 </div>
-<div class="pane pane-one" data-pane="one" data-theme="default" style="grid-area:one;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">default</span></p>
+<div class="pane pane-one" data-pane="one" data-theme="mirzam" style="grid-area:one;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">mirzam</span></p>
 <p>Ink on paper, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
-<p><span class="small"><code>default</code> and <code>mirzam</code>: one palette.</span></p>
+<p><span class="small">Ours, and what naming nothing gets.</span></p>
 </div>
 <div class="pane pane-two" data-pane="two" data-theme="nord" style="grid-area:two;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">nord</span></p>
 <p>Cool blues, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>

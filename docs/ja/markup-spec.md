@@ -26,7 +26,7 @@
 ---
 title: 発表タイトル
 author: 発表者
-theme: default        # テーマ名 or パス
+theme: mirzam         # テーマ名 or パス(省略時も mirzam)
 aspect: "16:9"        # 16:9 | 4:3 | A4 など
 vars:                 # デッキ変数
   product: Mirzam

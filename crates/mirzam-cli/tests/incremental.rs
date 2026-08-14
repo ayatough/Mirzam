@@ -159,7 +159,7 @@ fn theme_and_mode_change_bump_the_page_fingerprint() {
 }
 
 /// An unknown theme name is a warning, not a build failure, and falls back
-/// to `default`.
+/// to `mirzam`.
 #[test]
 fn unknown_theme_warns_but_still_builds() {
     let deck = TempDeck::new(

@@ -333,6 +333,9 @@ fn build_kind(message: &str) -> &'static str {
         ("the brace over", "build.math"),
         ("math:", "build.math"),
         ("unknown theme", "build.theme"),
+        // `theme: default` is an unknown name that gets its own wording, so it
+        // needs its own needle or it would classify as `build.other`.
+        ("no longer a theme name", "build.theme"),
         ("unknown mode", "build.theme"),
         ("transition:", "build.transition"),
         ("css:", "build.css"),
@@ -566,7 +569,12 @@ mod tests {
             ("toc: unknown key `bogus`", "build.toc"),
             ("bibliography: nothing to list", "build.bibliography"),
             ("masters: cannot read masters.md", "build.master"),
-            ("unknown theme `nope`; using `default`", "build.theme"),
+            ("unknown theme `nope`; using `mirzam`", "build.theme"),
+            (
+                "`default` is no longer a theme name: it was a second name for \
+                 the `mirzam` palette",
+                "build.theme",
+            ),
             (
                 "unknown mode `sideways`; expected `light` or `dark`",
                 "build.theme",

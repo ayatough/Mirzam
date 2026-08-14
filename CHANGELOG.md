@@ -63,6 +63,25 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   short of the words instead of running up against them. Set `--mz-grid-gap: 0`
   if you want the two halves to meet.
 
+### Removed
+- **The `default` theme is gone. Write `theme: mirzam`, or nothing at all.**
+  There were six built-in themes and only five palettes: `default` and `mirzam`
+  were the same sheet under two names — 66 token declarations, every value
+  identical — kept in step by a test whose whole job was to notice when they
+  drifted. One palette now has one name, and a deck that names no theme gets
+  `mirzam`, exactly as it already did.
+
+  **Nothing repaints.** A deck with `theme: default` renders in the same
+  colours it always has; a deck that named no theme is untouched. Only the name
+  is a breaking change — `theme: default` is now an unrecognised name, so it
+  warns instead of being silently accepted. The warning says what to write
+  rather than "unknown theme": deleting the key is the better fix, since the
+  key was only ever choosing the palette you would have got anyway. The same
+  goes for a slide's `<!-- theme: default -->` or a pane's `{theme=default}`.
+
+  `examples/06-theming.md`'s palette gallery now shows all five built-ins with
+  no repeat.
+
 ### Fixed
 - **The pitch deck's "How it works" diagram stays inside the deck margin.** The
   WASM box reached 99% of the slide width, 47px past the right margin every

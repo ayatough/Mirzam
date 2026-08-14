@@ -1460,15 +1460,17 @@ theme: nord
 
 | Name | Source |
 |---|---|
-| `default` | ours — Mirzam's own palette, so a deck that chooses nothing is already in the project's colours |
+| `mirzam` | ours, from [the brand sheet](brand/palette.md) — and what a deck that names no theme gets, so a file with no frontmatter is already in the project's colours |
 | `nord` | [Nord](https://www.nordtheme.com/), MIT |
 | `solarized` | [Solarized](https://ethanschoonover.com/solarized/), MIT |
 | `vscode` | VS Code Light+/Dark+, MIT |
-| `mirzam` | Mirzam's own palette, from [the brand sheet](brand/palette.md) |
 | `wuwei` | ours — warm greyscale, minimal, deliberately low contrast |
 
-An unknown `theme:` name is a warning, not a build failure, and falls back to
-`default`. See
+Leaving `theme:` out is the same as writing `theme: mirzam`, so the key is a
+choice to look like something else. An unknown name is a warning, not a build
+failure, and falls back to `mirzam`. There was a `default` theme until it was
+found to be that same palette under a second name; writing it now warns and
+tells you to write `mirzam`. See
 [`themes/CREDITS.md`](../crates/mirzam-render/src/theme/themes/CREDITS.md) for
 where each palette comes from and how it maps to Mirzam's tokens.
 

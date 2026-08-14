@@ -56,18 +56,31 @@ pub const PRESENTER_JS: &str = concat!("\n", include_str!("presenter.js"));
 /// Slide dimensions and the `@page` size are appended by `assemble_print_page`.
 pub const PRINT_CSS: &str = concat!("\n", include_str!("print.css"));
 
-/// Built-in themes. Each file defines the complete token set for both modes;
-/// see `themes/CREDITS.md` for where each palette comes from.
+/// The theme a deck renders in when it names none, and what an unrecognized
+/// name falls back to. There is no separate `default` theme: a deck that
+/// chooses nothing is already in the project's colours, so `theme:` is a
+/// choice to look like something *else* rather than a choice to look like
+/// anything at all.
+pub const FALLBACK_THEME: &str = "mirzam";
+
+/// Its tokens, held next to the name rather than looked up by it, so
+/// [`theme_tokens`] always has something to return without searching for
+/// itself. Dropping the fallback out of `THEMES` would then be a theme
+/// nobody can name, not a function that never returns.
+const FALLBACK_TOKENS: &str = include_str!("themes/mirzam.css");
+
+/// Built-in themes, the fallback first. Each file defines the complete token
+/// set for both modes; see `themes/CREDITS.md` for where each palette comes
+/// from.
 const THEMES: &[(&str, &str)] = &[
-    ("default", include_str!("themes/default.css")),
+    (FALLBACK_THEME, FALLBACK_TOKENS),
     ("nord", include_str!("themes/nord.css")),
     ("solarized", include_str!("themes/solarized.css")),
     ("vscode", include_str!("themes/vscode.css")),
-    ("mirzam", include_str!("themes/mirzam.css")),
     ("wuwei", include_str!("themes/wuwei.css")),
 ];
 
-pub const THEME_NAMES: &[&str] = &["default", "nord", "solarized", "vscode", "mirzam", "wuwei"];
+pub const THEME_NAMES: &[&str] = &["mirzam", "nord", "solarized", "vscode", "wuwei"];
 
 /// The name as a built-in theme, or `None`. The one place a theme name is
 /// checked, so a name reaching the markup is always one there are tokens for.
@@ -75,14 +88,16 @@ pub fn known_theme(name: &str) -> Option<&'static str> {
     THEME_NAMES.iter().find(|n| **n == name).copied()
 }
 
-/// Token CSS for a named theme. Unknown names fall back to `mirzam`; call
-/// [`theme_warning`] first if the name came from frontmatter and an unknown
-/// name should be reported rather than silently substituted.
+/// Token CSS for a named theme. Unknown names fall back to
+/// [`FALLBACK_THEME`]'s tokens directly, so this is total for every string
+/// and cannot call itself; call [`theme_warning`] first if the name came from
+/// frontmatter and an unknown name should be reported rather than silently
+/// substituted.
 pub fn theme_tokens(name: &str) -> &'static str {
     THEMES
         .iter()
         .find(|(n, _)| *n == name)
-        .map_or_else(|| theme_tokens("mirzam"), |(_, css)| css)
+        .map_or(FALLBACK_TOKENS, |(_, css)| css)
 }
 
 /// Full CSS for a page: the token set of every theme it uses, then the shared
@@ -107,7 +122,7 @@ pub fn theme_css_for(names: &[&str]) -> String {
         out.push_str(theme_tokens(name));
     }
     if seen.is_empty() {
-        out.push_str(theme_tokens("mirzam"));
+        out.push_str(FALLBACK_TOKENS);
     }
     out.push_str(BASE_CSS);
     out
@@ -132,17 +147,40 @@ pub fn scope_attrs(theme: Option<&str>, mode: Option<&str>) -> String {
     out
 }
 
+/// `default` used to be a second name for the [`FALLBACK_THEME`] palette, and
+/// decks in the wild still write it. It is an unknown name now like any other,
+/// but "unknown theme `default`" would send an author looking for a theme they
+/// spelled correctly — so that one name gets told what to write instead.
+///
+/// `retired` is what the deck wrote and `write` what it should write, spelled
+/// the way the place it appears spells it: `theme: x` in frontmatter,
+/// `theme=x` in a slide or pane attribute.
+fn retired_name_note(retired: &str, write: &str) -> Option<String> {
+    (retired == "default").then(|| {
+        format!(
+            "`default` is no longer a theme name: it was a second name for the \
+             `{FALLBACK_THEME}` palette, and one palette now has one name. \
+             Write `{write}` — the colours are the same either way."
+        )
+    })
+}
+
 /// Warnings for a `theme=`/`mode=` pair that named something unknown, prefixed
 /// with `where` so the author is told which pane or slide to look at.
 pub fn scope_warnings(where_: &str, theme: Option<&str>, mode: Option<&str>) -> Vec<String> {
     let mut out = Vec::new();
     if let Some(name) = theme {
         if known_theme(name).is_none() {
-            out.push(format!(
-                "{where_}: unknown theme `{name}`; keeping the surrounding theme. \
-                 Built-in themes: {}",
-                THEME_NAMES.join(", ")
-            ));
+            out.push(
+                match retired_name_note(name, &format!("theme={FALLBACK_THEME}")) {
+                    Some(note) => format!("{where_}: {note} Keeping the surrounding theme."),
+                    None => format!(
+                        "{where_}: unknown theme `{name}`; keeping the surrounding theme. \
+                     Built-in themes: {}",
+                        THEME_NAMES.join(", ")
+                    ),
+                },
+            );
         }
     }
     if let Some(m) = mode {
@@ -157,17 +195,22 @@ pub fn scope_warnings(where_: &str, theme: Option<&str>, mode: Option<&str>) -> 
 
 /// `None` when there is nothing to report (no theme requested, or a known
 /// one); `Some(message)` when frontmatter named a theme that is not a
-/// built-in, which falls back to `mirzam`.
+/// built-in, which falls back to [`FALLBACK_THEME`].
 pub fn theme_warning(requested: Option<&str>) -> Option<String> {
     let name = requested?;
     if THEME_NAMES.contains(&name) {
-        None
-    } else {
-        Some(format!(
-            "unknown theme `{name}`; using `mirzam`. Built-in themes: {}",
-            THEME_NAMES.join(", ")
-        ))
+        return None;
     }
+    if let Some(note) = retired_name_note(name, &format!("theme: {FALLBACK_THEME}")) {
+        return Some(format!(
+            "{note} Or remove the key: a deck that names no theme already \
+             renders in `{FALLBACK_THEME}`."
+        ));
+    }
+    Some(format!(
+        "unknown theme `{name}`; using `{FALLBACK_THEME}`. Built-in themes: {}",
+        THEME_NAMES.join(", ")
+    ))
 }
 
 /// Resolves frontmatter `mode:` to `"light"` or `"dark"`; `None` when unset
@@ -266,11 +309,11 @@ mod tests {
 
     #[test]
     fn theme_css_is_tokens_then_base() {
-        let css = theme_css_for(&["default"]);
+        let css = theme_css_for(&["mirzam"]);
         // Order, not position: a sheet may open with a comment, and asserting
         // on the first characters made adding one to a theme look like a
         // regression in how the CSS is assembled.
-        let tokens = css.find(":where([data-theme=\"default\"])");
+        let tokens = css.find(":where([data-theme=\"mirzam\"])");
         let base = css.find("* { box-sizing: border-box; }");
         assert!(tokens.is_some() && base.is_some());
         assert!(
@@ -300,8 +343,22 @@ mod tests {
     }
 
     #[test]
-    fn unknown_theme_falls_back_to_the_default_palette() {
-        assert_eq!(theme_tokens("nope"), theme_tokens("mirzam"));
+    fn unknown_theme_falls_back_to_the_fallback_palette() {
+        assert_eq!(theme_tokens("nope"), theme_tokens(FALLBACK_THEME));
+        // Total, not merely terminating: the fallback is a constant rather
+        // than a name looked up in the table, so no input can send this
+        // function looking for itself.
+        assert_eq!(theme_tokens(""), FALLBACK_TOKENS);
+    }
+
+    /// Two lists of the same set, and the one that decides whether a name is
+    /// accepted is not the one that supplies its tokens — so a theme in only
+    /// one of them renders under its own name in somebody else's palette.
+    #[test]
+    fn the_name_list_and_the_token_table_hold_the_same_themes() {
+        let table: Vec<&str> = THEMES.iter().map(|(n, _)| *n).collect();
+        assert_eq!(table, THEME_NAMES);
+        assert!(THEME_NAMES.contains(&FALLBACK_THEME));
     }
 
     /// A page carries the tokens of every theme it uses and no others: that is
@@ -326,8 +383,9 @@ mod tests {
         assert_eq!(css.matches(":where([data-theme=\"nord\"])").count(), 1);
         assert!(!css.contains("data-theme=\"nope\""));
         // Nothing usable named: base.css still needs tokens to read.
-        assert!(theme_css_for(&["nope"]).contains(":where([data-theme=\"mirzam\"])"));
-        assert!(theme_css_for(&[]).contains(":where([data-theme=\"mirzam\"])"));
+        let fallback = format!(":where([data-theme=\"{FALLBACK_THEME}\"])");
+        assert!(theme_css_for(&["nope"]).contains(&fallback));
+        assert!(theme_css_for(&[]).contains(&fallback));
     }
 
     #[test]
@@ -338,8 +396,8 @@ mod tests {
         );
         assert_eq!(scope_attrs(Some("wuwei"), None), " data-theme=\"wuwei\"");
         // An unknown name leaves the element inheriting what surrounds it,
-        // rather than dropping it to `default` the way the deck's own theme
-        // does: a pane has something to inherit and a page does not.
+        // rather than dropping it to the fallback the way the deck's own
+        // theme does: a pane has something to inherit and a page does not.
         assert_eq!(scope_attrs(Some("nope"), Some("sideways")), "");
         assert_eq!(scope_attrs(None, None), "");
     }
@@ -357,29 +415,6 @@ mod tests {
         assert!(w[0].contains("light` or `dark"));
     }
 
-    /// `default` and `mirzam` are the same palette under two names, so that a
-    /// deck naming no theme is already in the project's colours. The values
-    /// have to be written twice, because the theme name is part of the
-    /// selector - which is precisely how they would drift. Editing one palette
-    /// and not the other fails here.
-    #[test]
-    fn default_is_the_mirzam_palette() {
-        /// Every `--mz-*: value` in the sheet, in source order. The selectors
-        /// differ by name and are what this deliberately ignores.
-        fn declarations(css: &str) -> Vec<&str> {
-            css.lines()
-                .map(str::trim)
-                .filter(|l| l.starts_with("--mz-"))
-                .collect()
-        }
-        assert_eq!(
-            declarations(theme_tokens("default")),
-            declarations(theme_tokens("mirzam")),
-            "the default theme has drifted from themes/mirzam.css; the two are \
-             one palette written twice, because the name is in the selector"
-        );
-    }
-
     #[test]
     fn theme_warning_flags_unknown_names_only() {
         assert!(theme_warning(None).is_none());
@@ -387,6 +422,32 @@ mod tests {
         let w = theme_warning(Some("nope")).unwrap();
         assert!(w.contains("nope"));
         assert!(w.contains("mirzam"));
+    }
+
+    /// `default` was a second name for this palette until the duplicate sheet
+    /// was deleted, and decks in the wild still write it. It takes the
+    /// unknown-name path like any other typo, but a message reading "unknown
+    /// theme `default`" would send an author hunting for a name they spelled
+    /// correctly — so it says what to write instead, and that the slides do
+    /// not change when they do.
+    #[test]
+    fn the_retired_default_name_says_what_to_write_instead() {
+        assert!(known_theme("default").is_none());
+        let w = theme_warning(Some("default")).unwrap();
+        assert!(!w.contains("unknown theme"), "{w}");
+        assert!(w.contains("theme: mirzam"), "{w}");
+        assert!(w.contains("remove the key"), "{w}");
+
+        let w = scope_warnings("slide 3, pane `fig`", Some("default"), None);
+        assert_eq!(w.len(), 1);
+        assert!(w[0].starts_with("slide 3, pane `fig`: "), "{}", w[0]);
+        assert!(!w[0].contains("unknown theme"), "{}", w[0]);
+        assert!(w[0].contains("theme=mirzam"), "{}", w[0]);
+
+        // And it really is only that one name that gets the long answer.
+        assert!(theme_warning(Some("defaults"))
+            .unwrap()
+            .contains("unknown theme"));
     }
 
     #[test]

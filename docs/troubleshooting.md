@@ -156,7 +156,8 @@ since it changes how urgent the fix is:
 | toc: unknown key … / from … / depth … must be 1 to 6 / current … must be true or false / … is not `key: value` | Contents | Malformed `toc` block | Shown on the slide too |
 | bibliography: unknown key … / show … must be `cited` or `all` / back … must be true or false / … is not `key: value` | References | Malformed `bibliography` block | Shown on the slide too |
 | path: file not found / larger than 20MB, not inlined | Assets | An image/audio/video `src=` doesn't resolve, or exceeds the inline size limit | Note only — a placeholder "missing" graphic is substituted (no `slide N:` prefix) |
-| unknown theme "x"; using default | Theme | Frontmatter `theme:` isn't a built-in name | Note only — falls back to `default` |
+| unknown theme "x"; using mirzam | Theme | Frontmatter `theme:` isn't a built-in name | Note only — falls back to `mirzam` |
+| "default" is no longer a theme name … | Theme | Frontmatter `theme: default` — the name was retired; it was `mirzam` under a second name | Note only — renders in `mirzam`, which is the same palette. Write `theme: mirzam` or drop the key |
 | unknown mode "x"; expected light or dark | Theme | Frontmatter `mode:` isn't `light`/`dark` | Note only — falls back to following the reader's machine |
 | slide N, pane "x": unknown theme "y"; keeping the surrounding theme | Theme | A pane's `{theme=y}` — or a slide's `<!-- theme: y -->` — isn't a built-in name | Note only — that pane or slide keeps the theme it inherits |
 | slide N, pane "x": unknown mode "y"; expected light or dark | Theme | A pane's `{mode=y}` or a slide's `<!-- mode: y -->` isn't `light`/`dark` | Note only — that pane or slide follows the deck's mode |

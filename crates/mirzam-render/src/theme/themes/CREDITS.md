@@ -9,18 +9,6 @@ sibling shade from the same palette (or a darkened/lightened variant of the
 same hue) was used instead so a unit test can hold every theme to the same
 bar. See `every_theme_and_mode_meets_wcag_contrast` in `mod.rs`.
 
-## `default`
-
-Ours: the same palette as [`mirzam`](#mirzam), under the name a deck gets when
-it asks for nothing. A deck that names no theme is the common case — a quick
-note, a README turned into slides, a sample showing one piece of markup — and
-those used to come out in a generic blue-and-teal that looked like nobody's.
-
-The values are written twice because the theme's name is part of every
-selector it emits; `default_is_the_mirzam_palette` in `mod.rs` compares the two
-token sets, so editing one and not the other fails the build rather than
-shipping two slightly different Mirzams.
-
 ## `nord`
 
 [Nord](https://www.nordtheme.com/) by Arctic Ice Studio and Sven Greb.
@@ -77,6 +65,12 @@ Ours, from [`docs/brand/palette.md`](../../../../../docs/brand/palette.md). The
 token half of `examples/themes/mirzam.css`; that file is still where the
 identity's *type* lives — a built-in theme is loaded before `base.css` and so
 can only set tokens, not typography.
+
+Also the palette a deck gets when it names no theme, which is the common case —
+a quick note, a README turned into slides, a sample showing one piece of markup
+— and those used to come out in a generic blue-and-teal that looked like
+nobody's. It was shipped twice for a while, the second copy keyed for a
+`default` theme; that name is retired and this is the only sheet.
 
 The brand sheet is drawn for a web page and a deck is not one, so two families
 of value moved. `--mz-muted` in light mode is a step darker than the brand's

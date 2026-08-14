@@ -45,7 +45,7 @@ Optional, but the first thing in the file when present.
 title: Quarterly review     # deck title, used for the browser tab
 author: Your Name
 aspect: "16:9"              # or "4:3"
-theme: nord                 # default | nord | solarized | vscode | mirzam | wuwei
+theme: nord                 # mirzam (default) | nord | solarized | vscode | wuwei
 mode: dark                  # light | dark; unset follows the reader's machine
 css: themes/dark.css        # custom stylesheet, relative to this file
 split: h2                   # also start a new slide at every h1/h2/h3

@@ -1,4 +1,14 @@
-/* Mirzam's own palette, as a built-in theme.
+/* Mirzam's own palette, as a built-in theme — and the one a deck gets when it
+   names no theme at all.
+
+   That case is the common one — the quick note, the README turned into slides,
+   the sample that exists to show one piece of markup — and those are exactly
+   the decks that used to come out looking like nobody's. Making the fallback
+   the project's own palette means a file with no frontmatter is already part
+   of the family, and `theme:` becomes a choice to look like something *else*
+   rather than a choice to look like anything at all. This was once a second
+   sheet keyed for `default`, identical token for token; one palette now has
+   one name, and `theme_tokens` falls back to this file directly.
 
    This is the token half of `examples/themes/mirzam.css`, translated rather
    than copied. A built-in theme is a token set and nothing else: `theme_css`
