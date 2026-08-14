@@ -1700,9 +1700,12 @@ straight from the palette: "up" is a meaning, not a decoration, and a label
 under a number is secondary text like any other.
 
 One thing about a theme's own identity is **not** a token, because it is
-selector logic rather than a value: a centred heading needs its short rule
-centred under it, and `text-align` cannot move a block box. `base.css` carries
-that one rule, and a heading in a pane with `align=center` gets it for free.
+selector logic rather than a value: **the short rule follows the heading's
+alignment**. It is a block box of a fixed width and `text-align` cannot move
+one, so the alignment has to be read off a selector and answered with a margin.
+`base.css` carries that one rule, so a heading in a pane with `align=center`
+gets its mark centred under the words and one with `align=right` gets it at the
+right edge — both for free, and neither needing a stylesheet of your own.
 
 ```css
 /* A theme in tokens: the faces, the ladder, the mark under a heading. */

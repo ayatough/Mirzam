@@ -70,6 +70,13 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   Because custom properties inherit and rules do not, the type now travels with
   a pane that carries `theme=` — a re-themed pane used to take the other
   theme's colours and keep the deck's face.
+- **The rule under a section heading follows the heading's alignment.** A theme
+  that signs its name with a short rule rather than a full-width border drew it
+  at the left edge whatever the heading did, so a centred or right-aligned `##`
+  had its mark stranded across the pane from the words. Centre the heading and
+  the rule centres; put it on the right and the rule goes right. Only
+  `examples/themes/mirzam.css` knew this before, so it took a stylesheet to get
+  it; now `theme: mirzam` — or any theme setting `--mz-h2-rule-w` — is enough.
 - **`.card`, `.eyebrow` and `.metric` come with the renderer now**, next to
   `.box`, so a slide copied out of a sample deck keeps its shape without a
   stylesheet behind it. `examples/seminar.md` wrote `[先行研究]{.eyebrow}` and

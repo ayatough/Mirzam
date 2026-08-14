@@ -1069,8 +1069,24 @@ Two deliverables. The first is what makes the second honest.
    One rule in that file is **not** expressible as a token and must land in
    `base.css` as a rule: `:is(.center, [style*="text-align:center"]) h2::after
    { margin-inline: auto }` centres a block box under a centred heading, which
-   is selector logic, not a dial. That is the one carve-out; if a second one
-   appears, the stop condition has been met.
+   is selector logic, not a dial. That was the one carve-out, and the stop
+   condition was: if a second one appears, stop and report.
+
+   **It fired, it was reported, and the author widened the carve-out rather
+   than working around it.** The second rule is real —
+   `:is(.right, [style*="text-align:right"]) h2::after { margin-inline: auto 0 }`,
+   which `examples/themes/mirzam.css` carries beside the centred one — and it
+   is no more expressible as a token than the first: both read an alignment off
+   a selector and answer it with a margin, because `text-align` cannot move a
+   block box. Keeping two special cases and keeping only one were both
+   available; the decision was neither. **The carve-out is now one rule that
+   says "the signature rule follows the heading's alignment"**, covering centred
+   and right-aligned headings together, and `base.css` carries it as a single
+   block with that sentence at the top of it. What the stop condition was
+   protecting is intact — the budget was never "one selector", it was "no
+   stylesheet that grows a new carve-out per mark" — and it still binds the
+   same way: a *third* rule of a different kind, one that is not this one
+   statement about alignment, means stop and report again.
 
    `.eyebrow`, `.metric` (with `.metric-up` and `.metric-label`) and `.card`
    move into `base.css` as token-driven vocabulary. Note that **`.card` is not
