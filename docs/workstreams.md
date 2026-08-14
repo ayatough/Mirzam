@@ -40,6 +40,7 @@ from a deck someone was actually trying to give.
 | 3 | W14 | Retires an authoring pattern the other streams now cover |
 | 4 | W9 | Integration, benchmark, `v0.1.0` — done; the release is tagged |
 | 5 | W20, W21 | The [market survey](reports/2026-08-market-survey.md)'s P0: visible code, and a loop an agent can close |
+| 6 | W22, W23, W16 | The survey's P1. W22 first: it is what makes a theme an identity rather than a palette, which W16 then has something to exhibit. W23 develops alongside but lands after, because both move rendered output |
 | 6 | W22 | The last frontmatter key that asks the author to know how the CSS is assembled |
 
 ## Assignment
@@ -78,6 +79,7 @@ there is. The model column follows from that:
 | W20 | Syntax highlighting at build time | B | Opus | — | ✅ |
 | W21 | An authoring contract for agents | B | Opus | — | ✅ |
 | W22 | One door to a deck's look: `theme:` absorbs `css:` | B | Opus | — | |
+| W23 | Mermaid diagrams, rendered at build time | B | Opus | — | |
 
 ### What is deferred, and why
 
@@ -1228,6 +1230,69 @@ places), `docs/quickstart.md`, `docs/troubleshooting.md`, `docs/agents.md`,
 `crates/mirzam-cli/src/skill/writing-skill.md` — the last of those is W21's
 authoring contract, so leaving it stale means agents keep writing a key that no
 longer exists.
+
+## W23 — Mermaid diagrams, rendered at build time
+
+**Difficulty B · not started**
+
+The [market survey](reports/2026-08-market-survey.md)'s P1. Diagrams-as-code
+became table stakes the day GitHub rendered Mermaid natively; Marp made it a
+built-in in 2026 after the request sat as its most-upvoted discussion for six
+years. Waiting for the plugin system was the earlier plan, and the market moved
+first.
+
+The design follows from what is already here, and the pane-anchored shape work
+settles the first question rather than opening it:
+
+- **It follows the `chart` path, not the `shape` path.** A shape block inside a
+  pane draws into a percentage coordinate space whose rectangle the build
+  computes. Mermaid emits an SVG carrying its own `viewBox`, which wants to
+  scale to fit the box it lands in — which is what a chart already does. Taking
+  the chart path also keeps Mermaid out of the build-time pane arithmetic, so a
+  margin moved only in CSS cannot desynchronise a diagram the way it can a
+  shape.
+- **The renderer arrives through a trait, the way a chart's CSV does.**
+  `mirzam-render` must not touch the filesystem, and it must not spawn a
+  process either — same reason, the WebAssembly build has neither.
+  `AssetSource` is the precedent: the renderer asks, the host answers. The CLI
+  implements the trait by running an external renderer; `mirzam-wasm`
+  implements nothing and every `mermaid` fence stays a code block there.
+- **No renderer is a warning, never a silent fallback.** Without one the fence
+  renders as an ordinary code block *and* the build says so — `build.mermaid`,
+  so it reaches `check --format json` and an agent repairs it in the loop it
+  already runs. A deck that shipped its diagram as source code without saying
+  so is the exact failure the usability evaluation found four times over.
+- **Colours are rewritten to theme tokens.** Mermaid emits its own palette.
+  Baked in, a diagram would ignore the deck's theme and stay light when the
+  reader presses `D`. The output's fills and strokes are rewritten to
+  `var(--mz-*)` references — the same move W20 made when it mapped token kinds
+  onto classes rather than inlining a highlighter's colours.
+- **`build` stays browser-free.** Chromium can render Mermaid, and Mirzam
+  already drives one for `export pdf` and `check` — but making an ordinary
+  build need a browser is a regression in what this tool is. `mmdc` if it is on
+  `PATH`; a Chromium path is an opt-in second route at most.
+
+What is not free: an external Node tool sits against "one Rust binary, no
+Node", which is a real part of why people arrive. The precedent that makes it
+acceptable is PDF export, which already requires a browser nobody ships with
+the binary — an optional external renderer, warned about when absent, is a
+shape this project has already accepted once.
+
+Worth naming, because it points the other way from a tax: **GitHub renders a
+```mermaid fence as a diagram.** This is the one extension that reads *better*
+in a plain CommonMark viewer than the code block it degrades to, so it
+strengthens the "source renders on GitHub" wedge instead of spending it.
+
+`mermaid` joins `mirzam_syntax::BLOCK_KINDS` in the same change, per
+non-negotiable 1.
+
+Stops at: Mermaid. D2 arrives through the same trait once the shape is proven,
+and is not part of this stream.
+
+**Contention.** `crates/mirzam-cli/tests/snapshots/*.html` (a new fence in
+`examples/04-components.md` rewrites them), `docs/syntax.md`, `docs/llms.md`.
+Overlaps W22 in the snapshots and in `docs/llms.md`; W22 lands first and this
+one regenerates.
 
 ## W5 — Typst-flavoured math ✅
 
