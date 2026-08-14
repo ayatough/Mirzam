@@ -403,7 +403,7 @@ A stem is only a name if the file **scopes its tokens to it**:
 `[data-theme="blueprint"] { … }`. A file that writes `:root` themes the whole
 deck and answers to nobody — and `mirzam check` says so.
 
-- Mono display type, an em-dash bullet
+- One mono hand, blue paper, an em-dash bullet
 - Square cards, a hairline rule
 
 [`examples/themes/blueprint.css` is the whole theme, in tokens.]{.small}

@@ -190,6 +190,16 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
   `examples/06-theming.md`'s palette gallery now shows all five built-ins with
   no repeat.
+- **The sample custom theme looks like a theme in light mode too.**
+  `examples/themes/blueprint.css` is the repository's demonstration that a
+  theme of your own can carry a real identity, and in light it was near-white
+  paper and a sans body — a deck you could not tell from any other. It is a
+  drawing office now in both modes: pale blue paper on a blue-grey desk in
+  light, the ink-blue night it already had in dark, and one mono hand for the
+  whole sheet rather than only for the headings, since a face survives a
+  projector and a photocopy in a way a colour does not. Sizes come down a step
+  and leading goes up to pay for mono's width. Same contrast floors, same
+  system fonts, nothing fetched.
 
 ### Fixed
 - **A pane wearing a theme no longer borrows the deck's type and colour.** On

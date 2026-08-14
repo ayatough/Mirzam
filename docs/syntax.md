@@ -1576,8 +1576,9 @@ Two more rules worth knowing:
   when it outgrows a block.
 
 [`examples/themes/blueprint.css`](../examples/themes/blueprint.css) is a
-complete one: a whole identity — mono display type, a hairline rule under a
-section heading, square cards, an em-dash bullet — written in tokens and
+complete one: a whole identity — one mono hand for the whole sheet, pale blue
+paper in light and an ink-blue night in dark, a hairline rule under a section
+heading, square cards, an em-dash bullet — written in tokens and
 scoped to its stem, so `examples/06-theming.md` can wear `mirzam` and still
 hand one pane to it.
 

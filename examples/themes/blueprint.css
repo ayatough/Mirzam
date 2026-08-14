@@ -3,10 +3,27 @@
 
    This is the sample custom theme: a whole identity, in tokens, in a file the
    renderer knows nothing about. It is deliberately *not* Mirzam's — a drawing
-   office rather than a studio. Monospace display type, a hairline rule under a
-   section heading instead of a coloured mark, square cards on ruled paper, and
-   an em dash for a bullet. Put it beside `theme: mirzam` and the difference is
-   legible before a colour registers.
+   office rather than a studio. The whole sheet is set in the mono hand a
+   drawing is annotated in, on pale blue paper, with a hairline rule under a
+   section heading instead of a coloured mark, square cards, and an em dash for
+   a bullet. Put it beside `theme: mirzam` and the difference is legible before
+   a colour registers.
+
+   ## It has to be a different theme at a glance in *both* modes
+
+   The light palette used to be near-white, which made it the mode where this
+   file demonstrated almost nothing: a reader flipped to light and saw a deck
+   that could have been any theme. So light is paper with a blue in it now —
+   the tint a print of a drawing has — and the desk behind it is a deeper
+   blue-grey, well clear of the sheet. Dark keeps the ink-blue night it had.
+
+   And the type carries the identity rather than only the colour does, because
+   colour is the half a projector, a photocopy or a colour-blind reader may not
+   deliver. `--mz-font` is the mono stack, not just `--mz-font-display`: a
+   drawing's notes are lettered in the same hand as its title. That costs width
+   — mono sets perhaps a tenth wider than a grotesque — so the body size comes
+   down a step and the leading goes up to pay for it, which is the trade a
+   theme with a strong face has to make on a slide.
 
    ## Every token is scoped to `[data-theme="blueprint"]`, and that is the rule
 
@@ -49,69 +66,78 @@
    faces in each stack, because neither covers it. */
 
 [data-theme="blueprint"] {
-  --mz-bg: #d9dee4;
-  --mz-slide-bg: #fbfbf9;
-  --mz-fg: #1b2733;
-  --mz-muted: #56616e;
-  --mz-border: #c9d0d8;
-  --mz-surface: #eef1f4;
-  --mz-shape-fill: #eef1f4;
+  /* Paper with a blue in it, and a deeper blue-grey desk behind the sheet. */
+  --mz-bg: #b3c6d6;
+  --mz-slide-bg: #e7eff7;
+  --mz-fg: #10222f;
+  --mz-muted: #46596a;
+  --mz-border: #b8cad9;
+  --mz-surface: #d6e4f0;
+  --mz-shape-fill: #d6e4f0;
 
-  /* Ink blue leads, and a drawing-office teal answers it. */
-  --mz-accent1: #14568c;
-  --mz-accent2: #0d6a63;
+  /* Ink blue leads, and a drawing-office teal answers it. Both are a step
+     darker than they were: the paper moved down towards them, and the 4.5:1
+     floor moves with it. */
+  --mz-accent1: #0f4c82;
+  --mz-accent2: #0a6058;
   --mz-chart3: #8a4a12;
   --mz-chart4: #6b3fa0;
   --mz-chart5: #9c2a4a;
-  --mz-chart6: #2a6f8f;
+  --mz-chart6: #205f7c;
 
-  --mz-danger-bg: #fbeceb;
-  --mz-danger-fg: #9c2222;
-  --mz-danger-border: #c98a8a;
+  --mz-danger-bg: #f7e6e5;
+  --mz-danger-fg: #96201f;
+  --mz-danger-border: #c07f7f;
 
-  --mz-code-bg: #eef1f4;
-  --mz-code-fg: #14568c;
-  --mz-code-keyword: #14568c;
-  --mz-code-string: #2d6a4a;
-  --mz-code-comment: #56616e;
-  --mz-code-function: #6b3fa0;
-  --mz-code-number: #9c2a4a;
-  --mz-code-operator: #1b2733;
+  --mz-code-bg: #dbe7f2;
+  --mz-code-fg: #0f4c82;
+  --mz-code-keyword: #0f4c82;
+  --mz-code-string: #1f6247;
+  --mz-code-comment: #4c5f6e;
+  --mz-code-function: #5f3a94;
+  --mz-code-number: #93253f;
+  --mz-code-operator: #10222f;
 
-  /* Type. The display face is the mono one — headings set in the same face as
-     the drawing notes is the whole idea. */
-  --mz-font: "IBM Plex Sans", "Helvetica Neue", 'Hiragino Kaku Gothic ProN',
-    'Noto Sans CJK JP', 'Yu Gothic Medium', Meiryo, sans-serif;
-  --mz-font-display: "IBM Plex Mono", "SF Mono", Consolas, 'Hiragino Kaku Gothic ProN',
-    'Noto Sans CJK JP', 'Yu Gothic Medium', Meiryo, monospace;
-  --mz-font-mono: "IBM Plex Mono", "SF Mono", Consolas, Menlo, monospace;
+  /* Type. One hand for the whole sheet: a drawing's notes are lettered in the
+     same face as its title, so the text face is the mono one and the display
+     dial points at it. Named, never fetched — a deck is one self-contained
+     file — so every stack ends in the generic `monospace`, and the CJK faces
+     are named after the Latin ones because none of those covers Japanese. */
+  --mz-font: "IBM Plex Mono", "SF Mono", Consolas, Menlo, 'Hiragino Kaku Gothic ProN',
+    'Noto Sans Mono CJK JP', 'Noto Sans CJK JP', 'Yu Gothic Medium', Meiryo, monospace;
+  --mz-font-display: var(--mz-font);
+  --mz-font-mono: var(--mz-font);
 
   /* A drawing is annotated, not shouted at: the ladder separates levels by
-     tracking and rule rather than by weight. */
-  --mz-h1-size: 2.5em;
+     tracking and rule rather than by weight. The sizes are a step below what
+     they were, and the leading a step above, because mono sets wider and needs
+     the room back from somewhere. */
+  --mz-h1-size: 2.3em;
   --mz-h1-weight: 500;
   --mz-h1-tracking: -0.01em;
   --mz-h1-leading: 1.2;
-  --mz-h2-size: 1.45em;
+  --mz-h2-size: 1.35em;
   --mz-h2-weight: 500;
   --mz-h2-tracking: 0.02em;
-  --mz-h3-size: 1.1em;
+  --mz-h3-size: 1.05em;
   --mz-h3-weight: 600;
   --mz-h3-tracking: 0.06em;
   --mz-h3-color: var(--mz-accent2);
-  --mz-title-size: 2.9em;
+  --mz-title-size: 2.6em;
   --mz-title-weight: 500;
   --mz-title-tracking: -0.01em;
-  --mz-body-size: 1.3em;
-  --mz-body-leading: 1.6;
+  --mz-body-size: 1.18em;
+  --mz-body-leading: 1.68;
 
   /* A hairline under a section heading, the width of the pane: this is a
      ruled sheet, so the mark is the rule the sheet already had. */
   --mz-h2-border: 1px solid var(--mz-border);
   --mz-h2-pad: 0.3em;
 
+  /* Mono has less weight to spend than a grotesque does — the strokes are
+     already even — so bold asks for the full 700 to read as bold at all. */
   --mz-strong-color: var(--mz-accent1);
-  --mz-strong-weight: 600;
+  --mz-strong-weight: 700;
   --mz-quote-border: 2px solid var(--mz-accent2);
   --mz-quote-fg: var(--mz-fg);
   --mz-th-fg: var(--mz-accent1);
