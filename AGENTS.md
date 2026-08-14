@@ -38,6 +38,7 @@ export RUSTFLAGS="-D warnings"               # CI sets this; without it, clippy 
 cargo test --workspace                       # 23 suites
 cargo clippy --workspace --all-targets       # zero warnings
 cargo fmt --all -- --check
+node --test editors/vscode/test/*.test.js   # only if you touched editors/vscode
 for d in 01-start 02-writing 03-layout 04-components 05-motion 06-theming pitch research seminar; do
   cargo run -q --bin mirzam -- check "examples/$d.md"   # needs a browser, nothing else
 done

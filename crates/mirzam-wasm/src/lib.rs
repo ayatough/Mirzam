@@ -140,7 +140,7 @@ impl Renderer {
     /// Renders a complete HTML page with the viewer.
     pub fn render_page(&self, source: &str) -> RenderOutput {
         let built = self.build(source);
-        let opts = mirzam_render::PageOptions::default();
+        let opts = built.page_options();
         RenderOutput {
             html: mirzam_render::assemble_page(&built.meta, &built.sections, &opts),
             warnings: serde_json::to_string(&built.warnings).unwrap_or_else(|_| "[]".into()),
@@ -271,8 +271,26 @@ struct Built {
     meta: mirzam_core::DeckMeta,
     sections: Vec<String>,
     warnings: Vec<String>,
+    /// Contents of the stylesheet named by `css:`, when the host supplied it.
+    custom_css: Option<String>,
     /// Everything the assembled page carries around the slides.
     page_fingerprint: u64,
+}
+
+impl Built {
+    fn page_options(&self) -> mirzam_render::PageOptions {
+        page_options(self.custom_css.clone())
+    }
+}
+
+/// The page settings this renderer has: the deck's own stylesheet, and nothing
+/// a browser host can ask for. Assembling the page and fingerprinting it read
+/// the same value, or an edit to the stylesheet is one the host never hears about.
+fn page_options(custom_css: Option<String>) -> mirzam_render::PageOptions {
+    mirzam_render::PageOptions {
+        custom_css,
+        ..Default::default()
+    }
 }
 
 impl Renderer {
@@ -342,6 +360,21 @@ impl Renderer {
             MapFiles(&self.files).read(Path::new(rel))
         });
         warnings.extend(bib_warnings);
+        // And so does the stylesheet named by `css:`. It carries the deck's
+        // own type, colour and any class its slides use, so a preview that
+        // ignored it — as this one did — is not the deck slightly off, it is a
+        // different deck, and every difference from the CLI looks like a bug
+        // in something else.
+        let custom_css =
+            meta.css
+                .as_ref()
+                .and_then(|rel| match MapFiles(&self.files).read(Path::new(rel)) {
+                    Ok(css) => Some(css),
+                    Err(e) => {
+                        warnings.push(format!("css: cannot read {rel}: {e}"));
+                        None
+                    }
+                });
         let (cite_style, style_warning) = mirzam_render::citation_style(&meta);
         warnings.extend(style_warning);
         for text in [&mut ctx.footer, &mut ctx.slide_number]
@@ -379,15 +412,13 @@ impl Renderer {
         if sections.is_empty() && !source.trim().is_empty() {
             warnings.push("no slides: nothing outside the frontmatter".to_string());
         }
-        let page_fingerprint = mirzam_render::page_fingerprint(
-            &meta,
-            &sections,
-            &mirzam_render::PageOptions::default(),
-        );
+        let page_fingerprint =
+            mirzam_render::page_fingerprint(&meta, &sections, &page_options(custom_css.clone()));
         Built {
             meta,
             sections,
             warnings,
+            custom_css,
             page_fingerprint,
         }
     }
@@ -476,6 +507,54 @@ mod tests {
         assert!(out.html.contains(">Ito20</a>"), "{}", out.html);
         assert!(out.html.contains("mz-bib-back"), "{}", out.html);
         assert_eq!(out.warnings, "[]");
+    }
+
+    /// So does the stylesheet in `css:` — the last of the four files a deck
+    /// names in its frontmatter, and the one this renderer used to drop on the
+    /// floor. `examples/pitch.md` is written against its own stylesheet, so
+    /// without this the preview showed the deck with none of its own type or
+    /// colour and said nothing about why.
+    #[test]
+    fn the_stylesheet_comes_out_of_the_host_table() {
+        let mut r = Renderer::new();
+        r.set_files(r#"{"themes/deck.css": ".metric { font-size: 4rem }"}"#)
+            .unwrap();
+        let out = r.render_page("---\ntitle: T\ncss: themes/deck.css\n---\n\n# H\n");
+        assert!(
+            out.html.contains(".metric { font-size: 4rem }"),
+            "{}",
+            out.html
+        );
+        assert_eq!(out.warnings, "[]");
+    }
+
+    /// A stylesheet edit changes no slide at all, so the diff has to come back
+    /// as a rebuild or the preview keeps the look it opened with.
+    #[test]
+    fn a_stylesheet_edit_asks_for_a_rebuild() {
+        let mut r = Renderer::new();
+        let src = "---\ncss: deck.css\n---\n\n# A\n";
+        r.set_files(r#"{"deck.css": "h1 { color: red }"}"#).unwrap();
+        r.render_changed(src);
+        r.set_files(r#"{"deck.css": "h1 { color: blue }"}"#)
+            .unwrap();
+        let out: serde_json::Value = serde_json::from_str(&r.render_changed(src)).unwrap();
+        assert_eq!(out["structural"], true);
+        assert_eq!(out["changes"].as_array().unwrap().len(), 0);
+    }
+
+    /// And a host that did not supply it says so in the same words the CLI
+    /// uses, rather than showing an unstyled deck and leaving the author to
+    /// wonder which of their classes stopped working.
+    #[test]
+    fn a_stylesheet_the_host_did_not_supply_warns() {
+        let r = Renderer::new();
+        let out = r.render_page("---\ncss: deck.css\n---\n\n# H\n");
+        assert!(
+            out.warnings.contains("css: cannot read deck.css"),
+            "{}",
+            out.warnings
+        );
     }
 
     /// A host that did not supply the file gets a warning saying what the deck

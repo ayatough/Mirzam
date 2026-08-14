@@ -87,6 +87,10 @@ pub(crate) fn check(input: &Path, args: &CheckArgs) -> Result<(), String> {
         args.base_url.as_deref(),
     )?;
     apply_deck_overrides(&mut out, &args.deck)?;
+    // The checker is the command an agent runs after every edit, so it is where
+    // a skill card that has drifted from this binary is most useful to say -
+    // as an ordinary warning, in the list the caller is already reading.
+    mirzam_cli::skill::note_drift(input, &mut out);
     // Under `--format json` stdout carries one JSON document and nothing else,
     // so every incidental line - this one included - waits until the end and
     // goes into the document as a record instead.
@@ -226,6 +230,10 @@ fn json_report(
     let report = serde_json::json!({
         "schema": "mirzam-check",
         "version": SCHEMA_VERSION,
+        // Which binary wrote this document, as opposed to which schema it
+        // follows. A caller repairing a stale skill card needs to know what to
+        // repair it to, and this is additive, so the schema stays at 1.
+        "mirzam": mirzam_cli::skill::VERSION,
         "deck": input.display().to_string(),
         "slides": count,
         "ok": problems.is_empty(),
@@ -295,6 +303,10 @@ impl LineIndex {
 /// added here.
 fn build_kind(message: &str) -> &'static str {
     const TABLE: &[(&str, &str)] = &[
+        // First, and matched on two words: the message carries a filesystem
+        // path, and a deck living under `charts/` must not be classified by
+        // somebody's directory name.
+        ("skill card", "build.skill"),
         ("shape line ", "build.shape"),
         ("shape:", "build.shape"),
         ("grid-pad", "build.layout"),

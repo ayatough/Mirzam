@@ -1,6 +1,6 @@
 # Quick start
 
-Four ways in, depending on what you have. Pick the first row that describes you.
+Five ways in, depending on what you have. Pick the first row that describes you.
 
 | You have | Use | Gets you |
 |---|---|---|
@@ -8,6 +8,7 @@ Four ways in, depending on what you have. Pick the first row that describes you.
 | A terminal | **the `mirzam` CLI** | Everything: live preview, PDF export, includes, local images |
 | VS Code | **the preview extension** | The deck beside the Markdown, re-rendering as you type |
 | Obsidian | **your vault** | Write there, build with the CLI or the browser editor |
+| A coding agent | **`mirzam skill install`** | Claude Code writes the deck and checks its own layout |
 
 ---
 
@@ -137,6 +138,23 @@ away from your machine.
   the page, swipe up for notes, two-finger tap for the shortcut sheet.
 - **Presenting from it:** the deck is one file, so AirDrop or a cloud folder is
   the entire deployment step.
+
+## 6. With a coding agent
+
+If Claude Code writes your decks, give it the markup and the checker in one
+command, from the repository the decks live in:
+
+```bash
+mirzam skill install
+```
+
+That writes `.claude/skills/mirzam/` — the loop (write the deck, run
+`mirzam check --format json`, fix what it names) and the whole syntax card,
+both embedded in the binary, so what the model reads matches the binary it is
+calling. `--user` installs it into `~/.claude/skills/` for every directory
+instead. Where no binary can run — claude.ai, the phone app —
+`mirzam skill install --zip` writes the archive those upload. Details, and the
+JSON the checker emits: [agents.md](agents.md).
 
 ---
 

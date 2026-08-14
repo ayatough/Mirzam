@@ -7,7 +7,7 @@
 
 mod check;
 
-use mirzam_cli::{pipeline, scaffold, serve};
+use mirzam_cli::{pipeline, scaffold, serve, skill};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -199,6 +199,35 @@ fn main() -> ExitCode {
             };
             run(check::check(&input, &opts))
         }
+        Some("skill") => {
+            if args.get(1).map(String::as_str) != Some("install") {
+                return usage("install is currently the only skill subcommand");
+            }
+            let mut opts = SkillArgs::default();
+            let mut i = 2;
+            while i < args.len() {
+                match args[i].as_str() {
+                    "--user" => opts.user = true,
+                    "--force" => opts.force = true,
+                    "--zip" => {
+                        // The path is optional, so the next argument is only
+                        // consumed when it looks like one rather than like the
+                        // next flag.
+                        let path = args.get(i + 1).filter(|a| !a.starts_with('-'));
+                        opts.zip = Some(match path {
+                            Some(p) => {
+                                i += 1;
+                                PathBuf::from(p)
+                            }
+                            None => PathBuf::from(skill::ZIP_NAME),
+                        });
+                    }
+                    other => return usage(&format!("unknown argument: {other}")),
+                }
+                i += 1;
+            }
+            run(install_skill(&opts))
+        }
         Some("--version" | "-V") => {
             println!("mirzam {}", env!("CARGO_PKG_VERSION"));
             ExitCode::SUCCESS
@@ -217,7 +246,7 @@ fn main() -> ExitCode {
 /// `mirzam server` instead of `mirzam serve` should not read as "your file is
 /// wrong"; it should name the mistake.
 fn unknown_command(given: &str) -> String {
-    const COMMANDS: [&str; 5] = ["new", "build", "serve", "export", "check"];
+    const COMMANDS: [&str; 6] = ["new", "build", "serve", "export", "check", "skill"];
     let close = COMMANDS
         .iter()
         .map(|c| (edit_distance(given, c), *c))
@@ -283,6 +312,7 @@ Usage:
                [--fit shrink] [--mode light|dark] [--base-url <url>]
                [--debug-layout] [--chromium <bin>] [--min-slack <px>]
                [--format text|json]
+  mirzam skill install [--user] [--zip [<path>]] [--force]
 
   new     write a deck to start from - frontmatter, a title slide and a
           slide break - or, with --empty, a blank file to type into.
@@ -303,6 +333,17 @@ Usage:
           machine actually had, and how little room the tightest pane had
           left, because a deck embeds no text font and a clean run is
           therefore a statement about one machine
+
+  skill   install the Claude Code skill for writing decks - SKILL.md and the
+          syntax card, both embedded in this binary, into
+          .claude/skills/mirzam/ in this repository (or ~/.claude/skills/ with
+          --user). The card is therefore always the one this binary
+          implements, and the copy it writes is stamped with this version, so
+          `build` and `check` can report a card that has drifted. An edited
+          skill is never overwritten without --force. --zip writes the smaller
+          skill instead, as the archive claude.ai, the desktop app and phones
+          upload: no binary runs there, so it writes Mirzam markdown and hands
+          the .md back for the browser editor to render
 
   --split starts a new slide at every heading of that level, which turns an
           ordinary document into a deck without editing it. `build` and
@@ -349,7 +390,9 @@ Examples:
   mirzam export pdf README.md --split h2 -o out.pdf
   mirzam build deck.md --strict
   mirzam check deck.md --split h2
-  mirzam check deck.md --format json"#
+  mirzam check deck.md --format json
+  mirzam skill install
+  mirzam skill install --zip"#
     )
 }
 
@@ -488,6 +531,74 @@ impl Default for BuildArgs {
     }
 }
 
+/// What `mirzam skill install` was asked for.
+#[derive(Default)]
+struct SkillArgs {
+    /// `--user`: `~/.claude/skills/` instead of this repository's.
+    user: bool,
+    /// `--zip [path]`: write the sandbox skill as an archive instead of
+    /// installing a folder. A different skill and a different destination, so
+    /// it does not combine with `--user`.
+    zip: Option<PathBuf>,
+    force: bool,
+}
+
+/// Writes the skill, then says where it went and what to do with it. The
+/// command is run once, usually by somebody who has just heard it exists, so
+/// the output has to answer "and now what?" without a second page of docs.
+fn install_skill(args: &SkillArgs) -> Result<(), String> {
+    if let Some(path) = &args.zip {
+        if args.user {
+            return Err(
+                "--zip writes an archive to upload, and --user installs a folder on this \
+                 machine; run them separately"
+                    .into(),
+            );
+        }
+        skill::write_zip(path)?;
+        println!("✓ wrote {} (mirzam {})", path.display(), skill::VERSION);
+        println!("  the skill for claude.ai, the desktop app and phones, where no binary runs:");
+        println!("  it writes Mirzam markdown from the bundled syntax card and hands back a .md");
+        println!("  next: Settings -> Capabilities -> Skills -> upload this file");
+        return Ok(());
+    }
+
+    let dest = if args.user {
+        skill::Destination::User
+    } else {
+        skill::Destination::Project
+    };
+    let out = skill::install(dest, args.force)?;
+    println!(
+        "✓ wrote {} (mirzam {})",
+        shorten(&out.skill).display(),
+        skill::VERSION
+    );
+    println!(
+        "  and {}, the syntax card it reads",
+        shorten(&out.card).display()
+    );
+    println!(
+        "  next: open Claude Code in {} and ask it for a deck - the skill loads itself",
+        if args.user {
+            "any directory".to_string()
+        } else {
+            "this directory".to_string()
+        }
+    );
+    Ok(())
+}
+
+/// A path as short as it can be said from here: the absolute path a skill
+/// install resolves to is mostly somebody's home directory, and the part that
+/// matters is the tail.
+fn shorten(path: &Path) -> &Path {
+    std::env::current_dir()
+        .ok()
+        .and_then(|cwd| path.strip_prefix(cwd).ok())
+        .unwrap_or(path)
+}
+
 /// Writes the file, then says what to run on it: `new` is the first command
 /// anyone types, so it is also where the second one is learned.
 fn new_deck(path: &Path, empty: bool) -> Result<(), String> {
@@ -542,6 +653,10 @@ fn build(input: &Path, args: &BuildArgs) -> Result<(), String> {
     let mut out =
         pipeline::build_deck_with(input, &mut cache, args.deck.split, args.base_url.as_deref())?;
     apply_deck_overrides(&mut out, &args.deck)?;
+    // An installed skill card older or newer than this binary describes markup
+    // this binary does not have. It is reported here, with the deck's own
+    // warnings, because the agent that would repair it is already reading them.
+    skill::note_drift(input, &mut out);
 
     let opts = mirzam_render::PageOptions {
         live_version: None,

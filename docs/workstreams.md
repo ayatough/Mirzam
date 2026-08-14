@@ -75,7 +75,7 @@ there is. The model column follows from that:
 | W19 | Structural math editing: tap and place, not type | S | Fable | W5 | withdrawn |
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
 | W20 | Syntax highlighting at build time | B | Opus | — | ✅ |
-| W21 | An authoring contract for agents | B | Opus | — | 1–2 ✅ |
+| W21 | An authoring contract for agents | B | Opus | — | ✅ |
 
 ### What is deferred, and why
 
@@ -911,7 +911,9 @@ regenerated deliberately, since every code block in every deck changes.
 
 ## W21 — An authoring contract for agents
 
-**Difficulty B · deliverables 1 and 2 landed; 3, the skill, remains**
+**Difficulty B · landed** — 1 and 2 in `v0.5.0`; 3, the installed skill,
+followed: `mirzam skill install` with stamp, hash guard and drift diagnostic
+(`build.skill`), plus the `mirzam-writing` zip for surfaces without a terminal.
 
 The second P0 from the [market survey](reports/2026-08-market-survey.md). The
 visible trend behind it: "the AI drafts, the human reviews the diff" is
@@ -939,13 +941,47 @@ Three deliverables, in order of leverage:
    attribute, one example each, and the sharp edges called out (attribute
    spans cannot cross lines; shapes live at slide top level). Published on
    the site as `llms.txt` the way the emerging convention has it.
-3. **A skill definition** for coding agents (Claude Code skill or MCP
-   wrapper): write deck → `mirzam check --format json` → fix → repeat, with
-   the syntax card inlined. This ships in the repository, not in the binary.
+3. **A skill the binary installs.** Not a file in this repository for users
+   to find: `mirzam skill install` writes `.claude/skills/mirzam/` into the
+   *user's* deck repository (`--user` targets `~/.claude/skills/` instead),
+   with the SKILL.md and the syntax card embedded in the binary — so the
+   card a model reads always matches the binary it drives, which matters
+   while the markup is `0.x`. The skill's shape: check `mirzam --version`
+   first (and say how to install it if absent, which is what makes the same
+   skill work in a cloud session); write the deck; run
+   `mirzam check --format json`; fix what it names; repeat.
+
+   What is not free about it, and how it is paid for:
+
+   - **Nothing in Claude Code versions a local skill.** So Mirzam does:
+     `skill install` stamps the generated SKILL.md with the version that
+     wrote it, and `check`/`build`, on finding a stamped card near the deck,
+     compare stamps and emit an ordinary diagnostic when they disagree —
+     "card is 0.5.0, binary is 0.6.0, run `mirzam skill install`" (or, for a
+     teammate whose binary is the stale side, "upgrade the binary"). The
+     agent reads the diagnostic in the loop it already runs and repairs the
+     drift itself. That needs the JSON document to say which *binary*
+     produced it, so the top level gains a `mirzam` version field — additive,
+     so the schema stays at `1`.
+   - **A user may have edited the installed skill.** `skill install` records
+     a content hash and refuses to overwrite a modified card without
+     `--force`.
+   - **claude.ai, the desktop app and the phone cannot run a binary** —
+     their skills execute in a sandbox with no filesystem and no network to
+     fetch a release from. So there is a second, deliberately smaller skill:
+     the syntax card alone, packaged as the `.zip` those surfaces upload
+     (Settings → Capabilities/Customize → Skills; phones receive it by
+     account sync). Claude writes correct Mirzam markdown and hands it to
+     the person, whose renderer is the browser editor — which runs on the
+     phone, so the degradation is honest: writing works everywhere, the
+     *checking* half of the loop needs the CLI. `mirzam skill install --zip`
+     emits it, and the release workflow attaches it to each release.
 
 Stops at: the contract. No generation features in the product, no API keys,
 no model calls — Mirzam stays the renderer and the checker; the agent is
-somebody else's process consuming a stable interface.
+somebody else's process consuming a stable interface. An MCP wrapper stays
+out until a surface that needs one demands it; the two skills cover the
+terminal and the sandbox.
 
 ## W5 — Typst-flavoured math ✅
 

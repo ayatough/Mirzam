@@ -25,6 +25,26 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   that anchors shapes to panes should declare the numbers in frontmatter,
   because a margin moved only in CSS moves the panes out from under the
   build's arithmetic.
+- **`mirzam skill install` teaches Claude Code to write Mirzam decks.** One
+  command writes `.claude/skills/mirzam/` into your deck repository (`--user`
+  for `~/.claude/skills/` instead): the loop — write the deck, run
+  `mirzam check --format json`, fix what it names — and the whole syntax card
+  beside it. Both come out of the binary, so the markup the model reads is the
+  markup that binary implements, which matters while the syntax is still `0.x`.
+
+  Nothing versions a local skill, so Mirzam does. The installed card is stamped
+  with the version that wrote it, and `build` and `check` compare stamps: a card
+  older than the binary asks for `mirzam skill install`, a card newer says to
+  upgrade the binary. It arrives as an ordinary warning — `build.skill` in the
+  JSON — so an agent repairs the drift in the loop it already runs. A skill you
+  have edited is never overwritten without `--force`.
+
+  For claude.ai, the desktop app and phones, where no binary can run,
+  `mirzam skill install --zip` writes the archive those upload: the same syntax
+  card, and instructions to hand the finished `.md` to you for the browser
+  editor to render. Each release attaches it.
+- The `--format json` document now carries a `mirzam` field naming the binary
+  that produced it. Additive — the schema is still `version: 1`.
 
 ### Changed
 - **A photograph can take one half of a slide.** `.bleed` used to be a statement
@@ -49,6 +69,25 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   other slide aligns to. Shapes are free to cross pane borders — that layer
   ignores the grid deliberately — but nothing in this composition meant to
   break the margin line.
+- **The VS Code preview reads every file a deck names.** Open
+  `examples/pitch.md` with **Mirzam: Open Preview** and it came up with two
+  missing photographs, an empty chart and a connector pointing at a mark that
+  was never drawn — while the same deck built cleanly from the CLI. The preview
+  renders in a webview, which has no filesystem, so the extension reads the
+  deck's files and hands them over; it knew about transclusions, images,
+  `masters:` and `bibliography:`, and about nothing else. A pane's background
+  photograph (`bg=`, `bg-light=`, `bg-dark=`), a video's `poster=`, the CSV a
+  chart names in `data:`, and the sources inside raw HTML — a `<picture>`
+  picking artwork by colour scheme — are now read too, and markup a deck merely
+  *quotes* inside a code fence is no longer mistaken for markup it writes.
+
+  **The stylesheet in `css:` reaches the preview as well**, which it never had:
+  the preview was showing every deck with a custom stylesheet stripped of its
+  own type and colour and saying nothing about why. A deck whose host cannot
+  supply it now warns instead, the way a missing `masters:` file already did.
+
+  `examples/pitch.md` now previews byte-for-byte identical to what `mirzam
+  build` produces for it.
 
 ## [0.5.0] - 2026-08-13
 
