@@ -107,6 +107,18 @@ section.slide { background: var(--mz-slide-bg); border-radius: inherit; }
 .pane > :first-child { margin-top: 0; }
 .pane > :last-child { margin-bottom: 0; }
 
+/* `columns=N` on the pane: the content is balanced across N columns, so ten
+   short items become five and five instead of running down the pane's left
+   edge. The gutter defaults to the grid gap, so the fold inside a pane reads
+   as the same kind of seam as the one between panes. */
+.mz-columns {
+  column-gap: var(--mz-columns-gap, var(--mz-grid-gap, 20px));
+}
+/* An item split across the fold reads as two items. */
+.mz-columns li { break-inside: avoid; }
+.mz-columns > :first-child { margin-top: 0; }
+.mz-columns > :last-child { margin-bottom: 0; }
+
 /* Pane backgrounds. The photo is a real <img> so it is inlined like any other
    asset; the scrims and the content sit above it in the same stacking context. */
 .pane.has-bg {

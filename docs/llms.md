@@ -133,6 +133,8 @@ Ordinary Markdown goes here.
 ```
 
 Pane attributes: `align=left|center|right`, `valign=middle|bottom`,
+`columns=2` (balance the pane's content across 2–6 columns; lists of short
+items fill the pane's width instead of leaving it empty),
 `fit=shrink`, `theme=`, `mode=`, the background attributes below, and any
 `.class` your stylesheet defines.
 

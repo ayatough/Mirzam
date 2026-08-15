@@ -415,3 +415,47 @@ slide using it calls its panes.
 :::
 
 <!-- note: The deck renders identically to the version that drew all three grids by hand. That is the test: a master is a shape moved, not a shape changed. -->
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|  note            |  list           |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Rule 11]{.eyebrow}
+## Balance short items across columns
+:::
+
+::: pane note {valign=middle}
+A list of one-word items runs down the pane's left edge and leaves the rest of
+the width empty. `columns=2` on the pane balances its content by amount: ten
+items become five and five, and adding one redistributes the rest.
+
+An item never breaks across the fold, and the gutter is the grid gap unless
+`--mz-columns-gap` says otherwise.
+:::
+
+::: pane list {.card columns=2 valign=middle}
+- Latency
+- Throughput
+- Cache hits
+- Cold starts
+- Error rate
+- Saturation
+- Queue depth
+- Retries
+- Backoff
+- Timeouts
+:::
+
+<!-- note: The split is the browser's, not the author's: the same source with three items fewer still comes out even. For two *different* things side by side, draw two panes. -->

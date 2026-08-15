@@ -152,6 +152,8 @@ Ordinary Markdown goes here.
 ```
 
 Pane attributes: `align=left|center|right`, `valign=middle|bottom`,
+`columns=2` (balance the pane's content across that many columns — see
+[the layout guide](layout.md#columns-inside-a-pane)),
 `theme=`/`mode=` ([a palette for one pane](#a-theme-smaller-than-a-deck)), and
 any extra `.class` names your own theme or a `<style>` block defines. Content
 that is not assigned to a pane flows into `main`, or the first pane if there
@@ -1758,6 +1760,7 @@ rules that position them:
 | `--mz-grid-pad-y` | `44px` | The slide's top and bottom margin |
 | `--mz-grid-pad-x` | `60px` | Its left and right margin, and the footer's |
 | `--mz-grid-gap` | `20px` | The space between panes |
+| `--mz-columns-gap` | the grid gap | The gutter between a pane's `columns=` columns |
 | `--mz-pane-pad` | `2px 4px` | Padding inside every pane |
 | `--mz-pane-border` | `none` | A border on every pane |
 | `--mz-pane-radius` | `0` | Its corner radius |

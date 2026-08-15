@@ -1416,6 +1416,7 @@ fn render_grid_slide(
             body = with_charts;
             chart_files.extend(files);
         }
+        let body = columns_wrap(body, &attrs, index, name, errors);
         let bg = background_layers(&attrs, errors);
         // `theme=`/`mode=` on the pane: the palette is set on this element, so
         // everything inside it reads the other theme's tokens. Unknown names
@@ -1449,6 +1450,40 @@ fn render_grid_slide(
         rows = grid.css_rows(),
         areas = grid.css_areas(),
     )
+}
+
+/// Wraps a pane's content in a multi-column container when the pane asks for
+/// one with `columns=N`.
+///
+/// The browser balances the content across the columns, so a list of short
+/// items fills the pane's width instead of running down its left edge with the
+/// right half empty. The columns are a wrapper *inside* the pane rather than a
+/// style on it because `valign=` turns the pane itself into a flex container,
+/// and a flex container ignores `column-count`.
+fn columns_wrap(
+    body: String,
+    attrs: &inline::Attrs,
+    index: usize,
+    pane: &str,
+    errors: &mut Vec<String>,
+) -> String {
+    let Some(v) = attrs.kv.get("columns") else {
+        return body;
+    };
+    match v.parse::<u32>() {
+        // One column is what a pane already is; saying so is not an error.
+        Ok(1) => body,
+        Ok(n @ 2..=6) => {
+            format!("<div class=\"mz-columns\" style=\"column-count:{n}\">{body}</div>")
+        }
+        _ => {
+            errors.push(format!(
+                "slide {}: pane `{pane}`: columns={v} is not a column count (1-6)",
+                index + 1
+            ));
+            body
+        }
+    }
 }
 
 /// The `mz-bleed-*` classes a `.bleed` pane needs, one per slide edge it
@@ -1676,6 +1711,12 @@ fn render_single_pane_slide(
         .collect::<String>();
     // The one pane covers the slide, so a bleed here reaches all four edges.
     extra_cls.push_str(&bleed_edge_classes(&attrs, Edges::all));
+    // Like the background and the palette: the first block that asks for
+    // columns speaks for the whole slide.
+    let body = match all.iter().find(|a| a.kv.contains_key("columns")) {
+        Some(a) => columns_wrap(body, a, index, "main", errors),
+        None => body,
+    };
     // A pane shape's frame is the content box — or the whole slide when the
     // pane bleeds, since a bleed on a one-pane slide reaches every edge.
     if !shape_srcs.is_empty() {
@@ -1731,6 +1772,45 @@ mod tests {
             .contains("grid-template-areas:\"main main\" \"a b\""));
         assert!(out.html.contains("pane-a"));
         assert!(out.html.contains("hello"));
+    }
+
+    /// `columns=N` wraps the pane's content in a multi-column container; a
+    /// value that is not a sensible count keeps the content and reports it.
+    #[test]
+    fn a_pane_can_balance_its_content_across_columns() {
+        let slide = parse_slide(
+            "```pane\n+---+---+\n| a | b |\n+---+---+\n```\n\n\
+             ::: pane a {columns=2}\n- one\n- two\n:::\n\n::: pane b\nplain\n:::\n",
+        );
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(out.warnings.is_empty(), "{:?}", out.warnings);
+        assert!(out
+            .html
+            .contains("<div class=\"mz-columns\" style=\"column-count:2\">"));
+        // The pane that did not ask keeps its content unwrapped.
+        assert!(out
+            .html
+            .contains("data-pane=\"b\" style=\"grid-area:b\"><p>plain</p>"));
+
+        // A slide with no layout: the first block that asks speaks for it.
+        let slide = parse_slide("::: pane main {columns=3}\n- one\n- two\n- three\n:::\n");
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(out.warnings.is_empty(), "{:?}", out.warnings);
+        assert!(out
+            .html
+            .contains("<div class=\"mz-columns\" style=\"column-count:3\">"));
+
+        // Not a count: the content survives, the mistake is reported.
+        let slide = parse_slide(
+            "```pane\n+---+\n| a |\n+---+\n```\n\n::: pane a {columns=twelve}\nwords\n:::\n",
+        );
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(!out.html.contains("<div class=\"mz-columns\""));
+        assert!(out.html.contains("words"));
+        assert!(out
+            .warnings
+            .iter()
+            .any(|w| w.contains("columns=twelve is not a column count")));
     }
 
     /// A pane in a theme of its own: the attribute lands on that pane and

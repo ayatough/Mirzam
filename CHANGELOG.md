@@ -8,6 +8,13 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- **A pane can balance its content across columns.** `columns=2` (up to 6) on
+  a `::: pane` splits the pane's content by amount: a list of ten short items
+  becomes five and five instead of running down the left edge with the right
+  half of the pane empty. The browser does the balancing, so adding an item
+  redistributes the rest, and an item never breaks across the fold. The gutter
+  matches the grid gap unless `--mz-columns-gap` moves it. Rule 11 in the
+  layout cookbook (`examples/03-layout.md`, last slide at `/next/`) shows it.
 - **A published slide can show the Markdown it was written as, and hand the
   deck to the browser editor.** `mirzam build --embed-source` carries the
   deck's own document inside the deck; `V` then opens the current slide's

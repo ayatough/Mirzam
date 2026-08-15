@@ -121,6 +121,37 @@ Two consequences worth knowing before you convert a deck:
 ::: pane fig {align=center valign=middle}
 ```
 
+## Columns inside a pane
+
+A list of short items runs down the pane's left edge and leaves the rest of
+the width empty. `columns=` balances the pane's content across that many
+columns, so the words use the room the drawing gave them:
+
+```markdown
+::: pane body {columns=2}
+- Latency
+- Throughput
+- Error rate
+- Saturation
+:::
+```
+
+- **The split follows the amount.** The browser balances the columns, so ten
+  items become five and five, and adding an item redistributes the rest — you
+  never assign items to a side.
+- **An item never breaks across the fold.** A bullet that wrapped onto the
+  other column would read as two bullets.
+- The gutter between columns is the grid gap, so the fold reads as the same
+  kind of seam as the one between panes; `--mz-columns-gap` moves it alone —
+  see [the token table](syntax.md#margins-padding-and-borders).
+- Two and three are the sensible values on a slide; the renderer stops at six.
+- This is flow, not layout. Two *different* things side by side — a figure and
+  its caption, a before and an after — are two panes in the drawing, which is
+  what keeps them from trading places when one of them grows.
+
+Rule 11 in [`examples/03-layout.md`](../examples/03-layout.md) is the
+demonstration.
+
 ## Connectors
 
 An arrow from a phrase to a figure is resolved in the browser after layout, so it
