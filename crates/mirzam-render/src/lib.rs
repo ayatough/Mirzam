@@ -1973,7 +1973,8 @@ mod tests {
     fn embedded_source_arrives_with_a_control_that_opens_it() {
         let opts = PageOptions {
             source: Some(DeckSource {
-                slides: vec!["# One\n".into()],
+                doc: "# One\n".into(),
+                starts: vec![0],
                 section_slides: vec![0],
                 editor_url: Some("../../try/".into()),
                 ..Default::default()
@@ -1982,7 +1983,7 @@ mod tests {
         };
         let html = assemble_page(&DeckMeta::default(), &[], &opts);
         assert!(html.contains("<script type=\"application/json\" id=\"mz-source\""));
-        assert!(html.contains(r##""slides":["# One\n"]"##), "{html}");
+        assert!(html.contains(r##""doc":"# One\n""##), "{html}");
         assert!(html.contains("<button id=\"mz-source-btn\""), "{html}");
     }
 
@@ -1992,7 +1993,8 @@ mod tests {
     fn embedded_source_carries_the_files_the_deck_read() {
         let opts = PageOptions {
             source: Some(DeckSource {
-                slides: vec!["# One\n".into()],
+                doc: "# One\n".into(),
+                starts: vec![0],
                 section_slides: vec![0],
                 files: vec![("themes/acme.css".into(), ":root { --mz-bg: #fff }".into())],
                 ..Default::default()
@@ -2015,7 +2017,8 @@ mod tests {
         let bare = PageOptions::default();
         let with = PageOptions {
             source: Some(DeckSource {
-                slides: vec!["# One\n".into()],
+                doc: "# One\n".into(),
+                starts: vec![0],
                 ..Default::default()
             }),
             ..Default::default()

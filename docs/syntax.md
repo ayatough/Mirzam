@@ -1405,47 +1405,58 @@ printed.
 
 ### The Markdown behind a slide
 
-A deck built with `--embed-source` carries the text each slide was written as:
+A deck built with `--embed-source` carries the document it was built from:
 
 ```bash
 mirzam build deck.md -o out --embed-source
 ```
 
-`V` then opens that Markdown *beside* the slide — the deck makes room for the
-panel instead of being covered by it, because the point is reading the two
-together. `Copy` takes the slide's source to the clipboard, `Esc` or `Close`
-puts the slide back to full width. In a deck built without the flag the key
-does nothing and the cheat sheet does not offer it.
+`V` then opens the current slide's Markdown *beside* the slide — the deck makes
+room for the panel instead of being covered by it, because the point is reading
+the two together. `Copy` takes that slide's source to the clipboard, `Esc` or
+`Close` puts the slide back to full width. In a deck built without the flag the
+key does nothing and the cheat sheet does not offer it.
 
 On a phone there is no `V` to press, so the panel has a control: `</>` in the
 cluster below the bottom-right corner, which the `/` sheet also names. The
-panel docks along the bottom there rather than at the side, and the cluster
-moves clear of it — those buttons are the only controls a touchscreen has.
+panel docks along the bottom there rather than at the side, the cluster moves
+clear of it, and a swipe inside the panel scrolls the panel — a pane drawing is
+wider than a phone and deliberately does not wrap, so dragging the end of a
+line into view must not turn the page.
 
 A rendered slide is not always an authored one: `<!-- next -->` turns one slide
 into several, and each of them shows the source of the slide they were cut
-from. What travels is the Markdown **as authored** — `{{vars}}` unsubstituted,
-`![[includes]]` unexpanded — because the point is the text somebody typed.
+from. What travels is the document **as rendered** — transclusions expanded and
+variables substituted — because that is what can be re-rendered on its own,
+without the files it was assembled from. A deck that writes `{{price}}`
+therefore carries the number.
 
-Add `--editor-url` and the panel also carries the slide out:
+Add `--editor-url` and the panel also carries the deck out:
 
 ```bash
 mirzam build deck.md -o out --editor-url ../../try/
 ```
 
-The link hands the slide to the [browser editor](https://ayatough.github.io/Mirzam/try/),
-where it can be changed and re-rendered by the same core that drew it. The
-deck's frontmatter travels with it, and so does every file the deck read by
-name — the stylesheets `theme:` points at, the `bibliography:` — so both keys
-resolve over there the way they resolved here. It all rides in the URL's
-*fragment*, the part a browser never sends to a server: nothing is uploaded,
-and a deck saved to a phone hands a slide over exactly like a published one.
-A deck given `--theme` on the command line hands over a `theme:` line saying
-so, since the look it was built in is not one its own text describes.
-Its images do not travel: they are inlined in the deck as data URIs with the
-path they came from long gone, so a slide that uses one arrives with the
-reference intact and the file missing, which the editor reports the way it
-reports any missing asset. Drag the picture in and it resolves again.
+The link hands **the whole deck** to the
+[browser editor](https://ayatough.github.io/Mirzam/try/), opened at the slide
+you were looking at: the cursor sits where that slide starts and the preview
+shows it. The whole deck rather than the one slide, because a slide is not a
+document — it has no frontmatter of its own and its citations are listed
+elsewhere in the file — so one on its own would be something you had to paste
+back by hand.
+
+Everything the deck reads by name goes with it: the stylesheets `theme:` points
+at, the `bibliography:`, the `masters:`. It all rides in the URL's *fragment*,
+the part a browser never sends to a server, so nothing is uploaded and a deck
+saved to a phone hands itself over exactly like a published one. A deck given
+`--theme`, `--mode`, `--fit` or `--split` on the command line hands over
+frontmatter saying so, since the deck it was built as is not the one its own
+text describes.
+
+Images do not travel: they are inlined in the deck as data URIs with the path
+they came from long gone, so a deck that uses one arrives with the reference
+intact and the file missing, which the editor reports the way it reports any
+missing asset. Drag the picture in and it resolves again.
 
 `--editor-url` implies `--embed-source`. Both are `build` only: `serve` already
 has your source open in the editor beside it.

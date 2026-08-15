@@ -162,11 +162,11 @@ const saved = localStorage.getItem('mirzam-src');
 srcEl.value = saved === null ? SAMPLE : saved;
 
 // ---- Files ----
-// Everything the core reads by name that is not a picture: the stylesheet
-// `css:` points at, and any file a deck transcludes. There is no filesystem
-// here, so the host holds the table. It arrives with a slide handed over from
-// a deck (see below) and is kept with the draft, or a reload would render the
-// same Markdown in a different set of clothes.
+// Everything the core reads by name that is not a picture: the stylesheets
+// `theme:` points at, the `bibliography:`, the `masters:`. There is no
+// filesystem here, so the host holds the table. It arrives with a deck handed
+// over from a slide (see below) and is kept with the draft, or a reload would
+// render the same Markdown in a different set of clothes.
 const files = JSON.parse(localStorage.getItem('mirzam-files') || '{}');
 function publishFiles() {
   renderer.set_files(JSON.stringify(files));
@@ -386,19 +386,22 @@ const setPane = (which) => {
 document.getElementById('tab-edit').addEventListener('click', () => setPane('edit'));
 document.getElementById('tab-preview').addEventListener('click', () => setPane('preview'));
 
-// ---- A slide handed over from a deck ----
-// A deck built with `mirzam build --embed-source --editor-url` carries the
-// Markdown each slide was written as, and offers to hand the slide you are
-// looking at to this editor. It arrives in the URL's fragment - the deck's
-// frontmatter, the slide, and the stylesheet `css:` names - which is the part
-// of a URL a browser never sends anywhere. Nothing is uploaded, and a deck
-// saved to a phone can hand a slide over exactly like a published one.
+// ---- A deck handed over from a slide ----
+// A deck built with `mirzam build --embed-source --editor-url` carries its own
+// Markdown, and every slide offers to hand it here. What arrives is the whole
+// deck - opened at the slide the reader was looking at - together with the
+// files it reads by name, in the URL's fragment, which is the part of a URL a
+// browser never sends anywhere. Nothing is uploaded, and a deck saved to a
+// phone hands itself over exactly like a published one.
 //
 //   #md=<base64url of Markdown>
-//   #deck=<base64url of {"md": …, "files": {name: contents}}>
+//   #deck=<base64url of {"md": …, "at": …, "slide": …, "files": {name: text}}>
 //
-// Anything that does not decode is ignored: a truncated link should open the
-// editor on the draft that was already there, not on an error.
+// `at` is where in the document that slide starts, in the units JavaScript
+// counts a string in, and `slide` is its number in the rendered deck: one
+// moves the cursor, the other moves the preview. Anything that does not decode
+// is ignored - a truncated link should open the editor on the draft that was
+// already there, not on an error.
 function handover() {
   const m = /[#&](deck|md)=([^&]+)/.exec(location.hash);
   if (!m) return null;
@@ -420,6 +423,34 @@ function handover() {
 if (!srcEl.value.trim()) setPane('edit');
 fullRender(srcEl.value);
 
+/**
+ * Puts the cursor where the handed-over slide starts, and scrolls the source
+ * to it. Deliberately without focus: on a phone, focusing the textarea throws
+ * the keyboard up over half the screen before anybody has decided to type.
+ */
+function goToOffset(at) {
+  if (typeof at !== 'number' || at < 0 || at > srcEl.value.length) return;
+  srcEl.setSelectionRange(at, at);
+  // A textarea cannot be asked where a character is, so the line is counted
+  // and multiplied by the line box. Close enough to put the slide on screen,
+  // which is all this is for.
+  const line = srcEl.value.slice(0, at).split('\n').length - 1;
+  const lh = parseFloat(getComputedStyle(srcEl).lineHeight) || 20;
+  srcEl.scrollTop = Math.max(0, line * lh - srcEl.clientHeight / 3);
+}
+
+/** Shows that slide in the preview, once the preview has a viewer to ask. */
+function previewSlide(i) {
+  if (typeof i !== 'number') return;
+  const jump = () => {
+    try { preview.contentWindow.__mirzamGoto(i); } catch (e) {}
+  };
+  preview.addEventListener('load', jump, { once: true });
+  // The iframe may already be loaded by the time this runs, and `load` would
+  // then never fire again.
+  jump();
+}
+
 const handed = handover();
 if (handed) {
   if (handed.files) {
@@ -430,18 +461,26 @@ if (handed) {
   // question again on every reload, and the fragment is thousands of
   // characters of base64 nobody wants to look at.
   try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
-  // The sample is what the editor opens on, so it is not work anybody would
-  // miss - only a draft somebody typed is worth a question.
-  if (!saved || !saved.trim() || saved === SAMPLE) {
+  const take = () => {
     srcEl.value = handed.md;
     localStorage.setItem('mirzam-src', srcEl.value);
     fullRender(srcEl.value);
-    // On a phone the two panes take turns, and the button that got you here
-    // said Edit. The slide has already been read on the deck it came from;
-    // what is new here is being able to change it.
+    // The pane first: on a phone the two take turns, and a textarea that is
+    // not displayed has no height to scroll and ignores being asked to. The
+    // button that got you here said Edit, and the deck has already been read
+    // where it came from - what is new here is being able to change it.
     setPane('edit');
-  } else {
-    replaceSource(handed.md, 'Replace your draft with the slide you came from? Your draft is only in this browser — Save .md first if you want to keep it.');
+    goToOffset(handed.at);
+    previewSlide(handed.slide);
+  };
+  // The sample is what the editor opens on, so it is not work anybody would
+  // miss - only a draft somebody typed is worth a question.
+  if (!saved || !saved.trim() || saved === SAMPLE) {
+    take();
+  } else if (
+    confirm('Replace your draft with the deck you came from? Your draft is only in this browser — Save .md first if you want to keep it.')
+  ) {
+    take();
   }
 }
 </script>

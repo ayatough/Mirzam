@@ -438,7 +438,7 @@
     const tag = document.getElementById('mz-source');
     if (tag) SOURCE = JSON.parse(tag.textContent);
   } catch (e) {}
-  const hasSource = !!(SOURCE && SOURCE.slides && SOURCE.slides.length);
+  const hasSource = !!(SOURCE && SOURCE.doc && SOURCE.at && SOURCE.at.length);
   if (hasSource) {
     DISPLAY.splice(1, 0, [['V'], 'The Markdown behind this slide']);
     // A phone has no `V` to press, so on touch the sheet names the control
@@ -447,15 +447,22 @@
     TOUCH[1].splice(2, 0, [['</> button'], 'The Markdown behind this slide']);
   }
 
-  /** The authored Markdown behind rendered slide `i`, or null. */
-  function sourceFor(i) {
-    if (!hasSource) return null;
+  /** Which authored slide rendered section `i` came from. */
+  function slideOf(i) {
     // `<!-- next -->` renders one authored slide as several sections, so the
     // section number is not the slide number; `of` is the way back. A deck
     // that never breaks a slide omits the detour.
-    const at = SOURCE.of && SOURCE.of.length > i ? SOURCE.of[i] : i;
-    const md = SOURCE.slides[at];
-    return md === undefined ? null : md;
+    return SOURCE.of && SOURCE.of.length > i ? SOURCE.of[i] : i;
+  }
+
+  /** The Markdown behind rendered slide `i`, cut out of the document. */
+  function sourceFor(i) {
+    if (!hasSource) return null;
+    const n = slideOf(i);
+    const from = SOURCE.at[n];
+    if (from === undefined) return null;
+    const to = SOURCE.at[n + 1];
+    return SOURCE.doc.slice(from, to === undefined ? SOURCE.doc.length : to);
   }
 
   /** How much room the open panel wants, as `{x, y}` pixels. */
@@ -467,17 +474,6 @@
     return r.width >= innerWidth - 1 ? { x: 0, y: r.height } : { x: r.width, y: 0 };
   }
 
-  /**
-   * The deck's frontmatter and this slide's Markdown, as a document the
-   * editor can render on its own. Frontmatter carries the deck's `vars:`,
-   * `theme:` and `aspect:` across; without it a slide arrives looking like
-   * somebody else's.
-   */
-  function handoverDoc(md) {
-    const fm = SOURCE && SOURCE.fm;
-    return fm ? `---\n${fm}\n---\n\n${md}` : md;
-  }
-
   /** base64url of a UTF-8 string: `btoa` alone mangles anything non-ASCII. */
   function encodePayload(text) {
     const bytes = new TextEncoder().encode(text);
@@ -487,15 +483,22 @@
   }
 
   /**
-   * Where the editor is, with this slide packed into the fragment. The files
-   * the deck read by name — the stylesheets `theme:` points at, the
-   * bibliography — travel with it under those names, so `theme:` and
-   * `bibliography:` resolve over there the way they resolved here and the
-   * slide renders as the slide, not as an unstyled draft of it.
+   * Where the editor is, with the whole deck packed into the fragment and the
+   * place in it this slide starts. The files the deck read by name — the
+   * stylesheets `theme:` points at, the bibliography, the masters — travel
+   * with it under those names, so those keys resolve over there the way they
+   * resolved here and the deck renders as the deck.
+   *
+   * The whole deck, not the slide: a slide has no frontmatter of its own and
+   * its citations are listed elsewhere in the document, so one on its own is
+   * something the author would have had to paste back by hand.
    */
-  function editorLink(md) {
+  function editorLink() {
     if (!SOURCE || !SOURCE.editor) return null;
-    const payload = { md: handoverDoc(md) };
+    // The *authored* slide number, not this section's: the editor renders one
+    // slide per `---`, where a slide broken by `<!-- next -->` is still one.
+    const n = slideOf(cur);
+    const payload = { md: SOURCE.doc, at: SOURCE.at[n], slide: n };
     if (SOURCE.files && Object.keys(SOURCE.files).length) payload.files = SOURCE.files;
     return SOURCE.editor + '#deck=' + encodePayload(JSON.stringify(payload));
   }
@@ -509,7 +512,7 @@
         '<pre>This slide carries no source.</pre>';
       return;
     }
-    const link = editorLink(md);
+    const link = editorLink();
     // A new tab: the deck this came from is very likely being presented, and
     // taking the presenter's window to an editor would be the wrong answer to
     // a click on a link.
@@ -650,10 +653,20 @@
   const SWIPE = 45;      // px before a drag counts as a swipe rather than a tap
   let touch = null;
   const selecting = () => (getSelection()?.toString() || '').trim() !== '';
+  // A panel is a thing to read, not a page to turn. The source panel scrolls
+  // sideways — a pane drawing is wider than a phone and must not reflow — so a
+  // swipe that starts inside one belongs to it: without this, dragging a long
+  // line into view turned the page instead, and the line was gone. Same for
+  // the notes and the cheat sheet, which scroll down for the same reason.
+  const inPanel = (target) =>
+    !!(target && target.closest && target.closest('#source-panel, #notes-panel, #keys'));
 
   addEventListener('touchstart', (e) => {
     wake();
     if (e.touches.length > 1) { touch = null; handled = true; toggleKeys(); return; }
+    // No gesture to suppress the click of, so `handled` stays as it is: the
+    // cheat sheet closes on a tap, and the panel's own buttons still work.
+    if (inPanel(e.target)) { touch = null; return; }
     const t = e.touches[0];
     touch = { x: t.clientX, y: t.clientY, held: selecting() };
     handled = false;

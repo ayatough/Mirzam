@@ -376,17 +376,17 @@ Usage:
   --base-url is where the input file's directory lives once published, so
           links to other documents still resolve from the deck's own path
           (build and check)
-  --embed-source carries each slide's Markdown, as authored, inside the deck:
-          the viewer's V key then shows the text this slide was written as,
-          beside the slide rather than over it, and a phone gets the same
-          panel from the </> control. A published deck otherwise shows what
-          the markup does and never what it says (build only)
+  --embed-source carries the deck's own Markdown inside the deck: the viewer's
+          V key then shows the text this slide was written as, beside the
+          slide rather than over it, and a phone gets the same panel from the
+          </> control. A published deck otherwise shows what the markup does
+          and never what it says (build only)
   --editor-url is where the browser editor lives, absolute or relative to the
-          deck. It puts a link in that panel that hands the slide over for
-          editing - the deck's frontmatter travels with it, and so does every
-          file the deck read by name: the stylesheets `theme:` points at and
-          the bibliography. It rides in the URL's fragment, so nothing is
-          uploaded anywhere. Implies --embed-source (build only)
+          deck. It puts a link in that panel that hands the whole deck over
+          for editing, opened at the slide you were on - with the files it
+          reads by name: the stylesheets `theme:` points at, the bibliography,
+          the masters. It rides in the URL's fragment, so nothing is uploaded
+          anywhere. Implies --embed-source (build only)
   --debug-layout bakes on the pane outline overlay, for screenshotting a
           broken deck (toggle it live in the viewer with the L key instead).
           `check` reports it baked on, since it is meant for screenshotting a
@@ -756,11 +756,12 @@ fn embedded_files(
 /// The frontmatter a handed-over slide carries, saying what the deck was
 /// actually built in rather than only what its own text says.
 ///
-/// A deck given `--theme`, `--mode` or `--fit` on the command line has a look
-/// its text does not describe — that is the point of the flags, and it is how
-/// the README is published as a deck at all. Handing over the text alone would
-/// send a slide to the editor dressed as the document rather than as the deck,
-/// so the effective values replace whatever the file said about those keys.
+/// A deck given `--theme`, `--mode`, `--fit` or `--split` on the command line
+/// is a deck its own text does not describe — that is the point of the flags,
+/// and it is how the README is published as a deck at all. Handing over the
+/// text alone would send it to the editor dressed as the document rather than
+/// as the deck, so the effective values replace whatever the file said about
+/// those keys.
 /// A deck that took no overrides hands over its frontmatter untouched.
 fn handover_frontmatter(out: &pipeline::BuildOutput, deck: &DeckArgs) -> Option<String> {
     let mut overrides: Vec<(&str, String)> = Vec::new();
@@ -782,6 +783,12 @@ fn handover_frontmatter(out: &pipeline::BuildOutput, deck: &DeckArgs) -> Option<
         if let Some(fit) = &out.meta.fit {
             overrides.push(("fit", fit.clone()));
         }
+    }
+    // `--split` decides what a slide *is*, so a deck handed over without it
+    // arrives as one long slide - which is what the README was before this
+    // flag, and the deck exists to show the difference.
+    if let Some(level) = deck.split {
+        overrides.push(("split", format!("h{level}")));
     }
     if overrides.is_empty() {
         return out.frontmatter.clone();
@@ -833,14 +840,17 @@ fn build(input: &Path, args: &BuildArgs) -> Result<(), String> {
         // actually uses and no more.
         all_themes: false,
         source: (args.embed_source || args.editor_url.is_some()).then(|| {
+            // The document the renderer read, frontmatter included: one text,
+            // which the panel and the handover both take slices of.
+            let head = match handover_frontmatter(&out, &args.deck) {
+                Some(fm) => format!("---\n{fm}\n---\n"),
+                None => String::new(),
+            };
             mirzam_render::DeckSource {
-                frontmatter: handover_frontmatter(&out, &args.deck),
-                files: embedded_files(input, &out.meta, &out.file_themes),
-                // The Markdown as authored: `{{vars}}` unsubstituted and
-                // `![[includes]]` unexpanded, because the point is the text
-                // somebody typed rather than the text the renderer read.
-                slides: out.slides.iter().map(|s| s.text.clone()).collect(),
+                starts: out.slides.iter().map(|s| head.len() + s.start).collect(),
+                doc: head + &out.body,
                 section_slides: out.section_slides.clone(),
+                files: embedded_files(input, &out.meta, &out.file_themes),
                 editor_url: args.editor_url.clone(),
             }
         }),

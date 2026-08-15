@@ -829,10 +829,14 @@ html.mz-awake #controls { opacity: 1; pointer-events: auto; }
   border: 1px solid var(--mz-ui-line); border-radius: 8px;
 }
 /* On a touchscreen these are the *only* controls — every key they stand for is
-   unreachable — and 30px is below the size a thumb can hit reliably. A pointer
-   is precise and the cluster stays discreet for it. */
+   unreachable — so they are bigger than a pointer needs and, more importantly,
+   always there. Fading in on pointer movement is right for a mouse and wrong
+   for a phone, which has no pointer to move: the cluster read as an empty bar
+   with a page number in it, and everything it offers was invisible until you
+   happened to touch it. A pointer is precise and can go looking; a thumb
+   cannot. */
 @media (pointer: coarse) {
-  #controls { gap: 8px; }
+  #controls { gap: 8px; opacity: 1; pointer-events: auto; }
   #controls button { width: 42px; height: 42px; font-size: 18px; }
 }
 #controls button:hover { background: var(--mz-ui-bg); }
@@ -990,6 +994,10 @@ html[data-presenter] #chrome, html[data-presenter] #notes-panel { display: none;
    reflows is no longer a drawing. */
 #source-panel pre {
   flex: 1; margin: 0; overflow: auto; padding: 12px 14px;
+  /* `html` claims the horizontal swipe for page turns, which left this box
+     unable to scroll to the end of a line it deliberately does not wrap. Here
+     the browser gets it back. */
+  touch-action: pan-x pan-y;
   background: none; color: inherit; border: 0; border-radius: 0;
   font-family: 'SF Mono', Consolas, Menlo, monospace;
   font-size: 12.5px; line-height: 1.6; tab-size: 2;

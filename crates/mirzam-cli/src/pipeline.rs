@@ -41,6 +41,11 @@ pub struct BuildOutput {
     /// spans below, this is what turns "this block, on this slide" back into
     /// "these bytes, in this file".
     pub map: mirzam_syntax::SourceMap,
+    /// The document the slides were split from: transclusions expanded and
+    /// variables substituted, without the frontmatter. With the spans below
+    /// it is what lets a caller hand the deck's own text to something else —
+    /// `mirzam build --embed-source` puts it in the page.
+    pub body: String,
     /// Each *authored* slide's text and its offset in the expanded document.
     /// A slide broken by `<!-- next -->` renders as several sections but is one
     /// entry here: this list is the source view, and there is only one source.
@@ -506,6 +511,7 @@ pub fn build_deck_with(
     Ok(BuildOutput {
         meta,
         frontmatter,
+        body,
         sections,
         hashes,
         page_fingerprint,

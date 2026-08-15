@@ -157,8 +157,8 @@ In the viewer: `←` `→` to navigate (and to step through a slide's animation)
 layout, `P` for a presenter window with the next slide, your notes and a timer.
 Press `/` for the full list, including the effect keys this particular deck
 binds. Build with `--embed-source` and `V` shows the Markdown a slide was
-written as, beside the slide; add `--editor-url` and one click hands that slide
-to the browser editor — which is how every deck on
+written as, beside the slide; add `--editor-url` and one click opens the whole
+deck in the browser editor at that slide — which is how every deck on
 [the site](https://ayatough.github.io/Mirzam/) is built, so the markup behind
 any slide there is one keypress away.
 

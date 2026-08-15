@@ -8,24 +8,27 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
-- **A published slide can show the Markdown it was written as, and hand it to
-  the browser editor.** `mirzam build --embed-source` carries each slide's
-  source inside the deck; `V` then opens it beside the slide — the deck makes
-  room for the panel rather than being covered by it — with a button that
-  copies it. Add `--editor-url <url>` and the panel also carries the slide
-  out: one click opens it in the browser editor, where the same core
-  re-renders it as you change it.
+- **A published slide can show the Markdown it was written as, and hand the
+  deck to the browser editor.** `mirzam build --embed-source` carries the
+  deck's own document inside the deck; `V` then opens the current slide's
+  source beside the slide — the deck makes room for the panel rather than
+  being covered by it — with a button that copies it. Add `--editor-url <url>`
+  and the panel also carries the deck out: one click opens **the whole deck**
+  in the browser editor, positioned at the slide you were looking at, where
+  the same core re-renders it as you change it. The whole deck rather than the
+  one slide, because a slide has no frontmatter of its own and its citations
+  are listed elsewhere in the document.
 
   The handover travels in the URL's fragment, which a browser never sends to a
-  server, so nothing is uploaded and a deck saved to a phone hands a slide over
-  exactly like a published one. The deck's frontmatter goes with it, and so
-  does every file the deck read by name — the stylesheets `theme:` points at,
-  the `bibliography:`, the `masters:` — so those keys resolve over there the
-  way they resolved here, and a deck given `--theme`, `--mode` or `--fit` on
-  the command line hands over frontmatter saying so, since the look it was
-  built in is not one its own text describes. Images do not travel: inlined as
-  data URIs, they have lost the path they came from, and a slide that uses one
-  arrives with the reference intact and the file missing.
+  server, so nothing is uploaded and a deck saved to a phone hands itself over
+  exactly like a published one. Every file the deck reads by name goes with it
+  — the stylesheets `theme:` points at, the `bibliography:`, the `masters:` —
+  so those keys resolve over there the way they resolved here, and a deck given
+  `--theme`, `--mode`, `--fit` or `--split` on the command line hands over
+  frontmatter saying so, since the deck it was built as is not the one its own
+  text describes. Images do not travel: inlined as data URIs, they have lost
+  the path they came from, and a deck that uses one arrives with the reference
+  intact and the file missing.
 
   **The site is built this way**, which is what it was for: it showed a
   rendering and prose about it, and nothing on the page said which eight lines
@@ -33,10 +36,14 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
   On a phone the panel has a control rather than a key — `</>` in the cluster,
   named in the `/` sheet — and it docks along the bottom, with the cluster
-  moving clear of it. Two things a touchscreen was owed anyway came with it:
-  **the control cluster's buttons are 42px on a coarse pointer** instead of
-  30px, and **the shortcut sheet says "tap anywhere to close"** there instead
-  of naming two keys a phone does not have.
+  moving clear of it. A swipe inside any panel now scrolls the panel instead
+  of turning the page: the source does not wrap, because a pane drawing that
+  reflows is not a drawing, and dragging the end of a line into view was
+  losing the slide. Two more things a touchscreen was owed regardless: **the
+  control cluster is always visible on a coarse pointer** rather than fading
+  in on pointer movement a phone has no way to produce, and **its buttons are
+  42px** instead of 30px. The shortcut sheet says "tap anywhere to close"
+  there, instead of naming two keys a phone does not have.
 
   `v` is now a viewer key, so an `effects` block can no longer bind it — the
   same warning the other reserved keys give.
