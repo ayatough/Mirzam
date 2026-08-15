@@ -48,6 +48,14 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   `v` is now a viewer key, so an `effects` block can no longer bind it — the
   same warning the other reserved keys give.
 
+### Fixed
+- **The light hero's violet accents can now be seen.** The dotted arcs, the
+  crosses and the dot grids in `mirzam-hero-light.webp` sat a few levels above
+  the pale ground and all but vanished on the landing page, while dark mode
+  showed the whole composition. Only the faint marks were deepened — the star,
+  the flare and the ground are untouched, so nothing behind text got busier.
+  Look at the site header at `/next/` in light mode.
+
 ## [0.6.0] - 2026-08-14
 
 ### Added
