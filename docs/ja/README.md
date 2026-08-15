@@ -82,7 +82,7 @@ code --install-extension editors/vscode/mirzam-preview-*.vsix
 `math: typst` と書くと同じ `$...$` が [Typst 風の数式構文](../syntax.md#typst-flavoured-math)
 になります(`sum_(i=1)^n i`、`sqrt(x)` のように、バックスラッシュなしで書けます)。
 また `.small` `.big` `.huge`(サイズ)、`.muted` `.accent` `.accent2` `.danger`(色)、
-`.box`(枠付き)という組み込みクラスが、テーマや `css:` を指定しなくても
+`.box`(枠付き)という組み込みクラスが、テーマを指定しなくても
 `{.big .accent}` のように使えます([詳細](../syntax.md#attributes))。
 
 ### 記法リファレンスの章対照表
@@ -106,7 +106,7 @@ code --install-extension editors/vscode/mirzam-preview-*.vsix
 | 注釈(`annotate` ブロック) | [Annotations](../syntax.md#annotations) |
 | アニメーション(`anim` ブロック) | [Animations](../syntax.md#animations) |
 | ビューア操作・発表者ウィンドウ | [Driving the viewer](../syntax.md#driving-the-viewer) |
-| テーマ(`theme:`、`css:`、`mode:`) | [Theming](../syntax.md#theming) |
+| テーマ(`theme:` — 組み込み名または自分の `.css`、`mode:`) | [Theming](../syntax.md#theming) |
 | ペイン/スライド単位のテーマ(`{theme=…}`、`<!-- theme: … -->`) | [A theme smaller than a deck](../syntax.md#a-theme-smaller-than-a-deck) |
 
 ## サンプル

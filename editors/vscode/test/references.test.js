@@ -87,7 +87,7 @@ test("a chart's data file is read, and its inline data is not mistaken for one",
 
 test("the four frontmatter files are read; an inline mapping is not a path", () => {
   const front =
-    "---\ntitle: T\ncss: themes/deck.css\nmasters: masters.md\n" +
+    "---\ntitle: T\ntheme: themes/deck.css\nmasters: masters.md\n" +
     "bibliography: refs.bib\n---\n\n![[sections/a.md]]\n";
   assert.deepStrictEqual(references(front).sort(), [
     "masters.md",
@@ -98,6 +98,32 @@ test("the four frontmatter files are read; an inline mapping is not a path", () 
 
   const mapping = "---\nvars:\n  seats: 8\ncss:\n---\n\n# H\n";
   assert.deepStrictEqual(references(mapping), []);
+});
+
+// `theme:` is the one frontmatter key holding a *list* of files, and only its
+// `.css` entries are files at all. A theme the host fails to collect is a deck
+// that previews unstyled, and a built-in name handed over as a path is a
+// missing-file warning for a deck with nothing wrong with it.
+test("theme: collects its .css entries, in every form, and only those", () => {
+  const scalar = "---\ntheme: themes/acme.css\n---\n\n# H\n";
+  assert.deepStrictEqual(references(scalar), ["themes/acme.css"]);
+
+  const builtin = "---\ntheme: nord\n---\n\n# H\n";
+  assert.deepStrictEqual(references(builtin), []);
+
+  const inline = "---\ntheme: [mirzam, themes/acme.css, tweaks.css]\n---\n\n# H\n";
+  assert.deepStrictEqual(references(inline).sort(), ["themes/acme.css", "tweaks.css"]);
+
+  const block = "---\ntheme:\n  - mirzam\n  - themes/acme.css\nmode: dark\n---\n\n# H\n";
+  assert.deepStrictEqual(references(block), ["themes/acme.css"]);
+
+  // The retired spelling still names the same file, for one release.
+  const alias = "---\ncss: themes/acme.css\n---\n\n# H\n";
+  assert.deepStrictEqual(references(alias), ["themes/acme.css"]);
+
+  // Quoted, and with a built-in named after it.
+  const quoted = '---\ntheme: ["themes/acme.css", wuwei]\n---\n\n# H\n';
+  assert.deepStrictEqual(references(quoted), ["themes/acme.css"]);
 });
 
 test("what the core resolves for itself is left alone", () => {
@@ -117,10 +143,19 @@ test("every file examples/pitch.md names is one the host would read", () => {
     "../docs/brand/mirzam-hero-light.webp",
     "../docs/brand/mirzam-hero-dark.webp",
     "data/adoption.csv",
-    "themes/mirzam.css",
   ]) {
     assert.ok(found.includes(want), `${want} missing from ${JSON.stringify(found)}`);
   }
+});
+
+test("the theme examples/06-theming.md loads is one the host would read", () => {
+  // The deck that shows a theme of somebody's own. A theme file the host fails
+  // to collect is a deck that previews unstyled - and this one would preview
+  // with a pane in the wrong palette and nothing saying why.
+  assert.ok(
+    references(read("06-theming.md")).includes("themes/blueprint.css"),
+    "themes/blueprint.css missing from what the host would collect"
+  );
 });
 
 test("every path collected from a sample deck exists on disk", () => {

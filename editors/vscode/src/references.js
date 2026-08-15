@@ -2,9 +2,9 @@
 //
 // The webview has no filesystem, so every path a deck writes has to be read by
 // the extension host and handed over in one of the two tables the WASM core
-// reads: transcluded Markdown, a masters file, a bibliography and the `css:`
-// stylesheet come through `FileProvider`; images, video and a chart's CSV come
-// through `AssetSource` as data URIs.
+// reads: transcluded Markdown, a masters file, a bibliography and the
+// stylesheets in `theme:` come through `FileProvider`; images, video and a
+// chart's CSV come through `AssetSource` as data URIs.
 //
 // A form missing from this list does not look like a missing form. It looks
 // like a broken deck: the preview prints `was not provided by the host` for a
@@ -15,7 +15,14 @@
 // Kept in its own module, with no `vscode` import, so `test/references.test.js`
 // can run it under plain node.
 
-/** Frontmatter settings whose value names a file the core reads as text. */
+/**
+ * Frontmatter settings whose value is one path to a file the core reads as
+ * text. `theme:` is not among them: it holds a *list*, and only the entries
+ * ending in `.css` are paths — see `themeFiles`.
+ *
+ * `css:` is the retired spelling of a one-entry `theme:`. It is accepted for
+ * one release, exactly as the core accepts it, and goes at the same time.
+ */
 const FRONTMATTER_FILES = ["masters", "bibliography", "css"];
 
 /**
@@ -80,7 +87,40 @@ function references(source) {
     const named = frontmatterPath(source, key);
     if (named) push(named);
   }
+  for (const path of themeFiles(source)) push(path);
   return [...out];
+}
+
+/**
+ * The stylesheets `theme:` names. The key takes a built-in theme's name, a
+ * path ending in `.css`, or a list of both in cascade order, written either
+ * inline (`theme: [mirzam, themes/acme.css]`) or as a block list. Only the
+ * `.css` entries are files; a bare name is a theme the renderer already has,
+ * and asking the host to read `mirzam` off disk would report a missing file
+ * for a deck that is perfectly fine.
+ */
+function themeFiles(source) {
+  const front = /^---\r?\n([\s\S]*?)\r?\n---\s*$/m.exec(source);
+  if (!front || front.index !== 0) return [];
+  const scalar = /^theme:[ \t]*(\S.*)$/m.exec(front[1]);
+  const entries = [];
+  if (scalar) {
+    const value = scalar[1].trim();
+    // An inline list, or a single entry.
+    const list = /^\[(.*)\]$/.exec(value);
+    for (const part of list ? list[1].split(",") : [value]) entries.push(part);
+  } else if (/^theme:[ \t]*$/m.test(front[1])) {
+    // A block list: `- entry` lines under the key, until the indentation ends.
+    const after = front[1].slice(front[1].search(/^theme:[ \t]*$/m));
+    for (const line of after.split(/\r?\n/).slice(1)) {
+      const item = /^[ \t]*-[ \t]*(\S.*)$/.exec(line);
+      if (!item) break;
+      entries.push(item[1]);
+    }
+  }
+  return entries
+    .map((e) => e.trim().replace(/^["']|["']$/g, ""))
+    .filter((e) => e.toLowerCase().endsWith(".css"));
 }
 
 /**
@@ -154,4 +194,4 @@ function isTextFile(rel) {
   return [".md", ".bib", ".css"].some((ext) => rel.endsWith(ext));
 }
 
-module.exports = { references, chartData, frontmatterPath, isTextFile, withoutCode };
+module.exports = { references, chartData, frontmatterPath, themeFiles, isTextFile, withoutCode };

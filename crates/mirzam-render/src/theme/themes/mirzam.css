@@ -1,22 +1,41 @@
-/* Mirzam's own palette, as a built-in theme.
+/* Mirzam's own identity, as a built-in theme — and the one a deck gets when it
+   names no theme at all.
 
-   This is the token half of `examples/themes/mirzam.css`, translated rather
-   than copied. A built-in theme is a token set and nothing else: `theme_css`
-   puts it *before* `base.css`, so a type rule written here would be overridden
-   by the very stylesheet it is meant to sit on top of. `theme: mirzam` gives a
-   deck the colours; `css: themes/mirzam.css` gives it the whole identity —
-   Space Grotesk, the weight ladder, the violet rule under a section heading.
+   That case is the common one — the quick note, the README turned into slides,
+   the sample that exists to show one piece of markup — and those are exactly
+   the decks that used to come out looking like nobody's. Making the fallback
+   the project's own palette means a file with no frontmatter is already part
+   of the family, and `theme:` becomes a choice to look like something *else*
+   rather than a choice to look like anything at all. This was once a second
+   sheet keyed for `default`, identical token for token; one palette now has
+   one name, and `theme_tokens` falls back to this file directly.
 
-   The other translation is which mode comes first. The sample file is written
-   dark-first, because that is how the mark is drawn and how a deck is usually
-   shown. A built-in cannot make that choice: the bare selector is what a
-   reader whose system prefers light gets, so light lives there and dark is
-   reached through `prefers-color-scheme` or an explicit `data-mode`. A deck
-   that wants dark on every machine writes `mode: dark`.
+   A built-in theme is still a token set and nothing else — `theme_css` puts it
+   *before* `base.css`, so a rule written here would be overridden by the very
+   stylesheet it is meant to sit on top of. What changed is how much a token set
+   can say: `base.css` reads the faces, the weight ladder, the tracking, the
+   colour of a subheading and the mark under a section heading from tokens, so
+   the identity below is expressed as values rather than as rules. That is the
+   whole point of the exercise — a theme that can only repaint is an ornament.
 
-   Palette: docs/brand/palette.md. Where a value differs from the brand sheet,
-   the reason is a deck's contrast floor rather than a change of mind — see
-   themes/CREDITS.md. */
+   The same identity used to live beside this file as a stylesheet the sample
+   decks loaded — `examples/themes/mirzam.css`, reached through the retired
+   `css:` key. It is gone: everything it said is said here, in tokens, and the
+   decks now write `theme: mirzam`. What replaced it under `examples/themes/`
+   is a theme that is deliberately *not* this one, because that is what a
+   sample custom theme is for.
+
+   The one translation that migration made is which mode comes first. That file
+   was written dark-first, because that is how the mark is drawn and how a deck
+   is usually shown. A built-in cannot make that choice: the bare selector is
+   what a reader whose system prefers light gets, so light lives there and dark
+   is reached through `prefers-color-scheme` or an explicit `data-mode`. A deck
+   that wants dark on every machine writes `mode: dark`, and the eight sample
+   decks that were dark by accident of their stylesheet now say so.
+
+   Palette: docs/brand/palette.md. Type: docs/brand/README.md. Where a value
+   differs from the brand sheet, the reason is a deck's contrast floor rather
+   than a change of mind — see themes/CREDITS.md. */
 
 :where([data-theme="mirzam"]) {
   --mz-bg: #e7eaf4;
@@ -41,6 +60,74 @@
   --mz-code-function: #3c6e9e;
   --mz-code-number: #b2495b;
   --mz-code-operator: #17203a;
+
+  /* Code sits on paper of its own, a shade off the raised surface, so a block
+     of code reads as a block before a word of it is parsed. The one identity
+     colour that cannot be written in terms of the palette, so it is declared
+     in each mode below as well. */
+  --mz-code-bg: #eef0f7;
+  --mz-code-fg: var(--mz-accent1);
+  --mz-h2-rule-a: #6557d9;
+  --mz-h2-rule-b: #8b7cff;
+
+  /* Type. The faces are named but not fetched: a deck is one self-contained
+     file, and an `@import` would put a network request between the audience
+     and the first slide — a projector at a venue may have no network at all.
+     Anyone with the fonts installed gets them; everyone else gets the
+     fallback, which is why each stack ends in a system face of similar width.
+     Japanese is named after the Latin faces in both, because neither covers
+     it. */
+  --mz-font: Inter, "IBM Plex Sans", 'Hiragino Kaku Gothic ProN', 'Hiragino Sans',
+    'Noto Sans CJK JP', 'Noto Sans JP', 'Yu Gothic Medium', Meiryo, sans-serif;
+  --mz-font-display: "Space Grotesk", 'Hiragino Kaku Gothic ProN', 'Hiragino Sans',
+    'Noto Sans CJK JP', 'Noto Sans JP', 'Yu Gothic Medium', Meiryo, sans-serif;
+
+  /* The weight ladder gets heavier as the type gets smaller. Space Grotesk's
+     lightest cut is 300 and it is drawn to hold at display sizes; below about
+     32px the thin joins close up and it reads muddy rather than light. */
+  --mz-h1-size: 3em;
+  --mz-h1-weight: 300;
+  --mz-h1-tracking: -0.03em;
+  --mz-h1-leading: 1.14;
+  --mz-h2-size: 1.7em;
+  --mz-h2-weight: 400;
+  --mz-h2-tracking: -0.02em;
+  --mz-h3-weight: 500;
+  --mz-h3-tracking: -0.01em;
+  --mz-title-weight: 300;
+  --mz-title-tracking: -0.03em;
+  /* A metric is the other place the 300 weight belongs: it is display type by
+     any measure. */
+  --mz-metric-weight: 300;
+  --mz-metric-tracking: -0.04em;
+  --mz-metric-color: var(--mz-fg);
+
+  /* A short violet rule under a section heading, in place of a full-width
+     border: the signature colour, spent once per slide. It runs deep violet to
+     pale, so the mark reads as drawn rather than as a border that happens to
+     be short. */
+  --mz-h2-border: none;
+  --mz-h2-pad: 0;
+  --mz-h2-rule-w: 64px;
+  --mz-h2-rule-h: 4px;
+  --mz-h2-rule-gap: 14px;
+
+  /* The accent is spent on that rule and on links, so the marks that would
+     otherwise compete with it — a subheading, bold text inside a sentence, a
+     quotation, a table's header row — are drawn in the text colour instead. */
+  --mz-h3-color: var(--mz-fg);
+  --mz-strong-color: var(--mz-fg);
+  --mz-strong-weight: 600;
+  --mz-quote-border: 4px solid var(--mz-accent1);
+  --mz-quote-fg: var(--mz-fg);
+  --mz-th-fg: var(--mz-fg);
+
+  /* Roomier than the built-in margins. The footer and the slide number read
+     `--mz-grid-pad-x` too, so they stay on the same margin as the words above
+     them. */
+  --mz-grid-pad-y: 48px;
+  --mz-grid-pad-x: 64px;
+  --mz-grid-gap: 24px;
 }
 @media (prefers-color-scheme: dark) {
   :where([data-theme="mirzam"]:not([data-mode="light"]):not([data-mode="light"] *)) {
@@ -66,6 +153,9 @@
     --mz-code-function: #72b5e8;
     --mz-code-number: #e58a9a;
     --mz-code-operator: #f4f6ff;
+    --mz-code-bg: #11192d;
+    --mz-h2-rule-a: #6557d9;
+    --mz-h2-rule-b: #c0b7ff;
   }
 }
 :where([data-mode="dark"] [data-theme="mirzam"]:not([data-mode="light"]):not([data-mode="light"] *)),
@@ -92,4 +182,7 @@
   --mz-code-function: #72b5e8;
   --mz-code-number: #e58a9a;
   --mz-code-operator: #f4f6ff;
+  --mz-code-bg: #11192d;
+  --mz-h2-rule-a: #6557d9;
+  --mz-h2-rule-b: #c0b7ff;
 }

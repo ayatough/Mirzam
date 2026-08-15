@@ -103,35 +103,25 @@ meaning anything. Full tables, light and dark, in [`palette.md`](palette.md).
 
 ## In a deck
 
-Two ways in, and they are not the same size.
+One key, and it is the whole identity:
 
 ```yaml
-theme: mirzam                 # the colours
-css: themes/mirzam.css        # the colours and everything else
+theme: mirzam                 # the colours, the type, and the mark under a heading
 ```
 
-**`theme: mirzam` gives a deck the palette, not the identity.** A built-in theme
-is a token set: its stylesheet is concatenated *before* `base.css`, so a type
-rule written in one is overridden by the very stylesheet it is meant to sit on
-top of. Space Grotesk, the weight ladder, the violet rule under a section
-heading, `.card` and `.metric` all live in the sample file and are reached with
-`css:`. If you write `theme: mirzam` and wonder where the headings went, this
-paragraph is the answer.
+**`theme: mirzam` gives a deck the identity, not only the palette.** A built-in
+theme is a token set — its stylesheet is concatenated *before* `base.css` — and
+the token vocabulary is now wide enough to hold Space Grotesk over Inter, the
+weight ladder, the short violet rule under a section heading, and the dials
+`.card`, `.eyebrow` and `.metric` read. There used to be a second file to load
+beside it, `examples/themes/mirzam.css`, reached through the retired `css:`
+key; everything it said is said in tokens now, and it is gone.
 
-The two also disagree about which mode comes first, and have to. The sample file
-is dark-first, because that is how the mark is drawn. A built-in cannot make
-that choice — its bare selector is what a reader whose system prefers light
-gets — so there light comes first and dark arrives through
-`prefers-color-scheme`. A deck that wants dark on every machine writes
-`mode: dark`.
-
-[`examples/themes/mirzam.css`](../../examples/themes/mirzam.css) is the palette,
-the type ladder and the sample decks' furniture — `.card`, `.metric`,
-`.eyebrow` — and every published sample deck uses it. There was a second file,
-`pitch.css`, described here as "the same thing with a sales deck's furniture on
-top"; it had in fact grown into a full copy, identical in all twelve palette
-tokens and differing only in numbers nobody had chosen. One identity does not
-need two stylesheets.
+One thing the translation changed: which mode comes first. That file was
+dark-first, because that is how the mark is drawn. A built-in cannot make that
+choice — its bare selector is what a reader whose system prefers light gets —
+so light comes first and dark arrives through `prefers-color-scheme`. A deck
+that wants dark on every machine writes `mode: dark`, and the sample decks do.
 
 Three things differ from the tables above, each for a reason a web page does not
 have:
@@ -146,9 +136,12 @@ have:
   slide — and the venue may have no network. Install the fonts, or accept the
   fallback that every stack ends in.
 
-Both themes are held to `cargo test -p mirzam-cli --test sample_themes`: every
-token defined in both modes, body text at 4.5:1 and chart marks at 3:1 against
-both the slide and a raised surface.
+The built-in themes are held to `theme::tests` in `mirzam-render`, and any
+theme a deck loads from a file — including
+[`examples/themes/blueprint.css`](../../examples/themes/blueprint.css), which
+is deliberately not this identity — is held to the same standard by `mirzam
+check`: every colour defined in both modes, body text at 4.5:1 and chart marks
+at 3:1 against both the slide and a raised surface.
 
 ## Regenerating
 

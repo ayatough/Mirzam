@@ -23,8 +23,10 @@ pub struct BuildOutput {
     /// Fingerprint of page-level settings (title, aspect, custom CSS),
     /// catching changes that need a page rebuild even when slides are identical.
     pub page_fingerprint: u64,
-    /// Resolved contents of frontmatter `css:`.
-    pub custom_css: Option<String>,
+    /// The stylesheets frontmatter's `theme:` named, in cascade order, read
+    /// from disk. Each registers under its filename stem, so a slide or a pane
+    /// can name it in a `theme=`.
+    pub file_themes: Vec<mirzam_render::FileTheme>,
     pub warnings: Vec<String>,
     /// Where each warning came from, in the same order and of the same length
     /// as `warnings`. Split out rather than folded into the message because
@@ -190,7 +192,7 @@ pub fn build_deck_with(
     // than pushed alongside it, so the places that know nothing about location
     // — most of this function — stay untouched.
     let mut sites: HashMap<usize, WarningSite> = HashMap::new();
-    warnings.extend(mirzam_render::theme_warning(meta.theme.as_deref()));
+    warnings.extend(mirzam_render::theme_warnings(&meta));
     warnings.extend(mirzam_render::mode_warning(meta.mode.as_deref()));
 
     // A typo in `math:` renders the deck as LaTeX rather than failing, but
@@ -213,21 +215,26 @@ pub fn build_deck_with(
         }
     }
 
-    // Load the custom stylesheet; failures are warnings, not errors.
-    let custom_css = match &meta.css {
-        Some(rel) => {
-            let path = base_dir.join(rel);
-            files.insert(path.clone());
-            match std::fs::read_to_string(&path) {
-                Ok(css) => Some(css),
-                Err(e) => {
-                    warnings.push(format!("css: cannot read {rel}: {e}"));
-                    None
-                }
-            }
+    // Load the deck's own stylesheets, in the order `theme:` names them.
+    // Failures are warnings, not errors: a deck without its theme is still a
+    // deck, and the message names the key the author actually wrote — `theme:`
+    // now, `css:` for the release the retired key is still accepted.
+    let mut file_themes = Vec::new();
+    for sheet in meta.theme_sheets() {
+        let path = base_dir.join(sheet.path);
+        // Watched even when the read fails, so creating the file it named
+        // brings the deck's theme back without restarting `serve`.
+        files.insert(path.clone());
+        match std::fs::read_to_string(&path) {
+            Ok(css) => file_themes.push(mirzam_render::FileTheme::new(sheet.path, css)),
+            Err(e) => warnings.push(format!("{}: cannot read {}: {e}", sheet.key, sheet.path)),
         }
-        None => None,
-    };
+    }
+    // What a theme somebody wrote has to say about itself: a stem that collides
+    // with a built-in, a palette with no second mode, text that cannot be read
+    // on its own background. The built-in themes have always been held to these;
+    // a custom theme is the one that can actually fail them.
+    warnings.extend(mirzam_render::file_theme_warnings(&file_themes));
 
     // 2. Expand includes, collecting the files that were read and where every
     //    byte of the result came from.
@@ -350,6 +357,9 @@ pub fn build_deck_with(
     // them. Variables are substituted here for the same reason they are in the
     // body: a footer is text the author wrote, and `{{ }}` works in it.
     let mut ctx = mirzam_render::DeckContext::new(&meta, parts.len());
+    // A slide asks the deck's themes one question - whether a `theme=` names
+    // one of them - so they travel with the rest of the deck's settings.
+    ctx.file_themes = file_themes.clone();
     // A `masters:` naming a file is read here rather than in the core, which
     // has no filesystem. It joins the watch set, so editing the shared shapes
     // re-renders the decks that use them.
@@ -477,7 +487,7 @@ pub fn build_deck_with(
     // assembles with, since those are what the answer describes.
     let page_fingerprint = {
         let opts = mirzam_render::PageOptions {
-            custom_css: custom_css.clone(),
+            file_themes: file_themes.clone(),
             all_themes: true,
             ..Default::default()
         };
@@ -499,7 +509,7 @@ pub fn build_deck_with(
         sections,
         hashes,
         page_fingerprint,
-        custom_css,
+        file_themes,
         warnings,
         warning_sites,
         files,

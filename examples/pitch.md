@@ -2,7 +2,7 @@
 title: Mirzam - Slides that live in your repo
 author: Mirzam
 aspect: "16:9"
-css: themes/mirzam.css
+theme: mirzam
 mode: dark
 transition: slide-left 320ms
 vars:
@@ -337,7 +337,7 @@ A {{ seats }}-person team: **${{ price_per_seat * seats }}/mo**
 :::
 
 ::: pane foot {align=right}
-<span class="foot">Made with Mirzam</span>
+[Made with Mirzam]{.small}
 :::
 
 <!-- note: Close by rebuilding this very deck live from the terminal. -->

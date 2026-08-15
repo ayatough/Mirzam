@@ -2,7 +2,7 @@
 title: Mirzam Component Gallery
 author: Mirzam
 aspect: "16:9"
-css: themes/mirzam.css
+theme: mirzam
 mode: dark
 transition: fade 240ms
 bibliography: refs.bib
@@ -770,5 +770,5 @@ Motion is next door, in `05-motion.md`.
 :::
 
 ::: pane foot {align=right}
-<span class="foot">examples/04-components.md</span>
+[examples/04-components.md]{.small}
 :::

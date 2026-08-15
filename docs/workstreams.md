@@ -40,6 +40,7 @@ from a deck someone was actually trying to give.
 | 3 | W14 | Retires an authoring pattern the other streams now cover |
 | 4 | W9 | Integration, benchmark, `v0.1.0` — done; the release is tagged |
 | 5 | W20, W21 | The [market survey](reports/2026-08-market-survey.md)'s P0: visible code, and a loop an agent can close |
+| 6 | W22, W23, W16 | The survey's P1. W22 first: it is what makes a theme an identity rather than a palette, which W16 then has something to exhibit. W23 develops alongside but lands after, because both move rendered output |
 | 6 | W22 | The last frontmatter key that asks the author to know how the CSS is assembled |
 
 ## Assignment
@@ -77,7 +78,8 @@ there is. The model column follows from that:
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
 | W20 | Syntax highlighting at build time | B | Opus | — | ✅ |
 | W21 | An authoring contract for agents | B | Opus | — | ✅ |
-| W22 | One door to a deck's look: `theme:` absorbs `css:` | B | Opus | — | |
+| W22 | One door to a deck's look: `theme:` absorbs `css:` | B | Opus | — | ✅ |
+| W23 | Mermaid diagrams, rendered at build time | B | Opus | — | |
 
 ### What is deferred, and why
 
@@ -207,8 +209,9 @@ A theme is a set of CSS custom properties, defined for both modes:
 :root[data-theme="nord"][data-mode="dark"]  { --mz-slide-bg: …; --mz-fg: …; … }
 ```
 
-The token list is whatever `crates/mirzam-render/src/theme/themes/default.css`
-defines; extending it means extending every built-in theme in the same commit.
+The token list is whatever `crates/mirzam-render/src/theme/themes/mirzam.css`
+defines — the fallback theme, and so the one every other has to match;
+extending it means extending every built-in theme in the same commit.
 
 ### C4. Effect registry
 
@@ -985,10 +988,20 @@ somebody else's process consuming a stable interface. An MCP wrapper stays
 out until a surface that needs one demands it; the two skills cover the
 terminal and the sandbox.
 
-## W22 — One door to a deck's look: `theme:` absorbs `css:`
+## W22 — One door to a deck's look: `theme:` absorbs `css:` ✅
 
 **Difficulty B** — the token work is mechanical and testable; the frontmatter
 change is a break, and breaks are where a wrong decision is expensive.
+
+**What this stream is actually for, decided by the author in August 2026.** Not
+"`theme:` should set more things" — **a custom theme should be a supported
+artefact**. A theme that can only repaint is an ornament; the feature is that
+somebody writes their own identity, in a file, and Mirzam treats it the way it
+treats a built-in. That reframes both deliverables and their order: 1 exists to
+make the token vocabulary wide enough to hold an identity rather than a palette,
+and 2 exists to give that file a door, a name, and a checker that tells its
+author when it is wrong. Judge each by that, not by the diff size. Taking
+longer is explicitly preferred to arriving with colour-only theming again.
 
 `theme:` is a choice of **colour only**, and the identity — the faces, the
 weight ladder, the violet rule under a section heading — lives in
@@ -1013,11 +1026,21 @@ Two deliverables. The first is what makes the second honest.
    `--mz-font`, `--mz-font-display`, `--mz-font-mono`; per level `-size`,
    `-weight`, `-tracking`; `--mz-body-size`/`-leading` — each with today's value
    as its fallback, so **a deck that sets none renders identically**. That is
-   the acceptance test for *this step*: the golden snapshots move (the
-   stylesheet is inlined in them) but the pixels do not, and the claim is
-   checked by rendering, not by reading the diff. It is not the acceptance test
-   for the migration below, which changes how nine decks look on purpose — the
-   two are separate gates and conflating them hides a real break.
+   the acceptance test for *this step*, and the way to check it is not the one
+   this brief first named: the golden snapshots do **not** move, because
+   `golden.rs` compares `out.sections.concat()` — the slide sections alone,
+   with neither the inlined stylesheet nor the `<html>` tag in them. Retiring
+   the `default` theme name moved every deck's stylesheet and touched exactly
+   one snapshot, which is the proof. So the gate is a **declaration-set
+   comparison**: build a deck that names no theme before and after, strip CSS
+   comments, collect every `--mz-*` declaration from the inlined stylesheet,
+   and require the two sets to be identical. That check found nothing wrong
+   with the `default` retirement (77 declarations, identical) and it is the
+   only thing that would have. Screenshots stay the second half of it, because
+   a token can be spelled right and still be read by no rule. It is not the
+   acceptance test for the migration below, which changes how nine decks look
+   on purpose — the two are separate gates and conflating them hides a real
+   break.
 
    The signature rule joins them: `--mz-h2-rule-w` defaults to `0`, so
    `base.css` can carry the `h2::after` block and no theme but `mirzam` draws
@@ -1046,8 +1069,24 @@ Two deliverables. The first is what makes the second honest.
    One rule in that file is **not** expressible as a token and must land in
    `base.css` as a rule: `:is(.center, [style*="text-align:center"]) h2::after
    { margin-inline: auto }` centres a block box under a centred heading, which
-   is selector logic, not a dial. That is the one carve-out; if a second one
-   appears, the stop condition has been met.
+   is selector logic, not a dial. That was the one carve-out, and the stop
+   condition was: if a second one appears, stop and report.
+
+   **It fired, it was reported, and the author widened the carve-out rather
+   than working around it.** The second rule is real —
+   `:is(.right, [style*="text-align:right"]) h2::after { margin-inline: auto 0 }`,
+   which `examples/themes/mirzam.css` carries beside the centred one — and it
+   is no more expressible as a token than the first: both read an alignment off
+   a selector and answer it with a margin, because `text-align` cannot move a
+   block box. Keeping two special cases and keeping only one were both
+   available; the decision was neither. **The carve-out is now one rule that
+   says "the signature rule follows the heading's alignment"**, covering centred
+   and right-aligned headings together, and `base.css` carries it as a single
+   block with that sentence at the top of it. What the stop condition was
+   protecting is intact — the budget was never "one selector", it was "no
+   stylesheet that grows a new carve-out per mark" — and it still binds the
+   same way: a *third* rule of a different kind, one that is not this one
+   statement about alignment, means stop and report again.
 
    `.eyebrow`, `.metric` (with `.metric-up` and `.metric-label`) and `.card`
    move into `base.css` as token-driven vocabulary. Note that **`.card` is not
@@ -1079,12 +1118,49 @@ Two deliverables. The first is what makes the second honest.
    `prefers-color-scheme` or `data-mode`) because a built-in cannot impose a
    preference on a reader whose system has one. So `css: themes/mirzam.css` →
    `theme: mirzam` turns eight dark decks into decks that follow the viewer's
-   system — including in PDF export, where there is no viewer to follow. Pick
-   one before touching a stylesheet: either the decks gain `mode: dark` (keeps
-   both files' reasoning intact, costs a line per deck) or the built-in goes
-   dark-first (costs the reasoning in its header). The first is recommended;
-   the second makes `mirzam` the only built-in that ignores
-   `prefers-color-scheme`.
+   system — including in PDF export, where there is no viewer to follow.
+
+   **Decided, and already done: the renderer keeps following the viewer, and
+   the decks say what they want.** An unset `mode:` still means
+   `prefers-color-scheme`. What changed is that a deck which is dark stopped
+   being dark by accident of which stylesheet it loaded: `01-start`,
+   `02-writing`, `03-layout`, `05-motion` and `research` now write `mode: dark`
+   themselves, joining `04-components`, `06-theming` and `pitch`, which already
+   did. Nothing moved a pixel — `examples/themes/mirzam.css` was pinning them
+   dark through its own `:root` — which is the point: the same rendering now
+   survives the loss of that file.
+
+   `examples/seminar.md` is deliberately left naming no theme, no stylesheet
+   and no mode, because "this deck follows the room it is opened in" is worth
+   demonstrating in a sample rather than only describing in `docs/syntax.md`.
+   So the split this migration has to preserve is eight-to-one, and it is now
+   written in the decks rather than implied by a stylesheet.
+
+   The other half is also in: the fallback theme name is `mirzam`, not
+   `default`. That is a rename and not a repaint — `theme_tokens("default")`
+   and `theme_tokens("mirzam")` were 66 identical token values. Both fallbacks
+   (`theme_attrs`, `theme_css_for`), `theme_tokens` and the unknown-theme
+   warning now name the same one.
+
+   And then `default` went entirely: a name that only ever meant "the other
+   one" is the duplication this stream exists to remove. `themes/default.css`
+   is deleted, `mirzam` is the single name, and `theme: default` takes the
+   unknown-name path with a message that says what to write instead rather than
+   "unknown theme". Nothing repaints, because the sheet it stopped loading was
+   the one it now loads under another name.
+
+   Worth knowing while judging how much any of this matters: **on screen it
+   mostly does not.** The viewer carries a mode toggle (`D`, and a button,
+   deliberately — `viewer.js` notes a phone has no keyboard), it reads
+   `prefers-color-scheme` when no `data-mode` is set so the first toggle goes
+   the way the reader expects, and the choice persists in `localStorage` across
+   decks. The toggle also keeps working on the eight decks precisely because
+   `examples/themes/mirzam.css` defines both modes — a one-palette stylesheet is
+   what makes `D` appear dead, which is the trap the diagnostics below catch.
+   Where the frontmatter is the only lever is **PDF export and print**: there is
+   no viewer, no toggle and no `localStorage`, and `mirzam export pdf` takes the
+   baked mode or its own `--mode`. So the decision above is really a decision
+   about what a deck's PDF looks like.
 
 2. **`theme:` takes a built-in name or a path, and `css:` is retired.**
 
@@ -1196,6 +1272,69 @@ places), `docs/quickstart.md`, `docs/troubleshooting.md`, `docs/agents.md`,
 `crates/mirzam-cli/src/skill/writing-skill.md` — the last of those is W21's
 authoring contract, so leaving it stale means agents keep writing a key that no
 longer exists.
+
+## W23 — Mermaid diagrams, rendered at build time
+
+**Difficulty B · not started**
+
+The [market survey](reports/2026-08-market-survey.md)'s P1. Diagrams-as-code
+became table stakes the day GitHub rendered Mermaid natively; Marp made it a
+built-in in 2026 after the request sat as its most-upvoted discussion for six
+years. Waiting for the plugin system was the earlier plan, and the market moved
+first.
+
+The design follows from what is already here, and the pane-anchored shape work
+settles the first question rather than opening it:
+
+- **It follows the `chart` path, not the `shape` path.** A shape block inside a
+  pane draws into a percentage coordinate space whose rectangle the build
+  computes. Mermaid emits an SVG carrying its own `viewBox`, which wants to
+  scale to fit the box it lands in — which is what a chart already does. Taking
+  the chart path also keeps Mermaid out of the build-time pane arithmetic, so a
+  margin moved only in CSS cannot desynchronise a diagram the way it can a
+  shape.
+- **The renderer arrives through a trait, the way a chart's CSV does.**
+  `mirzam-render` must not touch the filesystem, and it must not spawn a
+  process either — same reason, the WebAssembly build has neither.
+  `AssetSource` is the precedent: the renderer asks, the host answers. The CLI
+  implements the trait by running an external renderer; `mirzam-wasm`
+  implements nothing and every `mermaid` fence stays a code block there.
+- **No renderer is a warning, never a silent fallback.** Without one the fence
+  renders as an ordinary code block *and* the build says so — `build.mermaid`,
+  so it reaches `check --format json` and an agent repairs it in the loop it
+  already runs. A deck that shipped its diagram as source code without saying
+  so is the exact failure the usability evaluation found four times over.
+- **Colours are rewritten to theme tokens.** Mermaid emits its own palette.
+  Baked in, a diagram would ignore the deck's theme and stay light when the
+  reader presses `D`. The output's fills and strokes are rewritten to
+  `var(--mz-*)` references — the same move W20 made when it mapped token kinds
+  onto classes rather than inlining a highlighter's colours.
+- **`build` stays browser-free.** Chromium can render Mermaid, and Mirzam
+  already drives one for `export pdf` and `check` — but making an ordinary
+  build need a browser is a regression in what this tool is. `mmdc` if it is on
+  `PATH`; a Chromium path is an opt-in second route at most.
+
+What is not free: an external Node tool sits against "one Rust binary, no
+Node", which is a real part of why people arrive. The precedent that makes it
+acceptable is PDF export, which already requires a browser nobody ships with
+the binary — an optional external renderer, warned about when absent, is a
+shape this project has already accepted once.
+
+Worth naming, because it points the other way from a tax: **GitHub renders a
+```mermaid fence as a diagram.** This is the one extension that reads *better*
+in a plain CommonMark viewer than the code block it degrades to, so it
+strengthens the "source renders on GitHub" wedge instead of spending it.
+
+`mermaid` joins `mirzam_syntax::BLOCK_KINDS` in the same change, per
+non-negotiable 1.
+
+Stops at: Mermaid. D2 arrives through the same trait once the shape is proven,
+and is not part of this stream.
+
+**Contention.** `crates/mirzam-cli/tests/snapshots/*.html` (a new fence in
+`examples/04-components.md` rewrites them), `docs/syntax.md`, `docs/llms.md`.
+Overlaps W22 in the snapshots and in `docs/llms.md`; W22 lands first and this
+one regenerates.
 
 ## W5 — Typst-flavoured math ✅
 

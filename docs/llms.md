@@ -27,9 +27,10 @@ author a slide.
    several slides use `[@key]` + `bibliography:` instead.
 4. **A `connect` endpoint naming an id that does not exist draws nothing.** No
    arrow, no gap, no error on the slide. Same for an `annotate` anchor.
-5. **`.metric`, `.card`, `.eyebrow` are not renderer classes.** They come from
-   `examples/themes/mirzam.css`. Copying a sample slide without its `css:`
-   gives unstyled text. The renderer's own classes are listed below.
+5. **`.metric`, `.card`, `.eyebrow` are renderer classes**, along with `.box`
+   and the rest listed below — a slide copied out of its deck keeps them.
+   What a theme changes about them is their `--mz-card-*`, `--mz-eyebrow-*`
+   and `--mz-metric-*` tokens, not the classes.
 6. **`---` breaks a slide.** A horizontal rule inside a slide is `***`.
 7. **Row heights come from the number of lines in the drawing**, borders
    excluded. A one-line `head` band gets one share against a five-line `body`.
@@ -45,9 +46,13 @@ Optional, but the first thing in the file when present.
 title: Quarterly review     # deck title, used for the browser tab
 author: Your Name
 aspect: "16:9"              # or "4:3"
-theme: nord                 # default | nord | solarized | vscode | mirzam | wuwei
+theme: nord                 # mirzam (default) | nord | solarized | vscode | wuwei
+                            #   a token set: colours, and for mirzam and wuwei
+                            #   the type too (sans and roman respectively)
+                            # also takes a .css path of your own, relative to
+                            #   this file, or a list in cascade order:
+                            #   theme: [mirzam, themes/house.css]
 mode: dark                  # light | dark; unset follows the reader's machine
-css: themes/dark.css        # custom stylesheet, relative to this file
 split: h2                   # also start a new slide at every h1/h2/h3
 fit: shrink                 # scale an overfull pane's text down instead of clipping
 math: typst                 # latex (default) | typst
@@ -78,7 +83,7 @@ invisible in a plain Markdown reader:
 |---|---|
 | `<!-- note: … -->` | Speaker note; `N` shows it |
 | `<!-- layout: two-up -->` | Draw this slide on that master; `none` opts out of the deck default |
-| `<!-- theme: nord -->` `<!-- mode: dark -->` | A palette for this slide only |
+| `<!-- theme: nord -->` `<!-- mode: dark -->` | A theme for this slide only — tokens inherit, so its type comes too |
 | `<!-- chrome: none -->` | Drop the footer and slide number here (title slides, `.bleed` slides) |
 | `<!-- next -->` | Split this slide in two, changing one pane. `<!-- more -->` is the same marker |
 
@@ -182,11 +187,14 @@ not write a palette into the deck.
 `#id` names an element so `connect`, `anim` and `annotate` can target it. One
 source line only.
 
-Classes the **renderer** provides — everything else comes from your `css:`:
+Classes the **renderer** provides — everything else comes from your own theme
+or a `<style>` block in the deck:
 `.u` (accent rule under the words) · `.center` `.right` · `.small` `.big`
-`.huge` · `.muted` `.accent` `.accent2` `.danger` · `.box` (bordered aside) ·
-on a pane, `.bleed` `.terms-aligned` `.terms-stacked`. There is no syntax for a
-literal colour: colours are theme tokens, so they survive dark mode.
+`.huge` · `.muted` `.accent` `.accent2` `.danger` · `.box` (an aside inside a
+pane) · `.card` (a pane raised off the slide) · `.eyebrow` (the label over a
+heading) · `.metric` with `.metric-up` `.metric-label` · on a pane, `.bleed`
+`.terms-aligned` `.terms-stacked`. There is no syntax for a literal colour:
+colours are theme tokens, so they survive dark mode.
 
 `mp4`, `webm`, `ogv`, `mov` become `<video>`; everything else stays an image.
 An audio file becomes a player; a YouTube or Vimeo page URL becomes an embed

@@ -27,7 +27,25 @@
 
    Dark mode is its own palette, not an inversion: the paper becomes warm
    near-black, the ink warm bone, and each chart series is re-picked so it sits
-   the same distance off its new background. */
+   the same distance off its new background.
+
+   The type is roman. Now that a theme can carry type, the paper-and-ink
+   idea is worth saying in the letterforms and not only in the greys: a serif
+   is the face of something printed and read, and it is the plainest way to see
+   that a theme is an identity rather than a palette — `mirzam` is a grotesque
+   beside it. The faces are named and never fetched, the same rule the whole
+   project keeps: a deck is one self-contained file and a venue may have no
+   network, so every stack here ends in the generic `serif` and names, before
+   it, faces that are actually installed somewhere.
+
+   What it is *not* is a display serif. A Didot or a Playfair is a face that
+   asks to be looked at, which is the one thing this theme will not do; the
+   stack is old-style and low-contrast — Charter, Iowan Old Style, Palatino,
+   Georgia — faces drawn to hold together at a distance and to say nothing
+   about themselves. There is no separate display face for the same reason:
+   `--mz-font-display` is the text face, and a heading is told apart by its
+   size and the room around it rather than by changing voice halfway down the
+   slide. */
 
 :where([data-theme="wuwei"]) {
   --mz-bg: #e6e1d8;
@@ -52,6 +70,71 @@
   --mz-code-function: #5c6672;
   --mz-code-number: #7d625d;
   --mz-code-operator: #4a453e;
+
+  /* The faces, named and never fetched. Old-style romans first, in the order a
+     machine is likeliest to have one: Charter (macOS; Bitstream Charter is the
+     same design where a distribution ships it) and Iowan Old Style are drawn
+     for low resolution and hold at the back of a room; Palatino and Georgia are the same temperament and
+     are on practically every Mac and Windows machine; Noto Serif is the Linux
+     answer when nothing else is there. Any of them lands in the same place — a
+     sturdy, low-contrast roman — so which one a reader gets changes the deck
+     much less than the switch away from a grotesque does.
+
+     The Mincho and Song faces are named after the Latin ones because none of
+     those covers CJK, and a Latin-only serif stack would drop Japanese into
+     whatever the browser reached for — in practice a gothic, so the one deck
+     in this repository written in Japanese would lose the roman idea entirely.
+     Mincho is Japanese for the same thing Charter is for English: the face of
+     something set to be read. */
+  --mz-font: Charter, "Bitstream Charter", "Iowan Old Style", Palatino,
+    "Palatino Linotype", Georgia, "Noto Serif", 'Hiragino Mincho ProN',
+    'Noto Serif CJK JP', 'Noto Serif JP', 'Yu Mincho', 'YuMincho', 'MS Mincho',
+    'Songti SC', SimSun, serif;
+  /* One voice. A second face for headings would be a theme talking about
+     itself, so the display dial is the text face and the ladder below does the
+     separating. */
+  --mz-font-display: var(--mz-font);
+  /* The mono stack does not move. Code is already a different voice, and the
+     built-in stack is the neutral one every machine resolves; the typewriter
+     face that would "match" this theme is Courier, whose strokes are too thin
+     to read from the back of a room. */
+
+  /* The ladder is size and space, not weight. Most of these romans ship in 400
+     and 700 and nothing between, so a display weight of 300 — how `mirzam` gets
+     its quiet — is not available here, and asking for one would only get a
+     browser's synthesis. A heading is a heading because it is large and has
+     room around it; the weight goes up only at the bottom of the ladder, where
+     the type is small enough to need it. `h1` keeps the size `base.css` would
+     have given it, written out so the ladder reads as one thing. */
+  --mz-h1-size: 2.6em;
+  --mz-h1-weight: 400;
+  --mz-h1-tracking: 0;
+  --mz-h1-leading: 1.16;
+  --mz-h2-size: 1.7em;
+  --mz-h2-weight: 400;
+  --mz-h2-leading: 1.3;
+  --mz-h3-weight: 600;
+  /* A serif wants its lines further apart than a grotesque does: the letters
+     are busier, and it is the leading rather than the ink that makes a
+     paragraph look calm. */
+  --mz-body-leading: 1.72;
+  /* A number said at 3.2em in bold is the loudest thing on any slide this
+     theme could draw, which is the one thing it is for not doing. */
+  --mz-metric-weight: 400;
+
+  /* No signature rule. `--mz-h2-rule-w` stays at `0`, so `h2` keeps the plain
+     border `base.css` gives it. A short rule is a signature — a theme with no
+     accent colour has nothing to sign with, and drawing one anyway would be
+     the theme asking to be noticed. The full-width border is not that: it is
+     the only thing separating a section head from the slide under it, so it
+     earns its ink.
+     The quotation's bar does not, and comes down from 4px to 2: a quotation is
+     already set apart by its indent and its lighter ink, and the old bar was
+     the heaviest mark on any slide. Bold text loses the accent for the same
+     reason — bold is the emphasis, and colouring it as well is two marks doing
+     one job. */
+  --mz-strong-color: var(--mz-fg);
+  --mz-quote-border: 2px solid var(--mz-accent2);
 }
 @media (prefers-color-scheme: dark) {
   :where([data-theme="wuwei"]:not([data-mode="light"]):not([data-mode="light"] *)) {

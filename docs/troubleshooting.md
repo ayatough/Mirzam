@@ -156,13 +156,20 @@ since it changes how urgent the fix is:
 | toc: unknown key … / from … / depth … must be 1 to 6 / current … must be true or false / … is not `key: value` | Contents | Malformed `toc` block | Shown on the slide too |
 | bibliography: unknown key … / show … must be `cited` or `all` / back … must be true or false / … is not `key: value` | References | Malformed `bibliography` block | Shown on the slide too |
 | path: file not found / larger than 20MB, not inlined | Assets | An image/audio/video `src=` doesn't resolve, or exceeds the inline size limit | Note only — a placeholder "missing" graphic is substituted (no `slide N:` prefix) |
-| unknown theme "x"; using default | Theme | Frontmatter `theme:` isn't a built-in name | Note only — falls back to `default` |
+| unknown theme "x"; using mirzam | Theme | Frontmatter `theme:` isn't a built-in name | Note only — falls back to `mirzam` |
+| "default" is no longer a theme name … | Theme | Frontmatter `theme: default` — the name was retired; it was `mirzam` under a second name | Note only — renders in `mirzam`, which is the same palette. Write `theme: mirzam` or drop the key |
 | unknown mode "x"; expected light or dark | Theme | Frontmatter `mode:` isn't `light`/`dark` | Note only — falls back to following the reader's machine |
-| slide N, pane "x": unknown theme "y"; keeping the surrounding theme | Theme | A pane's `{theme=y}` — or a slide's `<!-- theme: y -->` — isn't a built-in name | Note only — that pane or slide keeps the theme it inherits |
+| slide N, pane "x": unknown theme "y"; keeping the surrounding theme | Theme | A pane's `{theme=y}` — or a slide's `<!-- theme: y -->` — is neither a built-in name nor a theme file this deck loads | Note only — that pane or slide keeps the theme it inherits |
+| slide N, pane "x": "y" is loaded from "themes/y.css", but that file sets its tokens outside [data-theme="y"] | Theme | The name is registered, but the file scopes nothing to it, so the pane picks up nothing | Note only — wrap the token block in `[data-theme="y"] { … }` and the pane takes the theme |
+| theme: "themes/y.css" paints in one palette | Theme | A theme of your own sets colours and defines no light/dark variant of them | Note only — but `D` in the viewer will appear dead. Add the second block the message names |
+| theme: "themes/y.css" sets "--mz-x" for dark but not for light | Theme | A colour named in one mode only keeps that value in the other | Note only — a dark panel on a white slide is the usual symptom |
+| theme: "themes/y.css" in light: … is 3.1:1, under the 4.5:1 floor | Theme | Two of your theme's colours are not legible together | Note only — the same floor the built-in themes are held to |
+| theme: "themes/y.css" registers as "y", which is a built-in theme | Theme | A theme file's stem collides with a built-in name | Note only — `theme=y` keeps meaning the built-in; rename the file |
 | slide N, pane "x": unknown mode "y"; expected light or dark | Theme | A pane's `{mode=y}` or a slide's `<!-- mode: y -->` isn't `light`/`dark` | Note only — that pane or slide follows the deck's mode |
 | math: unknown dialect "x"; latex and typst are supported | Math | Frontmatter `math:` isn't `latex`/`typst` | Note only — renders as `latex` |
 | transition: … | Frontmatter | Frontmatter `transition:` doesn't parse | Note only — deck falls back to plain cuts |
-| css: cannot read path | Frontmatter | Frontmatter `css:` file can't be read | Note only — builds without the custom stylesheet |
+| theme: cannot read path | Frontmatter | A stylesheet named by `theme:` can't be read | Note only — builds without it |
+| `css:` is retired and goes away in the next release | Frontmatter | The deck writes `css:`, which is now `theme:` with one more entry | Note only — the message carries the exact `theme:` line to write instead |
 | no slides: file is empty / … has nothing outside its frontmatter | Frontmatter | Nothing to render | Note only — builds as a blank page |
 | `<!-- next -->` appears in more than one pane | Frontmatter | Two panes on one slide both try to break | Note only — the slide renders whole, unsplit |
 

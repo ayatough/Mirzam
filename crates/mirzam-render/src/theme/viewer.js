@@ -487,22 +487,16 @@
   }
 
   /**
-   * Where the editor is, with this slide packed into the fragment. The deck's
-   * own stylesheet rides along under the name `css:` gave it, read back out
-   * of the page it is already inlined in — so the handover costs no bytes in
-   * the deck, and the slide renders over there the way it renders here.
+   * Where the editor is, with this slide packed into the fragment. The files
+   * the deck read by name — the stylesheets `theme:` points at, the
+   * bibliography — travel with it under those names, so `theme:` and
+   * `bibliography:` resolve over there the way they resolved here and the
+   * slide renders as the slide, not as an unstyled draft of it.
    */
   function editorLink(md) {
     if (!SOURCE || !SOURCE.editor) return null;
-    // The bibliography and anything else the deck read by name travelled with
-    // the payload; the stylesheet did not, because it is already here.
-    const files = Object.assign({}, SOURCE.files);
-    const sheet = document.getElementById('mz-css');
-    if (SOURCE.css && sheet && sheet.textContent.trim()) {
-      files[SOURCE.css] = sheet.textContent;
-    }
     const payload = { md: handoverDoc(md) };
-    if (Object.keys(files).length) payload.files = files;
+    if (SOURCE.files && Object.keys(SOURCE.files).length) payload.files = SOURCE.files;
     return SOURCE.editor + '#deck=' + encodePayload(JSON.stringify(payload));
   }
 

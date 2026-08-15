@@ -179,10 +179,10 @@ async function exportHtml(context) {
  *
  * Which paths those are is `references()`; this decides which table each one
  * goes in. Text the core reads through `FileProvider` — a transcluded section,
- * a masters file, a bibliography, the `css:` stylesheet — goes in `files` as
- * itself. Everything else is an asset and goes in `assets` as a data URI,
- * a chart's CSV included: the core reads chart data through the same
- * `AssetSource` it reads images through.
+ * a masters file, a bibliography, a stylesheet named by `theme:` — goes in
+ * `files` as itself. Everything else is an asset and goes in `assets` as a
+ * data URI, a chart's CSV included: the core reads chart data through the
+ * same `AssetSource` it reads images through.
  *
  * `sources` maps each file's absolute path to the key the core knows it by,
  * which is how an edit anywhere in the workspace finds the previews it belongs

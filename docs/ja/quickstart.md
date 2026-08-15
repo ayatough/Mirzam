@@ -36,7 +36,7 @@ CLI と同じ Rust コアを WebAssembly にしたものです。左に Markdown
 |---|---|
 | `![[section.md]]` によるファイル分割 | 1 ファイルにまとめる、または CLI を使う |
 | ディスク上の `data: chart.csv` | `chart` ブロックの `data:` に CSV を直接書く |
-| ディスク上の `css: theme.css` | 組み込みの `theme:` を使う、または CLI |
+| ディスク上の `theme: house.css` | `theme:` に組み込みテーマ名を書く、または CLI |
 | PDF 出力 | CLI でビルドして `mirzam export pdf` |
 
 ## 2. コマンドライン — 全機能

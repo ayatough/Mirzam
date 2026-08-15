@@ -18,11 +18,14 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
   The handover travels in the URL's fragment, which a browser never sends to a
   server, so nothing is uploaded and a deck saved to a phone hands a slide over
-  exactly like a published one. The deck's frontmatter and the stylesheet
-  `css:` names go with it — the stylesheet read back out of the page it is
-  already inlined in, so carrying it costs the deck no bytes. Images do not
-  travel: inlined as data URIs, they have lost the path they came from, and a
-  slide that uses one arrives with the reference intact and the file missing.
+  exactly like a published one. The deck's frontmatter goes with it, and so
+  does every file the deck read by name — the stylesheets `theme:` points at,
+  the `bibliography:`, the `masters:` — so those keys resolve over there the
+  way they resolved here, and a deck given `--theme`, `--mode` or `--fit` on
+  the command line hands over frontmatter saying so, since the look it was
+  built in is not one its own text describes. Images do not travel: inlined as
+  data URIs, they have lost the path they came from, and a slide that uses one
+  arrives with the reference intact and the file missing.
 
   **The site is built this way**, which is what it was for: it showed a
   rendering and prose about it, and nothing on the page said which eight lines
@@ -38,6 +41,9 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   `v` is now a viewer key, so an `effects` block can no longer bind it — the
   same warning the other reserved keys give.
 
+## [0.6.0] - 2026-08-14
+
+### Added
 - **A `shape` block written inside a `::: pane` draws in that pane's
   coordinate space.** `at(50%, 50%)` is the centre of the pane, not of the
   slide, so a diagram written where its content lives resizes with the pane
@@ -77,6 +83,92 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   that produced it. Additive — the schema is still `version: 1`.
 
 ### Changed
+- **`theme:` takes a theme of your own, in a file — and gives it a name.**
+  A custom theme was a stylesheet named in a second key, which meant it could
+  repaint a deck and nothing more. It is a supported artefact now:
+
+  ```yaml
+  theme: mirzam                        # a built-in
+  theme: themes/acme.css               # your own, beside the deck
+  theme: [mirzam, themes/tweaks.css]   # a built-in, then yours over it
+  ```
+
+  An entry ending in `.css` is a path, resolved relative to the deck the way
+  `masters:` and `bibliography:` are; anything else is a built-in name. A list
+  is cascade order, and a scalar is a list of one — so every deck that already
+  wrote `theme: nord` is unchanged. Your file loads *after* the shared
+  stylesheet, which is what lets it set the type and not only the colours.
+
+  **`themes/acme.css` also registers as `acme`**, a name a slide or one pane
+  can wear: `::: pane fig {theme=acme}`. That works only if the file scopes its
+  tokens to its own stem — `[data-theme="acme"] { … }` — because tokens written
+  at `:root` are set on the document and a pane asking for the name would pick
+  up nothing. `mirzam check` says so when a deck gets it wrong, rather than
+  leaving a pane silently in the deck's palette.
+
+  Two more things `check` now says about a theme of your own, both of them
+  gates the built-in themes have always been held to: a theme that paints in
+  **one palette** pins the deck to one mode and makes `D` in the viewer look
+  broken, and a colour pair under the **contrast floor** is text an audience
+  cannot read. `examples/themes/blueprint.css` is a complete example to copy —
+  deliberately not Mirzam's identity, so it shows what a theme is free to
+  change.
+- **`theme: mirzam` sets the type, not just the colours.** A theme was a
+  palette and nothing else, so the part of a deck's look people recognise — the
+  faces, the weight ladder, the short violet rule under a section heading —
+  could only be had by writing a stylesheet and naming it in a second
+  frontmatter key. Those are now tokens: `--mz-font`, `--mz-font-display`,
+  `--mz-font-mono`, a size, weight, tracking and leading for each heading
+  level, the body pair, and the marks a theme signs its name with
+  (`--mz-strong-*`, `--mz-quote-*`, `--mz-code-bg`, `--mz-th-fg`,
+  `--mz-h2-rule-*`). Every one carries today's value as its fallback, so **a
+  deck that sets none renders exactly as it did**; the full list is in
+  [docs/syntax.md](docs/syntax.md#the-vocabulary-a-theme-writes-in).
+
+  `theme: mirzam` now carries Mirzam's identity rather than its colours, so a
+  deck that names it — or names nothing, since it is the fallback — gets the
+  type as well. **`examples/seminar.md` is the one sample deck that moves for
+  this**: it loads no stylesheet, so this is the first thing it has ever had
+  beyond a palette. The other eight said the same thing as rules, in
+  `examples/themes/mirzam.css`; they now write `theme: mirzam` and that file is
+  gone (below).
+
+  Because custom properties inherit and rules do not, the type now travels with
+  a pane that carries `theme=` — a re-themed pane used to take the other
+  theme's colours and keep the deck's face.
+- **`theme: wuwei` is now set in roman type.** The quiet greyscale theme was a
+  palette; it is an identity now — an old-style serif for headings and text
+  alike, more air between the lines, and a ladder that tells a heading from a
+  paragraph by size and space rather than by weight. Put it beside `mirzam`,
+  which is Inter and Space Grotesk, and you can see which theme a deck is in
+  before you notice a colour: slide 5 of `examples/06-theming.md` shows all
+  five side by side.
+
+  Nothing is downloaded — a deck is one file and a venue may have no network —
+  so the theme names faces a machine is likely to have (Charter, Iowan Old
+  Style, Palatino, Georgia, Noto Serif) and ends in the generic `serif`. Mincho
+  and Song faces are named after them, so Japanese stays roman instead of
+  falling back to a gothic. Code keeps the monospaced face it had.
+
+  Two marks change with the type: bold text is drawn in the ink colour rather
+  than the accent, and a quotation's bar is half the weight it was. `wuwei`
+  still draws no short rule under a section heading — a theme with no accent
+  colour has nothing to sign its name with, so the plain border stays.
+- **The rule under a section heading follows the heading's alignment.** A theme
+  that signs its name with a short rule rather than a full-width border drew it
+  at the left edge whatever the heading did, so a centred or right-aligned `##`
+  had its mark stranded across the pane from the words. Centre the heading and
+  the rule centres; put it on the right and the rule goes right. Only
+  `examples/themes/mirzam.css` knew this before, so it took a stylesheet to get
+  it; now `theme: mirzam` — or any theme setting `--mz-h2-rule-w` — is enough.
+- **`.card`, `.eyebrow` and `.metric` come with the renderer now**, next to
+  `.box`, so a slide copied out of a sample deck keeps its shape without a
+  stylesheet behind it. `examples/seminar.md` wrote `[先行研究]{.eyebrow}` and
+  rendered it as plain text; it no longer does. `.box` and `.card` are both
+  bordered blocks and the difference between them is now written down: `.box`
+  is an aside *inside* a pane, measured in `em` so it tracks the text it
+  interrupts; `.card` is the pane, measured in `px` so a row of them agrees,
+  and it is the one with dials.
 - **A photograph can take one half of a slide.** `.bleed` used to be a statement
   about the whole slide: it dropped the grid's margin, and the margin belonged to
   every pane, so putting a bleeding photo in one column left the words in the
@@ -93,7 +185,93 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   short of the words instead of running up against them. Set `--mz-grid-gap: 0`
   if you want the two halves to meet.
 
+### Deprecated
+- **`css:` is retired. Write `theme:` instead — the same path, in the list.**
+  It still works for **this release**, and every build that sees it prints the
+  exact line to write:
+
+  ```yaml
+  css: themes/house.css                  # before
+  theme: [mirzam, themes/house.css]      # after
+  ```
+
+  `--css` on the command line goes the same way; `--theme` takes a path now,
+  and repeating it is a list. Both are removed in the next release, so a deck
+  or a script that writes either has one release to move. Nothing changes about
+  what is loaded or in what order in the meantime.
+
+### Removed
+- **`examples/themes/mirzam.css` is gone**, and the eight sample decks that
+  loaded it write `theme: mirzam`. Everything in it is in the built-in theme's
+  tokens now, so nothing repaints — with two exceptions worth knowing if you
+  copied from those decks: `.foot` was `.small` under another name and is now
+  written `{.small}`, and `.markers`, one deck's list-marker demonstration, is
+  a `<style>` block in that deck, which is where a class or two belongs.
+  `examples/themes/` still ships a custom theme, `blueprint.css`, because a
+  theme of your own is now a documented feature and a feature wants a sample.
+- **The `default` theme is gone. Write `theme: mirzam`, or nothing at all.**
+  There were six built-in themes and only five palettes: `default` and `mirzam`
+  were the same sheet under two names — 66 token declarations, every value
+  identical — kept in step by a test whose whole job was to notice when they
+  drifted. One palette now has one name, and a deck that names no theme gets
+  `mirzam`, exactly as it already did.
+
+  **Nothing repaints.** A deck with `theme: default` renders in the same
+  colours it always has; a deck that named no theme is untouched. Only the name
+  is a breaking change — `theme: default` is now an unrecognised name, so it
+  warns instead of being silently accepted. The warning says what to write
+  rather than "unknown theme": deleting the key is the better fix, since the
+  key was only ever choosing the palette you would have got anyway. The same
+  goes for a slide's `<!-- theme: default -->` or a pane's `{theme=default}`.
+
+  `examples/06-theming.md`'s palette gallery now shows all five built-ins with
+  no repeat.
+- **The landing page opens dark, like the deck beside it.** It followed the
+  machine's `prefers-color-scheme` when nothing was stored, while the README
+  deck linked from it is built `--mode dark` — so on a light-preferring machine
+  the front door and the demonstration disagreed. Dark is now the page's own
+  default, reached without asking the system anything. The switch in the corner
+  still wins in both directions, so a reader who chose light keeps light, and
+  the page's mode now rides on the deck links as `?mode=` whether it was chosen
+  or defaulted: what you click looks like what you were looking at. The page
+  and the decks go on sharing one stored preference — pressing `D` in a deck is
+  the same reader saying the same thing.
+- **The sample custom theme looks like a theme in light mode too.**
+  `examples/themes/blueprint.css` is the repository's demonstration that a
+  theme of your own can carry a real identity, and in light it was near-white
+  paper and a sans body — a deck you could not tell from any other. It is a
+  drawing office now in both modes: pale blue paper on a blue-grey desk in
+  light, the ink-blue night it already had in dark, and one mono hand for the
+  whole sheet rather than only for the headings, since a face survives a
+  projector and a photocopy in a way a colour does not. Sizes come down a step
+  and leading goes up to pay for mono's width. Same contrast floors, same
+  system fonts, nothing fetched.
+
 ### Fixed
+- **A pane wearing a theme no longer borrows the deck's type and colour.** On
+  the "Two palettes on one slide" slide of `examples/06-theming.md`, the `###
+  Day` heading in the `wuwei` pane came out a pale violet on wuwei's cream
+  paper — very nearly invisible — and flipping the deck to light did the mirror
+  image to `### Night`. The pane was taking a colour mixed for the deck's theme
+  *and the deck's mode*, which is the opposite of what asking for a theme by
+  name is supposed to mean.
+
+  It was never one token or one slide. A theme is a token set, custom
+  properties inherit, and 36 of them are set by some built-ins and not others —
+  a subheading's colour, bold's colour and weight, a table header, a quotation,
+  code's paper and ink, both faces, the whole `h1`/`h2` ladder, the mark under
+  a section heading, a title, a metric, body leading, the grid's margins. Every
+  one of those leaked into any pane or slide whose theme happened not to set
+  it.
+
+  Every theme scope now opens by undefining the whole derived vocabulary, so it
+  starts from the same defaults as every other scope and falls back to its
+  *own* palette in its *own* mode for anything it does not set. That covers a
+  theme you wrote as well: a file theme scoped to its stem gets the same block,
+  ahead of your declarations, so your values still win. Two consequences worth
+  knowing: a pane wearing a theme that names no face now shows the shared
+  default face rather than the deck's, and a pane wearing a theme with no
+  signature rule no longer inherits the deck's.
 - **The pitch deck's "How it works" diagram stays inside the deck margin.** The
   WASM box reached 99% of the slide width, 47px past the right margin every
   other slide aligns to. Shapes are free to cross pane borders — that layer

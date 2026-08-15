@@ -37,7 +37,7 @@ What the browser build cannot do, because it has no filesystem:
 |---|---|
 | `![[section.md]]` across files | Keep the deck in one file, or use the CLI |
 | `data: chart.csv` from disk | Paste the CSV into the `chart` block's `data:` |
-| `css: theme.css` from disk | Use a built-in `theme:`, or the CLI |
+| `theme: house.css` from disk | Name a built-in in `theme:`, or use the CLI |
 | PDF export | Build the deck with the CLI and run `mirzam export pdf` |
 
 ## 2. On the command line — the whole thing

@@ -11,8 +11,9 @@
 //! What travels is the Markdown as authored, not as expanded: variables are
 //! still `{{like this}}` and a transcluded file is still `![[part.md]]`,
 //! because the point is to show the text somebody typed. The deck's
-//! frontmatter rides along for the same reason the stylesheet does — a slide
-//! rendered without its `vars:` and its `css:` is not the slide on screen.
+//! frontmatter rides along for the same reason the stylesheets `theme:` names
+//! do — a slide rendered without its `vars:` and its own type is not the slide
+//! on screen.
 //!
 //! Images do not travel. They are inlined in this page as data URIs with the
 //! path they came from long gone, so a handed-over slide that referenced one
@@ -28,16 +29,17 @@ pub struct DeckSource {
     /// The deck's frontmatter, as written, without the `---` fences. Absent
     /// when the deck declared none.
     pub frontmatter: Option<String>,
-    /// The stylesheet named by frontmatter `css:`, as written there. The
-    /// viewer reads the stylesheet's *text* out of the page it is already in;
-    /// this is only the name to file it under, so `css:` resolves in the
-    /// editor the way it resolved here.
-    pub css_path: Option<String>,
-    /// Text files the deck read by name — its `bibliography:`, and anything
-    /// else the core resolves through a file provider rather than through the
-    /// asset table. The stylesheet is not among them: it is already inlined in
-    /// the page, and the viewer reads it back out of there instead of the deck
-    /// carrying a second copy.
+    /// Text files the deck read by name, under the names it read them by: the
+    /// stylesheets `theme:` points at, the `bibliography:` and the `masters:`.
+    /// Everything the core resolves through a file provider rather than
+    /// through the asset table, which is exactly the set the editor resolves
+    /// the same way.
+    ///
+    /// A theme is inlined in this page already, so this is a second copy of
+    /// it. Reading it back out of the page instead would save those bytes and
+    /// cost the thing they are being spent on: what is in the page is the
+    /// stylesheet plus the scope defaults the renderer prepended, and the
+    /// handover is supposed to be the file somebody wrote.
     pub files: Vec<(String, String)>,
     /// Each authored slide's Markdown, in order.
     pub slides: Vec<String>,
@@ -75,11 +77,7 @@ impl DeckSource {
                     .join(",")
             ),
         ];
-        for (name, value) in [
-            ("fm", &self.frontmatter),
-            ("css", &self.css_path),
-            ("editor", &self.editor_url),
-        ] {
+        for (name, value) in [("fm", &self.frontmatter), ("editor", &self.editor_url)] {
             if let Some(v) = value {
                 fields.push(format!("\"{name}\":{}", json::string(v)));
             }
@@ -130,19 +128,17 @@ mod tests {
     fn the_optional_fields_appear_only_when_they_are_set() {
         let bare = some(&["# One\n"]).script();
         assert!(!bare.contains("\"fm\""), "{bare}");
-        assert!(!bare.contains("\"css\""), "{bare}");
+        assert!(!bare.contains("\"files\""), "{bare}");
         assert!(!bare.contains("\"editor\""), "{bare}");
 
         let full = DeckSource {
             frontmatter: Some("title: T".into()),
-            css_path: Some("themes/mirzam.css".into()),
             editor_url: Some("../../try/".into()),
             files: vec![("refs.bib".into(), "@book{a}".into())],
             ..some(&["# One\n"])
         }
         .script();
         assert!(full.contains(r#""fm":"title: T""#), "{full}");
-        assert!(full.contains(r#""css":"themes/mirzam.css""#), "{full}");
         assert!(full.contains(r#""editor":"../../try/""#), "{full}");
         assert!(
             full.contains(r#""files":{"refs.bib":"@book{a}"}"#),

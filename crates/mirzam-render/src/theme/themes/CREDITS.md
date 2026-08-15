@@ -9,18 +9,6 @@ sibling shade from the same palette (or a darkened/lightened variant of the
 same hue) was used instead so a unit test can hold every theme to the same
 bar. See `every_theme_and_mode_meets_wcag_contrast` in `mod.rs`.
 
-## `default`
-
-Ours: the same palette as [`mirzam`](#mirzam), under the name a deck gets when
-it asks for nothing. A deck that names no theme is the common case — a quick
-note, a README turned into slides, a sample showing one piece of markup — and
-those used to come out in a generic blue-and-teal that looked like nobody's.
-
-The values are written twice because the theme's name is part of every
-selector it emits; `default_is_the_mirzam_palette` in `mod.rs` compares the two
-token sets, so editing one and not the other fails the build rather than
-shipping two slightly different Mirzams.
-
 ## `nord`
 
 [Nord](https://www.nordtheme.com/) by Arctic Ice Studio and Sven Greb.
@@ -73,10 +61,17 @@ them as representative of the VS Code look rather than a pixel-exact extract.
 
 ## `mirzam`
 
-Ours, from [`docs/brand/palette.md`](../../../../../docs/brand/palette.md). The
-token half of `examples/themes/mirzam.css`; that file is still where the
-identity's *type* lives — a built-in theme is loaded before `base.css` and so
-can only set tokens, not typography.
+Ours, from [`docs/brand/palette.md`](../../../../../docs/brand/palette.md), and
+the whole identity rather than a palette: type is a token too, so the faces
+(Space Grotesk over Inter), the weight ladder and the short violet rule are set
+here. It was once only the token half of a sample stylesheet the decks loaded
+beside it; that file is gone, and `theme: mirzam` is the whole of it.
+
+Also the palette a deck gets when it names no theme, which is the common case —
+a quick note, a README turned into slides, a sample showing one piece of markup
+— and those used to come out in a generic blue-and-teal that looked like
+nobody's. It was shipped twice for a while, the second copy keyed for a
+`default` theme; that name is retired and this is the only sheet.
 
 The brand sheet is drawn for a web page and a deck is not one, so two families
 of value moved. `--mz-muted` in light mode is a step darker than the brand's
@@ -119,3 +114,17 @@ Two decisions worth writing down:
 
 Dark mode is drawn from scratch, not inverted: warm near-black paper, warm bone
 ink, and each series re-picked for its new background.
+
+**The type is roman, and nothing is fetched.** No face is bundled or
+downloaded: the theme names a stack of old-style serifs a machine is likely to
+already have — Charter and Iowan Old Style (macOS, and Bitstream Charter on
+most Linux distributions), Palatino and Georgia (macOS and Windows), Noto Serif
+(Linux) — ending in the generic `serif`, so a reader without any of them still
+gets a serif rather than the theme's second choice of sans. Mincho and Song
+faces are named after them (Hiragino Mincho ProN, Noto Serif CJK JP, Yu Mincho,
+MS Mincho, Songti SC, SimSun), because none of the Latin faces covers CJK and
+without them Japanese would fall to a gothic and lose the idea entirely. Every
+one of those names is a family reference, not a copy: nothing from any of these
+foundries ships in this repository. Headings take the same face — there is no
+display cut, which is the point rather than an omission — and the mono stack is
+left where `base.css` puts it.

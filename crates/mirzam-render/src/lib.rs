@@ -25,7 +25,9 @@ pub use inline::{parse_attrs, preprocess, preprocess_math, render_markdown, rend
 pub use mirzam_cite::{Bibliography, CiteStyle};
 pub use mirzam_core::MathDialect;
 pub use source::DeckSource;
-pub use theme::{contrast_ratio, mode_warning, theme_warning, THEME_NAMES};
+pub use theme::{
+    contrast_ratio, file_theme_warnings, mode_warning, theme_warnings, FileTheme, THEME_NAMES,
+};
 pub use toc::resolve_deck;
 
 use mirzam_core::DeckMeta;
@@ -80,6 +82,15 @@ pub struct DeckContext {
     /// It has to reach a slide at all because a deck with no bibliography must
     /// leave `[@name]` as the text somebody typed.
     pub citations: bool,
+    /// The stylesheets the deck's `theme:` named, once the host has read them
+    /// — resolved by the caller, like [`Self::masters`], because reading a
+    /// file is the half of this that needs a filesystem.
+    ///
+    /// A slide needs them for one question only: whether a `theme=` naming one
+    /// of their stems is a name this deck has. That is why the whole theme is
+    /// here rather than a list of names — the answer also depends on whether
+    /// the file scopes its tokens to its own stem, which only its text says.
+    pub file_themes: Vec<FileTheme>,
     /// Set when the deck named a masters file that could not be read. Every
     /// name it would have defined is then missing, and the file is the one
     /// fact worth reporting: without this, deleting it says "cannot read the
@@ -110,6 +121,7 @@ impl DeckContext {
             slide_number: meta.slide_number.clone(),
             total,
             citations: !meta.bibliography.is_empty(),
+            file_themes: Vec::new(),
             masters_unavailable: false,
         }
     }
@@ -182,6 +194,14 @@ impl DeckContext {
         self.footer.hash(&mut h);
         self.slide_number.hash(&mut h);
         self.citations.hash(&mut h);
+        // Only what a slide can read off a theme file: whether the name is
+        // one this deck has, and whether it answers to that name. The rest of
+        // the stylesheet changes the page, not the markup, and hashing it here
+        // would re-render every slide over a colour.
+        for theme in &self.file_themes {
+            theme.name.hash(&mut h);
+            theme.scopes_to_stem().hash(&mut h);
+        }
         if self.prints_total() {
             self.total.hash(&mut h);
         }
@@ -327,8 +347,11 @@ pub fn render_slide_html_with(
 pub struct PageOptions {
     /// When set, injects the hot-reload client used by `serve`.
     pub live_version: Option<u64>,
-    /// Contents of the stylesheet named by frontmatter `css:`.
-    pub custom_css: Option<String>,
+    /// The stylesheets frontmatter's `theme:` named, in cascade order, once
+    /// the host has read them. They are inlined **after** `base.css` — the
+    /// slot the retired `css:` occupied — which is what lets a theme somebody
+    /// wrote override the type the shared stylesheet sets.
+    pub file_themes: Vec<FileTheme>,
     /// Bakes the layout debug overlay on at load, instead of leaving it to the
     /// viewer's `L` key. For screenshotting a broken deck headlessly.
     pub debug_layout: bool,
@@ -394,21 +417,61 @@ fn transition_attr(meta: &DeckMeta) -> String {
 }
 
 /// Resolves frontmatter `theme:`/`mode:` to the attributes baked onto
-/// `<html>`. Always valid, silently falling back to `default`/no mode
+/// `<html>`. Always valid, silently falling back to `mirzam`/no mode
 /// attribute for a name that is not a built-in: a caller that wants to
 /// report an unknown name calls [`theme_warning`]/[`mode_warning`] where
 /// `meta` was parsed, since this function has no warning channel of its own.
+///
+/// `mirzam` is the fallback because there is no longer a `default` to be one:
+/// the two names carried the same 66 token declarations, and the one that
+/// survived is the one that says whose palette it is. An unset `mode:` stays
+/// unset, and so keeps meaning `prefers-color-scheme`: the room a deck is
+/// opened in is something the viewer can see and the renderer cannot.
+///
+/// A `theme:` naming only stylesheets of the deck's own falls back here too:
+/// `base.css` reads tokens that have to come from somewhere, and a file theme
+/// loaded over them may set as few of them as it likes.
 fn theme_attrs(meta: &DeckMeta) -> (&'static str, String) {
     let name = theme::THEME_NAMES
         .iter()
-        .find(|n| Some(**n) == meta.theme.as_deref())
+        .find(|n| Some(**n) == meta.theme_name())
         .copied()
-        .unwrap_or("default");
+        .unwrap_or(theme::FALLBACK_THEME);
     let mode_attr = match theme::normalize_mode(meta.mode.as_deref()) {
         Some(m) => format!(" data-mode=\"{m}\""),
         None => String::new(),
     };
     (name, mode_attr)
+}
+
+/// The deck's own file theme, as a `data-theme` on `<body>` — set only when
+/// `theme:` names **no built-in at all** and one of the stylesheets it names
+/// scopes its tokens to its own stem.
+///
+/// Without this, `theme: themes/acme.css` would be a deck that loads a theme
+/// nothing on the page answers to: the stem is a selector, and the only
+/// elements carrying `data-theme` would be the panes that asked for one. A
+/// deck that names its own theme and nothing else means that theme, so the
+/// name goes on the element everything is inside.
+///
+/// `<body>` rather than `<html>`, because `<html>` is carrying the built-in
+/// token set the shared stylesheet reads: a file theme may set three tokens or
+/// sixty, and the ones it leaves alone still have to come from somewhere. Body
+/// is inside it, so the deck's chrome takes the deck's palette too, and
+/// `data-mode` stays above both, where the mode selectors expect it.
+///
+/// A deck that names a built-in as well — `theme: [mirzam, acme.css]` — has
+/// said which palette it is in, and its own stylesheet is then loaded for the
+/// slides and panes that name it. That is what lets one deck show a theme
+/// without wearing it.
+fn body_theme_attr(meta: &DeckMeta, file_themes: &[FileTheme]) -> String {
+    if meta.theme_name().is_some() {
+        return String::new();
+    }
+    match file_themes.iter().rev().find(|t| t.scopes_to_stem()) {
+        Some(theme) => format!(" data-theme=\"{}\"", theme.name),
+        None => String::new(),
+    }
 }
 
 /// Every built-in theme the page has to carry tokens for: the deck's own,
@@ -461,11 +524,44 @@ pub fn page_fingerprint(meta: &DeckMeta, sections: &[String], opts: &PageOptions
     deck_has_annot(sections).hash(&mut h);
     deck_has_fit(meta, sections).hash(&mut h);
     effects::deck_has_effects(sections).hash(&mut h);
-    opts.custom_css.hash(&mut h);
+    opts.file_themes.hash(&mut h);
+    body_theme_attr(meta, &opts.file_themes).hash(&mut h);
     opts.debug_layout.hash(&mut h);
     opts.source.hash(&mut h);
     meta.grid_metrics_css().hash(&mut h);
     h.finish()
+}
+
+/// The deck's own stylesheets, in cascade order, as the body of one `<style>`
+/// element — the slot after `base.css` that a file theme has to occupy to be
+/// able to override it.
+///
+/// One element rather than one each: source order inside a stylesheet is the
+/// same cascade as source order between them, and a deck is one file, so the
+/// only thing several elements would add is several places to look. Each is
+/// labelled with the path it came from, because the page *is* the artefact
+/// somebody debugs.
+///
+/// A theme that scopes its tokens to its own stem is a scope like a built-in
+/// one, and gets the same reset block first — see [`theme::scope_defaults`].
+/// Without it a pane wearing somebody's theme would still inherit the deck's
+/// type and marks for everything that theme happens not to set, which is the
+/// one form of the bug the author of the file cannot fix by editing a built-in.
+/// It goes *before* their declarations, so their values still win; a file that
+/// does not scope to its stem gets none, because nothing on the page carries
+/// the name and the block would answer to no element.
+fn file_themes_css(themes: &[FileTheme]) -> String {
+    themes
+        .iter()
+        .map(|t| {
+            let defaults = match t.scopes_to_stem() {
+                true => theme::scope_defaults(&t.name),
+                false => String::new(),
+            };
+            format!("/* {} */\n{defaults}{}", t.path, t.css)
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// Assembles rendered sections into a complete HTML page with the viewer.
@@ -529,10 +625,10 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <title>{title}</title>
 <style>{css}</style>
 <style>{math_css}</style>
-<style id="mz-css">{custom_css}</style>
+<style>{theme_files_css}</style>
 <style>{grid_css}</style>
 </head>
-<body>
+<body{body_theme}>
 <div id="deck" data-slide-w="{w}" data-slide-h="{h}"{transition}{fit}>
 {sections}</div>
 <div id="chrome">
@@ -554,7 +650,8 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 "#,
         title = inline::html_escape(title),
         css = theme::theme_css_for(&themes_used(meta, sections, opts.all_themes)),
-        custom_css = opts.custom_css.as_deref().unwrap_or(""),
+        theme_files_css = file_themes_css(&opts.file_themes),
+        body_theme = body_theme_attr(meta, &opts.file_themes),
         // Last, so declared grid metrics beat a theme's or stylesheet's own
         // custom-property overrides: the core computed pane rectangles from
         // these numbers, and the browser has to lay the grid out from them too.
@@ -708,7 +805,7 @@ fn videos_to_stills(html: &str) -> String {
 pub fn assemble_print_page(
     meta: &DeckMeta,
     sections: &[String],
-    custom_css: Option<&str>,
+    file_themes: &[FileTheme],
 ) -> String {
     let (w, h) = meta.slide_size();
     let title = meta.title.as_deref().unwrap_or("Mirzam Deck");
@@ -747,10 +844,10 @@ pub fn assemble_print_page(
 @page {{ size: {w}px {h}px; margin: 0; }}
 section.slide {{ width: {w}px; height: {h}px; }}
 </style>
-<style>{custom_css}</style>
+<style>{theme_files_css}</style>
 <style>{grid_css}</style>
 </head>
-<body>
+<body{body_theme}>
 <div id="deck"{fit}>
 {sections}</div>
 {fit_js}{annot_js}</body>
@@ -760,7 +857,8 @@ section.slide {{ width: {w}px; height: {h}px; }}
         css = theme::theme_css_for(&themes_used(meta, sections, false)),
         print_css = theme::PRINT_CSS,
         fit = deck_fit_attr(meta),
-        custom_css = custom_css.unwrap_or(""),
+        theme_files_css = file_themes_css(file_themes),
+        body_theme = body_theme_attr(meta, file_themes),
         // Same placement and reason as `assemble_page`: the PDF's grid must
         // come out of the numbers pane rectangles were computed from.
         grid_css = meta.grid_metrics_css(),
@@ -772,7 +870,7 @@ section.slide {{ width: {w}px; height: {h}px; }}
 /// `asset_dir` is the base directory for relative asset paths.
 pub fn render_deck(meta: &DeckMeta, slides: &[SlideSource], asset_dir: &Path) -> RenderResult {
     let mut warnings = Vec::new();
-    warnings.extend(theme_warning(meta.theme.as_deref()));
+    warnings.extend(theme_warnings(meta));
     warnings.extend(mode_warning(meta.mode.as_deref()));
     if let Err(w) = meta.math_dialect() {
         warnings.push(w);
@@ -810,6 +908,7 @@ fn render_slide(
         &format!("slide {}", index + 1),
         slide.theme.as_deref(),
         slide.mode.as_deref(),
+        &ctx.file_themes,
     ));
     for pb in &slide.panes {
         let attrs = parse_attrs(&pb.attrs);
@@ -817,9 +916,14 @@ fn render_slide(
             &format!("slide {}, pane `{}`", index + 1, pb.name),
             attrs.kv.get("theme").map(String::as_str),
             attrs.kv.get("mode").map(String::as_str),
+            &ctx.file_themes,
         ));
     }
-    let slide_theme = theme::scope_attrs(slide.theme.as_deref(), slide.mode.as_deref());
+    let slide_theme = theme::scope_attrs(
+        slide.theme.as_deref(),
+        slide.mode.as_deref(),
+        &ctx.file_themes,
+    );
 
     // Resolve the layout: the slide's own drawing, else the master it names,
     // else the deck's default master, else a single pane.
@@ -1319,6 +1423,7 @@ fn render_grid_slide(
         let pane_theme = theme::scope_attrs(
             attrs.kv.get("theme").map(String::as_str),
             attrs.kv.get("mode").map(String::as_str),
+            &ctx.file_themes,
         );
         panes_html.push_str(&format!(
             "<div class=\"pane pane-{name}{extra_cls}{}\" data-pane=\"{name}\"{pane_theme} style=\"{style}\">{}{body}{}</div>\n",
@@ -1598,6 +1703,7 @@ fn render_single_pane_slide(
             let attrs = theme::scope_attrs(
                 a.kv.get("theme").map(String::as_str),
                 a.kv.get("mode").map(String::as_str),
+                &ctx.file_themes,
             );
             (!attrs.is_empty()).then_some(attrs)
         })
@@ -1644,7 +1750,7 @@ mod tests {
             .contains("data-pane=\"a\" data-theme=\"wuwei\" data-mode=\"dark\""));
         assert!(out.html.contains("data-pane=\"b\" style="));
         assert!(out.html.contains(":where([data-theme=\"wuwei\"])"));
-        assert!(out.html.contains(":where([data-theme=\"default\"])"));
+        assert!(out.html.contains(":where([data-theme=\"mirzam\"])"));
         assert!(!out.html.contains(":where([data-theme=\"nord\"])"));
     }
 
@@ -1662,7 +1768,7 @@ mod tests {
         // The deck around it is untouched.
         assert!(out
             .html
-            .contains("<html lang=\"en\" data-theme=\"default\">"));
+            .contains("<html lang=\"en\" data-theme=\"mirzam\">"));
     }
 
     /// A typo names no palette, so the pane keeps the one it inherits — and
@@ -1717,7 +1823,7 @@ mod tests {
             (
                 "theme",
                 DeckMeta {
-                    theme: Some("nord".into()),
+                    theme: mirzam_core::ThemeSpec::One("nord".into()),
                     ..Default::default()
                 },
             ),
@@ -1771,7 +1877,10 @@ mod tests {
 
         // And for the options the host itself supplies.
         let css = PageOptions {
-            custom_css: Some(":root { --mz-accent1: red }".into()),
+            file_themes: vec![FileTheme::new(
+                "acme.css",
+                ":root { --mz-accent1: red }".to_string(),
+            )],
             ..Default::default()
         };
         assert_ne!(page_fingerprint(&base, &sections, &css), key);
@@ -1817,20 +1926,20 @@ mod tests {
             ..Default::default()
         };
         let html = assemble_page(&DeckMeta::default(), &[], &opts);
-        assert!(html.contains("<html lang=\"en\" data-theme=\"default\" class=\"mz-debug\">"));
+        assert!(html.contains("<html lang=\"en\" data-theme=\"mirzam\" class=\"mz-debug\">"));
     }
 
     #[test]
     fn debug_layout_off_by_default() {
         let html = assemble_page(&DeckMeta::default(), &[], &PageOptions::default());
-        assert!(html.contains("<html lang=\"en\" data-theme=\"default\">"));
+        assert!(html.contains("<html lang=\"en\" data-theme=\"mirzam\">"));
         assert!(!html.contains("class=\"mz-debug\""));
     }
 
     #[test]
     fn named_theme_is_baked_onto_html() {
         let meta = DeckMeta {
-            theme: Some("nord".into()),
+            theme: mirzam_core::ThemeSpec::One("nord".into()),
             ..Default::default()
         };
         let html = assemble_page(&meta, &[], &PageOptions::default());
@@ -1839,13 +1948,13 @@ mod tests {
     }
 
     #[test]
-    fn unknown_theme_falls_back_to_default_silently_in_assemble_page() {
+    fn unknown_theme_falls_back_to_the_default_palette_silently_in_assemble_page() {
         let meta = DeckMeta {
-            theme: Some("does-not-exist".into()),
+            theme: mirzam_core::ThemeSpec::One("does-not-exist".into()),
             ..Default::default()
         };
         let html = assemble_page(&meta, &[], &PageOptions::default());
-        assert!(html.contains("data-theme=\"default\""));
+        assert!(html.contains("data-theme=\"mirzam\""));
     }
 
     /// A deck built without `--embed-source` is the file it always was: no
@@ -1875,9 +1984,26 @@ mod tests {
         assert!(html.contains("<script type=\"application/json\" id=\"mz-source\""));
         assert!(html.contains(r##""slides":["# One\n"]"##), "{html}");
         assert!(html.contains("<button id=\"mz-source-btn\""), "{html}");
-        // The viewer reads the deck's own stylesheet back out of the page
-        // rather than the deck carrying a second copy of it.
-        assert!(html.contains("<style id=\"mz-css\">"), "{html}");
+    }
+
+    /// The files the deck read by name go with a handed-over slide, so
+    /// `theme:` and `bibliography:` resolve in the editor as they did here.
+    #[test]
+    fn embedded_source_carries_the_files_the_deck_read() {
+        let opts = PageOptions {
+            source: Some(DeckSource {
+                slides: vec!["# One\n".into()],
+                section_slides: vec![0],
+                files: vec![("themes/acme.css".into(), ":root { --mz-bg: #fff }".into())],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let html = assemble_page(&DeckMeta::default(), &[], &opts);
+        assert!(
+            html.contains(r#""themes/acme.css":":root { --mz-bg: #fff }""#),
+            "{html}"
+        );
     }
 
     /// Two decks that differ only in the source they carry are two different
@@ -1903,11 +2029,104 @@ mod tests {
     #[test]
     fn unknown_theme_is_reported_through_render_deck_warnings() {
         let meta = DeckMeta {
-            theme: Some("does-not-exist".into()),
+            theme: mirzam_core::ThemeSpec::One("does-not-exist".into()),
             ..Default::default()
         };
         let out = render_deck(&meta, &[], Path::new("."));
         assert!(out.warnings.iter().any(|w| w.contains("does-not-exist")));
+    }
+
+    /// A deck that names only a theme of its own wears it: the stem goes on
+    /// `<body>`, inside the `<html>` that carries the built-in tokens the
+    /// shared stylesheet reads. A deck that also names a built-in has said
+    /// which palette it is in, and only its panes can ask for the other.
+    #[test]
+    fn a_deck_naming_only_its_own_theme_wears_it() {
+        let acme = FileTheme::new(
+            "themes/acme.css",
+            "[data-theme=\"acme\"] { --mz-accent1: #6557d9; }".to_string(),
+        );
+        let opts = |themes: Vec<FileTheme>| PageOptions {
+            file_themes: themes,
+            ..Default::default()
+        };
+        let meta = mirzam_core::DeckMeta {
+            theme: mirzam_core::ThemeSpec::One("themes/acme.css".into()),
+            ..Default::default()
+        };
+        let html = assemble_page(&meta, &[], &opts(vec![acme.clone()]));
+        assert!(html.contains("<html lang=\"en\" data-theme=\"mirzam\""));
+        assert!(html.contains("<body data-theme=\"acme\">"), "{html}");
+
+        // Named beside a built-in, it is loaded but not worn.
+        let with_builtin = mirzam_core::DeckMeta {
+            theme: mirzam_core::ThemeSpec::Many(vec!["nord".into(), "themes/acme.css".into()]),
+            ..Default::default()
+        };
+        let html = assemble_page(&with_builtin, &[], &opts(vec![acme]));
+        assert!(html.contains("<html lang=\"en\" data-theme=\"nord\""));
+        assert!(html.contains("<body>"), "{html}");
+
+        // And a stylesheet written at `:root` needs no attribute: it already
+        // sets its tokens on the document.
+        let loose = FileTheme::new("acme.css", ":root { --mz-accent1: #6557d9; }".to_string());
+        let html = assemble_page(&meta, &[], &opts(vec![loose]));
+        assert!(html.contains("<body>"), "{html}");
+
+        // The print page wears it too. A PDF has no viewer to re-theme it
+        // afterwards, so a deck exported without its own theme is a deck
+        // nobody can fix from the file they were sent.
+        let acme = FileTheme::new(
+            "themes/acme.css",
+            "[data-theme=\"acme\"] { --mz-accent1: #6557d9; }".to_string(),
+        );
+        let print = assemble_print_page(&meta, &[], std::slice::from_ref(&acme));
+        assert!(print.contains("<body data-theme=\"acme\">"), "{print}");
+        assert!(print.contains("--mz-accent1: #6557d9"), "{print}");
+    }
+
+    /// A theme somebody wrote is a scope like a built-in, so it opens with the
+    /// same reset — and it is the one case the author of a built-in cannot fix
+    /// for them. Their own declarations come after it and still win.
+    #[test]
+    fn a_file_theme_scoped_to_its_stem_starts_from_the_same_defaults() {
+        let acme = FileTheme::new(
+            "themes/acme.css",
+            "[data-theme=\"acme\"] { --mz-h3-color: #6557d9; }".to_string(),
+        );
+        let meta = mirzam_core::DeckMeta::default();
+        let html = assemble_page(
+            &meta,
+            &[],
+            &PageOptions {
+                file_themes: vec![acme],
+                ..Default::default()
+            },
+        );
+        let reset = html
+            .find(":where([data-theme=\"acme\"]) {")
+            .expect("acme's reset block");
+        let own = html
+            .find("[data-theme=\"acme\"] { --mz-h3-color: #6557d9; }")
+            .expect("acme's own block");
+        assert!(
+            reset < own,
+            "the reset must not overwrite the theme's values"
+        );
+
+        // A file that sets its tokens on `:root` registers a name nothing on
+        // the page carries, so a block for that name would answer to no
+        // element — and the diagnostic already tells the author to scope it.
+        let loose = FileTheme::new("themes/loose.css", ":root { --mz-h3-color: #6557d9; }");
+        let html = assemble_page(
+            &meta,
+            &[],
+            &PageOptions {
+                file_themes: vec![loose],
+                ..Default::default()
+            },
+        );
+        assert!(!html.contains(":where([data-theme=\"loose\"])"), "{html}");
     }
 
     #[test]
@@ -1928,11 +2147,11 @@ mod tests {
     #[test]
     fn print_page_also_carries_theme_and_mode() {
         let meta = DeckMeta {
-            theme: Some("solarized".into()),
+            theme: mirzam_core::ThemeSpec::One("solarized".into()),
             mode: Some("dark".into()),
             ..Default::default()
         };
-        let html = assemble_print_page(&meta, &[], None);
+        let html = assemble_print_page(&meta, &[], &[]);
         assert!(html.contains("data-theme=\"solarized\""));
         assert!(html.contains("data-mode=\"dark\""));
     }
@@ -2012,7 +2231,7 @@ mod tests {
                              class=\"mz-anim\">{}</script></section>"
                 .to_string(),
         ];
-        let html = assemble_print_page(&meta, &sections, None);
+        let html = assemble_print_page(&meta, &sections, &[]);
         assert!(!html.contains("window.MZAnim = {"));
         assert!(!html.contains("data-transition"));
         // A printed page has no second window and no key to press.
@@ -2044,7 +2263,7 @@ mod tests {
     fn a_deck_without_annotations_carries_no_overlay() {
         let html = assemble_page(&DeckMeta::default(), &[], &PageOptions::default());
         assert!(!html.contains(ANNOT_MARKER));
-        assert!(!assemble_print_page(&DeckMeta::default(), &[], None).contains(ANNOT_MARKER));
+        assert!(!assemble_print_page(&DeckMeta::default(), &[], &[]).contains(ANNOT_MARKER));
     }
 
     #[test]
@@ -2062,7 +2281,7 @@ mod tests {
     /// would otherwise lose the marks the slide exists to make.
     #[test]
     fn print_pages_do_ship_the_annotation_overlay() {
-        let html = assemble_print_page(&DeckMeta::default(), &annotated_section(), None);
+        let html = assemble_print_page(&DeckMeta::default(), &annotated_section(), &[]);
         assert!(html.contains(ANNOT_MARKER));
         assert!(!html.contains("window.MZAnim = {"));
     }
@@ -2099,7 +2318,7 @@ mod tests {
     /// never carry one, however the deck was written.
     #[test]
     fn print_pages_never_ship_effects() {
-        let html = assemble_print_page(&DeckMeta::default(), &effects_section(), None);
+        let html = assemble_print_page(&DeckMeta::default(), &effects_section(), &[]);
         assert!(!html.contains(FX_MARKER));
     }
 
@@ -2648,7 +2867,7 @@ mod tests {
             Path::new("."),
             &DeckContext::new(&meta, 1),
         );
-        let page = assemble_print_page(&meta, &[section.html], None);
+        let page = assemble_print_page(&meta, &[section.html], &[]);
         assert!(page.contains("<div class=\"mz-slide-chrome\">"));
         assert!(!page.contains(".mz-slide-chrome { display: none"));
     }
