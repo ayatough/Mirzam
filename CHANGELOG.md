@@ -52,9 +52,17 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - **The light hero's violet accents can now be seen.** The dotted arcs, the
   crosses and the dot grids in `mirzam-hero-light.webp` sat a few levels above
   the pale ground and all but vanished on the landing page, while dark mode
-  showed the whole composition. Only the faint marks were deepened — the star,
-  the flare and the ground are untouched, so nothing behind text got busier.
-  Look at the site header at `/next/` in light mode.
+  showed the whole composition. The faint marks were deepened first; then the
+  planet limb, which is all a phone's narrow crop shows of the art, got its
+  violet deepened too — the flare and the ground are untouched, so nothing
+  behind text got busier. Look at the site header at `/next/` in light mode,
+  on a phone especially.
+- **The rule under a section heading is a gradient in light mode too.** Its
+  pale end was `#8b7cff`, close enough to the `#6557d9` it starts from that
+  the ramp read as one flat colour; it now ends at `#c0b7ff`, the same pale
+  violet the dark mode's rule already ran to. Any deck on `theme: mirzam` in
+  light mode shows it — `02-writing` slide 2 under "A contents page that
+  writes itself".
 
 ## [0.6.0] - 2026-08-14
 

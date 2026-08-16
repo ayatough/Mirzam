@@ -67,8 +67,13 @@
      in each mode below as well. */
   --mz-code-bg: #eef0f7;
   --mz-code-fg: var(--mz-accent1);
+  /* The rule's pale end is the dark palette's second violet in both modes:
+     #8b7cff — the light palette's own accent 2 — sits so close to #6557d9
+     that the ramp read as one flat colour, and a gradient nobody can see is
+     a border that happens to be short. The rule is a drawn mark, not text,
+     so the pale end owes no reading contrast. */
   --mz-h2-rule-a: #6557d9;
-  --mz-h2-rule-b: #8b7cff;
+  --mz-h2-rule-b: #c0b7ff;
 
   /* Type. The faces are named but not fetched: a deck is one self-contained
      file, and an `@import` would put a network request between the audience
