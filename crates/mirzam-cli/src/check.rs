@@ -343,17 +343,13 @@ fn build_kind(message: &str) -> &'static str {
         // The stem rule, reported against the slide or pane that named a
         // theme file which cannot answer to a name.
         ("file theme is usable", "build.theme"),
-        // A stylesheet the deck named and the host could not read, under
-        // either key. `build.css` is the code for a stylesheet either way.
+        // A stylesheet the deck named and the host could not read.
         ("theme: cannot read", "build.css"),
         // Everything else a theme file has to say about itself: a stem that
         // collides with a built-in, one palette where two are needed, text
         // that cannot be read on its own background.
         ("theme: `", "build.theme"),
         ("transition:", "build.transition"),
-        // The retired `css:` key: its own unreadable-path warning, and the
-        // note saying what to write instead. Goes when the alias goes.
-        ("css:", "build.css"),
         ("no slides:", "build.deck"),
         ("<!-- next -->", "build.continuation"),
         ("file not found", "build.asset"),
@@ -600,12 +596,6 @@ mod tests {
                 "build.transition",
             ),
             ("theme: cannot read missing.css", "build.css"),
-            ("css: cannot read missing.css", "build.css"),
-            (
-                "`css:` is retired and goes away in the next release: `theme:` takes a \
-                 stylesheet path as well as a built-in name. Write `theme: acme.css` instead.",
-                "build.css",
-            ),
             (
                 "theme: `themes/acme.css` paints in one palette: 12 colour tokens",
                 "build.theme",

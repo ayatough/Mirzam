@@ -774,24 +774,40 @@ way, and the connector rule beside it now points at it.
 
 ## W16 — Showing the thing working
 
-**Difficulty C · not started**
+**Difficulty C · in progress**
 
 Everything below `v0.1.0` is documentation the project cannot write in prose.
 
-- **The demo recording.** `scripts/record-demo.mjs` exists and works; what is
-  missing is deciding what gets recorded and where it lives. A README GIF has to
-  be small (GitHub will not render a large one, and will not render a committed
-  `.webm` at all), so it wants one deck, twenty seconds, no toggles. A full
-  walkthrough is a different recording and belongs on a hosted video, linked
-  rather than embedded. CI runners have a full ffmpeg, so the GIF can be
-  regenerated on a schedule instead of going stale in the repository.
-- **A themes gallery.** There are five built-in palettes and two sample
-  stylesheets, and no page shows them. One slide, rendered in each theme and
-  both modes, screenshotted by the same browser machinery the layout checker
-  uses — generated rather than curated, so it cannot drift from the CSS.
+- **The demo recording.** Its subject is decided (2026-08): **the edit loop**,
+  not the finished deck. `scripts/record-demo.mjs` plays a built deck — useful
+  for a walkthrough, but a viewing is something every slide tool can show. What
+  no competitor can show is source becoming slides *as it is typed*: the
+  browser editor (`web/wasm-demo`, a textarea beside a live preview that
+  rebuilds per keystroke) recorded while a script types a small deck into it —
+  a pane grid appearing, a chart forming, a theme switching — is the measured
+  performance table made visible. That wants a second recording mode (drive the
+  editor by typing, not a deck by keypress) beside the existing one. The README
+  GIF has to be small (GitHub will not render a large one, nor a committed
+  `.webm`), so: one short deck, about twenty seconds, the typing *is* the
+  content. A full walkthrough of a finished deck is a different recording and
+  belongs on a hosted video, linked rather than embedded. CI runners have a
+  full ffmpeg, so the GIF can be regenerated on a schedule instead of going
+  stale in the repository.
+- **A themes gallery.** Five built-ins that since W22 carry *type identities*,
+  not palettes — `mirzam`'s light grotesk, `wuwei`'s roman serif — plus
+  `examples/themes/blueprint.css` as the custom-theme sample, and no page shows
+  any of them. One slide with enough on it to show type, rendered in each theme
+  and both modes, screenshotted by the same browser machinery the layout
+  checker uses — generated rather than curated, so it cannot drift from the
+  CSS. The gallery is also where the theme contract earns its keep: the custom
+  sample sits beside the built-ins as an equal, which is the claim the contract
+  makes.
 - **A per-slide screenshot pass**, which the two above both want anyway:
   `mirzam` renders, a script shoots, the docs embed. Everything needed is
   already in `check-layout.mjs`.
+
+**Contention.** `README.md`, `scripts/record-demo.mjs`, `scripts/build-site.sh`,
+`media/`. Nothing under `crates/`, so it collides with no code stream.
 
 ## W17 — A theme per slide
 
@@ -992,6 +1008,11 @@ terminal and the sandbox.
 
 **Difficulty B** — the token work is mechanical and testable; the frontmatter
 change is a break, and breaks are where a wrong decision is expensive.
+
+**Coda, 2026-08-16.** The one-release alias kept its promise: `css:` and
+`--css` were removed after `v0.6.0` shipped with the warning. The key is an
+unknown key now, ignored like any other; `ThemeSheet` lost the `key` field
+that existed only to name which spelling an unreadable path came from.
 
 **What this stream is actually for, decided by the author in August 2026.** Not
 "`theme:` should set more things" — **a custom theme should be a supported

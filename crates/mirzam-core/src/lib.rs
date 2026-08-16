@@ -22,13 +22,6 @@ pub struct DeckMeta {
     pub mode: Option<String>,
     /// Aspect ratio, e.g. "16:9" or "4:3".
     pub aspect: Option<String>,
-    /// Path to a custom stylesheet, relative to the input file.
-    ///
-    /// **Retired**: this is `theme:` with one entry, and it is accepted for
-    /// one release so a deck written against the old key still builds. It
-    /// warns with the line to write instead ([`DeckMeta::css_alias_warning`]),
-    /// and then this field and every branch that reads it go together.
-    pub css: Option<String>,
     /// Start a new slide at every heading of this level: "h1", "h2", "h3".
     /// Slides always break on `---` as well.
     pub split: Option<String>,
@@ -123,17 +116,11 @@ pub fn is_theme_path(entry: &str) -> bool {
     entry.trim().to_ascii_lowercase().ends_with(".css")
 }
 
-/// A stylesheet a deck loads, and the frontmatter key that named it.
-///
-/// The key is carried so a path that cannot be read is reported against what
-/// the author actually wrote — `theme:` for the current key, `css:` for the
-/// retired one, which is still accepted for this release.
+/// A stylesheet a deck loads with `theme:`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ThemeSheet<'a> {
     /// The path as written, relative to the deck.
     pub path: &'a str,
-    /// `"theme"` or `"css"`.
-    pub key: &'static str,
 }
 
 /// A pixel length in frontmatter: `64px`, `"64px"` or bare `64`.
@@ -199,7 +186,7 @@ impl Default for GridMetrics {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
 pub enum BibSource {
-    /// `bibliography: refs.bib`, resolved relative to the deck like `css:` is.
+    /// `bibliography: refs.bib`, resolved relative to the deck like `theme:` paths are.
     File(String),
     /// `bibliography: {key: {author: …, title: …, year: …}}`, in frontmatter.
     /// The field names are BibTeX's, so an entry can be lifted either way.
@@ -231,7 +218,7 @@ impl BibSource {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
 pub enum Masters {
-    /// `masters: masters.md`, resolved relative to the deck like `css:` is.
+    /// `masters: masters.md`, resolved relative to the deck like `theme:` paths are.
     File(String),
     /// `masters: {two-up: |…}`, written in the deck's own frontmatter.
     Inline(BTreeMap<String, String>),
@@ -313,9 +300,7 @@ impl DeckMeta {
         }
     }
 
-    /// Every entry of `theme:`, in cascade order, with a retired `css:`
-    /// appended — that key is `theme:` with one more entry on the end, which
-    /// is the whole of what the alias means.
+    /// Every entry of `theme:`, in cascade order.
     ///
     /// Empty entries are dropped, so `theme:` written with nothing after it,
     /// or a list with a stray blank in it, is the same as not writing the key.
@@ -324,7 +309,6 @@ impl DeckMeta {
             .entries()
             .iter()
             .map(String::as_str)
-            .chain(self.css.as_deref())
             .map(str::trim)
             .filter(|e| !e.is_empty())
             .collect()
@@ -351,41 +335,13 @@ impl DeckMeta {
     /// caller's job, like `masters:` and `bibliography:`: the core has no
     /// filesystem, and both hosts already carry a `FileProvider`.
     pub fn theme_sheets(&self) -> Vec<ThemeSheet<'_>> {
-        let mut out: Vec<ThemeSheet<'_>> = self
-            .theme
+        self.theme
             .entries()
             .iter()
             .map(|e| e.trim())
             .filter(|e| !e.is_empty() && is_theme_path(e))
-            .map(|path| ThemeSheet { path, key: "theme" })
-            .collect();
-        if let Some(path) = self.css.as_deref().map(str::trim).filter(|p| !p.is_empty()) {
-            out.push(ThemeSheet { path, key: "css" });
-        }
-        out
-    }
-
-    /// `Some(message)` when the deck wrote the retired `css:` key, naming the
-    /// exact `theme:` line to write instead.
-    ///
-    /// The alias exists so a deck written against the old key still builds for
-    /// one release. It costs this function and one field; what it buys is that
-    /// nobody has to guess the new spelling, because the warning is the
-    /// replacement line.
-    pub fn css_alias_warning(&self) -> Option<String> {
-        self.css
-            .as_deref()
-            .map(str::trim)
-            .filter(|p| !p.is_empty())?;
-        let entries = self.theme_entries();
-        let line = match entries.len() {
-            1 => format!("theme: {}", entries[0]),
-            _ => format!("theme: [{}]", entries.join(", ")),
-        };
-        Some(format!(
-            "`css:` is retired and goes away in the next release: `theme:` takes a \
-             stylesheet path as well as a built-in name. Write `{line}` instead."
-        ))
+            .map(|path| ThemeSheet { path })
+            .collect()
     }
 
     /// The masters file this deck names, if it names one rather than writing
@@ -634,7 +590,6 @@ mod tests {
             one.theme_sheets(),
             [ThemeSheet {
                 path: "themes/acme.css",
-                key: "theme"
             }]
         );
 
@@ -659,34 +614,14 @@ mod tests {
         assert_eq!(empty.theme_name(), None);
     }
 
-    /// `css:` is `theme:` with one more entry on the end, for one release, and
-    /// the warning is the line to write instead.
+    /// The `css:` key was retired in `v0.6.0` (a warning carried the exact
+    /// `theme:` replacement line for one release) and removed after it. It is
+    /// an unknown key now, ignored like any other.
     #[test]
-    fn css_is_an_alias_for_the_theme_list() {
-        let both = parse_meta("theme: mirzam\ncss: themes/acme.css\n").unwrap();
-        assert_eq!(both.theme_entries(), ["mirzam", "themes/acme.css"]);
-        assert_eq!(both.theme_name(), Some("mirzam"));
-        assert_eq!(
-            both.theme_sheets(),
-            [ThemeSheet {
-                path: "themes/acme.css",
-                key: "css"
-            }]
-        );
-        let warning = both.css_alias_warning().expect("the alias warns");
-        assert!(
-            warning.contains("theme: [mirzam, themes/acme.css]"),
-            "the warning has to carry the replacement line: {warning}"
-        );
-
-        // On its own, the replacement is a scalar rather than a list of one.
-        let alone = parse_meta("css: themes/acme.css\n").unwrap();
-        assert!(alone
-            .css_alias_warning()
-            .unwrap()
-            .contains("theme: themes/acme.css"));
-
-        assert_eq!(DeckMeta::default().css_alias_warning(), None);
+    fn the_removed_css_key_is_an_unknown_key() {
+        let old = parse_meta("theme: mirzam\ncss: themes/acme.css\n").unwrap();
+        assert_eq!(old.theme_entries(), ["mirzam"]);
+        assert!(old.theme_sheets().is_empty());
     }
 
     #[test]

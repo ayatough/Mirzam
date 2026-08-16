@@ -1582,11 +1582,9 @@ A deck that names only its own theme wears it; a deck that names a built-in as
 well has said which palette it is in, and its own file is then there for the
 slides and panes that ask for it by name.
 
-**`css:` was the old spelling of this**, and it is accepted for one release:
-writing it still loads the stylesheet, and the warning says the exact `theme:`
-line to write instead. Then it goes, along with `--css` on the command line.
 `--theme` takes a path too, and repeating it is a list:
-`mirzam build deck.md --theme mirzam --theme house.css`.
+`mirzam build deck.md --theme mirzam --theme house.css`. (`css:` was the old
+spelling of a one-entry `theme:`; it warned for one release and is gone.)
 
 #### A file theme gets a name — if it scopes its tokens to it
 

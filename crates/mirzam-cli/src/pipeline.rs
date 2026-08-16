@@ -222,8 +222,7 @@ pub fn build_deck_with(
 
     // Load the deck's own stylesheets, in the order `theme:` names them.
     // Failures are warnings, not errors: a deck without its theme is still a
-    // deck, and the message names the key the author actually wrote — `theme:`
-    // now, `css:` for the release the retired key is still accepted.
+    // deck.
     let mut file_themes = Vec::new();
     for sheet in meta.theme_sheets() {
         let path = base_dir.join(sheet.path);
@@ -232,7 +231,7 @@ pub fn build_deck_with(
         files.insert(path.clone());
         match std::fs::read_to_string(&path) {
             Ok(css) => file_themes.push(mirzam_render::FileTheme::new(sheet.path, css)),
-            Err(e) => warnings.push(format!("{}: cannot read {}: {e}", sheet.key, sheet.path)),
+            Err(e) => warnings.push(format!("theme: cannot read {}: {e}", sheet.path)),
         }
     }
     // What a theme somebody wrote has to say about itself: a stem that collides

@@ -348,9 +348,9 @@ pub struct PageOptions {
     /// When set, injects the hot-reload client used by `serve`.
     pub live_version: Option<u64>,
     /// The stylesheets frontmatter's `theme:` named, in cascade order, once
-    /// the host has read them. They are inlined **after** `base.css` — the
-    /// slot the retired `css:` occupied — which is what lets a theme somebody
-    /// wrote override the type the shared stylesheet sets.
+    /// the host has read them. They are inlined **after** `base.css`, which
+    /// is what lets a theme somebody wrote override the type the shared
+    /// stylesheet sets.
     pub file_themes: Vec<FileTheme>,
     /// Bakes the layout debug overlay on at load, instead of leaving it to the
     /// viewer's `L` key. For screenshotting a broken deck headlessly.

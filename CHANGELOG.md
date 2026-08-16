@@ -7,6 +7,14 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+### Removed
+- **`css:` and `--css` are gone**, one release after they were retired, exactly
+  as the warning said. `theme:` has been the same key with more room since
+  `v0.6.0`: `theme: themes/house.css` in frontmatter, `--theme house.css` on
+  the command line. A deck still writing `css:` now builds as if the key were
+  not there — like any unknown frontmatter key — so the stylesheet it named no
+  longer loads; the fix is the one-line rename the `v0.6.0` warning printed.
+
 ### Added
 - **A pane can balance its content across columns.** `columns=2` (up to 6) on
   a `::: pane` splits the pane's content by amount: a list of ten short items

@@ -364,13 +364,12 @@ impl Renderer {
         // own type, colour and any class its slides use, so a preview that
         // ignored them — as this one did — is not the deck slightly off, it is
         // a different deck, and every difference from the CLI looks like a bug
-        // in something else. The retired `css:` arrives here too, under the
-        // key the deck wrote, so the message names what the author can see.
+        // in something else.
         let mut file_themes = Vec::new();
         for sheet in meta.theme_sheets() {
             match MapFiles(&self.files).read(Path::new(sheet.path)) {
                 Ok(css) => file_themes.push(mirzam_render::FileTheme::new(sheet.path, css)),
-                Err(e) => warnings.push(format!("{}: cannot read {}: {e}", sheet.key, sheet.path)),
+                Err(e) => warnings.push(format!("theme: cannot read {}: {e}", sheet.path)),
             }
         }
         warnings.extend(mirzam_render::file_theme_warnings(&file_themes));
@@ -533,21 +532,6 @@ mod tests {
         assert!(out.html.contains("data-theme=\"nord\""), "{}", out.html);
         assert!(out.html.contains(".metric { font-size: 4rem }"));
         assert_eq!(out.warnings, "[]");
-    }
-
-    /// The retired key is the same path with an older name, and says so.
-    #[test]
-    fn the_css_alias_still_loads_the_stylesheet_and_warns() {
-        let mut r = Renderer::new();
-        r.set_files(r#"{"themes/deck.css": ".metric { font-size: 4rem }"}"#)
-            .unwrap();
-        let out = r.render_page("---\ntitle: T\ncss: themes/deck.css\n---\n\n# H\n");
-        assert!(out.html.contains(".metric { font-size: 4rem }"));
-        assert!(
-            out.warnings.contains("theme: themes/deck.css"),
-            "{}",
-            out.warnings
-        );
     }
 
     /// A stylesheet edit changes no slide at all, so the diff has to come back

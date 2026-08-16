@@ -4,7 +4,7 @@
 //   node --test editors/vscode/test
 //
 // This exists because the list drifted: `bg-light=`, a chart's `data:` file and
-// the `css:` stylesheet were all forms the core resolves and the host never
+// the `theme:` stylesheet were all forms the core resolves and the host never
 // collected, so `examples/pitch.md` previewed with two missing photographs, an
 // empty chart and a connector pointing at a mark that was never drawn — while
 // the same deck built cleanly from the CLI.
@@ -96,7 +96,7 @@ test("the four frontmatter files are read; an inline mapping is not a path", () 
     "themes/deck.css",
   ]);
 
-  const mapping = "---\nvars:\n  seats: 8\ncss:\n---\n\n# H\n";
+  const mapping = "---\nvars:\n  seats: 8\nmasters:\n---\n\n# H\n";
   assert.deepStrictEqual(references(mapping), []);
 });
 
@@ -117,9 +117,10 @@ test("theme: collects its .css entries, in every form, and only those", () => {
   const block = "---\ntheme:\n  - mirzam\n  - themes/acme.css\nmode: dark\n---\n\n# H\n";
   assert.deepStrictEqual(references(block), ["themes/acme.css"]);
 
-  // The retired spelling still names the same file, for one release.
-  const alias = "---\ncss: themes/acme.css\n---\n\n# H\n";
-  assert.deepStrictEqual(references(alias), ["themes/acme.css"]);
+  // The removed `css:` key is not a reference any more: the core ignores it,
+  // so a host that read it would warn about a file the deck never loads.
+  const removed = "---\ncss: themes/acme.css\n---\n\n# H\n";
+  assert.deepStrictEqual(references(removed), []);
 
   // Quoted, and with a built-in named after it.
   const quoted = '---\ntheme: ["themes/acme.css", wuwei]\n---\n\n# H\n';

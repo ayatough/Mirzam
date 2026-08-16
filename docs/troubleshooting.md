@@ -88,7 +88,7 @@ a code block.
 mirzam export pdf deck.md -o deck.pdf
 ```
 
-`export pdf` takes the same `--split`, `--theme`, `--css`, `--fit` and
+`export pdf` takes the same `--split`, `--theme`, `--fit` and
 `--mode` flags `build` does, so a deck assembled with one of them — most
 commonly a document turned into a deck with `--split` — exports with the
 same slide breaks and identity in one command:
@@ -169,7 +169,6 @@ since it changes how urgent the fix is:
 | math: unknown dialect "x"; latex and typst are supported | Math | Frontmatter `math:` isn't `latex`/`typst` | Note only — renders as `latex` |
 | transition: … | Frontmatter | Frontmatter `transition:` doesn't parse | Note only — deck falls back to plain cuts |
 | theme: cannot read path | Frontmatter | A stylesheet named by `theme:` can't be read | Note only — builds without it |
-| `css:` is retired and goes away in the next release | Frontmatter | The deck writes `css:`, which is now `theme:` with one more entry | Note only — the message carries the exact `theme:` line to write instead |
 | no slides: file is empty / … has nothing outside its frontmatter | Frontmatter | Nothing to render | Note only — builds as a blank page |
 | `<!-- next -->` appears in more than one pane | Frontmatter | Two panes on one slide both try to break | Note only — the slide renders whole, unsplit |
 
