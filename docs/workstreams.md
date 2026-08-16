@@ -70,7 +70,7 @@ there is. The model column follows from that:
 | W14 | Linking by annotation, not by arrow | C | Sonnet | W6 | ✅ |
 | W15 | Brand and visual identity | B | — | — | ✅ |
 | W9 | Release hardening and `v0.1.0` | A | Opus | all | ✅ |
-| W16 | Showing the thing working: demo recording, themes gallery | C | — | — | |
+| W16 | Showing the thing working: demo recording, themes gallery | C | — | — | ✅ |
 | W17 | A theme per slide | B | — | — | ✅ |
 | W18 | Carrying an element from one slide to the next | S | — | W2 | |
 | W5 | Typst-flavoured math | A | Sonnet | — | ✅ |
@@ -772,9 +772,84 @@ presented as the tool for two boxes in a diagram, and the syntax reference sends
 text-to-figure to the paired annotation. Cookbook rule 5 was rewritten to the new
 way, and the connector rule beside it now points at it.
 
-## W16 — Showing the thing working
+## W16 — Showing the thing working ✅
 
-**Difficulty C · in progress**
+**Difficulty C · landed** — all three deliverables. `media/edit-loop.gif`
+(2,511,901 bytes, 1000×507, 224 frames, 22.4 s) at the top of the README; the themes
+gallery generated into `/themes/` by `build-site.sh`; `scripts/shoot-slides.mjs`
+over the plumbing all three now share in `scripts/lib/deck-browser.mjs`.
+
+**What the recording is.** `record-demo.mjs --editor` builds the WASM package,
+serves `web/wasm-demo` over its own HTTP server — `.wasm` will not load over
+`file://` — and types a deck into the editor in four beats: a title, an ASCII
+grid, a chart out of three lines of CSV, a `theme:` line. The typing speed is
+per beat and the numbers are not decoration: the title is slow because nobody
+knows yet what they are looking at, the grid is fast because it is a shape
+rather than a sentence. The pause at the end of each line has a **floor** —
+the editor rebuilds 120 ms after the last keystroke, so a shorter pause is a
+pause the preview never notices, and a recording of an editor that updates four
+times in twenty seconds is a recording of the wrong tool. That one number is
+the difference between this working and looking staged.
+
+**Three things the brief did not predict.**
+
+1. **The preview did not follow the cursor.** The recording was of the title
+   slide for all twenty-four seconds: the pane grid and the chart were being
+   typed onto slide two, and the editor went on showing slide one. It is not a
+   recording bug — it is the edit loop only working for the first slide, and
+   nothing in the repository said so. The core has answered this since the
+   source map landed (`slide_at_offset`, which `editors/vscode/media/preview.js`
+   calls on every keystroke); `web/wasm-demo/index.html` simply never asked.
+   It asks now, on every render and on every deliberate caret move. **The demo
+   could not be recorded honestly until the thing it was demonstrating
+   existed** — which is the argument for this stream, made against itself.
+2. **The GIF palette was distorting the theme change.** 64 colours took the
+   file to 2.0 MB, and spent the palette on the dark editor half: the deck in
+   the preview quantised back to white, so the last five seconds — a warm paper
+   replacing a cool one — showed a paper that did not change and banded into
+   stripes while not changing. 128 colours with no dithering costs 500 KB and
+   keeps it. Worth recording because the failure is invisible in the size
+   number, which is the only number anybody checks.
+3. **No full ffmpeg on the machine.** The one Playwright keeps beside its
+   browsers has neither `palettegen` nor `paletteuse`; the script already
+   detects that and refuses rather than failing forty seconds in. Both new CI
+   jobs install a real one.
+
+**Decisions.**
+
+- **The GIF is committed; the `.webm` is not** (`.gitignore`). GitHub renders a
+  repository GIF inline up to 10 MB and renders a committed `.webm` not at all,
+  so the README needs the one and gains nothing from the other.
+- **Regeneration is triggered by its inputs, not by a calendar.**
+  `.github/workflows/demo.yml` re-records and pushes to `main` when
+  `scripts/record-demo.mjs`, `scripts/lib/`, `web/wasm-demo/`,
+  `crates/mirzam-wasm/` or `crates/mirzam-render/src/theme/` change — the
+  complete list of things that alter what is on screen. A monthly schedule was
+  considered and rejected: the recording is not reproducible byte for byte, so
+  a schedule commits two megabytes twelve times a year to say nothing changed.
+  `media/` is deliberately not in the trigger's paths, so the job's own commit
+  cannot restart it. The job also **fails over 8 MB**, which is the part that
+  makes the size budget a gate rather than a hope.
+- **The gallery is generated, never committed.** `build-site.sh` runs
+  `make-theme-gallery.mjs` into `$OUT/themes` and adds a card to the landing
+  page, skipping both when playwright-core and a browser are absent — the same
+  shape as the existing browser-editor card, so a site built on a laptop has no
+  dead link. `pages.yml` gained a Node and browser install so the published
+  site always has it. Twelve screenshots are 904 KB and take a few seconds:
+  nothing is gained by keeping them in git, and a photograph of a stylesheet in
+  a repository is true the day it is taken and quietly wrong afterwards.
+- **The gallery checks what it photographs.** Each of the twelve renderings
+  goes through `mirzam check` before its screenshot, so a theme whose type
+  stopped fitting fails the site build instead of publishing a clipped heading.
+  This is the only place all twelve are laid out, and measuring none of them
+  would have been a waste of the build.
+- **`scripts/gallery/specimen.md`** is the one slide, deliberately full to just
+  under the edge — a specimen with room to spare passes in every theme without
+  proving any of them fits. It is not in `examples/`: the nine sample decks are
+  gated and owned elsewhere.
+- **The walkthrough of a finished deck stays unrecorded.** The existing deck
+  mode still works and is still the right tool for it, but it is minutes long
+  and belongs on a hosted video, linked rather than embedded.
 
 Everything below `v0.1.0` is documentation the project cannot write in prose.
 

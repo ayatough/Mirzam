@@ -1,0 +1,110 @@
+name: Demo recording
+
+# Re-records the README's GIF and pushes it back to `main`.
+#
+# The README's first picture is a screen recording of the browser editor being
+# typed into, which is the one piece of documentation nobody can write and the
+# one most likely to rot: it shows the editor's chrome, a deck's theme and the
+# renderer's output all at once, so any of the three moving makes it a picture
+# of a version that no longer exists. Nothing fails when that happens. The
+# README simply starts lying, quietly, to exactly the readers who have not
+# installed anything yet.
+#
+# So the trigger is the *inputs to the picture*, not a calendar. A monthly
+# schedule would commit a new two-megabyte binary twelve times a year to say
+# nothing changed; this runs when the editor page, the recording script, the
+# WASM bindings or the shared theme CSS change, which is the complete list of
+# things that alter what is on screen. `media/` is deliberately not in the list,
+# so the commit this job makes cannot start it again.
+#
+# The recording is not reproducible byte for byte - the encoder and the browser
+# both jitter - so "commit if the file changed" always commits. That is correct
+# here precisely because the trigger is narrow: a run means one of the inputs
+# moved, and the old GIF was therefore already wrong.
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/record-demo.mjs"
+      - "scripts/lib/deck-browser.mjs"
+      - "web/wasm-demo/**"
+      - "crates/mirzam-wasm/**"
+      - "crates/mirzam-render/src/theme/**"
+      - ".github/workflows/demo.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: demo-recording
+  cancel-in-progress: true
+
+jobs:
+  record:
+    name: record the edit loop
+    # A fork has neither the write token nor a reason to push a GIF anywhere.
+    if: github.repository == 'ayatough/Mirzam'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # `playwright-core` is not a repository dependency - see AGENTS.md - so
+      # it is installed for the job and left out of the tree.
+      - name: install the browser
+        run: npm i playwright-core && npx playwright install --with-deps chromium
+
+      # The one Playwright keeps beside its browsers is a stripped build with
+      # neither `palettegen` nor `paletteuse`; the recorder detects that and
+      # would write the video and refuse the GIF.
+      - name: install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      # Builds the WASM package itself if it is not there, which on a fresh
+      # runner it never is.
+      - name: record
+        run: node scripts/record-demo.mjs --editor -o media/edit-loop --gif
+
+      # GitHub renders an inline GIF up to 10 MB and links to anything larger,
+      # which is the difference between a README that shows the tool working and
+      # one that offers to. 8 MB leaves room for a recording that grows a little
+      # before it stops being displayed at all.
+      - name: check it is small enough to render inline
+        run: |
+          bytes=$(stat -c%s media/edit-loop.gif)
+          echo "media/edit-loop.gif: $bytes bytes"
+          if [ "$bytes" -gt 8000000 ]; then
+            echo "::error file=media/edit-loop.gif::$bytes bytes is over the 8 MB budget; lower --fps or --gif-width in the recording step"
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: edit-loop
+          path: |
+            media/edit-loop.gif
+            media/edit-loop.webm
+
+      - name: commit the refreshed GIF
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- media/edit-loop.gif; then
+            echo "the recording is unchanged; nothing to commit"
+            exit 0
+          fi
+          git add media/edit-loop.gif
+          # One -m per paragraph: a folded block here would carry this file's
+          # indentation into the commit message body.
+          git commit \
+            -m "Re-record the README demo" \
+            -m "Something the recording shows changed in ${GITHUB_SHA} - the browser editor, the recording script, the WASM bindings or the shared theme CSS - so the GIF in the README was a picture of the version before it."
+          git push

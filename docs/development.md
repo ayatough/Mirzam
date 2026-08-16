@@ -35,6 +35,9 @@ cargo run --release -p mirzam-cli --bin mirzam-bench   # performance benchmark
 cargo run --bin mirzam -- check examples/pitch.md         # layout validation
 ./scripts/build-site.sh                                  # docs site + live decks
 node scripts/make-brand-raster.mjs                       # docs/brand/ social card + icon PNG
+node scripts/shoot-slides.mjs --build examples/pitch.md -o shots   # one PNG per slide
+node scripts/make-theme-gallery.mjs -o site/themes       # every theme, both modes
+node scripts/record-demo.mjs --editor -o media/edit-loop --gif     # the README GIF
 
 ./scripts/check-versions.sh                              # every version agrees
 ./scripts/release.sh 0.5.0 --dry-run                     # what a release would change
@@ -46,7 +49,45 @@ brand rasteriser and `scripts/check-layout.mjs` — the same checks driven throu
 a tab that stays open, which is what a screenshot or a recording needs — want
 `npm i playwright-core && npx playwright install chromium` on top of that.
 
-## Recording a demo
+## Screenshots, the themes gallery and the demo
+
+Three scripts, one piece of browser plumbing. `scripts/lib/deck-browser.mjs`
+builds a deck, opens it, waits until the images and fonts have actually settled,
+and either measures it or photographs it; `check-layout.mjs`, `shoot-slides.mjs`
+and `make-theme-gallery.mjs` are the three things worth doing with that. All of
+them want `npm i playwright-core && npx playwright install chromium`, and
+`MIRZAM_CHROMIUM` if the browser is not on `PATH`.
+
+### One PNG per slide
+
+```bash
+node scripts/shoot-slides.mjs --build examples/pitch.md -o shots
+node scripts/shoot-slides.mjs out/index.html -o shots --slide 3 --mode dark
+```
+
+Each slide is shown in its **resting** state — entrance animations finished,
+click steps taken, connectors redrawn — which is the state a reader without
+JavaScript ends on and the only one a still can honestly be about. `--theme`,
+`--mode`, `--split` and `--fit` are passed through to the build, `--slide` takes
+slide numbers from 1, and `--no-chrome` drops the viewer's page counter for a
+picture that is standing in for something else.
+
+### The themes gallery
+
+```bash
+node scripts/make-theme-gallery.mjs -o site/themes
+```
+
+`scripts/gallery/specimen.md` is one slide carrying a heading, body text, a list,
+a code block, a metric and a chart — one of everything a theme decides. The
+script builds it once per theme and per mode, runs `mirzam check` over each
+rendering, photographs it, and writes the page. Nothing on the gallery is typed
+by hand, so it cannot drift from the stylesheets, and a theme whose type no
+longer fits fails the site build instead of shipping a clipped heading.
+`build-site.sh` calls it and publishes the result at `/themes/`; a machine
+without playwright-core skips it and the landing page then omits the card.
+
+### Recording the demo
 
 A screen recording of a slide tool is the one piece of documentation that cannot
 be written, and it is the piece most likely to come out badly — a hesitation
@@ -55,24 +96,36 @@ None of that is a recording problem; it is a *performing* problem, and a script
 does not hesitate.
 
 ```bash
+node scripts/record-demo.mjs --editor -o media/edit-loop --gif   # the edit loop
 node scripts/record-demo.mjs --build examples/pitch.md -o media/pitch --gif
 ```
 
-It builds the deck, drives it in a browser — every slide held, every click step
-taken, the layout overlay and dark mode shown once each — and writes a `.webm`.
-Keypresses appear as a chip at the bottom of the frame, because a viewer cannot
-see a keyboard and a deck that advances by itself demonstrates nothing.
+**`--editor` is the one the README carries.** It builds the WASM package, serves
+`web/wasm-demo` over HTTP — `.wasm` cannot be loaded over `file://` — and types
+a small deck into the editor while the preview rebuilds beside it: a title, an
+ASCII pane grid becoming a layout, a chart forming out of three lines of CSV,
+and a `theme:` line changing the deck's whole face. The typing *is* the content.
+A viewing of a finished deck is something every slide tool can show; source
+becoming slides as it is typed is not.
 
-The run is reproducible, which is the part worth having: change a theme, re-run
-it, and the demo is the deck as it is today rather than as it was the afternoon
-someone had time to record it.
+Without `--editor` it plays a *built* deck instead — every slide held, every
+click step taken, the layout overlay and dark mode shown once each. Keypresses
+appear as a chip at the bottom of the frame, because a viewer cannot see a
+keyboard and a deck that advances by itself demonstrates nothing.
+
+Either run is reproducible, which is the part worth having: change a theme,
+re-run it, and the demo is the tool as it is today rather than as it was the
+afternoon someone had time to record it.
 
 | Flag | |
 |---|---|
+| `--editor` | record the edit loop instead of a built deck |
 | `--gif` | also write a GIF (see below) |
+| `--cadence 1` `--line-pause 150` | `--editor`: typing speed, and the beat at the end of a line. The pause has a floor — the editor rebuilds 120 ms after the last keystroke, and a shorter one is a pause the preview never notices |
 | `--dwell 2.2` `--step 1.1` | seconds a slide, and a click step, is held |
-| `--width` `--height` | frame size, default 1280×720 |
-| `--fps` `--gif-width` | GIF size levers, default 12 fps at 800px |
+| `--width` `--height` | frame size, default 1280×720 (1500×760 with `--editor`) |
+| `--fps` `--gif-width` | GIF size levers, default 12 fps at 800px (10 at 1000 with `--editor`) |
+| `--gif-colors` `--gif-dither` | palette size and dithering, default 256 and `bayer:bayer_scale=3` (128 and `none` with `--editor`, whose panels are flat) |
 | `--no-keys` | drop the keypress chips |
 
 **The GIF needs a real ffmpeg.** Playwright ships one beside its browsers and it
@@ -81,8 +134,15 @@ filters — no `palettegen`, no GIF encoder at all. The script checks what a
 candidate ffmpeg can *do* rather than whether it exists, so a missing one is
 reported before the recording rather than as a filter-graph error after it, and
 it prints the two-pass command if you would rather convert by hand. GitHub does
-not render a committed `.webm` inline, so a GIF (or a still linking to a hosted
-video) is what a README can actually show.
+not render a committed `.webm` inline, so a GIF is what a README can actually
+show — and it renders one inline only up to 10 MB, which is what the size levers
+above are for.
+
+`media/edit-loop.gif` is the only recording in the repository, and
+`.github/workflows/demo.yml` re-records it whenever something that changes what
+it shows changes: the editor page, the recording script, the WASM bindings or
+the shared theme CSS. It fails the run if the result goes over 8 MB. The `.webm`
+is kept out of git — it is an artifact of that workflow.
 
 ## Repository layout
 
@@ -102,7 +162,11 @@ editors/vscode     live preview extension (webview runs the WASM core)
 web/wasm-demo      browser playground for the core
 examples/          sample decks, themes and data, also used as test fixtures
 docs/brand/        mark, palette and type for the README and the site
+media/             the README's demo recording; regenerated by CI, not by hand
 scripts/           build helpers
+scripts/lib/       browser plumbing the checker, the screenshot pass and the
+                   gallery share
+scripts/gallery/   the one-slide theme specimen the gallery is generated from
 ```
 
 Data flows one way: `syntax` decomposes text, `core` resolves metadata and
