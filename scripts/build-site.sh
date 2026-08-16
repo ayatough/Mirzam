@@ -83,6 +83,26 @@ done
   --theme mirzam --fit shrink --mode dark \
   --base-url "$REPO_BLOB/" --embed-source ${EDITOR_ARGS[@]+"${EDITOR_ARGS[@]}"}
 
+# The themes gallery: one specimen slide put through every theme in both modes,
+# photographed. Generated here rather than committed, for the same reason the
+# decks are - a picture of a stylesheet checked into the repository is true on
+# the day it is taken and quietly wrong afterwards, and there is no test that
+# can see it drift. Twelve screenshots is under a megabyte and takes a few
+# seconds, so there is nothing to be gained by keeping them.
+#
+# Skipped, like the editor above, when the machinery is not here: the gallery
+# needs `playwright-core` and a browser, which the layout-check job installs and
+# a laptop may not have. A site built without them simply does not offer the
+# card, so nothing on the page is a dead link.
+GALLERY_CARD=""
+echo "==> building the themes gallery"
+if [ "${MIRZAM_SKIP_GALLERY:-}" != "1" ] && node scripts/make-theme-gallery.mjs -o "$OUT/themes"; then
+  GALLERY_CARD='<a class="card" href="themes/"><b>Themes</b><span>The same slide in all six identities, light and dark — generated from the stylesheets</span></a>'
+else
+  echo "  (skipped; needs playwright-core and a browser. The landing page will"
+  echo "   not link to it.)"
+fi
+
 # The brand assets the landing page and the link preview are built from. Copied
 # rather than inlined so the social card has a stable absolute URL - a scraper
 # fetches that image separately, and cannot follow a data: URI.
@@ -391,6 +411,7 @@ try {
     <a class="card" href="decks/04-components/"><b>04 · Components</b><span>Charts, shapes, connectors, media, annotations</span></a>
     <a class="card" href="decks/05-motion/"><b>05 · Motion</b><span>Entrances, click-through builds, page turns, effects</span></a>
     <a class="card" href="decks/06-theming/"><b>06 · Theming</b><span>Themes, frontmatter, attributes, custom CSS</span></a>
+    <!--GALLERY-->
   </div>
 
   <h2>Whole decks</h2>
@@ -510,6 +531,7 @@ HTML
 # Every local link on the landing page must resolve in the artifact, since
 # nothing rewrites paths after this point.
 sed -i.bak "s|<!--TRY-->|$TRY_CARD|" "$OUT/index.html" && rm -f "$OUT/index.html.bak"
+sed -i.bak "s|<!--GALLERY-->|$GALLERY_CARD|" "$OUT/index.html" && rm -f "$OUT/index.html.bak"
 
 # The channel markers. Python rather than sed because two of the three
 # replacements are multi-line, and one of them is the `[Unreleased]` section of

@@ -8,46 +8,24 @@
 // Exits non-zero when any deck has a violation, so CI can gate on it.
 //
 // The check itself - what counts as clipped, overlapping, an unresolved
-// connector - lives in one place, `crates/mirzam-cli/src/check.js`, loaded
-// below and run in the page exactly as `mirzam check` runs it. This file is
-// the CI-only, Playwright-driven way to reach that same check; a binary
-// install reaches it through `mirzam check` instead, without Node or
-// playwright-core. Keep the two in sync by editing only the shared file.
+// connector - lives in one place, `crates/mirzam-cli/src/check.js`, run in the
+// page exactly as `mirzam check` runs it. This file is the CI-only,
+// Playwright-driven way to reach that same check; a binary install reaches it
+// through `mirzam check` instead, without Node or playwright-core. Keep the two
+// in sync by editing only the shared file.
+//
+// Building a deck, opening it and running the check in it are shared with the
+// screenshot pass and the themes gallery - see `scripts/lib/deck-browser.mjs`.
 
-import { chromium } from "playwright-core";
-import { execFileSync } from "child_process";
-import { existsSync, mkdtempSync, readFileSync } from "fs";
-import { tmpdir } from "os";
-import { fileURLToPath } from "url";
-import { join, resolve, basename, dirname } from "path";
-
-const CHROMIUM = process.env.MIRZAM_CHROMIUM || undefined;
-const REPO_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
-const CHECK_JS = readFileSync(join(REPO_ROOT, "crates", "mirzam-cli", "src", "check.js"), "utf8");
-
-function buildDecks(sources) {
-  const out = [];
-  for (const src of sources) {
-    const dir = mkdtempSync(join(tmpdir(), "mirzam-check-"));
-    execFileSync("cargo", ["run", "-q", "--bin", "mirzam", "--", "build", src, "-o", dir], {
-      stdio: ["ignore", "ignore", "inherit"],
-    });
-    out.push({ label: basename(src), file: join(dir, "index.html") });
-  }
-  return out;
-}
-
-/** Collects layout problems for every slide of one deck, via the shared check. */
-async function checkDeck(page, file) {
-  await page.goto("file://" + resolve(file));
-  // `mzRunCheck` (from CHECK_JS) does its own waiting - images, fonts, click
-  // steps, animations - so nothing here has to.
-  return page.evaluate((src) => new Function(`${src}\nreturn mzRunCheck();`)(), CHECK_JS);
-}
+import { existsSync } from "fs";
+import { basename } from "path";
+import { buildDecks, checkDeck, launch } from "./lib/deck-browser.mjs";
 
 const args = process.argv.slice(2);
 const decks =
-  args[0] === "--build" ? buildDecks(args.slice(1)) : args.map((f) => ({ label: basename(f), file: f }));
+  args[0] === "--build"
+    ? buildDecks(args.slice(1))
+    : args.map((f) => ({ label: basename(f), file: f }));
 
 if (decks.length === 0) {
   console.error("usage: node scripts/check-layout.mjs [--build] <deck...>");
@@ -60,7 +38,7 @@ for (const d of decks) {
   }
 }
 
-const browser = await chromium.launch({ executablePath: CHROMIUM });
+const browser = await launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 810 } });
 
 let failures = 0;

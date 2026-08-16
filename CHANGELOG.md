@@ -16,6 +16,39 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   longer loads; the fix is the one-line rename the `v0.6.0` warning printed.
 
 ### Added
+- **The README shows the thing working.** A twenty-second recording at
+  the top of it: a deck being typed into the browser editor, with the preview
+  rebuilding beside it — a title, an ASCII grid becoming a two-column layout,
+  three lines of CSV becoming a bar chart, and one `theme:` line changing the
+  deck's whole face. Watching a finished deck is something every slide tool
+  can show; watching source become slides as it is typed is the thing that is
+  actually different, so that is what the recording is of. It is regenerated
+  by CI whenever the editor, the recording script, the WASM bindings or the
+  shared theme CSS change, which is the complete list of things that could
+  make it show a version that no longer exists.
+- **A themes gallery**, at
+  [`/themes/`](https://ayatough.github.io/Mirzam/themes/) on the site. Since
+  a theme became a token set rather than a palette — `mirzam`'s grotesque,
+  `wuwei`'s roman serif — no page anywhere showed what that meant. One
+  specimen slide carrying a heading, body text, a list, a code block, a metric
+  and a chart is now rendered in all five built-ins **and** in
+  `examples/themes/blueprint.css`, in both modes, and photographed. The custom
+  theme sits beside the built-ins as an equal, which is the claim the theme
+  contract makes. Every picture is generated from the stylesheets during the
+  site build, and each rendering is layout-checked on the way past, so a theme
+  whose type stopped fitting fails the build rather than shipping a clipped
+  heading.
+- **The browser editor's preview follows the cursor.** Typing on the fourth
+  slide and watching the first is not an edit loop; everything past the
+  opening slide was being written blind. The core has been able to answer
+  "which slide is this cursor in" since the source map landed, and the VS Code
+  preview has asked it on every keystroke all along — the browser editor now
+  does too, so a `---` typed above the cursor carries the preview along with
+  it, and clicking into a slide in the source shows that slide.
+- **A per-slide screenshot pass**: `node scripts/shoot-slides.mjs --build
+  deck.md -o shots` writes one PNG per slide, in the resting state a reader
+  ends on rather than mid-animation. It shares its browser plumbing with the
+  layout checker and the gallery.
 - **A pane can balance its content across columns.** `columns=2` (up to 6) on
   a `::: pane` splits the pane's content by amount: a list of ten short items
   becomes five and five instead of running down the left edge with the right

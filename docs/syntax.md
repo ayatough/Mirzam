@@ -1559,6 +1559,14 @@ very stylesheet it is meant to sit on. What changed is how much a token can
 say. `nord`, `solarized` and `vscode` set colours only, so a deck that names one
 of them keeps the built-in type.
 
+**Look at them rather than reading about them.** The
+[themes gallery](https://ayatough.github.io/Mirzam/themes/) puts one slide —
+a heading, body text, a list, a code block, a metric and a chart — through all
+five built-ins and the sample theme-in-a-file, in light and dark. Every picture
+on it is generated from the stylesheets by `scripts/make-theme-gallery.mjs`, so
+it shows what the themes do today rather than what they did when somebody last
+took a screenshot.
+
 ### A theme of your own, in a file
 
 `theme:` takes a **path** as readily as a name. An entry ending in `.css` is a
