@@ -6,7 +6,7 @@ Where Mirzam is and what comes next. Design rationale lives in
 
 ## Status
 
-`v0.6.0` is the current release: everything below marked Done is in it, built
+`v0.7.0` is the current release: everything below marked Done is in it, built
 by CI and published as a prebuilt binary. It is still `0.x` — the markup will
 keep changing.
 
@@ -43,11 +43,11 @@ keep changing.
 | A theme per slide, and per pane | Done |
 | A theme sets type, not only colour; `theme:` takes a path | Done |
 | Carrying an element from one slide to the next | Next |
-| Demo recording and a generated themes gallery | Next |
+| Demo recording (the edit loop, typed live) and a generated themes gallery | Done |
 | Dragging an annotation back into the Markdown | Next |
 | Syntax highlighting in code blocks (36 languages, theme-token colours) | Done |
 | An authoring contract for agents (`check --format json`, `llms.txt`) | Done |
-| Mermaid rendered to SVG at build time | Later |
+| Mermaid rendered to SVG at build time, in the deck's own colours | Done |
 | Plugins, PPTX export | Later |
 
 Each of those has a brief — what it is for, what is not free about it, and where
@@ -152,22 +152,21 @@ same core.
 slides — a run of slides generated from the rows of a CSV, the one structural
 advantage Typst's scripting has over every Markdown tool.
 
-**Mermaid, then D2.** Diagrams-as-code became table stakes the day GitHub
-rendered Mermaid natively; Marp made it a built-in in 2026. Waiting for the
-plugin system was the earlier plan, but the market moved first. The Mirzam-shaped
-answer keeps the core pure and the output self-contained: the CLI shells out to
-a local renderer (`mmdc`, then `d2`) at build time and inlines the SVG, the way
-charts already work — no client-side JavaScript, nothing fetched at present
-time. A `mermaid` fence stays a plain code block for any renderer that does not
-know it, and for `mirzam-wasm`, which has no process to shell out to.
+**D2, through Mermaid's door.** Mermaid landed in `v0.7.0` exactly in the
+shape planned here: the CLI shells out to a local `mmdc` at build time,
+inlines the SVG with its palette rewritten to theme tokens, and a machine
+without a renderer gets a code block *and* a `build.mermaid` warning — while
+GitHub draws the same fence as a diagram natively. D2 arrives through the
+same `DiagramRenderer` trait once wanted; nothing else has to move.
 
 **More themes.** The contract for writing one landed: `theme:` takes a `.css`
 path as readily as a built-in name, a theme of your own registers under its
 filename stem and can be worn by a single pane, and `check` holds it to the
 standard the built-ins are held to — so a custom theme is a supported artefact
 rather than a stylesheet that happens to override the right tokens.
-`examples/themes/blueprint.css` is the sample. What is still wanted: a gallery
-of built-in themes worth choosing between. Slide masters — the layout half of the
+`examples/themes/blueprint.css` is the sample, and the gallery at `/themes/`
+shows every built-in and that sample side by side, in both modes, regenerated
+from the stylesheets on every site build. Slide masters — the layout half of the
 same question — landed in `v0.4.0`: `masters:` names the shapes and a slide
 picks one with `<!-- layout: -->`.
 

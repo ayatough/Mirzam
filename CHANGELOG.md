@@ -7,6 +7,10 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.7.0] - 2026-08-16
+
 ### Removed
 - **`css:` and `--css` are gone**, one release after they were retired, exactly
   as the warning said. `theme:` has been the same key with more room since
