@@ -180,6 +180,12 @@
       // a `connect` arrow from a sentence to the circle, say. It is the only
       // way to name something that does not exist until the page is laid out.
       if (item.id) common.id = item.id;
+      // Which line of Markdown drew this. `id=` cannot serve — it is optional
+      // and the author's — so the item's ordinal in its block travels with the
+      // mark instead, and the block's ordinal with the overlay. A tool that
+      // wants to change a mark by changing the source needs to be able to say
+      // *which* mark, and this is the only thing on the page that says it.
+      common['data-item'] = item.i;
       let labelAt = { x: a.x + a.w / 2, y: a.y };
 
       if (item.kind === 'highlight' || item.kind === 'underline' || item.kind === 'box') {
@@ -195,6 +201,7 @@
             svg.appendChild(svgEl('rect', {
               x: r.x - 2, y: r.y - 1, width: r.w + 4, height: r.h + 2, rx: 3,
               fill: color, 'fill-opacity': 0.24, stroke: 'none',
+              'data-item': item.i,
               ...(item.id && rows.length === 1 ? { id: item.id } : {}),
             }));
           } else if (item.kind === 'underline') {
@@ -280,6 +287,10 @@
 
     const overlay = document.createElement('div');
     overlay.className = 'mz-annot-layer';
+    // Carried from the script to the layer so a mark's address — which slide,
+    // which `annotate` block, which line of it — can be read off the DOM
+    // without walking back to find the block that produced it.
+    overlay.dataset.block = script.dataset.block || '0';
     overlay.appendChild(svgEl('svg', { preserveAspectRatio: 'none' }));
     sec.appendChild(overlay);
     return { script, sec, target, items, overlay };

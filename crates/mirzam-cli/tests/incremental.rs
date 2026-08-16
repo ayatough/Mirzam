@@ -235,6 +235,106 @@ fn a_block_resolves_back_to_the_file_it_was_written_in() {
     assert_eq!(&part[range], "target: fig\ncircle 40,30 20x20\n");
 }
 
+/// The lookup an edit channel makes: a mark in the preview names itself by
+/// slide, block and item — the address the rendered deck carries as
+/// `data-block` and `data-item` — and that has to come back as the exact bytes
+/// of the file the author wrote, through a transclusion, with the numbers
+/// picked out from everything else on the line.
+#[test]
+fn a_drawn_annotation_resolves_to_the_bytes_of_its_own_numbers() {
+    let deck = TempDeck::new(
+        "annot-origin",
+        "---\ntitle: T\n---\n\nintro\n\n---\n\n![[part.md]]\n",
+    );
+    // Deliberately not tidy: indented, commented, columns aligned by hand.
+    // All of it has to survive a change to one number.
+    let part = concat!(
+        "## Figure\n\n",
+        "```pane\n+------+\n| fig  |\n+------+\n```\n\n",
+        "::: pane fig\n![f](f.png)\n:::\n\n",
+        "```annotate\n",
+        "target: fig\n",
+        "// the hot corner\n",
+        "  circle   62,38   34x34 : id=hot label=\"here\"\n",
+        "arrow  16,88 -> 55,48 : step=2\n",
+        "```\n"
+    );
+    std::fs::write(deck.dir.join("part.md"), part).expect("write part");
+    std::fs::write(deck.dir.join("f.png"), []).expect("write image");
+
+    let mut cache = HashMap::new();
+    let out = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("build");
+    assert!(out.warnings.is_empty(), "{:?}", out.warnings);
+    // The address is only worth anything if it is the one the deck carries,
+    // so this asserts the block was really drawn and numbered before asking
+    // where it came from.
+    assert!(out.sections[1].contains("data-block=\"0\""));
+    assert!(out.sections[1].contains("{\"i\":0,\"kind\":\"circle\""));
+    assert!(out.sections[1].contains("{\"i\":1,\"kind\":\"arrow\""));
+
+    let circle = out
+        .annotation_origin(2, 0, 0)
+        .expect("the first item of the first block on slide 2");
+    assert_eq!(circle.file, deck.dir.join("part.md"));
+    assert_eq!(
+        &part[circle.line.clone()],
+        "  circle   62,38   34x34 : id=hot label=\"here\""
+    );
+    assert_eq!(
+        &part[circle.numbers.at.clone().expect("a position")],
+        "62,38"
+    );
+    assert_eq!(&part[circle.numbers.size.clone().expect("a size")], "34x34");
+    assert_eq!(circle.numbers.to, None);
+
+    let arrow = out.annotation_origin(2, 0, 1).expect("the second item");
+    assert_eq!(&part[arrow.numbers.at.clone().expect("a tail")], "16,88");
+    assert_eq!(&part[arrow.numbers.to.clone().expect("a head")], "55,48");
+
+    // Rewriting only the span, which is what a drag would do.
+    let mut edited = part.to_string();
+    edited.replace_range(circle.numbers.at.clone().expect("a position"), "70.5,41.0");
+    assert!(edited.contains("  circle   70.5,41.0   34x34 : id=hot label=\"here\""));
+    assert!(edited.contains("// the hot corner"));
+
+    assert_eq!(out.annotation_origin(2, 0, 2), None);
+    assert_eq!(out.annotation_origin(2, 1, 0), None);
+    assert_eq!(out.annotation_origin(9, 0, 0), None);
+}
+
+/// A slide that *shows* `annotate` syntax quotes it in a longer fence, which
+/// is recorded as a block like any other but never drawn. The addresses in the
+/// rendered deck count only the blocks that were used, so this lookup has to
+/// count the same ones — or every mark on a documentation slide answers with
+/// the wrong line.
+#[test]
+fn a_quoted_annotate_block_does_not_shift_the_addresses_after_it() {
+    let src = concat!(
+        "---\ntitle: T\n---\n\n",
+        "## Showing the syntax\n\n",
+        "```pane\n+------+\n| fig  |\n+------+\n```\n\n",
+        "::: pane fig\n![f](f.png)\n:::\n\n",
+        "````markdown\n```annotate\ntarget: fig\ncircle 1,1 2x2\n```\n````\n\n",
+        "```annotate\n",
+        "target: fig\n",
+        "circle 62,38 34x34\n",
+        "```\n"
+    );
+    let deck = TempDeck::new("annot-quoted", src);
+    std::fs::write(deck.dir.join("f.png"), []).expect("write image");
+    let mut cache = HashMap::new();
+    let out = mirzam_cli::pipeline::build_deck(&deck.path, &mut cache).expect("build");
+
+    // The deck has exactly one drawn block, and it is block 0.
+    assert_eq!(out.sections[0].matches("class=\"mz-annot\"").count(), 1);
+    assert!(out.sections[0].contains("data-block=\"0\""));
+    let found = out
+        .annotation_origin(1, 0, 0)
+        .expect("block 0 is the real one");
+    assert_eq!(&src[found.numbers.at.clone().expect("a position")], "62,38");
+    assert_eq!(out.annotation_origin(1, 1, 0), None);
+}
+
 /// The root deck's own offsets include its frontmatter, so a range resolves
 /// against the file on disk rather than against the body alone.
 #[test]

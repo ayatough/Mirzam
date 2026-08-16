@@ -72,6 +72,24 @@ pub struct WarningSite {
     pub offset: Option<usize>,
 }
 
+/// Where one annotation item was written, in the file the author wrote it in.
+///
+/// The point of the split: `line` is the unit to replace when a change is
+/// structural, and `numbers` are the spans to replace when a change is only a
+/// number — which is what dragging a handle in the preview is. Rewriting the
+/// number and nothing else is what keeps the author's spacing, their attribute
+/// order, their aligned columns and their comments exactly as typed, rather
+/// than reformatting the block on every drag.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AnnotationOrigin {
+    pub file: PathBuf,
+    /// The whole line the item was written on.
+    pub line: std::ops::Range<usize>,
+    /// Its coordinates, as ranges within the same file. Empty for an item
+    /// anchored to an element, which has no numbers to move.
+    pub numbers: mirzam_annot::Numbers,
+}
+
 impl BuildOutput {
     /// Where a rendered slide begins: its file, and the byte offset of its
     /// first real character in that file. `slide` is 1-based, as everything
@@ -96,6 +114,73 @@ impl BuildOutput {
             Some(at) => self.map.lookup(span.start + at),
             None => self.slide_origin(slide),
         }
+    }
+
+    /// Where one drawn annotation came from, given the address the rendered
+    /// deck carries for it: the 1-based slide, the `data-block` on its overlay
+    /// and the `data-item` on the mark itself.
+    ///
+    /// This is the lookup an edit channel performs — a handle is dragged, the
+    /// browser says which mark, and this says which bytes of which file mean
+    /// that mark's position. It refuses (returns `None`) exactly where
+    /// `SourceMap::resolve` refuses: text a variable substitution generated,
+    /// or a range that is not contiguous in one file. Refusing is the point —
+    /// bytes that do not mean what they appear to mean must not be rewritten.
+    ///
+    /// A slide broken by `<!-- next -->` renders as several sections sharing
+    /// one source, and every part answers with that source, because that is
+    /// where the block is written.
+    pub fn annotation_origin(
+        &self,
+        slide: usize,
+        block: usize,
+        item: usize,
+    ) -> Option<AnnotationOrigin> {
+        let span = self
+            .slides
+            .get(*self.section_slides.get(slide.checked_sub(1)?)?)?;
+        // The same list, in the same order, that the renderer numbered with
+        // `data-block` — which means only the blocks that were *used*. A
+        // longer fence quotes Mirzam syntax instead of using it, and is
+        // recorded as a span like any other while never reaching the overlay,
+        // so a slide documenting `annotate` would otherwise shift every
+        // address on it by one.
+        let body = mirzam_syntax::parse_slide(&span.text)
+            .blocks
+            .into_iter()
+            .filter(|b| {
+                b.info == "annotate"
+                    && span
+                        .text
+                        .get(b.whole.clone())
+                        .is_some_and(|s| !s.starts_with("````"))
+            })
+            .nth(block)?
+            .body;
+        let base = span.start + body.start;
+        let doc = mirzam_annot::parse(span.text.get(body)?);
+        let it = doc.items.get(item)?;
+        let (file, line) = self.map.resolve(base + it.line.start..base + it.line.end)?;
+        let file = file.to_path_buf();
+        // Every number has to land in the same file as the line holding it,
+        // which is not automatic: a transclusion boundary can fall anywhere,
+        // and a span that crossed one would be a range in the wrong file.
+        let span_in = |r: &Option<std::ops::Range<usize>>| {
+            r.as_ref().and_then(|r| {
+                let (f, out) = self.map.resolve(base + r.start..base + r.end)?;
+                (f == file).then_some(out)
+            })
+        };
+        let numbers = mirzam_annot::Numbers {
+            at: span_in(&it.numbers.at),
+            size: span_in(&it.numbers.size),
+            to: span_in(&it.numbers.to),
+        };
+        Some(AnnotationOrigin {
+            file,
+            line,
+            numbers,
+        })
     }
 }
 

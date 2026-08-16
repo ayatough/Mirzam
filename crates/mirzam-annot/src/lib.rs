@@ -77,6 +77,33 @@ pub enum Place {
     Anchor(String),
 }
 
+/// Where an item's numbers were written, as byte ranges within the block body
+/// [`parse`] was handed.
+///
+/// Only the coordinate forms have any: an item anchored to `#id` names an
+/// element and takes its box from the live layout, so there is nothing in the
+/// source for a drag to move. Composed with a slide's offset and
+/// `mirzam_syntax::SourceMap::resolve`, each range is the exact span of the
+/// file that one dragged handle would rewrite — nothing else on the line, and
+/// nothing of the author's spacing or attribute order.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Numbers {
+    /// `40,22` — the position, which for a rect or circle is its centre.
+    pub at: Option<std::ops::Range<usize>>,
+    /// `18x12` — the size.
+    pub size: Option<std::ops::Range<usize>>,
+    /// The arrow head's `x,y`.
+    pub to: Option<std::ops::Range<usize>>,
+}
+
+impl Numbers {
+    /// Whether anything here can be moved by dragging. False for every
+    /// anchored item, and for the three text marks, which never carry numbers.
+    pub fn draggable(&self) -> bool {
+        self.at.is_some() || self.size.is_some() || self.to.is_some()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Item {
     pub kind: Kind,
@@ -99,6 +126,11 @@ pub struct Item {
     /// start. A deck read without the viewer — the PDF included — shows every
     /// item regardless, the way an animated slide prints fully revealed.
     pub step: u32,
+    /// The whole line this item was written on, as a byte range within the
+    /// block body — the unit to rewrite when a change is more than a number.
+    pub line: std::ops::Range<usize>,
+    /// The byte ranges of this item's numbers within that same block body.
+    pub numbers: Numbers,
 }
 
 #[derive(Debug, Default)]
@@ -111,7 +143,16 @@ pub struct AnnotDoc {
 
 pub fn parse(src: &str) -> AnnotDoc {
     let mut doc = AnnotDoc::default();
-    for (ln, raw) in src.lines().enumerate() {
+    // Walked rather than `lines()`ed because every item records where it was
+    // written: the byte range is what lets a change made in the preview go
+    // back to the file as a change to *that line*, leaving the rest of the
+    // block — its spacing, its comments, the columns the author aligned —
+    // exactly as typed.
+    let mut at = 0usize;
+    for (ln, raw) in src.split_inclusive('\n').enumerate() {
+        let start = at;
+        at += raw.len();
+        let raw = raw.trim_end_matches(['\n', '\r']);
         let line = raw.trim();
         if line.is_empty() || line.starts_with("//") {
             continue;
@@ -127,7 +168,14 @@ pub fn parse(src: &str) -> AnnotDoc {
             continue;
         }
         match parse_item(line) {
-            Ok(item) => doc.items.push(item),
+            Ok(mut item) => {
+                item.line = start..start + raw.len();
+                // `line` is `raw` trimmed, so a span found within it is offset
+                // by however much whitespace the author indented with.
+                let indent = start + (raw.len() - raw.trim_start().len());
+                item.numbers = shift(number_spans(line, &item), indent);
+                doc.items.push(item);
+            }
             Err(e) => doc.errors.push(format!("annotate line {}: {e}", ln + 1)),
         }
     }
@@ -147,6 +195,78 @@ pub fn parse(src: &str) -> AnnotDoc {
         );
     }
     doc
+}
+
+/// Whitespace-separated tokens with their byte offsets in `s`. The parser
+/// below reads the same tokens through `split_whitespace`, which drops the
+/// offsets; this walks the string once to get them back.
+fn tokens(s: &str) -> Vec<(usize, &str)> {
+    let mut out = Vec::new();
+    let mut start: Option<usize> = None;
+    for (i, c) in s.char_indices() {
+        if c.is_whitespace() {
+            if let Some(b) = start.take() {
+                out.push((b, &s[b..i]));
+            }
+        } else if start.is_none() {
+            start = Some(i);
+        }
+    }
+    if let Some(b) = start {
+        out.push((b, &s[b..]));
+    }
+    out
+}
+
+fn shift(n: Numbers, by: usize) -> Numbers {
+    let go = |r: Option<std::ops::Range<usize>>| r.map(|r| r.start + by..r.end + by);
+    Numbers {
+        at: go(n.at),
+        size: go(n.size),
+        to: go(n.to),
+    }
+}
+
+/// Locates an already-parsed item's numbers in the line it was written on.
+///
+/// Kept separate from `parse_item` rather than threaded through it: the parse
+/// has already decided what shape the line is, so this only has to walk the
+/// same tokens again knowing the answer. One walk that can be wrong is better
+/// than a parser rewritten to carry offsets through every branch.
+fn number_spans(line: &str, item: &Item) -> Numbers {
+    let head = match line.find(" : ") {
+        Some(i) => &line[..i],
+        None => line,
+    };
+    let span = |t: &(usize, &str)| t.0..t.0 + t.1.len();
+    let mut n = Numbers::default();
+    if item.kind == Kind::Arrow {
+        // `from -> to`, written with or without spaces around the arrow.
+        let Some(i) = head.find("->") else {
+            return n;
+        };
+        let left = tokens(&head[..i]);
+        // The first token is the word `arrow`; the position is what follows it.
+        if matches!(item.place, Place::At(..)) && left.len() >= 2 {
+            n.at = left.last().map(span);
+        }
+        if matches!(item.to, Some(Place::At(..))) {
+            let right = &head[i + 2..];
+            n.to = tokens(right)
+                .first()
+                .map(|t| i + 2 + t.0..i + 2 + t.0 + t.1.len());
+        }
+        return n;
+    }
+    if !matches!(item.place, Place::At(..)) {
+        return n; // anchored: the element's own box, nothing written down
+    }
+    let toks = tokens(head);
+    n.at = toks.get(1).map(span);
+    if matches!(item.kind, Kind::Rect | Kind::Circle) {
+        n.size = toks.get(2).map(span);
+    }
+    n
 }
 
 fn parse_item(line: &str) -> Result<Item, String> {
@@ -184,6 +304,8 @@ fn parse_item(line: &str) -> Result<Item, String> {
         color: None,
         dashed: false,
         step: 0,
+        line: 0..0,
+        numbers: Numbers::default(),
     };
 
     match kind {
@@ -365,7 +487,12 @@ pub fn to_json(doc: &AnnotDoc) -> String {
         if i > 0 {
             out.push(',');
         }
-        let _ = write!(out, "{{\"kind\":\"{}\"", item.kind.as_str());
+        // The item's ordinal in its block, which is the only name it has that
+        // the source and the drawn mark agree on: `id=` is optional and the
+        // author's, and two items may sit at the same coordinates. Written
+        // out rather than left to the runtime to count, so that what points
+        // back at a line of Markdown is stated by the thing that read it.
+        let _ = write!(out, "{{\"i\":{i},\"kind\":\"{}\"", item.kind.as_str());
         if let Some(id) = &item.id {
             let _ = write!(out, ",\"id\":{}", esc_json(id));
         }
@@ -428,6 +555,121 @@ pub fn referenced_ids(doc: &AnnotDoc) -> Vec<&str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The bytes a span picks out of the source it was parsed from. Every
+    /// assertion about a range below reads it back this way rather than
+    /// comparing numbers, because a number that is wrong by two is a number
+    /// that still looks plausible.
+    fn at<'a>(src: &'a str, r: &Option<std::ops::Range<usize>>) -> Option<&'a str> {
+        r.as_ref().map(|r| &src[r.clone()])
+    }
+
+    #[test]
+    fn a_rect_records_where_its_numbers_are() {
+        let src = "target: fig\nrect 40,22 18x12 : label=\"cache miss\"\n";
+        let doc = parse(src);
+        let n = &doc.items[0].numbers;
+        assert_eq!(at(src, &n.at), Some("40,22"));
+        assert_eq!(at(src, &n.size), Some("18x12"));
+        assert_eq!(n.to, None);
+        assert!(n.draggable());
+        assert_eq!(
+            &src[doc.items[0].line.clone()],
+            "rect 40,22 18x12 : label=\"cache miss\""
+        );
+    }
+
+    #[test]
+    fn an_arrow_records_both_ends() {
+        let src = "target: fig\narrow  12,70 -> 38,30 : step=2\n";
+        let doc = parse(src);
+        let n = &doc.items[0].numbers;
+        assert_eq!(at(src, &n.at), Some("12,70"));
+        assert_eq!(at(src, &n.to), Some("38,30"));
+        assert_eq!(n.size, None);
+    }
+
+    #[test]
+    fn an_arrow_written_without_spaces_still_records_both_ends() {
+        let src = "target: fig\narrow 12,70->38,30\n";
+        let doc = parse(src);
+        let n = &doc.items[0].numbers;
+        assert_eq!(at(src, &n.at), Some("12,70"));
+        assert_eq!(at(src, &n.to), Some("38,30"));
+    }
+
+    #[test]
+    fn an_anchored_item_has_no_numbers_to_move() {
+        let src = "circle #peak : pad=6\nhighlight #s-moment : color=@accent2\n";
+        let doc = parse(src);
+        for item in &doc.items {
+            assert!(!item.numbers.draggable(), "{:?}", item.numbers);
+        }
+    }
+
+    #[test]
+    fn an_arrow_from_an_anchor_records_only_the_end_that_is_written_down() {
+        let src = "target: fig\narrow #peak -> 38,30\n";
+        let doc = parse(src);
+        let n = &doc.items[0].numbers;
+        assert_eq!(n.at, None);
+        assert_eq!(at(src, &n.to), Some("38,30"));
+    }
+
+    #[test]
+    fn a_text_mark_records_its_position_and_not_its_words() {
+        let src = "target: fig\ntext 10,80 \"throughput doubles here\"\n";
+        let doc = parse(src);
+        let n = &doc.items[0].numbers;
+        assert_eq!(at(src, &n.at), Some("10,80"));
+        assert_eq!(n.size, None);
+    }
+
+    #[test]
+    fn spans_survive_indentation_comments_and_blank_lines() {
+        // Nothing here is the shape a formatter would produce, which is the
+        // point: an author's own spacing has to come back untouched.
+        let src = "target: fig\n\n// the hot corner\n    circle   62,38   34x34 : id=hot\n";
+        let doc = parse(src);
+        let n = &doc.items[0].numbers;
+        assert_eq!(at(src, &n.at), Some("62,38"));
+        assert_eq!(at(src, &n.size), Some("34x34"));
+        assert_eq!(
+            &src[doc.items[0].line.clone()],
+            "    circle   62,38   34x34 : id=hot"
+        );
+    }
+
+    #[test]
+    fn spans_are_right_on_a_block_with_crlf_endings() {
+        let src = "target: fig\r\nrect 40,22 18x12\r\narrow 1,2 -> 3,4\r\n";
+        let doc = parse(src);
+        assert_eq!(at(src, &doc.items[0].numbers.at), Some("40,22"));
+        assert_eq!(at(src, &doc.items[1].numbers.to), Some("3,4"));
+    }
+
+    #[test]
+    fn every_item_of_a_real_block_lands_on_its_own_line() {
+        let src = "target: shot\n\
+                   circle 62,38 34x34 : id=hot label=\"the hot corner\" step=1\n\
+                   arrow  16,88 -> 55,48 : step=2\n";
+        let doc = parse(src);
+        assert_eq!(doc.items.len(), 2);
+        for item in &doc.items {
+            let line = &src[item.line.clone()];
+            assert!(line.starts_with(item.kind.as_str()), "{line}");
+            for r in [&item.numbers.at, &item.numbers.size, &item.numbers.to]
+                .into_iter()
+                .flatten()
+            {
+                assert!(
+                    item.line.contains(&r.start) && r.end <= item.line.end,
+                    "a number span escaped its own line: {r:?} vs {:?}",
+                    item.line
+                );
+            }
+        }
+    }
 
     #[test]
     fn parses_the_workstream_example() {

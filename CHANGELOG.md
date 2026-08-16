@@ -29,6 +29,18 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   states that are each already final, the PDF still has two ordinary pages and
   a reader without JavaScript still sees two finished slides.
 
+- **A drawn annotation can now say which line of Markdown drew it.** Nothing in
+  a rendered deck used to: `id=` on an item is optional and the author's, and
+  two marks may sit at the same coordinates, so a circle on screen and the line
+  that placed it had no way to be matched up. Each `annotate` block's overlay
+  now carries a `data-block` and each mark a `data-item`, and the build can turn
+  that address back into the exact bytes of the file the item was written in —
+  through a transclusion, and down to the `62,38` rather than the whole line, so
+  a change to a number leaves the author's spacing, comments and aligned columns
+  untouched. Nothing in the viewer uses this yet; it is the half of "drag the
+  circle and the Markdown updates" that had to exist before the dragging could,
+  and it is the half that has to be exactly right.
+
 ### Fixed
 - **Saving an annotated slide under `mirzam serve` no longer wipes its
   annotations.** Hot reload replaces the edited slide's markup in place, which

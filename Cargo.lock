@@ -240,6 +240,7 @@ version = "0.7.0"
 dependencies = [
  "comrak",
  "mirzam-anim",
+ "mirzam-annot",
  "mirzam-core",
  "mirzam-layout",
  "mirzam-render",

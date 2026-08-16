@@ -23,7 +23,7 @@ pub fn extract(
     warnings: &mut Vec<String>,
 ) -> String {
     let mut out = String::new();
-    for src in blocks {
+    for (block_index, src) in blocks.iter().enumerate() {
         let doc = mirzam_annot::parse(src);
         let mut problems: Vec<String> = doc.errors.clone();
 
@@ -57,8 +57,13 @@ pub fn extract(
         // and the slide itself is the honest answer: an anchored mark is
         // resolved from the element it names, wherever on the slide that is.
         let sel = sel.as_deref().unwrap_or(":scope");
+        // `data-block` counts every `annotate` block the slide was given, not
+        // only the ones that survived validation, so the number keeps naming
+        // the same block in the source when an earlier one is dropped for a
+        // target that no longer exists. Together with the slide's index and
+        // each item's `i`, that is a mark's address in the document.
         out.push_str(&format!(
-            "<script type=\"application/json\" class=\"mz-annot\" data-target=\"{}\">{}</script>\n",
+            "<script type=\"application/json\" class=\"mz-annot\" data-target=\"{}\" data-block=\"{block_index}\">{}</script>\n",
             inline::html_escape(sel),
             mirzam_annot::to_json(&doc)
         ));

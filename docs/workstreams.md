@@ -75,7 +75,7 @@ there is. The model column follows from that:
 | W18 | Carrying an element from one slide to the next | S | — | W2 | ✅ |
 | W5 | Typst-flavoured math | A | Sonnet | — | ✅ |
 | W19 | Structural math editing: tap and place, not type | S | Fable | W5 | withdrawn |
-| W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
+| W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | read half ✅ |
 | W20 | Syntax highlighting at build time | B | Opus | — | ✅ |
 | W21 | An authoring contract for agents | B | Opus | — | ✅ |
 | W22 | One door to a deck's look: `theme:` absorbs `css:` | B | Opus | — | ✅ |
@@ -88,8 +88,9 @@ Not cancelled; off the critical path to a tool people present with every week.
 - **W8 (drag an annotation back into the Markdown).** The most expensive stream
   in the plan — an edit channel, byte-range rewriting, conflict handling — and
   the one whose absence hurts least, because the editing surface people
-  actually use is their editor, with `mirzam serve` beside it. W7 landed, so
-  the hard half is already done whenever this comes back.
+  actually use is their editor, with `mirzam serve` beside it. Its *read* half
+  has since landed (a mark's address in the document, and the byte range of
+  each of its numbers); what is deferred is now only the half that writes.
 
 ---
 
@@ -1798,9 +1799,9 @@ file now names that file.
 
 **Owns:** `crates/mirzam-syntax`.
 
-## W8 — Annotation editing, written back to Markdown (deferred)
+## W8 — Annotation editing, written back to Markdown (started)
 
-**Difficulty S · Opus · deferred; W7 landed, so the source map is ready**
+**Difficulty S · Opus · the read half has landed; the write half has not**
 
 The one the user asked about directly: drag the circle in the preview, and the
 Markdown updates.
@@ -1828,6 +1829,49 @@ Out of scope for v1: editing anything other than annotation blocks; multi-client
 editing; undo (the editor's own undo, on the Markdown file, is the story).
 
 **Owns:** `crates/mirzam-cli/src/serve.rs`, `theme/annot-edit.js`.
+
+### What has landed
+
+Step 2's half of the problem — *which* annotation, and which bytes are its
+position — is done and tested, because it is the half that is expensive to get
+wrong and cheap to check without a browser in the loop.
+
+- **A mark now has an address.** Nothing in the rendered deck used to say which
+  line of Markdown drew a given circle: `id=` is optional and the author's, and
+  two items may sit at the same coordinates. Each `annotate` block's overlay now
+  carries `data-block`, each drawn mark carries `data-item`, and with the slide
+  index that triple is a mark's address in the document. `data-block` counts
+  only the blocks that were *drawn*, so a slide that quotes `annotate` syntax in
+  a longer fence — as the reference decks do — does not shift every address
+  after it.
+- **An item knows where its numbers are.** `mirzam_annot::Item` records the byte
+  range of the line it was written on and, separately, of each number on it
+  (`Numbers { at, size, to }`), relative to the block body. Separately, because
+  the two are for different jobs: replacing the line reformats it, replacing
+  `62,38` and nothing else keeps the author's indentation, their aligned
+  columns, their comments and their attribute order exactly as typed — and a
+  drag is only ever a change to a number. An anchored item reports nothing,
+  correctly: it has no numbers to move.
+- **The two compose.** `BuildOutput::annotation_origin(slide, block, item)`
+  turns an address into a file and those ranges, through transclusion, and
+  refuses wherever `SourceMap::resolve` refuses — generated text, or a range
+  crossing a file boundary. Refusing is the feature.
+- **Hot reload no longer eats the overlay it is about to be asked to edit.**
+  `annot.js` mounted its layers once at load, so a patched section left it
+  drawing into a detached node and the slide lost every mark until a manual
+  reload. Every edit in step 4 routes through exactly that path, so the editor
+  would have appeared to delete the annotation it had just moved.
+
+### What has not
+
+Everything that writes: `--edit`, the `POST /edit` route and its method
+dispatch (`handle` inspects neither today), the hash check, the confinement of
+writes to a canonicalized deck root, the `Origin` check that keeps another page
+in the same browser from posting to the server, the drag handles themselves,
+and `serve`'s first test of any kind. One decided consequence to carry into it:
+`publish` early-returns when the rendered HTML is unchanged, and rounding
+`40` to `40.0` renders identically — so `POST /edit`'s own response has to be
+the client's confirmation, not the `/events` stream.
 
 ## W9 — Release hardening and `v0.1.0` ✅
 
