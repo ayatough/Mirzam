@@ -136,6 +136,7 @@ what each one does to the slide.
 | `build.anim` | An `anim` block, its targets, its triggers and its splits |
 | `build.effects` | An `effects` block and its key bindings |
 | `build.chart` | A `chart` block, its data file or its CSV |
+| `build.mermaid` | A `mermaid` block that was not drawn — no renderer installed, or `mmdc` rejected the diagram. The fence is on the slide as a code block; install mermaid-cli, or set `MIRZAM_MMDC` |
 | `build.toc` | A `toc` block |
 | `build.footnote` | A `[^key]` with no definition on its slide |
 | `build.bibliography` | `bibliography:`, `[@key]`, and the `bibliography` block |
@@ -144,7 +145,7 @@ what each one does to the slide.
 | `build.asset` | An image, audio or video file that is missing or too large to inline |
 | `build.theme` | An unknown `theme:` or `mode:`, on the deck, a slide or a pane; and what a theme of your own has to say about itself — a stem colliding with a built-in, one palette where two are needed, a colour pair under the contrast floor |
 | `build.transition` | An unparsable `transition:` |
-| `build.css` | A stylesheet named by `theme:` that cannot be read — and, for one release, the note that `css:` is retired |
+| `build.css` | A stylesheet named by `theme:` that cannot be read |
 | `build.continuation` | `<!-- next -->` in more than one pane on a slide |
 | `build.deck` | The deck as a whole — a file with no slides in it |
 | `build.skill` | The installed [skill card](#the-skill) and this binary are different versions |

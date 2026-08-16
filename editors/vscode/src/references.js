@@ -19,11 +19,8 @@
  * Frontmatter settings whose value is one path to a file the core reads as
  * text. `theme:` is not among them: it holds a *list*, and only the entries
  * ending in `.css` are paths — see `themeFiles`.
- *
- * `css:` is the retired spelling of a one-entry `theme:`. It is accepted for
- * one release, exactly as the core accepts it, and goes at the same time.
  */
-const FRONTMATTER_FILES = ["masters", "bibliography", "css"];
+const FRONTMATTER_FILES = ["masters", "bibliography"];
 
 /**
  * Every local path `source` references, without duplicates; the caller resolves

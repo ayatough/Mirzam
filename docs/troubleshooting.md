@@ -88,7 +88,7 @@ a code block.
 mirzam export pdf deck.md -o deck.pdf
 ```
 
-`export pdf` takes the same `--split`, `--theme`, `--css`, `--fit` and
+`export pdf` takes the same `--split`, `--theme`, `--fit` and
 `--mode` flags `build` does, so a deck assembled with one of them — most
 commonly a document turned into a deck with `--split` — exports with the
 same slide breaks and identity in one command:
@@ -147,6 +147,8 @@ since it changes how urgent the fix is:
 | shape line N: … (unknown kind, bad `at()`/`size()`, unclosed paren, unknown id) | Shape | Malformed top-level `shape` DSL | Shown on the slide too |
 | connect line N: … (missing operator, endpoint not written as `#id`) | Connectors | Malformed `connect` DSL line | Shown on the slide too |
 | chart: cannot parse block / cannot read data file / no data rows / row-level CSV errors | Charts | Malformed `chart` YAML, an unreadable `data:` file, or bad CSV | Shown on the slide too |
+| slide N: mermaid: no diagram renderer found, so the block is shown as code | Diagrams | No mermaid-cli on this machine — `npm install -g @mermaid-js/mermaid-cli`, or set `MIRZAM_MMDC` | Note only — the fence renders as a code block, which is what GitHub draws as a diagram anyway |
+| slide N: mermaid: mmdc failed (…) | Diagrams | The renderer is installed and rejected the diagram — the message quotes its first line | Note only — the fence renders as a code block, with the diagram's source intact |
 | anim line N: … (missing target, bad step number, unknown ease, …) | Animations | Malformed `anim` DSL — the message names the exact problem | Whole `anim` block dropped |
 | anim target "…" matches nothing on this slide / anim trigger references an id that doesn't exist | Animations | Target or `[after #id]` doesn't resolve | Whole `anim` block dropped |
 | cannot split … / a target is split by more than one track | Animations | `target.split` used on the whole slide, on something with no closing tag, or twice on one element | Whole `anim` block dropped |
@@ -169,7 +171,6 @@ since it changes how urgent the fix is:
 | math: unknown dialect "x"; latex and typst are supported | Math | Frontmatter `math:` isn't `latex`/`typst` | Note only — renders as `latex` |
 | transition: … | Frontmatter | Frontmatter `transition:` doesn't parse | Note only — deck falls back to plain cuts |
 | theme: cannot read path | Frontmatter | A stylesheet named by `theme:` can't be read | Note only — builds without it |
-| `css:` is retired and goes away in the next release | Frontmatter | The deck writes `css:`, which is now `theme:` with one more entry | Note only — the message carries the exact `theme:` line to write instead |
 | no slides: file is empty / … has nothing outside its frontmatter | Frontmatter | Nothing to render | Note only — builds as a blank page |
 | `<!-- next -->` appears in more than one pane | Frontmatter | Two panes on one slide both try to break | Note only — the slide renders whole, unsplit |
 

@@ -336,7 +336,7 @@ pub fn scope_warnings(
 }
 
 /// What frontmatter's `theme:` has to say for itself: an unknown built-in
-/// name, and the note that `css:` has been retired.
+/// name.
 ///
 /// The stylesheets themselves are read by the host, so what a file theme has
 /// to say arrives separately through [`file_theme_warnings`].
@@ -344,7 +344,6 @@ pub fn theme_warnings(meta: &mirzam_core::DeckMeta) -> Vec<String> {
     meta.theme_names()
         .into_iter()
         .filter_map(|name| theme_warning(Some(name)))
-        .chain(meta.css_alias_warning())
         .collect()
 }
 

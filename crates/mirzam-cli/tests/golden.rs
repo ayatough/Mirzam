@@ -69,7 +69,7 @@ fn example_slide_counts() {
     for (deck, expected) in [
         ("01-start.md", 6),
         ("02-writing.md", 11),
-        ("03-layout.md", 13),
+        ("03-layout.md", 14),
         ("04-components.md", 19),
         ("05-motion.md", 9),
         ("06-theming.md", 16),

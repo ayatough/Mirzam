@@ -326,7 +326,11 @@ Usage:
   new     write a deck to start from - frontmatter, a title slide and a
           slide break - or, with --empty, a blank file to type into.
           An existing file is never overwritten
-  build   write <out_dir>/index.html, a single file with the viewer embedded
+  build   write <out_dir>/index.html, a single file with the viewer embedded.
+          A ```mermaid fence is drawn at build time if mermaid-cli is
+          installed - `mmdc` on PATH, or MIRZAM_MMDC pointing at it. Without
+          one the fence stays a code block and the build says so; no browser
+          is ever required for an ordinary build
   serve   development server with hot reload (default port 4321)
   export  render a PDF with headless Chromium (also honors MIRZAM_CHROMIUM).
           Takes a Markdown source, not a built `out/index.html` - re-parsing
@@ -364,8 +368,6 @@ Usage:
           `--theme mirzam --theme house.css`. A file named here re-themes
           the deck; naming it in the deck's own `theme:` is what also
           registers its stem for a slide's or a pane's `theme=`.
-          (--css is the old spelling of --theme <file.css>. It still works
-          for this release and says what to write instead.)
   --fit shrink scales an overfull pane's text down instead of clipping it,
           which is what a section of prose that was never written to be a
           slide usually needs
@@ -435,10 +437,6 @@ struct DeckArgs {
     /// command line. A path is resolved against the working directory, not the
     /// deck's, because it is a path the caller typed.
     theme: Vec<String>,
-    /// Whether any of it arrived as the retired `--css`, which is `--theme`
-    /// with a path. Kept only so the deck can be told what to write instead;
-    /// it goes when the alias does.
-    css_alias: bool,
     /// Overrides frontmatter `fit:`.
     fit: Option<String>,
     /// Overrides frontmatter `mode:`.
@@ -476,19 +474,6 @@ fn parse_deck_flag(
                     "--theme takes a stylesheet path ending in .css, or one of: {}",
                     mirzam_render::THEME_NAMES.join(", ")
                 ))),
-            }
-        }
-        // The retired half of the same flag, accepted for one release: `--css
-        // x.css` is `--theme x.css`, and says so when it is used.
-        "--css" => {
-            *i += 1;
-            match args.get(*i) {
-                Some(p) => {
-                    opts.theme.push(p.clone());
-                    opts.css_alias = true;
-                    Some(Ok(()))
-                }
-                None => Some(Err("--css requires a stylesheet path".to_string())),
             }
         }
         "--fit" => {
@@ -673,7 +658,6 @@ fn apply_deck_overrides(out: &mut pipeline::BuildOutput, deck: &DeckArgs) -> Res
     // caller unable to say "not that one".
     if !deck.theme.is_empty() {
         out.meta.theme = mirzam_core::ThemeSpec::Many(deck.theme.clone());
-        out.meta.css = None;
         // An unreadable frontmatter path is a warning, because the deck is
         // still a deck without it. An unreadable one here is an error: it is
         // the whole reason this invocation exists, and a wrong path would
@@ -689,16 +673,6 @@ fn apply_deck_overrides(out: &mut pipeline::BuildOutput, deck: &DeckArgs) -> Res
             out.warnings.push(warning);
             out.warning_sites.push(pipeline::WarningSite::default());
         }
-    }
-    if deck.css_alias {
-        // No slide and no file: this is a property of the command line, not of
-        // a line anybody wrote in the deck.
-        out.warnings.push(
-            "`--css` is retired and goes away in the next release: `--theme` takes a \
-             stylesheet path as well as a built-in name. Write `--theme <file.css>` instead."
-                .to_string(),
-        );
-        out.warning_sites.push(pipeline::WarningSite::default());
     }
     if let Some(fit) = &deck.fit {
         out.meta.fit = Some(fit.clone());
@@ -796,13 +770,11 @@ fn handover_frontmatter(out: &pipeline::BuildOutput, deck: &DeckArgs) -> Option<
 
     // Every line of the authored frontmatter except the ones being replaced
     // and whatever was indented under them: `theme:` is a scalar or a list,
-    // and the list form owns the lines below it. `css:` goes too — it is the
-    // retired spelling of the key `theme:` replaces.
+    // and the list form owns the lines below it.
     let replaced = |line: &str| {
         overrides
             .iter()
             .any(|(key, _)| line.starts_with(&format!("{key}:")))
-            || line.starts_with("css:")
     };
     let mut lines: Vec<String> = Vec::new();
     let mut dropping = false;
@@ -997,9 +969,9 @@ mod tests {
     }
 
     #[test]
-    fn parse_deck_flag_shares_split_theme_css_fit_mode() {
+    fn parse_deck_flag_shares_split_theme_fit_mode() {
         let args: Vec<String> = [
-            "--split", "h2", "--theme", "nord", "--css", "x.css", "--fit", "shrink", "--mode",
+            "--split", "h2", "--theme", "nord", "--theme", "x.css", "--fit", "shrink", "--mode",
             "dark",
         ]
         .into_iter()
@@ -1015,12 +987,20 @@ mod tests {
             i += 1;
         }
         assert_eq!(opts.split, Some(2));
-        // One list, in the order the flags were typed: `--css` is `--theme`
-        // with a path, for the release the old spelling is still accepted.
+        // One list, in the order the flags were typed.
         assert_eq!(opts.theme, ["nord", "x.css"]);
-        assert!(opts.css_alias);
         assert_eq!(opts.fit.as_deref(), Some("shrink"));
         assert_eq!(opts.mode.as_deref(), Some("dark"));
+    }
+
+    /// `--css` was retired in `v0.6.0` and removed after it; it is an unknown
+    /// flag now, left for the caller's own flag handling to reject.
+    #[test]
+    fn the_removed_css_flag_is_not_a_deck_flag() {
+        let args: Vec<String> = ["--css", "x.css"].into_iter().map(String::from).collect();
+        let mut opts = DeckArgs::default();
+        let mut i = 0;
+        assert!(parse_deck_flag(&args, &mut i, &mut opts).is_none());
     }
 
     #[test]

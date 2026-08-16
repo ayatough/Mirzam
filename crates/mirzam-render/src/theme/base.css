@@ -107,6 +107,18 @@ section.slide { background: var(--mz-slide-bg); border-radius: inherit; }
 .pane > :first-child { margin-top: 0; }
 .pane > :last-child { margin-bottom: 0; }
 
+/* `columns=N` on the pane: the content is balanced across N columns, so ten
+   short items become five and five instead of running down the pane's left
+   edge. The gutter defaults to the grid gap, so the fold inside a pane reads
+   as the same kind of seam as the one between panes. */
+.mz-columns {
+  column-gap: var(--mz-columns-gap, var(--mz-grid-gap, 20px));
+}
+/* An item split across the fold reads as two items. */
+.mz-columns li { break-inside: avoid; }
+.mz-columns > :first-child { margin-top: 0; }
+.mz-columns > :last-child { margin-bottom: 0; }
+
 /* Pane backgrounds. The photo is a real <img> so it is inlined like any other
    asset; the scrims and the content sit above it in the same stacking context. */
 .pane.has-bg {
@@ -687,6 +699,15 @@ svg.mz-chart { width: 100%; height: 100%; max-height: 100%; }
 .mz-chart-legend { font-size: 15px; fill: var(--mz-fg); }
 .mz-chart-value { font-size: 14px; fill: var(--mz-muted); }
 .mz-chart-slice { stroke: var(--mz-slide-bg); stroke-width: 2; }
+
+/* Mermaid diagrams (build-time SVG from an external renderer). The diagram
+   arrives with its own viewBox and no size of its own — the pane decides the
+   box, the viewBox decides the aspect — which is why this reads like the chart
+   wrapper above rather than like the shape layer below. Its colors are
+   rewritten to theme tokens at build time; see render/src/mermaid.rs. */
+.mz-mermaid { width: 100%; display: flex; align-items: center; justify-content: center; min-height: 0; }
+svg.mz-mermaid-svg { width: 100%; height: auto; max-width: 100%; max-height: 100%; }
+svg.mz-mermaid-svg foreignObject div { color: var(--mz-fg); }
 
 /* Shape layer (build-time SVG) and connector layer (drawn at runtime).
    The default shape fill is a theme token: see theme/themes/*.css. */

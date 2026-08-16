@@ -77,7 +77,7 @@ mirzam export pdf notes.md --split h2 --theme mirzam -o notes.pdf
 mirzam check deck.md                 # clipped panes, unresolved connectors, and the rest
 ```
 
-`export pdf` takes the same `--split`, `--theme`, `--css`, `--fit` and `--mode`
+`export pdf` takes the same `--split`, `--theme`, `--fit` and `--mode`
 as `build`, so a deck assembled with one of those flags exports to PDF with
 the same slides in one command — there is no need to `build` first. It always
 reads the Markdown source, never a built `out/index.html`: pass it the `.md`

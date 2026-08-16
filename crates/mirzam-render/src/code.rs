@@ -296,7 +296,12 @@ mod tests {
         assert!(highlight("brainfuck", "+++\n").is_none());
         // The Mirzam block kinds that reach comrak as ordinary fences must
         // stay ordinary fences, or the CommonMark-compat promise breaks.
-        for kind in ["shape", "chart", "connect", "anim", "pane", "toc"] {
+        // `mermaid` is on this list for a second reason: on a machine with no
+        // renderer the fence *is* the code block, and a half-coloured diagram
+        // source would read worse than the plain one GitHub draws.
+        for kind in [
+            "shape", "chart", "connect", "anim", "pane", "toc", "mermaid",
+        ] {
             assert!(highlight(kind, "anything\n").is_none(), "{kind}");
         }
     }

@@ -222,8 +222,7 @@ pub fn build_deck_with(
 
     // Load the deck's own stylesheets, in the order `theme:` names them.
     // Failures are warnings, not errors: a deck without its theme is still a
-    // deck, and the message names the key the author actually wrote — `theme:`
-    // now, `css:` for the release the retired key is still accepted.
+    // deck.
     let mut file_themes = Vec::new();
     for sheet in meta.theme_sheets() {
         let path = base_dir.join(sheet.path);
@@ -232,7 +231,7 @@ pub fn build_deck_with(
         files.insert(path.clone());
         match std::fs::read_to_string(&path) {
             Ok(css) => file_themes.push(mirzam_render::FileTheme::new(sheet.path, css)),
-            Err(e) => warnings.push(format!("{}: cannot read {}: {e}", sheet.key, sheet.path)),
+            Err(e) => warnings.push(format!("theme: cannot read {}: {e}", sheet.path)),
         }
     }
     // What a theme somebody wrote has to say about itself: a stem that collides
@@ -406,7 +405,13 @@ pub fn build_deck_with(
         *text = mirzam_core::substitute_vars(text, &vars);
     }
     warnings.extend(ctx.warnings());
-    let ctx_key = ctx.fingerprint();
+    // The diagram renderer is a property of the machine, not of the deck, and
+    // it is discovered once per build rather than once per fence: `mmdc`
+    // answers `--version` by starting Node, which is not a cost to pay on
+    // every slide. It joins the cache key because installing mermaid-cli
+    // changes what a slide renders to without changing a byte of its source.
+    let diagrams = crate::mermaid::Mmdc::discover();
+    let ctx_key = ctx.fingerprint() ^ diagram_key(diagrams.as_ref());
 
     for (i, part) in parts.iter().enumerate() {
         let slide_src = &part.text;
@@ -424,7 +429,15 @@ pub fn build_deck_with(
             }
             None => {
                 let slide = mirzam_syntax::parse_slide(slide_src);
-                let out = mirzam_render::render_slide_html(&slide, i, &base_dir, &ctx);
+                let out = mirzam_render::render_slide_html(
+                    &slide,
+                    i,
+                    &base_dir,
+                    diagrams
+                        .as_ref()
+                        .map(|d| d as &dyn mirzam_render::DiagramRenderer),
+                    &ctx,
+                );
                 let from = origin(part.from);
                 let at = site(part.from, i + 1);
                 for w in out.warnings {
@@ -528,6 +541,19 @@ pub fn build_deck_with(
 
 fn mtime(path: &Path) -> Option<SystemTime> {
     std::fs::metadata(path).and_then(|m| m.modified()).ok()
+}
+
+/// Which diagram renderer this build found, as part of the slide cache key.
+///
+/// A slide holding a `mermaid` fence renders to a diagram or to a code block
+/// depending on nothing in the deck at all, so a cache warmed before
+/// mermaid-cli was installed would keep serving the code block afterwards.
+/// The path is hashed rather than a bare flag, because pointing `MIRZAM_MMDC`
+/// at a different `mmdc` is a different renderer.
+fn diagram_key(renderer: Option<&crate::mermaid::Mmdc>) -> u64 {
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    renderer.map(|r| r.program().to_path_buf()).hash(&mut h);
+    h.finish()
 }
 
 fn slide_hash(src: &str, index: usize, ctx: u64) -> u64 {

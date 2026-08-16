@@ -237,3 +237,31 @@ slide using it calls its panes.</p>
 <aside class="notes"><p>The deck renders identically to the version that drew all three grids by hand. That is the test: a master is a shape moved, not a shape changed.</p>
 </aside>
 </section>
+<section class="slide" data-index="13">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "note list"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Rule 11</span></p>
+<h2>Balance short items across columns</h2>
+</div>
+<div class="pane pane-note" data-pane="note" style="grid-area:note;display:flex;flex-direction:column;justify-content:center"><p>A list of one-word items runs down the pane's left edge and leaves the rest of
+the width empty. <code>columns=2</code> on the pane balances its content by amount: ten
+items become five and five, and adding one redistributes the rest.</p>
+<p>An item never breaks across the fold, and the gutter is the grid gap unless
+<code>--mz-columns-gap</code> says otherwise.</p>
+</div>
+<div class="pane pane-list card" data-pane="list" style="grid-area:list;display:flex;flex-direction:column;justify-content:center"><div class="mz-columns" style="column-count:2"><ul>
+<li>Latency</li>
+<li>Throughput</li>
+<li>Cache hits</li>
+<li>Cold starts</li>
+<li>Error rate</li>
+<li>Saturation</li>
+<li>Queue depth</li>
+<li>Retries</li>
+<li>Backoff</li>
+<li>Timeouts</li>
+</ul>
+</div></div>
+</div>
+<aside class="notes"><p>The split is the browser's, not the author's: the same source with three items fewer still comes out even. For two <em>different</em> things side by side, draw two panes.</p>
+</aside>
+</section>

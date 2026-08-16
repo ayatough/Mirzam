@@ -306,7 +306,13 @@ impl LineIndex {
 /// added here.
 fn build_kind(message: &str) -> &'static str {
     const TABLE: &[(&str, &str)] = &[
-        // First, and matched on two words: the message carries a filesystem
+        // First, because this is the one message that quotes another program:
+        // `mmdc` says "flowchart", which contains `chart`, and it is free to
+        // say anything else on this list too. Classifying it before the table
+        // can misread it is cheaper than teaching every other needle about a
+        // tool Mirzam does not control.
+        ("mermaid:", "build.mermaid"),
+        // Then, and matched on two words: the message carries a filesystem
         // path, and a deck living under `charts/` must not be classified by
         // somebody's directory name.
         ("skill card", "build.skill"),
@@ -343,17 +349,13 @@ fn build_kind(message: &str) -> &'static str {
         // The stem rule, reported against the slide or pane that named a
         // theme file which cannot answer to a name.
         ("file theme is usable", "build.theme"),
-        // A stylesheet the deck named and the host could not read, under
-        // either key. `build.css` is the code for a stylesheet either way.
+        // A stylesheet the deck named and the host could not read.
         ("theme: cannot read", "build.css"),
         // Everything else a theme file has to say about itself: a stem that
         // collides with a built-in, one palette where two are needed, text
         // that cannot be read on its own background.
         ("theme: `", "build.theme"),
         ("transition:", "build.transition"),
-        // The retired `css:` key: its own unreadable-path warning, and the
-        // note saying what to write instead. Goes when the alias goes.
-        ("css:", "build.css"),
         ("no slides:", "build.deck"),
         ("<!-- next -->", "build.continuation"),
         ("file not found", "build.asset"),
@@ -580,6 +582,18 @@ mod tests {
                 "build.effects",
             ),
             ("slide 2: chart: cannot parse block: type", "build.chart"),
+            (
+                "slide 2: mermaid: no diagram renderer found, so the block is shown as code",
+                "build.mermaid",
+            ),
+            // The reason `mermaid:` is matched before `chart`: an external
+            // tool's own words come through in this message, and Mermaid's
+            // vocabulary contains half of Mirzam's.
+            (
+                "slide 3: mermaid: mmdc failed (exit status: 1): Parse error on line 2 \
+                 of the flowchart",
+                "build.mermaid",
+            ),
             ("slide 1: pane `x` is not in the layout", "build.layout"),
             ("toc: unknown key `bogus`", "build.toc"),
             ("bibliography: nothing to list", "build.bibliography"),
@@ -600,12 +614,6 @@ mod tests {
                 "build.transition",
             ),
             ("theme: cannot read missing.css", "build.css"),
-            ("css: cannot read missing.css", "build.css"),
-            (
-                "`css:` is retired and goes away in the next release: `theme:` takes a \
-                 stylesheet path as well as a built-in name. Write `theme: acme.css` instead.",
-                "build.css",
-            ),
             (
                 "theme: `themes/acme.css` paints in one palette: 12 colour tokens",
                 "build.theme",

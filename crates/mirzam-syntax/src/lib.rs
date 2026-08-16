@@ -519,10 +519,14 @@ fn is_slide_break(trimmed: &str) -> bool {
 /// The list is here rather than beside each consumer because its whole purpose
 /// is to be complete: `commonmark_compat.rs` walks it and proves that each one
 /// still degrades to an ordinary code block in a plain CommonMark parser, which
-/// is the promise the markup makes. Two of these (`chart`, `toc`) are consumed
-/// by `mirzam-render` rather than here — they reach it through `loose`, exactly
-/// as a plain parser would see them — so a list built from this file's match
-/// arms alone would quietly under-report.
+/// is the promise the markup makes. Several of these (`chart`, `mermaid`,
+/// `toc`, `bibliography`) are consumed by `mirzam-render` rather than here —
+/// they reach it through `loose`, exactly as a plain parser would see them —
+/// so a list built from this file's match arms alone would quietly
+/// under-report.
+///
+/// `mermaid` is the one entry that reads *better* under a plain parser than it
+/// does here: GitHub draws a ```mermaid fence as a diagram of its own.
 ///
 /// Adding a block form means adding it here, in the same change.
 pub const BLOCK_KINDS: &[&str] = &[
@@ -533,6 +537,7 @@ pub const BLOCK_KINDS: &[&str] = &[
     "effects",
     "anim",
     "chart",
+    "mermaid",
     "toc",
     "bibliography",
 ];
@@ -1680,8 +1685,8 @@ loose text
     /// block form that no longer exists would make the compatibility test pass
     /// for a promise nobody is asking about any more.
     ///
-    /// `chart`, `toc` and `bibliography` are the ones the renderer consumes:
-    /// here they must stay in `loose`, which is how they reach it.
+    /// `chart`, `mermaid`, `toc` and `bibliography` are the ones the renderer
+    /// consumes: here they must stay in `loose`, which is how they reach it.
     #[test]
     fn every_listed_block_kind_is_one_something_consumes() {
         for kind in BLOCK_KINDS {
@@ -1697,7 +1702,7 @@ loose text
                 || !s.annots.is_empty()
                 || !s.effects.is_empty()
                 || !s.reserved.is_empty();
-            if matches!(*kind, "chart" | "toc" | "bibliography") {
+            if matches!(*kind, "chart" | "mermaid" | "toc" | "bibliography") {
                 assert!(!claimed, "`{kind}` is the renderer's, not ours");
                 assert!(
                     s.loose.contains(&format!("```{kind}")),
