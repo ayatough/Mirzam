@@ -108,12 +108,12 @@ const gifWidth = +opt("--gif-width", editorMode ? 1000 : 800);
 // is. The editor is flat panels and text, so dithering only speckles the type
 // it was meant to smooth, and dropping it saves a fifth of the file.
 //
-// 128 rather than 64, and the difference is not subtlety: at 64 the palette is
-// spent on the dark editor half, and the deck in the preview - whose whole job
-// in the last five seconds is to change from a white paper to a warm one -
-// quantises back to white, with the near-flat paper banding into stripes. A
-// recording of a theme change that does not show the theme change is worth
-// none of the megabyte it saves.
+// 128 rather than 64, and the difference is not subtlety: at 64 the palette
+// cannot hold two near-flat papers at once, and the deck in the preview -
+// whose whole job in the last five seconds is to change its face for
+// `theme: wuwei` - quantises the two faces toward one, with the near-flat
+// paper banding into stripes. A recording of a theme change that does not
+// show the theme change is worth none of the megabyte it saves.
 const gifColors = +opt("--gif-colors", editorMode ? 128 : 256);
 const gifDither = opt("--gif-dither", editorMode ? "none" : "bayer:bayer_scale=3");
 const showKeys = !flag("--no-keys");
@@ -380,11 +380,14 @@ const browser = await chromium.launch({ executablePath: CHROMIUM });
 const context = await browser.newContext({
   viewport: { width, height },
   recordVideo: { dir: videoDir, size: { width, height } },
-  // A demo should show the deck's own default, not this machine's preference.
-  // The editor's own chrome is dark whatever the browser prefers; what the
-  // preference decides there is the *deck* in the preview, and a deck with no
-  // `mode:` follows it - so light, for the same reason.
-  colorScheme: "light",
+  // A deck-mode demo should show the deck's own default, not this machine's
+  // preference - so light, since a deck with no `mode:` rests there. The
+  // editor recording is different: it lives at the top of the README, and the
+  // README, the site and the editor's own chrome are all dark-first - a light
+  // preview inside that frame reads as a hole in the page. The deck in the
+  // preview follows the browser preference, so the preference is set to the
+  // identity the recording sits in.
+  colorScheme: editorMode ? "dark" : "light",
   reducedMotion: "no-preference",
 });
 
