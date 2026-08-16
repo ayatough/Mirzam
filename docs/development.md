@@ -181,6 +181,13 @@ asset reads. The CLI supplies filesystem implementations; the WASM build supplie
 host-provided tables. Anything that reaches for `std::fs` inside the core crates
 will break the browser build, so route it through these traits.
 
+`mirzam-render::DiagramRenderer` is the same arrangement for the other thing a
+core crate may not do: **run a program.** A `mermaid` fence is drawn by
+`mmdc`, which the CLI finds and spawns (`mirzam-cli/src/mermaid.rs`) and the
+browser build cannot, so there the trait has no implementation at all and the
+fence stays a code block. A host with no renderer passes `None`, which is an
+ordinary state and not an error.
+
 ## Quality gates
 
 `cargo test --workspace` runs all of these; CI runs them on every push.

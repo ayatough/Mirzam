@@ -79,7 +79,7 @@ there is. The model column follows from that:
 | W20 | Syntax highlighting at build time | B | Opus | — | ✅ |
 | W21 | An authoring contract for agents | B | Opus | — | ✅ |
 | W22 | One door to a deck's look: `theme:` absorbs `css:` | B | Opus | — | ✅ |
-| W23 | Mermaid diagrams, rendered at build time | B | Opus | — | |
+| W23 | Mermaid diagrams, rendered at build time | B | Opus | — | ✅ |
 
 ### What is deferred, and why
 
@@ -1369,9 +1369,74 @@ places), `docs/quickstart.md`, `docs/troubleshooting.md`, `docs/agents.md`,
 authoring contract, so leaving it stale means agents keep writing a key that no
 longer exists.
 
-## W23 — Mermaid diagrams, rendered at build time
+## W23 — Mermaid diagrams, rendered at build time ✅
 
-**Difficulty B · not started**
+**Difficulty B · landed** — `mermaid` inside a pane, drawn by `mmdc` through
+`mirzam_render::DiagramRenderer`, recoloured to `--mz-*` tokens, and a
+`build.mermaid` warning plus a code block on any machine without a renderer.
+D2 stayed out, as briefed.
+
+**Landed as specified**, with five things the implementation found that the
+brief did not predict:
+
+- **The renderer needed a second out-channel, not just an extra parameter.**
+  A pane renderer had one, `errors`, and everything on it is *also* drawn on
+  the slide as a red `⚠` box. That is right for a `chart` whose YAML does not
+  parse and wrong here: a deck with no `mmdc` around is a *correct* deck and
+  still has to be presentable. So `warnings` now travels beside `errors`
+  through `render_grid_slide`/`render_single_pane_slide`, and the two host
+  services — `AssetSource` and `DiagramRenderer` — travel together in a
+  private `Host` rather than as two more parameters on functions that already
+  had eight.
+- **`mmdc` writes the same root id every time it runs**, and Mermaid scopes
+  the stylesheet it embeds — and names its arrowhead markers — after that id.
+  Two diagrams in one deck therefore arrive as `my-svg` twice, and the
+  second's markers answer the first's selectors. `mermaid.rs` re-identifies
+  every document as `mz-mermaid-<slide>-<n>` and substitutes the whole old id
+  string, because the marker ids are that id with a suffix glued on and a
+  word-boundary replacement misses exactly those.
+- **`build.mermaid` has to be matched *first* in `check.rs`'s kind table.**
+  It is the only message that quotes another program's words, and Mermaid's
+  vocabulary overlaps Mirzam's: `flowchart` contains `chart`, so the needle
+  had to move above `("chart", "build.chart")` rather than be appended.
+- **The colour rewrite is deliberately partial, and the line is chroma.**
+  Rewriting every colour would overrule an author's `classDef fill:#f9f` and
+  Mermaid's non-default themes. So the table names the chromatic half of
+  Mermaid's default palette by role (`#ececff` → `--mz-shape-fill`, `#9370db`
+  → `--mz-accent1`, `#aaaa33` → `--mz-accent2`, `#ffffde`/`#fff5ad` →
+  `--mz-surface`), the greys and whites are classified by lightness *and by
+  whether they fill or stroke* — the same grey is a panel in one and a rule in
+  the other — and anything chromatic that is not in the table is left exactly
+  as written. Each rewrite keeps the original as the `var()` fallback, so a
+  theme missing a token renders Mermaid's way rather than blank.
+- **No sample deck could carry the example.** `golden.rs` asserts every deck
+  in `examples/` is warning-free, and a `mermaid` fence warns on any machine
+  without mermaid-cli — which is CI. Weakening that assertion to make room
+  would trade a real quality signal for a demo, and making a sample deck's
+  warning-freedom depend on what is installed on the machine is worse than
+  either. The example lives in `docs/syntax.md` and the syntax card instead,
+  and `examples/*.md` and the golden snapshots are untouched. It can move into
+  `04-components.md` the day CI installs mermaid-cli.
+
+Two deliberate deviations from the brief's wording. There is **no `--mmdc`
+flag**, only `MIRZAM_MMDC` and the name on `PATH`: `--chromium` exists because
+`export pdf` and `check` are the only two commands that need a browser, while
+a diagram renderer is wanted by `build`, `serve`, `export` and `check` alike
+and would have to be threaded through `build_deck` to all four — an
+environment variable says the same thing about the machine without the
+plumbing. And `foreignObject` is **kept**, not stripped: Mermaid puts its
+labels there, so dropping the element deletes the diagram's words. Scripts,
+`on*` handlers and `javascript:` URLs are removed wherever they appear,
+including inside it.
+
+**Not verified here, and worth knowing:** this machine has no `mmdc`, so every
+test drives a fake renderer returning a canned Mermaid-shaped SVG. The colour
+table, the id rewrite and the root-attribute rewrite are all checked against
+that canned document rather than against real `mmdc` output — the shapes are
+taken from Mermaid's `theme-default`, and the first person to build a deck
+with mermaid-cli installed should look at the diagram in both modes before
+trusting the palette mapping. The `mmdc` invocation itself
+(`--input/--output/--backgroundColor transparent/--quiet`) has never been run.
 
 The [market survey](reports/2026-08-market-survey.md)'s P1. Diagrams-as-code
 became table stakes the day GitHub rendered Mermaid natively; Marp made it a
@@ -1427,10 +1492,9 @@ non-negotiable 1.
 Stops at: Mermaid. D2 arrives through the same trait once the shape is proven,
 and is not part of this stream.
 
-**Contention.** `crates/mirzam-cli/tests/snapshots/*.html` (a new fence in
-`examples/04-components.md` rewrites them), `docs/syntax.md`, `docs/llms.md`.
-Overlaps W22 in the snapshots and in `docs/llms.md`; W22 lands first and this
-one regenerates.
+**Contention.** `docs/syntax.md`, `docs/llms.md`. The snapshots were expected
+to move and did not, for the reason above: no sample deck gained a fence, so
+`crates/mirzam-cli/tests/snapshots/*.html` is byte-identical.
 
 ## W5 — Typst-flavoured math ✅
 

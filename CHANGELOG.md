@@ -49,6 +49,21 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   deck.md -o shots` writes one PNG per slide, in the resting state a reader
   ends on rather than mid-animation. It shares its browser plumbing with the
   layout checker and the gallery.
+- **Mermaid diagrams, drawn while the deck builds.** A ```mermaid fence inside
+  a pane becomes inline SVG — flowchart, sequence, state, whatever Mermaid
+  draws — sized by the pane it sits in the way a chart is, and **coloured in
+  the deck's own theme**: Mermaid's palette is mapped onto the `--mz-*` tokens,
+  so a diagram follows the deck into dark mode instead of staying white when
+  the reader presses `D`. A colour you set yourself stays yours.
+
+  It needs mermaid-cli (`npm install -g @mermaid-js/mermaid-cli`), which
+  Mirzam does not ship and does not require: no `mmdc` on `PATH` — or named by
+  `MIRZAM_MMDC` — and the fence renders as a code block **and the build says
+  so**, as a `build.mermaid` warning, rather than quietly shipping a diagram
+  as source code. `build` still needs no browser. And the fallback is the one
+  place Mirzam's plain-Markdown promise pays a dividend rather than a tax:
+  GitHub draws a ```mermaid fence as a diagram itself, so the deck's source
+  shows the picture even where Mirzam did not.
 - **A pane can balance its content across columns.** `columns=2` (up to 6) on
   a `::: pane` splits the pane's content by amount: a list of ten short items
   becomes five and five instead of running down the left edge with the right

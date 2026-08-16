@@ -11,6 +11,7 @@ mod connect;
 mod effects;
 mod inline;
 mod json;
+mod mermaid;
 mod shapes;
 mod source;
 mod theme;
@@ -22,6 +23,7 @@ pub use cite::mark as mark_citations;
 pub use cite::resolve_deck as resolve_citations;
 pub use code::{highlight as highlight_code, TOKEN_CLASSES};
 pub use inline::{parse_attrs, preprocess, preprocess_math, render_markdown, render_math};
+pub use mermaid::DiagramRenderer;
 pub use mirzam_cite::{Bibliography, CiteStyle};
 pub use mirzam_core::MathDialect;
 pub use source::DeckSource;
@@ -303,6 +305,21 @@ pub struct RenderedSlide {
     pub assets: Vec<std::path::PathBuf>,
 }
 
+/// What a slide render needs from whoever is hosting it: the two jobs a core
+/// crate may not do for itself, because the WebAssembly build can do neither.
+///
+/// Reading a file and running a program are the same kind of favour asked in
+/// two ways, so they travel together rather than as a growing list of
+/// parameters through every function between here and the pane that needs
+/// them. `diagrams` is `None` for a host with no diagram renderer — which is
+/// every browser build, and any machine without `mmdc` — and that is the state
+/// a `mermaid` fence degrades to a code block in.
+#[derive(Clone, Copy)]
+struct Host<'a> {
+    assets: &'a dyn AssetSource,
+    diagrams: Option<&'a dyn DiagramRenderer>,
+}
+
 /// Renders one slide to `<section>` HTML; this is the unit `serve` updates.
 /// Assets are resolved from the filesystem. `ctx` carries the deck's own
 /// settings, which a slide cannot see from its text — see [`DeckContext`].
@@ -310,30 +327,35 @@ pub fn render_slide_html(
     slide: &SlideSource,
     index: usize,
     asset_dir: &Path,
+    diagrams: Option<&dyn DiagramRenderer>,
     ctx: &DeckContext,
 ) -> RenderedSlide {
-    render_slide_html_with(slide, index, &assets::FsAssets(asset_dir), ctx)
+    render_slide_html_with(slide, index, &assets::FsAssets(asset_dir), diagrams, ctx)
 }
 
 /// Variant with pluggable asset resolution; WASM hosts inject their own table.
+///
+/// `diagrams` is the same arrangement one step further out: the renderer for
+/// `mermaid` blocks arrives from the host or does not arrive at all. Passing
+/// `None` is not an error — it is what the browser build does, and every
+/// `mermaid` fence then renders as the code block a plain CommonMark parser
+/// would have made, with a warning saying so.
 pub fn render_slide_html_with(
     slide: &SlideSource,
     index: usize,
     asset_source: &dyn AssetSource,
+    diagrams: Option<&dyn DiagramRenderer>,
     ctx: &DeckContext,
 ) -> RenderedSlide {
     let mut warnings = Vec::new();
     let mut assets_used = Vec::new();
+    let host = Host {
+        assets: asset_source,
+        diagrams,
+    };
     // Charts are rendered first: they may pull in CSV data through the same
     // asset source, and their SVG output must not be scanned for asset URLs.
-    let html = render_slide(
-        slide,
-        index,
-        &mut warnings,
-        asset_source,
-        &mut assets_used,
-        ctx,
-    );
+    let html = render_slide(slide, index, &mut warnings, host, &mut assets_used, ctx);
     let html = assets::embed_assets(&html, asset_source, &mut warnings, &mut assets_used);
     RenderedSlide {
         html,
@@ -868,6 +890,10 @@ section.slide {{ width: {w}px; height: {h}px; }}
 
 /// Renders a whole deck to a single HTML file.
 /// `asset_dir` is the base directory for relative asset paths.
+///
+/// No diagram renderer: this is the one-call convenience, and finding one is
+/// the host's job. `mirzam build` assembles a deck slide by slide through
+/// [`render_slide_html`] instead, and passes the renderer it found there.
 pub fn render_deck(meta: &DeckMeta, slides: &[SlideSource], asset_dir: &Path) -> RenderResult {
     let mut warnings = Vec::new();
     warnings.extend(theme_warnings(meta));
@@ -880,7 +906,7 @@ pub fn render_deck(meta: &DeckMeta, slides: &[SlideSource], asset_dir: &Path) ->
     warnings.extend(ctx.warnings());
     let mut sections = Vec::with_capacity(slides.len());
     for (i, slide) in slides.iter().enumerate() {
-        let rendered = render_slide_html(slide, i, asset_dir, &ctx);
+        let rendered = render_slide_html(slide, i, asset_dir, None, &ctx);
         warnings.extend(rendered.warnings);
         sections.push(rendered.html);
     }
@@ -894,7 +920,7 @@ fn render_slide(
     slide: &SlideSource,
     index: usize,
     warnings: &mut Vec<String>,
-    asset_source: &dyn AssetSource,
+    host: Host<'_>,
     chart_files: &mut Vec<std::path::PathBuf>,
     ctx: &DeckContext,
 ) -> String {
@@ -950,7 +976,8 @@ fn render_slide(
             slide,
             index,
             &mut errors,
-            asset_source,
+            warnings,
+            host,
             chart_files,
             ctx,
             &mut pane_shapes,
@@ -959,7 +986,8 @@ fn render_slide(
             slide,
             index,
             &mut errors,
-            asset_source,
+            warnings,
+            host,
             chart_files,
             ctx,
             &mut pane_shapes,
@@ -1295,15 +1323,22 @@ fn footnote_ref_regex() -> &'static Regex {
     RE.get_or_init(|| Regex::new(r"\[\^([A-Za-z0-9_-]+)\]").expect("static regex"))
 }
 
-// Out-channels (errors, chart files, pane shapes) are parameters by design,
-// like the syntax crate's slide walker.
+// Out-channels (errors, warnings, chart files, pane shapes) are parameters by
+// design, like the syntax crate's slide walker.
+//
+// `errors` and `warnings` are two channels rather than one because they end
+// differently: an error is also drawn on the slide as a red `⚠` box, which is
+// right for a `chart` block whose YAML does not parse and wrong for a
+// `mermaid` fence on a machine with no renderer — that deck is correct and
+// still has to be presentable.
 #[allow(clippy::too_many_arguments)]
 fn render_grid_slide(
     grid: &GridSpec,
     slide: &SlideSource,
     index: usize,
     errors: &mut Vec<String>,
-    asset_source: &dyn AssetSource,
+    warnings: &mut Vec<String>,
+    host: Host<'_>,
     chart_files: &mut Vec<std::path::PathBuf>,
     ctx: &DeckContext,
     pane_shapes: &mut Vec<(mirzam_shape::Frame, String)>,
@@ -1372,6 +1407,12 @@ fn render_grid_slide(
             content
         };
         let (content, chart_blocks) = charts::extract(&content);
+        // A `mermaid` fence takes the chart path, not the shape path: the SVG
+        // the host hands back carries its own `viewBox` and scales to the box
+        // it lands in, so nothing about it belongs in the pane arithmetic
+        // below. A fence the host could not draw is left in the Markdown and
+        // becomes an ordinary code block a few lines further down.
+        let (content, mermaid_blocks) = mermaid::extract(&content, index, host.diagrams, warnings);
         // A shape fence in a pane draws in the pane's coordinate space. The
         // pane's rectangle is computed here — the name is from the grid, so
         // the rect always resolves — and a `.bleed` pane's frame runs out to
@@ -1412,9 +1453,12 @@ fn render_grid_slide(
         let mut body = render_markdown(&preprocess_math(&content, ctx.math));
         if !chart_blocks.is_empty() {
             let (with_charts, files) =
-                charts::render_charts_in(&body, &chart_blocks, index, asset_source, errors);
+                charts::render_charts_in(&body, &chart_blocks, index, host.assets, errors);
             body = with_charts;
             chart_files.extend(files);
+        }
+        if !mermaid_blocks.is_empty() {
+            body = mermaid::render_in(&body, &mermaid_blocks);
         }
         let body = columns_wrap(body, &attrs, index, name, errors);
         let bg = background_layers(&attrs, errors);
@@ -1660,11 +1704,13 @@ fn escape_attr(v: &str) -> String {
         .replace('>', "&gt;")
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_single_pane_slide(
     slide: &SlideSource,
     index: usize,
     errors: &mut Vec<String>,
-    asset_source: &dyn AssetSource,
+    warnings: &mut Vec<String>,
+    host: Host<'_>,
     chart_files: &mut Vec<std::path::PathBuf>,
     ctx: &DeckContext,
     pane_shapes: &mut Vec<(mirzam_shape::Frame, String)>,
@@ -1683,13 +1729,17 @@ fn render_single_pane_slide(
         content
     };
     let (content, chart_blocks) = charts::extract(&content);
+    let (content, mermaid_blocks) = mermaid::extract(&content, index, host.diagrams, warnings);
     let (content, shape_srcs) = shapes::extract(&content);
     let mut body = render_markdown(&preprocess_math(&content, ctx.math));
     if !chart_blocks.is_empty() {
         let (with_charts, files) =
-            charts::render_charts_in(&body, &chart_blocks, index, asset_source, errors);
+            charts::render_charts_in(&body, &chart_blocks, index, host.assets, errors);
         body = with_charts;
         chart_files.extend(files);
+    }
+    if !mermaid_blocks.is_empty() {
+        body = mermaid::render_in(&body, &mermaid_blocks);
     }
     // Without a layout there is a single pane, so the first `::: pane` block that
     // asks for a background dresses the whole slide.
@@ -1759,6 +1809,100 @@ fn render_single_pane_slide(
 mod tests {
     use super::*;
     use mirzam_syntax::parse_slide;
+
+    /// A diagram renderer that never runs anything, so the whole slide path
+    /// through a `mermaid` fence is exercised on a machine with no `mmdc`.
+    /// It records nothing and answers the same SVG every time; what is under
+    /// test here is the *injection*, not Mermaid.
+    struct FakeDiagrams;
+
+    impl DiagramRenderer for FakeDiagrams {
+        fn render(&self, source: &str) -> Result<String, String> {
+            assert!(source.contains("flowchart"), "the fence body arrives whole");
+            Ok(concat!(
+                r#"<svg id="my-svg" width="400" height="120" viewBox="0 0 400 120""#,
+                r#" xmlns="http://www.w3.org/2000/svg">"#,
+                r##"<rect fill="#ECECFF" stroke="#9370DB"/>"##,
+                r##"<text fill="#333">Ingest</text></svg>"##,
+            )
+            .to_string())
+        }
+    }
+
+    const FENCE: &str = "```mermaid\nflowchart LR\n  a --> b\n```\n";
+
+    /// The trait is the whole seam: give the renderer and the fence becomes a
+    /// diagram, in a pane on a grid like anything else in a pane.
+    #[test]
+    fn an_injected_renderer_turns_a_mermaid_fence_into_inline_svg() {
+        let slide = parse_slide(&format!(
+            "```pane\n+---+---+\n| a | b |\n+---+---+\n```\n\n::: pane a\n{FENCE}:::\n\n\
+             ::: pane b\nwords\n:::\n"
+        ));
+        let out = render_slide_html(
+            &slide,
+            0,
+            Path::new("."),
+            Some(&FakeDiagrams),
+            &DeckContext::default(),
+        );
+        assert!(out.warnings.is_empty(), "{:?}", out.warnings);
+        assert!(
+            out.html.contains("<div class=\"mz-mermaid\">"),
+            "{}",
+            out.html
+        );
+        assert!(
+            out.html.contains("class=\"mz-mermaid-svg\""),
+            "{}",
+            out.html
+        );
+        // Sized by the pane, coloured by the deck, and named for this slide.
+        assert!(!out.html.contains("width=\"400\""), "{}", out.html);
+        assert!(out.html.contains("var(--mz-shape-fill,"), "{}", out.html);
+        assert!(out.html.contains("id=\"mz-mermaid-1-1\""), "{}", out.html);
+        // And it is a diagram, not a listing.
+        assert!(!out.html.contains("language-mermaid"), "{}", out.html);
+    }
+
+    /// The same fence with no renderer: the code block a plain CommonMark
+    /// parser would have made, and a warning saying that is what happened.
+    #[test]
+    fn without_a_renderer_a_mermaid_fence_is_a_code_block_and_a_warning() {
+        let slide = parse_slide(FENCE);
+        let out = render_slide_html(&slide, 0, Path::new("."), None, &DeckContext::default());
+        assert!(
+            out.html.contains("<code class=\"language-mermaid\">"),
+            "{}",
+            out.html
+        );
+        assert!(out.html.contains("flowchart LR"), "{}", out.html);
+        // A warning, never an error: no red box goes on a deck that is correct.
+        assert!(!out.html.contains("mz-error"), "{}", out.html);
+        assert_eq!(out.warnings.len(), 1, "{:?}", out.warnings);
+        assert!(
+            out.warnings[0].starts_with("slide 1: mermaid: "),
+            "{:?}",
+            out.warnings
+        );
+    }
+
+    /// Two diagrams on one slide must not share a stylesheet scope, and
+    /// `mmdc` gives every run the same root id.
+    #[test]
+    fn two_diagrams_on_a_slide_get_ids_of_their_own() {
+        let slide = parse_slide(&format!("{FENCE}\ntext between\n\n{FENCE}"));
+        let out = render_slide_html(
+            &slide,
+            3,
+            Path::new("."),
+            Some(&FakeDiagrams),
+            &DeckContext::default(),
+        );
+        assert!(out.html.contains("id=\"mz-mermaid-4-1\""), "{}", out.html);
+        assert!(out.html.contains("id=\"mz-mermaid-4-2\""), "{}", out.html);
+        assert!(!out.html.contains("my-svg"), "{}", out.html);
+    }
 
     #[test]
     fn renders_grid_slide() {
@@ -2948,6 +3092,7 @@ mod tests {
             &parse_slide("a\n"),
             0,
             Path::new("."),
+            None,
             &DeckContext::new(&meta, 1),
         );
         let page = assemble_print_page(&meta, &[section.html], &[]);

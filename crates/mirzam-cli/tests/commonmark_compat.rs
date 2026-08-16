@@ -24,6 +24,9 @@ fn sample_block(kind: &str) -> &'static str {
         "anim" => "[enter] .title : fade-in 400ms\n",
         "annotate" => "target: fig\ncircle 40,30 20x20 : label=\"here\"\n",
         "chart" => "type: bar\ndata: |\n  k, v\n  a, 1\n",
+        // The one form a plain parser reads *better* than Mirzam does when no
+        // renderer is around: GitHub draws this fence as a diagram itself.
+        "mermaid" => "flowchart LR\n  ingest --> store --> serve\n",
         "effects" => "1 : flash\n",
         "toc" => "from: 2\ndepth: 3\n",
         "bibliography" => "show: cited\nback: true\n",

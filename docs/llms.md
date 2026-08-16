@@ -20,8 +20,8 @@ author a slide.
    Rewrap the sentence.
 2. **`shape`, `pane`, `connect`, `annotate`, `effects`, `anim` only parse at
    slide top level** — never inside `::: pane`. Inside a pane the fence is
-   ordinary Markdown and renders as a code block. Only `chart`, `toc` and
-   `bibliography` belong inside a pane.
+   ordinary Markdown and renders as a code block. Only `chart`, `mermaid`,
+   `toc` and `bibliography` belong inside a pane.
 3. **A footnote definition must be on the slide that cites it.** `[^k]` with
    its `[^k]:` on another slide stays literal text. For a source cited from
    several slides use `[@key]` + `bibliography:` instead.
@@ -222,6 +222,26 @@ First column is categories, every other column a series. `data:` may instead
 name a `.csv` file. Each mark gets the id `<chart-id>-<series>-<row>`, so
 `#latency-0-1` is the second bar of the first series — that is what an arrow or
 an annotation points at.
+
+## `mermaid` — inside a pane
+
+````markdown
+```mermaid
+flowchart LR
+  ingest[Ingest] --> queue[(Queue)] --> worker[Worker]
+```
+````
+
+Drawn at build time and inlined as SVG, so the deck stays one file. Any
+Mermaid diagram type works. Its colours are rewritten to the deck's `--mz-*`
+tokens, so the diagram follows the theme and its dark mode; a colour you set
+yourself (`classDef fill:#f9f`) is left alone.
+
+**It needs `mmdc`** — `npm install -g @mermaid-js/mermaid-cli`, or
+`MIRZAM_MMDC=/path/to/mmdc`. Without one the fence renders as a code block and
+the build warns, kind `build.mermaid`. That is not a silent fallback: fix it by
+installing mermaid-cli, or accept it deliberately — GitHub draws a ```mermaid
+fence as a diagram itself, so the source still shows the picture.
 
 ## `shape` — page or pane coordinates
 

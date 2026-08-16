@@ -23,6 +23,10 @@ instead, and hand the rendering to the person.
    (`![[section.md]]`), `data:` pointing at a `.csv`, and `theme:` pointing at
    a `.css` all need a filesystem, and the browser editor has none either.
    Inline the CSV inside the `chart` block and name a built-in in `theme:`.
+   A `mermaid` fence is the same kind of limit one step further: drawing it
+   runs an external program, so the browser editor shows the fence as a code
+   block. Write it anyway when a diagram is what the slide needs — GitHub
+   draws it, and the CLI draws it wherever mermaid-cli is installed.
 3. **Be conservative about fit.** Nothing here measures a slide, so leave room:
    one idea per pane, short lines, no ten-paragraph pane under a one-line band.
    A pane clips silently what does not fit in it.
