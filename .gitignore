@@ -5,3 +5,9 @@ node_modules/
 *.log
 pkg/
 *.vsix
+# The demo recordings. The GIF beside them is committed, because the README has
+# to show it and GitHub renders a repository file; the webm it was made from is
+# the intermediate, and a lossless copy of the same twenty seconds is not worth
+# a megabyte and a half in every clone.
+media/*.webm
+media/*.mp4

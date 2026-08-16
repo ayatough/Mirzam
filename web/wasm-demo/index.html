@@ -160,6 +160,10 @@ const renderer = new Renderer();
 // undo that every reload.
 const saved = localStorage.getItem('mirzam-src');
 srcEl.value = saved === null ? SAMPLE : saved;
+// Setting `.value` leaves the caret at the *end* of the text, and the preview
+// follows the caret - so without this the editor opens on the last slide of
+// whatever was loaded, which is nobody's idea of where a deck starts.
+srcEl.setSelectionRange(0, 0);
 
 // ---- Files ----
 // Everything the core reads by name that is not a picture: the stylesheets
@@ -258,6 +262,7 @@ function fullRender(text) {
   renderer.reset();
   renderer.render_changed(text);
   report(t0, out.slide_count, 'full', JSON.parse(out.warnings));
+  revealWhenLoaded();
 }
 
 function update(text) {
@@ -276,6 +281,9 @@ function update(text) {
     doc.defaultView.__mirzamRefresh();
   }
   report(t0, res.count, `${res.changes.length} changed`, res.warnings);
+  // The cursor has not moved, but the slide under it may have: typing a `---`
+  // above it makes the text around the caret a different page.
+  reveal();
 }
 
 function report(t0, count, kind, warnings) {
@@ -284,11 +292,62 @@ function report(t0, count, kind, warnings) {
   warnEl.textContent = (warnings || []).join(' / ');
 }
 
+// ---- The preview follows the cursor ----
+// Typing on the fourth slide and watching the first is not an edit loop; it is
+// two windows that happen to share a file. Everything past the opening slide
+// was being written blind here - you typed a pane grid and the preview went on
+// showing the title.
+//
+// The core has answered this question since the source map landed:
+// `slide_at_offset` is the call the VS Code preview makes on every cursor
+// move, and this editor simply never asked it. It asks now, on every render
+// and on every deliberate move of the caret, so what is under the cursor is
+// what is on screen - and a `---` typed *above* the cursor carries the preview
+// along with it, because the answer is recomputed rather than remembered.
+//
+// The offset goes in as **bytes**: that is what the core indexes its source map
+// by, while a textarea counts UTF-16 code units. The two agree until the first
+// non-Latin character and then drift by one per character, which for a
+// Japanese deck is every character.
+function reveal() {
+  const win = preview.contentWindow;
+  if (!win || !win.__mirzamGoto || !srcEl.value.trim()) return;
+  const at = new TextEncoder().encode(srcEl.value.slice(0, srcEl.selectionStart)).length;
+  try {
+    win.__mirzamGoto(renderer.slide_at_offset(srcEl.value, at, ''));
+  } catch (e) {
+    // The preview is mid-reload, or the source does not parse yet. Either way
+    // the next render calls through here again.
+  }
+}
+
+// A full render replaces the iframe's whole document, so the jump has to wait
+// for the new one - and also happen at once, because the document may already
+// be there when this runs.
+function revealWhenLoaded() {
+  preview.addEventListener('load', reveal, { once: true });
+  reveal();
+}
+
 let timer;
 srcEl.addEventListener('input', () => {
   localStorage.setItem('mirzam-src', srcEl.value);
   clearTimeout(timer);
   timer = setTimeout(() => update(srcEl.value), 120);
+});
+
+// Moving the caret without typing - clicking into a slide, arrowing up through
+// the deck - is a navigation, and the preview should follow it. Debounced by
+// the same 120 ms the render is: `slide_at_offset` re-splits the document, so
+// holding an arrow key down should not ask it once per repeat.
+let revealTimer;
+const revealSoon = () => {
+  clearTimeout(revealTimer);
+  revealTimer = setTimeout(reveal, 120);
+};
+srcEl.addEventListener('click', revealSoon);
+srcEl.addEventListener('keyup', (e) => {
+  if (/^(Arrow|Page)/.test(e.key) || e.key === 'Home' || e.key === 'End') revealSoon();
 });
 
 // ---- Getting work in and out ----
@@ -341,6 +400,8 @@ document.getElementById('open').addEventListener('change', async (e) => {
   if (!file) return;
   srcEl.value = await file.text();
   localStorage.setItem('mirzam-src', srcEl.value);
+  // A deck that has just been opened is read from the top, not the bottom.
+  srcEl.setSelectionRange(0, 0);
   fullRender(srcEl.value);
   e.target.value = '';
 });
