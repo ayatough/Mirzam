@@ -389,7 +389,14 @@ impl Renderer {
             .enumerate()
             .map(|(i, src)| {
                 let slide = mirzam_syntax::parse_slide(src);
-                let out = mirzam_render::render_slide_html_with(&slide, i, &assets, &ctx);
+                // No diagram renderer, and there cannot be one: drawing a
+                // Mermaid diagram means running a program, which is the same
+                // thing this build cannot do that reading a file is. Every
+                // `mermaid` fence is therefore a code block here, and the
+                // build says so — which is honest, and is what the editor's
+                // preview should show a person whose published deck will be
+                // built by a CLI that may or may not have `mmdc`.
+                let out = mirzam_render::render_slide_html_with(&slide, i, &assets, None, &ctx);
                 warnings.extend(out.warnings);
                 out.html
             })

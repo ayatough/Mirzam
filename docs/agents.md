@@ -136,6 +136,7 @@ what each one does to the slide.
 | `build.anim` | An `anim` block, its targets, its triggers and its splits |
 | `build.effects` | An `effects` block and its key bindings |
 | `build.chart` | A `chart` block, its data file or its CSV |
+| `build.mermaid` | A `mermaid` block that was not drawn — no renderer installed, or `mmdc` rejected the diagram. The fence is on the slide as a code block; install mermaid-cli, or set `MIRZAM_MMDC` |
 | `build.toc` | A `toc` block |
 | `build.footnote` | A `[^key]` with no definition on its slide |
 | `build.bibliography` | `bibliography:`, `[@key]`, and the `bibliography` block |

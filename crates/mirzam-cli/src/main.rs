@@ -326,7 +326,11 @@ Usage:
   new     write a deck to start from - frontmatter, a title slide and a
           slide break - or, with --empty, a blank file to type into.
           An existing file is never overwritten
-  build   write <out_dir>/index.html, a single file with the viewer embedded
+  build   write <out_dir>/index.html, a single file with the viewer embedded.
+          A ```mermaid fence is drawn at build time if mermaid-cli is
+          installed - `mmdc` on PATH, or MIRZAM_MMDC pointing at it. Without
+          one the fence stays a code block and the build says so; no browser
+          is ever required for an ordinary build
   serve   development server with hot reload (default port 4321)
   export  render a PDF with headless Chromium (also honors MIRZAM_CHROMIUM).
           Takes a Markdown source, not a built `out/index.html` - re-parsing

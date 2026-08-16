@@ -30,6 +30,7 @@ This file runs long; jump straight to the one you need.
 | [Layout](#layout) | The `pane` grid and `::: pane` — see also the dedicated [layout guide](layout.md) |
 | [Inline syntax](#inline-syntax) | Plain CommonMark on a slide, headings, `{#id .class}` attributes, the marks a slide reaches for (`==highlight==`, term lists, …), syntax-highlighted code, variables, transclusion |
 | [Charts](#charts) | The `chart` block: types, CSV data, per-mark ids for `connect` |
+| [Mermaid diagrams](#mermaid-diagrams) | The `mermaid` block: drawn at build time by `mmdc`, coloured in the deck's tokens, a code block when no renderer is installed |
 | [Shapes](#shapes) | The `shape` block — page coordinates at slide top level, pane coordinates inside a `::: pane` |
 | [Connectors](#connectors) | The `connect` block: arrows between text anchors, shapes and chart marks |
 | [When a slide has too much on it](#when-a-slide-has-too-much-on-it) | `--fit shrink`, `<!-- next -->`, and when to just make another pane |
@@ -822,6 +823,65 @@ Each mark gets an id of the form `<chart-id>-<series>-<row>`, so the second bar 
 the first series above is `#latency-0-1`. That is what makes it possible to point
 an arrow at one bar. For a bar chart the id names a group holding the bar *and*
 its value label, so animating a mark moves the number with the bar.
+
+## Mermaid diagrams
+
+A ```mermaid fence is drawn at build time and inlined as SVG, so the deck stays
+one self-contained file and no diagram library ships to the browser.
+
+````markdown
+```mermaid
+flowchart LR
+  ingest[Ingest] --> queue[(Queue)]
+  queue --> worker[Worker]
+  worker --> store[(Store)]
+```
+````
+
+It goes **inside a pane**, like a chart and unlike a shape: the diagram carries
+its own aspect and scales to fit the box it lands in, so moving the pane moves
+the diagram with no coordinates to keep in step. Every Mermaid diagram type its
+renderer supports works — flowcharts, sequence diagrams, state diagrams, class
+diagrams, Gantt.
+
+**The colours are the deck's, not Mermaid's.** Mermaid's default palette is
+mapped onto the same `--mz-*` tokens everything else on the slide uses, so a
+diagram takes the deck's theme and follows it into dark mode when the reader
+presses `D`. A colour you set yourself — a `classDef fill:#f9f`, or one of
+Mermaid's other themes — is left exactly as you wrote it, because that is a
+decision, not a default.
+
+### What it needs, and what happens without it
+
+Drawing Mermaid needs [mermaid-cli], which is a Node program and not part of
+Mirzam:
+
+```bash
+npm install -g @mermaid-js/mermaid-cli    # provides `mmdc`
+```
+
+Mirzam uses `mmdc` if it is on `PATH`, or wherever `MIRZAM_MMDC` points. It
+never needs a browser for this — `export pdf` and `check` drive Chromium, an
+ordinary `build` still does not.
+
+**Without a renderer the fence renders as a code block, and the build says
+so**, as a warning carrying the kind `build.mermaid`:
+
+```
+⚠ slide 4: mermaid: no diagram renderer found, so the block is shown as code; …
+```
+
+That is deliberately loud. A deck that quietly shipped its diagram as source
+code would look finished and not be, so the degradation is always announced —
+and `mirzam build --strict` fails on it, for a CI job that must not publish
+one.
+
+The degradation is also the one place where Mirzam's plain-Markdown fallback
+reads *better* than the fallback: **GitHub renders a ```mermaid fence as a
+diagram itself**, so the deck's source shows the picture even where Mirzam did
+not draw one.
+
+[mermaid-cli]: https://github.com/mermaid-js/mermaid-cli
 
 ## Shapes
 

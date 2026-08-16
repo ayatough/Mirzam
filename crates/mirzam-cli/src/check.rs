@@ -306,7 +306,13 @@ impl LineIndex {
 /// added here.
 fn build_kind(message: &str) -> &'static str {
     const TABLE: &[(&str, &str)] = &[
-        // First, and matched on two words: the message carries a filesystem
+        // First, because this is the one message that quotes another program:
+        // `mmdc` says "flowchart", which contains `chart`, and it is free to
+        // say anything else on this list too. Classifying it before the table
+        // can misread it is cheaper than teaching every other needle about a
+        // tool Mirzam does not control.
+        ("mermaid:", "build.mermaid"),
+        // Then, and matched on two words: the message carries a filesystem
         // path, and a deck living under `charts/` must not be classified by
         // somebody's directory name.
         ("skill card", "build.skill"),
@@ -576,6 +582,18 @@ mod tests {
                 "build.effects",
             ),
             ("slide 2: chart: cannot parse block: type", "build.chart"),
+            (
+                "slide 2: mermaid: no diagram renderer found, so the block is shown as code",
+                "build.mermaid",
+            ),
+            // The reason `mermaid:` is matched before `chart`: an external
+            // tool's own words come through in this message, and Mermaid's
+            // vocabulary contains half of Mirzam's.
+            (
+                "slide 3: mermaid: mmdc failed (exit status: 1): Parse error on line 2 \
+                 of the flowchart",
+                "build.mermaid",
+            ),
             ("slide 1: pane `x` is not in the layout", "build.layout"),
             ("toc: unknown key `bogus`", "build.toc"),
             ("bibliography: nothing to list", "build.bibliography"),

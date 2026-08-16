@@ -147,6 +147,8 @@ since it changes how urgent the fix is:
 | shape line N: … (unknown kind, bad `at()`/`size()`, unclosed paren, unknown id) | Shape | Malformed top-level `shape` DSL | Shown on the slide too |
 | connect line N: … (missing operator, endpoint not written as `#id`) | Connectors | Malformed `connect` DSL line | Shown on the slide too |
 | chart: cannot parse block / cannot read data file / no data rows / row-level CSV errors | Charts | Malformed `chart` YAML, an unreadable `data:` file, or bad CSV | Shown on the slide too |
+| slide N: mermaid: no diagram renderer found, so the block is shown as code | Diagrams | No mermaid-cli on this machine — `npm install -g @mermaid-js/mermaid-cli`, or set `MIRZAM_MMDC` | Note only — the fence renders as a code block, which is what GitHub draws as a diagram anyway |
+| slide N: mermaid: mmdc failed (…) | Diagrams | The renderer is installed and rejected the diagram — the message quotes its first line | Note only — the fence renders as a code block, with the diagram's source intact |
 | anim line N: … (missing target, bad step number, unknown ease, …) | Animations | Malformed `anim` DSL — the message names the exact problem | Whole `anim` block dropped |
 | anim target "…" matches nothing on this slide / anim trigger references an id that doesn't exist | Animations | Target or `[after #id]` doesn't resolve | Whole `anim` block dropped |
 | cannot split … / a target is split by more than one track | Animations | `target.split` used on the whole slide, on something with no closing tag, or twice on one element | Whole `anim` block dropped |
