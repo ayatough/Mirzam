@@ -29,6 +29,17 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   states that are each already final, the PDF still has two ordinary pages and
   a reader without JavaScript still sees two finished slides.
 
+### Fixed
+- **Saving an annotated slide under `mirzam serve` no longer wipes its
+  annotations.** Hot reload replaces the edited slide's markup in place, which
+  also replaced the overlay the circles and arrows were drawn into — the
+  overlay the runtime was still holding a reference to. Every mark on that
+  slide disappeared, and stayed gone until the page was reloaded by hand: the
+  one slide you were working on was the one slide that stopped showing what you
+  were working on. The overlay now re-mounts itself as part of the redraw, so a
+  patched slide comes back with its marks, and a slide that gains an `annotate`
+  block gets one without a reload.
+
 ## [0.7.0] - 2026-08-16
 
 ### Removed

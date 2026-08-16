@@ -282,10 +282,37 @@
     overlay.className = 'mz-annot-layer';
     overlay.appendChild(svgEl('svg', { preserveAspectRatio: 'none' }));
     sec.appendChild(overlay);
-    return { sec, target, items, overlay };
+    return { script, sec, target, items, overlay };
   }
 
   const layers = [];
+
+  // Anything that changes a layer's geometry has to re-measure it. Attached
+  // per layer rather than once, because a layer mounted by a live-reload patch
+  // needs the same wiring the first paint gave the others.
+  function watch(l) {
+    if (l.target.tagName === 'IMG' && !l.target.complete) l.target.addEventListener('load', refresh);
+    new ResizeObserver(refresh).observe(l.target);
+  }
+
+  // A live-reload patch replaces a whole `<section>`, overlay and all, so the
+  // layers held here can outlive the page they were measured against: the
+  // marks would then be drawn into a detached overlay, and the slide the
+  // author is looking at would lose every annotation on it until a full
+  // reload. Reconciling at the top of every refresh is what makes one entry
+  // point serve the first paint and every patch after it — a section that is
+  // no longer in the document is dropped, and a block with no layer is
+  // mounted, whether it is new or replaced.
+  function sync() {
+    for (let i = layers.length - 1; i >= 0; i--) {
+      if (!layers[i].script.isConnected) layers.splice(i, 1);
+    }
+    for (const script of document.querySelectorAll('script.mz-annot')) {
+      if (layers.some((l) => l.script === script)) continue;
+      const l = mount(script);
+      if (l) { layers.push(l); watch(l); }
+    }
+  }
 
   // How far through the slide's clicks we are. `Infinity` until a viewer says
   // otherwise, so a page with no viewer — the PDF export above all — shows
@@ -294,6 +321,7 @@
   const stepOn = (sec) => (steps.has(sec) ? steps.get(sec) : Infinity);
 
   function refresh(only) {
+    sync();
     for (const l of layers) {
       if (only && l.sec !== only) continue;
       const m = metrics(l.sec);
@@ -305,21 +333,15 @@
   }
 
   function init() {
-    for (const script of document.querySelectorAll('script.mz-annot')) {
-      const l = mount(script);
-      if (l) layers.push(l);
-    }
-    if (!layers.length) return;
+    // `refresh` mounts what it finds, so the first paint is the same code
+    // path as every patch after it.
     refresh();
+    if (!layers.length) return;
     // The overlay is measured from the laid-out page, so anything that changes
     // the layout has to re-measure it: a resize, a font arriving, an image
     // decoding, or a live-reload patch.
     addEventListener('resize', refresh);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(refresh);
-    for (const l of layers) {
-      if (l.target.tagName === 'IMG' && !l.target.complete) l.target.addEventListener('load', refresh);
-      new ResizeObserver(refresh).observe(l.target);
-    }
     window.__mirzamAnnot = refresh;
   }
 

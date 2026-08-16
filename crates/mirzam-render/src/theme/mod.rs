@@ -984,6 +984,34 @@ mod tests {
         }
     }
 
+    /// A live-reload patch replaces a whole `<section>`, so an overlay mounted
+    /// once at load is an overlay drawing into a detached node afterwards —
+    /// which showed up as every mark on a slide vanishing the moment its file
+    /// was saved. The fix is that mounting happens inside `refresh` rather
+    /// than only at startup; if `init` ever goes back to filling `layers`
+    /// itself, the same bug comes back silently.
+    #[test]
+    fn the_overlay_remounts_itself_after_a_live_reload_patch() {
+        assert!(ANNOT_JS.contains("function sync()"));
+        let refresh = ANNOT_JS
+            .split("function refresh(only) {")
+            .nth(1)
+            .expect("annot.js no longer has a refresh entry point");
+        assert!(
+            refresh.trim_start().starts_with("sync();"),
+            "refresh must reconcile its layers before drawing them"
+        );
+        let init = ANNOT_JS
+            .split("function init() {")
+            .nth(1)
+            .and_then(|s| s.split("\n  }").next())
+            .unwrap_or_default();
+        assert!(
+            !init.contains("layers.push"),
+            "init mounts layers of its own again, so a patched slide keeps the stale ones"
+        );
+    }
+
     /// `crates/mirzam-cli/src/check.js` is the only thing that can see a mark
     /// that was not drawn or an element left in its entrance state, and it can
     /// only see them by asking the runtime. Both `scripts/check-layout.mjs`
