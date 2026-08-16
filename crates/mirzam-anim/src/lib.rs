@@ -29,6 +29,12 @@ pub enum Trigger {
     /// Plays `offset_ms` after another track's target id, which may be
     /// negative to start slightly before it.
     After { id: String, offset_ms: i64 },
+    /// Not a moment in the slide at all: the boundary between this slide and
+    /// the next one. The named element exists on both, and travels between the
+    /// two boxes it occupies rather than the deck turning the page under it.
+    /// Declared on the earlier slide of the pair, so one line governs the
+    /// boundary in both directions.
+    Carry,
 }
 
 /// A text-splitting granularity, applied at build time so the runtime only
@@ -124,10 +130,16 @@ const EFFECTS: &[&str] = &[
     "pop",
     "draw",
     "iris-out",
+    "move",
 ];
 
 /// Effects that travel, and so need `dir=` to say which way.
 const DIRECTIONAL: &[&str] = &["slide-in", "slide-out", "wipe-in", "wipe-out"];
+
+/// `move` is not an effect the way the others are: it has no from/to state of
+/// its own, only two boxes on two different slides. It is therefore the only
+/// effect `[carry]` accepts, and the only one every other trigger rejects.
+const CARRY_EFFECT: &str = "move";
 
 /// Named easing curves the DSL accepts, beyond `spring(...)`, each paired with
 /// the CSS easing function it lowers to. The lowering happens here rather than
@@ -225,6 +237,28 @@ pub fn to_json(doc: &AnimDoc) -> String {
         "tracks": tracks,
     })
     .to_string()
+}
+
+/// The `#id` of every carry track in a serialized [`to_json`] blob.
+///
+/// A carry is a statement about two slides, so it can only be checked once
+/// both have rendered — by which time the renderer holds HTML, not an
+/// [`AnimDoc`]. Reading it back out of the emitted blob rather than re-parsing
+/// the DSL is what lets a slide served from the build cache, which was never
+/// parsed again, take part in that check like any other. The shape being read
+/// is this module's own, so it is this module that knows it.
+pub fn carry_targets_in_json(blob: &str) -> Vec<String> {
+    let Ok(tl) = serde_json::from_str::<serde_json::Value>(blob) else {
+        return Vec::new();
+    };
+    let Some(tracks) = tl["tracks"].as_array() else {
+        return Vec::new();
+    };
+    tracks
+        .iter()
+        .filter(|t| t["trigger"]["kind"] == "carry")
+        .filter_map(|t| t["target"]["sel"].as_str().map(str::to_string))
+        .collect()
 }
 
 /// A deck-wide slide transition, from frontmatter `transition:`.
@@ -332,6 +366,7 @@ fn track_json(t: &Track) -> serde_json::Value {
         Trigger::Enter => serde_json::json!({"kind": "enter"}),
         Trigger::Click(n) => serde_json::json!({"kind": "click", "n": n}),
         Trigger::Exit => serde_json::json!({"kind": "exit"}),
+        Trigger::Carry => serde_json::json!({"kind": "carry"}),
         Trigger::After { id, offset_ms } => {
             serde_json::json!({"kind": "after", "id": id, "offset": offset_ms})
         }
@@ -442,6 +477,33 @@ fn parse_line(line: &str) -> Result<Track, String> {
             parsed.effect
         ));
     }
+    let carrying = trigger == Trigger::Carry;
+    if carrying && parsed.effect != CARRY_EFFECT {
+        return Err(format!(
+            "`[carry]` carries an element across a page turn, so its only effect is `{CARRY_EFFECT}`, not `{}`",
+            parsed.effect
+        ));
+    }
+    if !carrying && parsed.effect == CARRY_EFFECT {
+        return Err(format!(
+            "`{CARRY_EFFECT}` needs two slides to move between; write it as `[carry] {} : {CARRY_EFFECT} 450ms`",
+            target.sel
+        ));
+    }
+    if carrying {
+        // What identifies the element on the *next* slide is its id, so a
+        // carry has nowhere to go without one. A class would name a set on
+        // each side with no way to say which of them is which.
+        if !target.sel.starts_with('#') {
+            return Err(format!(
+                "`[carry]` needs a `#id`: the id is what names the same element on the next slide, got `{}`",
+                target.sel
+            ));
+        }
+        if target.split.is_some() {
+            return Err("`[carry]` moves an element, so it cannot also split its text".into());
+        }
+    }
 
     Ok(Track {
         trigger,
@@ -461,6 +523,9 @@ fn parse_trigger(s: &str) -> Result<Trigger, String> {
     }
     if s == "exit" {
         return Ok(Trigger::Exit);
+    }
+    if s == "carry" {
+        return Ok(Trigger::Carry);
     }
     if let Some(n) = s.strip_prefix("click") {
         let n = n.trim();
@@ -497,7 +562,7 @@ fn parse_trigger(s: &str) -> Result<Trigger, String> {
         });
     }
     Err(format!(
-        "unknown trigger `[{s}]`; expected enter, click N, exit or after #id"
+        "unknown trigger `[{s}]`; expected enter, click N, exit, carry or after #id"
     ))
 }
 
@@ -841,6 +906,72 @@ mod tests {
         // Named curves lower to CSS here, so the viewer can pass the value
         // straight to the Web Animations API.
         assert_eq!(track["ease"], "cubic-bezier(.33,1,.68,1)");
+    }
+
+    #[test]
+    fn carry_parses_as_its_own_trigger() {
+        let doc = parse("[carry] #chip : move 450ms ease=out-cubic\n");
+        assert!(doc.errors.is_empty(), "{:?}", doc.errors);
+        let t = &doc.tracks[0];
+        assert_eq!(t.trigger, Trigger::Carry);
+        assert_eq!(t.target.sel, "#chip");
+        assert_eq!(t.effect, "move");
+        assert_eq!(t.dur_ms, 450);
+    }
+
+    #[test]
+    fn a_carry_is_not_a_click_step() {
+        // It happens on the page turn, so it must not add a step the viewer
+        // would then wait for before turning the page.
+        let doc = parse("[carry] #chip : move 450ms\n[click 1] .a : fade-in 300ms\n");
+        assert!(doc.errors.is_empty(), "{:?}", doc.errors);
+        assert_eq!(steps(&doc), 1);
+    }
+
+    #[test]
+    fn carry_needs_an_id_not_a_class() {
+        let doc = parse("[carry] .chip : move 450ms\n");
+        assert_eq!(doc.errors.len(), 1);
+        assert!(doc.errors[0].contains("#id"), "{:?}", doc.errors);
+    }
+
+    #[test]
+    fn carry_refuses_a_whole_slide() {
+        let doc = parse("[carry] slide : move 450ms\n");
+        assert_eq!(doc.errors.len(), 1);
+        assert!(doc.errors[0].contains("#id"), "{:?}", doc.errors);
+    }
+
+    #[test]
+    fn carry_takes_no_other_effect() {
+        let doc = parse("[carry] #chip : fade-in 450ms\n");
+        assert_eq!(doc.errors.len(), 1);
+        assert!(doc.errors[0].contains("move"), "{:?}", doc.errors);
+    }
+
+    #[test]
+    fn move_outside_a_carry_says_where_it_belongs() {
+        let doc = parse("[click 1] #chip : move 450ms\n");
+        assert_eq!(doc.errors.len(), 1);
+        assert!(doc.errors[0].contains("[carry]"), "{:?}", doc.errors);
+    }
+
+    #[test]
+    fn carry_does_not_split_text() {
+        let doc = parse("[carry] #chip : words move 450ms\n");
+        assert_eq!(doc.errors.len(), 1);
+        assert!(doc.errors[0].contains("split"), "{:?}", doc.errors);
+    }
+
+    #[test]
+    fn a_carry_track_serializes_with_its_own_trigger_kind() {
+        let doc = parse("[carry] #chip : move 450ms ease=out-cubic\n");
+        let json: serde_json::Value = serde_json::from_str(&to_json(&doc)).unwrap();
+        let track = &json["tracks"][0];
+        assert_eq!(track["trigger"]["kind"], "carry");
+        assert_eq!(track["target"]["sel"], "#chip");
+        assert_eq!(track["effect"], "move");
+        assert_eq!(track["dur"], 450);
     }
 
     #[test]

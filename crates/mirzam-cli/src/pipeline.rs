@@ -478,6 +478,10 @@ pub fn build_deck_with(
         &bib,
         cite_style,
     ));
+    // A carry is a statement about two slides, so it can only be checked once
+    // both of them exist — and against the assembled deck, since `<!-- next -->`
+    // means a slide's parts are separate sections by the time it matters.
+    warnings.extend(mirzam_render::carry_warnings(&sections));
     let mut hashes: Vec<u64> = sections.iter().map(|s| str_hash(s)).collect();
 
     // Applied outside the cache: the base URL is a property of this build, not

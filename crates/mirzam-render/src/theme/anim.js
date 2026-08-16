@@ -330,8 +330,215 @@
     return playTrack(sec, t, true);
   }
 
+  // ---- Carrying an element from one slide to the next ----
+  //
+  // A `[carry] #id : move` track names an element that is on this slide and on
+  // the next one. Instead of the deck turning the page under it, the element
+  // travels between the two boxes it occupies. Everything else on both slides
+  // still turns: that is the whole effect, one thing holding still while the
+  // page moves around it.
+  //
+  // Three facts make it work. The slides are separate subtrees, so what flies
+  // is a *copy* lifted into a layer of its own that outlives both; a copy has
+  // no ancestors to inherit from, so it carries its computed style with it.
+  // The two originals are hidden for exactly as long as the copy is up. And
+  // both boxes are measured before anything is animated - the departing slide
+  // before its exit starts, the arriving one before its entrance does - so the
+  // flight path is between two resting positions, never two moving ones.
+
+  // Slide-logical coordinates. The deck is laid out at its logical size and
+  // CSS-scaled to the window, so a client rect has to be divided by that scale
+  // before it means the same thing a stylesheet would mean by it.
+  function metrics(sec) {
+    const r = sec.getBoundingClientRect();
+    return {
+      left: r.left,
+      top: r.top,
+      k: r.width && sec.offsetWidth ? r.width / sec.offsetWidth : 1,
+    };
+  }
+
+  const boxIn = (r, m) => ({
+    x: (r.left - m.left) / m.k,
+    y: (r.top - m.top) / m.k,
+    w: r.width / m.k,
+    h: r.height / m.k,
+  });
+
+  const rectIn = (el, m) => boxIn(el.getBoundingClientRect(), m);
+
+  // What the audience sees move is the ink, not the box around it. A heading's
+  // box is as wide as the column it sits in, while the words in it are the
+  // thing that was also on the previous slide - line them up by the box and a
+  // chip becoming a heading stretches threefold on the way. So a carry is
+  // aimed by the contents' own rectangle, and falls back to the element's when
+  // there is no text to measure: an image, an SVG shape, an empty pane.
+  function inkIn(el, m) {
+    try {
+      const r = document.createRange();
+      r.selectNodeContents(el);
+      const b = r.getBoundingClientRect();
+      if (b.width && b.height) return boxIn(b, m);
+    } catch (e) {}
+    return rectIn(el, m);
+  }
+
+  // A lifted copy has no ancestors, so every selector that dressed the
+  // original - `.slide .pane h2`, a theme's token cascade - stops matching.
+  // Copying the computed style onto the copy is what keeps it looking like
+  // the thing it was cut from. The cap is a guard, not a budget: something
+  // the size of a whole pane is not what this feature is for, and cloning it
+  // per frame would cost more than the effect is worth.
+  const LIFT_CAP = 400;
+
+  function lift(el) {
+    const clone = el.cloneNode(true);
+    let n = 0;
+    const dress = (src, dst) => {
+      if (++n > LIFT_CAP) return false;
+      const cs = getComputedStyle(src);
+      let css = '';
+      for (let i = 0; i < cs.length; i++) {
+        const p = cs[i];
+        css += p + ':' + cs.getPropertyValue(p) + ';';
+      }
+      dst.style.cssText = css;
+      const a = src.children, b = dst.children;
+      for (let i = 0; i < a.length && i < b.length; i++) {
+        if (!dress(a[i], b[i])) return false;
+      }
+      return true;
+    };
+    return dress(el, clone) ? clone : null;
+  }
+
+  // The fraction of the flight the copy holds before handing over to the real
+  // element. Where the two look alike the swap is invisible; where they do not
+  // - a chip becoming a heading - this is what stops it being a cut.
+  const HANDOVER = 0.7;
+
+  // At most one flight is ever in the air. A second page turn during one is a
+  // presenter pressing on, and the answer is to land the first immediately
+  // rather than to run two.
+  let flight = null;
+
+  function carryEnd() {
+    if (!flight) return;
+    clearTimeout(flight.timer);
+    for (const p of flight.pairs) {
+      p.src.style.visibility = p.hidden;
+      if (p.fade) { try { p.fade.cancel(); } catch (e) {} }
+    }
+    flight.layer.remove();
+    flight = null;
+  }
+
   window.MZAnim = {
     reduced: REDUCED,
+
+    // Measures what is about to leave, before its exit moves it. Returns the
+    // plan `carryPlay` finishes, or null when this boundary carries nothing.
+    carryStart(from, to, backwards) {
+      carryEnd();
+      // Reduced motion drops the travel, and a carry is nothing but travel:
+      // both slides then show the element in its own place, which is what the
+      // deck looks like with no runtime at all.
+      if (REDUCED || !from || !to || from === to) return null;
+      // The declaration lives on the earlier slide of the pair, so the same
+      // line governs the boundary whichever way it is crossed.
+      const tracks = tracksIn(timeline(backwards ? to : from), 'carry');
+      if (!tracks.length) return null;
+      const m = metrics(from);
+      const pairs = [];
+      for (const t of tracks) {
+        const src = from.querySelector(t.target.sel);
+        const dst = to.querySelector(t.target.sel);
+        // An id on only one of the two slides is not a pair. The build warns
+        // about it; here it simply means an ordinary page turn.
+        if (!src || !dst) continue;
+        pairs.push({ t, src, dst, box: rectIn(src, m), ink: inkIn(src, m) });
+      }
+      return pairs.length ? { to, pairs } : null;
+    },
+
+    // Measures where each element lands - still before the arriving slide's
+    // entrance moves it - and puts the copies in the air. Returns how long
+    // the flight takes.
+    carryPlay(plan) {
+      if (!plan) return 0;
+      const host = plan.to.parentElement;
+      if (!host) return 0;
+      const layer = document.createElement('div');
+      layer.className = 'mz-carry-layer';
+      host.appendChild(layer);
+      const m = metrics(plan.to);
+      const pairs = [];
+      let end = 0;
+      for (const p of plan.pairs) {
+        const ink = inkIn(p.dst, m);
+        const clone = lift(p.src);
+        if (!clone) continue;
+        const s = clone.style;
+        s.position = 'absolute';
+        s.margin = '0';
+        s.left = p.box.x + 'px';
+        s.top = p.box.y + 'px';
+        s.width = p.box.w + 'px';
+        s.height = p.box.h + 'px';
+        // The box being handed over is the border box, whatever the original
+        // was sizing by.
+        s.boxSizing = 'border-box';
+        s.transform = 'none';
+        s.transformOrigin = 'top left';
+        s.pointerEvents = 'none';
+        layer.appendChild(clone);
+
+        // One scale for both axes: text that grows grows the way type does,
+        // and nothing ever arrives stretched. Height is the axis that carries
+        // it — a line of text is as tall as its size and only as wide as it
+        // happens to be. What is left over at the end is what the handover is
+        // for.
+        const k = p.ink.h ? ink.h / p.ink.h : 1;
+        // Scaling happens about the copy's top-left, so where the ink ends up
+        // is the ink's own offset within the box, scaled. Aim that at the
+        // destination's ink and the two sets of words line up.
+        const dx = (ink.x + ink.w / 2) - (p.box.x + (p.ink.x + p.ink.w / 2 - p.box.x) * k);
+        const dy = (ink.y + ink.h / 2) - (p.box.y + (p.ink.y + p.ink.h / 2 - p.box.y) * k);
+        const dur = p.t.dur;
+        clone.animate(
+          [{ transform: 'none' }, { transform: `translate(${dx}px, ${dy}px) scale(${k})` }],
+          { duration: dur, easing: p.t.ease, fill: 'both' }
+        );
+        clone.animate(
+          [{ opacity: 1, offset: 0 }, { opacity: 1, offset: HANDOVER }, { opacity: 0, offset: 1 }],
+          { duration: dur, easing: 'linear', fill: 'both' }
+        );
+
+        // The originals: the departing one is simply out of the way, and the
+        // arriving one fades up under the copy as it lands. That is done with
+        // an animation rather than an inline style so that arming the slide's
+        // own tracks - which writes inline styles - cannot undo it.
+        const hidden = p.src.style.visibility;
+        p.src.style.visibility = 'hidden';
+        const fade = p.dst.animate(
+          [{ opacity: 0, offset: 0 }, { opacity: 0, offset: HANDOVER }, { opacity: 1, offset: 1 }],
+          { duration: dur, easing: 'linear', fill: 'both' }
+        );
+        pairs.push({ src: p.src, hidden, fade });
+        end = Math.max(end, dur);
+      }
+      if (!pairs.length) { layer.remove(); return 0; }
+      // Landing is on a timer rather than on the last animation's `finish`:
+      // the copy has to come down and the originals come back even if the
+      // window was in a background tab while it flew.
+      flight = { layer, pairs, timer: setTimeout(carryEnd, end + 60) };
+      return end;
+    },
+
+    // Puts every carried element back where the stylesheet had it. The viewer
+    // calls this when it gives up on a flight; `carryStart` calls it before
+    // starting the next one.
+    carryLand: carryEnd,
 
     steps(sec) {
       const tl = timeline(sec);

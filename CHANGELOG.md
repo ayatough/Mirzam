@@ -7,7 +7,27 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- **An element can move to the next slide instead of turning with it.** A slide
+  shows three components and the next one takes the first of them: until now
+  that was a page turn, and the audience had to find the component again on the
+  other side. Write `[carry] #ingest : move 600ms` in an `anim` block and the
+  component *travels* — everything else on both slides turns the page around
+  it while it holds still and moves into its new place. The same `#id` on both
+  slides is the whole declaration; the line goes on the earlier of the two and
+  `←` plays it the other way, because going back should be as good as going
+  forward. `examples/05-motion.md`, slides 7 and 8 at `/next/`.
+
+  The two ends do not have to look alike — a chip on one slide and a heading on
+  the next is the case this is for. What flies is a copy, in a layer belonging
+  to neither slide, which hands over to the real element as it lands; it scales
+  the way type scales, aimed by the words inside each element rather than the
+  box around them, so a chip becoming a full-width heading arrives the right
+  size instead of stretched across the slide. An `#id` that is on one of the
+  two slides and not the other is a build warning naming both, rather than a
+  line that quietly does nothing. And because the movement is between two
+  states that are each already final, the PDF still has two ordinary pages and
+  a reader without JavaScript still sees two finished slides.
 
 ## [0.7.0] - 2026-08-16
 

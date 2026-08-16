@@ -103,6 +103,14 @@
     const group = (s) => (s && s.dataset.cont) || null;
     const cut = changed && group(from) !== null && group(from) === group(ss[idx]);
     const turn = play && !cut;
+    // A flight still in the air belongs to the page turn before this one.
+    if (changed && anim && anim.carryLand) anim.carryLand();
+    // An element carried across this boundary has to be measured where it
+    // rests, which on the departing slide means before its exit starts moving
+    // it. Nothing is animated yet; this only reads boxes.
+    const carried = changed && turn && anim && anim.carryStart
+      ? anim.carryStart(from, ss[idx], backwards)
+      : null;
     if (changed && turn) leave(from, backwards);
     else if (changed && anim) anim.settle(from);
     cur = idx;
@@ -114,6 +122,10 @@
     // Shrink-to-fit measures boxes, and a slide only has boxes once it is the
     // one displayed - so it runs here, before anything else measures anything.
     if (window.__mirzamFit) window.__mirzamFit(sec);
+    // Between shrink-to-fit and the entrance is the one moment the arriving
+    // slide is both laid out and standing still, which is the only moment a
+    // carried element's destination means anything.
+    if (carried && anim) anim.carryPlay(carried);
     if (anim) anim.show(sec, step, transition, { play: turn, backwards: backwards && changed, arriving: changed });
     showStep(sec);
     updateHud(ss.length, sec);

@@ -17,6 +17,7 @@ mod source;
 mod theme;
 mod toc;
 
+pub use anim::carry_warnings;
 pub use assets::{AssetSource, FsAssets};
 pub use charts::render_charts_in;
 pub use cite::mark as mark_citations;
@@ -910,6 +911,7 @@ pub fn render_deck(meta: &DeckMeta, slides: &[SlideSource], asset_dir: &Path) ->
         warnings.extend(rendered.warnings);
         sections.push(rendered.html);
     }
+    warnings.extend(carry_warnings(&sections));
     RenderResult {
         html: assemble_page(meta, &sections, &PageOptions::default()),
         warnings,

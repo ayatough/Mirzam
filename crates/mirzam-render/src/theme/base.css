@@ -739,6 +739,16 @@ svg.mz-shapes, svg.mz-connect {
 }
 .mz-fx-shake { animation: mz-fx-shake 520ms cubic-bezier(.36,.07,.19,.97); }
 
+/* A carried element flies here: a child of #deck rather than of either slide,
+   because the slide it leaves is on its way out while the slide it lands on is
+   on its way in, and neither is around for the whole trip. It inherits the
+   deck's scale, so theme/anim.js can place a copy in slide coordinates. Above
+   both slides (they sit at z-index 0 and 1) and never in the way of a click. */
+.mz-carry-layer {
+  position: absolute; inset: 0; z-index: 5;
+  pointer-events: none; overflow: visible;
+}
+
 /* Annotations: an overlay drawn over a pane, an image or a chart mark by
    theme/annot.js. It is additive - it never hides content - which is why it
    is also inlined into the print page, so the PDF carries the marks too. */

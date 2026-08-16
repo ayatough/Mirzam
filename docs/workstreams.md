@@ -72,7 +72,7 @@ there is. The model column follows from that:
 | W9 | Release hardening and `v0.1.0` | A | Opus | all | ✅ |
 | W16 | Showing the thing working: demo recording, themes gallery | C | — | — | ✅ |
 | W17 | A theme per slide | B | — | — | ✅ |
-| W18 | Carrying an element from one slide to the next | S | — | W2 | |
+| W18 | Carrying an element from one slide to the next | S | — | W2 | ✅ |
 | W5 | Typst-flavoured math | A | Sonnet | — | ✅ |
 | W19 | Structural math editing: tap and place, not type | S | Fable | W5 | withdrawn |
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
@@ -914,9 +914,9 @@ the slide. The point is a section that reads differently, not a deck that
 changes clothes every page — worth saying in the docs, because the feature
 invites the second thing.
 
-## W18 — Carrying an element from one slide to the next
+## W18 — Carrying an element from one slide to the next ✅
 
-**Difficulty S · not started**
+**Difficulty S · landed**
 
 The case: a slide presents three components, and the next three slides take one
 each. Today that is four page turns, and the audience re-finds the component
@@ -946,6 +946,41 @@ outlives both; the deck's own page-turn effect must be suppressed for exactly
 the elements that are moving and kept for everything else; and going *backwards*
 has to be as good as going forwards, which is where most implementations of this
 give up.
+
+**How it landed.** `[carry] #id : move 600ms`, a new trigger rather than a new
+block: it is a moment in the deck like `enter` and `exit`, just one that belongs
+to the boundary between two slides instead of to a slide. The opt-in keyword won
+over "every reused id moves" — a deck that repeats an id across a run of slides
+should not start animating because it was upgraded. `carry` takes only `move`
+and `move` only `carry`, and the target must be an `#id`, since the id is the
+entire declaration of "these two are the same thing".
+
+Four decisions the brief left open:
+
+- **What flies is a copy, not the element.** Relocating the original into the
+  flight layer loses every selector that dressed it (`.slide .pane h2`, the
+  theme's cascade). The copy carries its computed style with it instead, which
+  is bounded work on a small subtree and refuses above 400 nodes.
+- **The turn is suppressed per element, not per boundary.** The flight layer is
+  a child of `#deck` rather than of either section, so it inherits the deck's
+  scale and nothing else. Both originals are hidden for exactly as long as the
+  copy is up; everything else on both slides turns as it always did.
+- **Aimed by the ink, scaled as type.** Element boxes are not comparable across
+  slides — a heading's box is as wide as its column while its words are not —
+  so the flight is aimed at each element's *contents* rectangle, with one scale
+  factor on both axes. Aiming by the box stretched a chip threefold on the way
+  to a heading; that was visible in the first working version, and is why the
+  rule is written down here.
+- **Backwards is the same line read the other way.** The declaration lives on
+  the earlier slide of the pair, so `←` finds it without the author repeating
+  it — and unlike `unstep`, which snaps, a carry backwards plays: it is a page
+  turn, not a correction.
+
+Checked against two slides that could not be checked from one: a `[carry]`
+whose id is missing next door, and one on the last slide, are both warnings
+naming the slides (`mirzam_render::carry_warnings`, run over the assembled deck
+after `resolve_citations`, so `<!-- next -->` parts count as the separate
+sections they are by then).
 
 ## W20 — Syntax highlighting at build time
 

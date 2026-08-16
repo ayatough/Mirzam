@@ -321,14 +321,19 @@ highlight #c-q3     : color=@accent2 step=1
 
 One line is one track: `[trigger] target : effect duration attributes…`
 
-- **Triggers:** `enter`, `click N`, `exit`, `after #id [+Nms]`.
+- **Triggers:** `enter`, `click N`, `exit`, `after #id [+Nms]`, `carry`.
 - **Targets:** `#id`, `.class`, or `slide`. An optional `chars` / `words` /
   `lines` before the effect splits the text.
 - **Effects:** `fade-in` `fade-out` `slide-in` `slide-out` `wipe-in` `wipe-out`
   (those four need `dir=left|right|up|down`), `zoom-in` `zoom-out` `blur-in`
-  `grow-x` `grow-y` `pop` `draw` `iris-out`.
+  `grow-x` `grow-y` `pop` `draw` `iris-out`, `move`.
 - **Attributes:** a bare `400ms` is the duration; `delay=`, `stagger=`, `ease=`
   (a named curve or `spring(mass,stiffness,damping)`).
+
+`[carry] #id : move 600ms` moves an element to the **next** slide instead of
+letting the page turn take it. Written on the earlier slide of the pair; the
+same `#id` must exist on both, or the build warns and nothing moves. `carry`
+takes only `move`, `move` only `carry`, and the target must be an `#id`.
 
 Elements are laid out in their **final** state, so a deck read without
 JavaScript, and the PDF, show every slide fully revealed.

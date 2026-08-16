@@ -42,7 +42,7 @@ keep changing.
 | Footers and slide numbers | Done |
 | A theme per slide, and per pane | Done |
 | A theme sets type, not only colour; `theme:` takes a path | Done |
-| Carrying an element from one slide to the next | Next |
+| Carrying an element from one slide to the next | Done |
 | Demo recording (the edit loop, typed live) and a generated themes gallery | Done |
 | Dragging an annotation back into the Markdown | Next |
 | Syntax highlighting in code blocks (36 languages, theme-token colours) | Done |
@@ -65,11 +65,12 @@ a formula into shape on the phone it was built for. The effort went into the
 math grammar instead, which is why `v0.4.0` says more about what `$...$` can
 hold than about how it is edited.
 
-The one worth naming here is **carrying an element from one slide to the next**:
-a slide presents three components and the next three take one each, and the
-component *moves* into its own slide rather than the deck turning the page under
-it. It is the one animation a deck tool gets asked for that Mirzam has no answer
-to today.
+The one that was worth naming here — **carrying an element from one slide to
+the next**, where a slide presents three components and the component *moves*
+into its own slide rather than the deck turning the page under it — has landed:
+`[carry] #id : move` in an `anim` block, described in
+[syntax.md](syntax.md#an-element-that-moves-to-the-next-slide). It was the last
+animation a deck tool gets asked for that Mirzam had no answer to.
 
 ### Measured performance
 

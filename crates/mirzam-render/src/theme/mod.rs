@@ -918,6 +918,51 @@ mod tests {
         assert!(!VIEWER_JS.contains("MZAnim."));
     }
 
+    /// A carried element flies in a layer belonging to neither slide, so the
+    /// layer's name is shared between the runtime that creates it and the
+    /// stylesheet that positions it. It also has to sit above both slides:
+    /// they are at z-index 0 and 1, and a copy behind the slide it is crossing
+    /// is a copy nobody sees.
+    #[test]
+    fn a_carried_element_flies_above_both_slides() {
+        assert!(ANIM_JS.contains("'mz-carry-layer'"));
+        assert!(BASE_CSS.contains(".mz-carry-layer {"));
+        let rule = BASE_CSS
+            .split(".mz-carry-layer {")
+            .nth(1)
+            .and_then(|s| s.split('}').next())
+            .unwrap_or_default();
+        assert!(rule.contains("position: absolute"), "{rule}");
+        assert!(rule.contains("z-index: 5"), "{rule}");
+        assert!(rule.contains("pointer-events: none"), "{rule}");
+    }
+
+    /// The viewer measures both boxes at the two moments each slide is
+    /// standing still, which is what keeps the flight path between resting
+    /// positions. Both halves have to be called, and in that order, or a carry
+    /// aims at a slide that is already sliding.
+    #[test]
+    fn the_viewer_carries_in_two_halves() {
+        assert!(ANIM_JS.contains("carryStart(from, to, backwards)"));
+        assert!(ANIM_JS.contains("carryPlay(plan)"));
+        let start = VIEWER_JS
+            .find("anim.carryStart(")
+            .expect("viewer never starts a carry");
+        let play = VIEWER_JS
+            .find("anim.carryPlay(")
+            .expect("viewer never finishes a carry");
+        assert!(
+            start < play,
+            "the destination is measured before the departure"
+        );
+        // Measuring the departure has to come before its exit animation runs.
+        let leave = VIEWER_JS.find("leave(from, backwards)").unwrap();
+        assert!(
+            start < leave,
+            "the departing slide is measured after it starts moving"
+        );
+    }
+
     /// An effect is part of the performance, and the print page must never be
     /// able to draw one even if the script somehow reached it.
     #[test]

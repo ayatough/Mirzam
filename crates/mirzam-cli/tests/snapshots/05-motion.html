@@ -120,6 +120,38 @@ label, as one group — so a bar rises with its number on top:</p>
 </aside>
 </section>
 <section class="slide" data-index="6">
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:2fr 3fr 2fr;grid-template-areas:"head" "row" "note"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Carrying</span></p>
+<h2>Three components</h2>
+</div>
+<div class="pane pane-row" data-pane="row" style="grid-area:row;text-align:center;display:flex;flex-direction:column;justify-content:center"><p><span id="c-ingest" class="box">Ingest</span>  <span class="box">Store</span>  <span class="box">Serve</span></p>
+</div>
+<div class="pane pane-note" data-pane="note" style="grid-area:note;display:flex;flex-direction:column;justify-content:center"><p><span class="small">Press <code>→</code>. The page turns, and one of these does not go with it.</span></p>
+</div>
+</div>
+<script type="application/json" class="mz-anim">{"steps":0,"tracks":[{"delay":0,"dur":600,"ease":"cubic-bezier(.33,1,.68,1)","effect":"move","stagger":0,"target":{"sel":"#c-ingest","split":null},"trigger":{"kind":"carry"}}]}</script>
+<aside class="notes"><p>The carry is declared here, on the earlier slide of the pair.</p>
+</aside>
+</section>
+<section class="slide" data-index="7">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src body"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Carrying</span></p>
+<h2 id="c-ingest">Ingest</h2>
+</div>
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown"><span class="tok-keyword">```anim</span>
+<span class="tok-keyword">[carry] #c-ingest : move 600ms ease=out-cubic</span>
+<span class="tok-keyword">```</span>
+</code></pre>
+<p>The same <code>#id</code> on both slides is what makes them the same thing. The line goes
+on the first of the two, and <code>←</code> plays it the other way.</p>
+</div>
+<div class="pane pane-body" data-pane="body" style="grid-area:body;display:flex;flex-direction:column;justify-content:center"><p>The heading arrived from the row on the slide before, while everything else
+turned the page around it.</p>
+<p><span class="small">A copy does the travelling, in a layer above both slides, and hands over to the real heading as it lands — so the slide you are reading is an ordinary slide, and the PDF has two of them.</span></p>
+</div>
+</div>
+</section>
+<section class="slide" data-index="8">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:2fr 3fr;grid-template-areas:"head" "body"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Page turns</span></p>
 <h2 class="m-h">This slide arrives by wiping</h2>
@@ -134,7 +166,7 @@ of that with an ordinary whole-slide track — this one wipes in and irises out:
 </div>
 <script type="application/json" class="mz-anim">{"steps":0,"tracks":[{"delay":0,"dir":"right","dur":450,"ease":"linear","effect":"wipe-in","stagger":0,"target":{"sel":":scope","split":null},"trigger":{"kind":"enter"}},{"delay":0,"dur":450,"ease":"linear","effect":"iris-out","stagger":0,"target":{"sel":":scope","split":null},"trigger":{"kind":"exit"}}]}</script>
 </section>
-<section class="slide" data-index="7">
+<section class="slide" data-index="9">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:2fr 3fr;grid-template-areas:"head" "body"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">The rule</span></p>
 <h2 class="m-last"><span class="mz-split-item">Motion</span> <span class="mz-split-item">is</span> <span class="mz-split-item">something</span> <span class="mz-split-item">a</span> <span class="mz-split-item">deck</span> <span class="mz-split-item">gains</span></h2>
@@ -145,7 +177,7 @@ of that with an ordinary whole-slide track — this one wipes in and irises out:
 </div>
 <script type="application/json" class="mz-anim">{"steps":2,"tracks":[{"delay":0,"dur":500,"ease":"linear","effect":"blur-in","stagger":60,"target":{"sel":".m-last","split":"words"},"trigger":{"kind":"enter"}},{"delay":0,"dur":400,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".m-p1","split":null},"trigger":{"kind":"click","n":1}},{"delay":0,"dur":400,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".m-p2","split":null},"trigger":{"kind":"click","n":2}},{"delay":0,"dur":400,"ease":"linear","effect":"zoom-in","stagger":0,"target":{"sel":":scope","split":null},"trigger":{"kind":"enter"}}]}</script>
 </section>
-<section class="slide" data-index="8">
+<section class="slide" data-index="10">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "keys stage"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Effects</span></p>
 <h2>Things you do, not things the deck does</h2>

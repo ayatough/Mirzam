@@ -39,7 +39,7 @@ This file runs long; jump straight to the one you need.
 | [References](#references) | `[@key]` against a `bibliography:` file, listed and linked by the `bibliography` block |
 | [Presentation effects](#presentation-effects) | The `effects` block: flourishes bound to a key, fired while presenting |
 | [Annotations](#annotations) | The `annotate` block: circle, underline, box, arrow, pointing at a live element |
-| [Animations](#animations) | The `anim` block: entrances, click steps, exits |
+| [Animations](#animations) | The `anim` block: entrances, click steps, exits, [an element that moves to the next slide](#an-element-that-moves-to-the-next-slide) |
 | [Driving the viewer](#driving-the-viewer) | Keyboard shortcuts, presenter mode, the `/` shortcut sheet, [the Markdown behind a slide](#the-markdown-behind-a-slide) |
 | [Theming](#theming) | `theme:` — a built-in name or [a theme of your own](#a-theme-of-your-own-in-a-file) — `mode:`, [a theme on one pane](#a-theme-smaller-than-a-deck), and the tokens a theme writes in |
 
@@ -1364,8 +1364,10 @@ one script the print page carries.
 One line is one track: `[trigger] target : effect duration attributes...`.
 
 - **Triggers:** `enter`, `click N` (the Nth click-to-advance within the
-  slide), `exit`, and `after #id [+Nms]` (relative to another track's target,
-  the offset optional and possibly negative).
+  slide), `exit`, `after #id [+Nms]` (relative to another track's target,
+  the offset optional and possibly negative), and `carry`, which is not a
+  moment within the slide at all but the boundary to the next one — see
+  [below](#an-element-that-moves-to-the-next-slide).
 - **Targets:** a `#id` or `.class`, or the literal `slide` for the whole
   section. A `shape` with an id is one group — a box and its label, an arrow
   and its head — so animating it moves the whole thing. An optional `chars`, `words` or `lines` keyword before the effect
@@ -1375,7 +1377,8 @@ One line is one track: `[trigger] target : effect duration attributes...`.
   intact), a multi-byte character, or an HTML entity.
 - **Effects:** `fade-in`, `fade-out`, `slide-in` / `slide-out` and `wipe-in` /
   `wipe-out` (all four require `dir=left|right|up|down`), `zoom-in`,
-  `zoom-out`, `blur-in`, `grow-x`, `grow-y`, `pop`, `draw`, `iris-out`.
+  `zoom-out`, `blur-in`, `grow-x`, `grow-y`, `pop`, `draw`, `iris-out`, and
+  `move`, which only a `carry` takes.
   A `slide` travels; a `wipe` stays put while an edge uncovers it. `draw`
   runs the strokes tip-first over the full duration and inks the fills —
   an arrow's head, a label's glyphs — in over the last stretch, once the
@@ -1399,6 +1402,46 @@ a slide the room has already seen.
 
 Stepping back within a slide snaps rather than playing in reverse: going back is
 a correction, and a correction should be immediate.
+
+### An element that moves to the next slide
+
+A slide presents three components; the next one takes the first of them and
+talks about it. That is two page turns and an audience re-finding the component
+on the other side. What it should be is the component *moving*:
+
+````markdown
+```anim
+[carry] #ingest : move 600ms ease=out-cubic
+```
+````
+
+The same `#id` on both slides is what says they are the same thing. Everything
+else on both slides turns the page as usual; the carried element does not go
+with it, and travels between the two boxes it occupies instead. The line is
+written on the **earlier** slide of the pair, and governs the boundary in both
+directions — `←` plays it the other way.
+
+A few things follow from what this is:
+
+- **It needs a `#id`, not a `.class`.** The id is what names the same element
+  next door. A class would name a set on each side with nothing to say which
+  of them is which.
+- **The two need not look alike.** A chip on one slide and a heading on the
+  next is the case this is for. A copy does the travelling and hands over to
+  the real element as it lands, so the two only have to agree at the end.
+- **It scales as type does**, by one factor on both axes, aimed by the text
+  inside each element rather than the box around it — otherwise a chip
+  becoming a full-width heading arrives stretched threefold.
+- **An id on only one of the two slides is a warning**, naming both slides.
+  The deck still builds and the page still turns; nothing moves.
+- **Both slides stay ordinary slides.** The movement is between two states
+  that are each already final, so the PDF has two pages and a reader without
+  JavaScript sees two finished slides — the same rule as every other
+  animation. Under `prefers-reduced-motion` the travel is dropped entirely.
+
+This is a different thing from [carrying a *pane* on to the next
+slide](#carrying-one-pane-on-to-the-next-slide) with `<!-- next -->`, which
+splits one slide into instalments rather than moving anything.
 
 ### Slide transitions
 

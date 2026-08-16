@@ -115,6 +115,55 @@ pub fn extract(
     )
 }
 
+/// Checks every `[carry]` track against the slide it carries *to*, which is
+/// the one thing [`extract`] cannot do: it sees one slide at a time, and a
+/// carry is a statement about two.
+///
+/// A carry whose id is missing next door is not an error — the deck turns the
+/// page as it always did — but it is exactly the silent degradation the
+/// warnings exist for: the author wrote a line asking for movement and got
+/// none, with nothing on screen to say why.
+pub fn carry_warnings(sections: &[String]) -> Vec<String> {
+    let mut warnings = Vec::new();
+    for (i, section) in sections.iter().enumerate() {
+        for sel in carry_targets(section) {
+            let id = sel.trim_start_matches('#');
+            match sections.get(i + 1) {
+                Some(next) if selector_exists(next, &sel) => {}
+                Some(_) => warnings.push(format!(
+                    "slide {}: `[carry] {sel}` has nothing to carry to; slide {} has no element with id `{id}`",
+                    i + 1,
+                    i + 2
+                )),
+                None => warnings.push(format!(
+                    "slide {}: `[carry] {sel}` is on the last slide, so there is no next slide to carry it to",
+                    i + 1
+                )),
+            }
+        }
+    }
+    warnings
+}
+
+/// The `#id` of every carry track in a rendered slide, read back out of the
+/// C1 blob the slide is carrying. Reading the emitted JSON rather than the DSL
+/// keeps this pass working for a slide that came from the build cache and was
+/// never re-parsed.
+fn carry_targets(section: &str) -> Vec<String> {
+    const OPEN: &str = "<script type=\"application/json\" class=\"mz-anim\">";
+    let mut out = Vec::new();
+    let mut rest = section;
+    while let Some(start) = rest.find(OPEN) {
+        let after = &rest[start + OPEN.len()..];
+        let Some(end) = after.find("</script>") else {
+            break;
+        };
+        out.extend(mirzam_anim::carry_targets_in_json(&after[..end]));
+        rest = &after[end..];
+    }
+    out
+}
+
 /// `:scope` reads better as `slide` in a message the author wrote `slide` to
 /// produce.
 fn display_sel(sel: &str) -> &str {
@@ -420,6 +469,65 @@ mod tests {
 
     fn track(src: &str) -> mirzam_anim::AnimDoc {
         mirzam_anim::parse(src)
+    }
+
+    /// One rendered section: a body plus whatever `extract` made of the DSL,
+    /// which is the pair `carry_warnings` reads back.
+    fn section(body: &str, anim: &str) -> String {
+        let mut html = body.to_string();
+        let mut warnings = Vec::new();
+        let reserved = vec![(BlockKind::Anim, anim.to_string())];
+        let script = extract(0, &reserved, &mut html, "", &mut warnings);
+        assert!(warnings.is_empty(), "{warnings:?}");
+        format!("{html}{script}")
+    }
+
+    #[test]
+    fn a_carry_with_the_id_on_both_slides_is_silent() {
+        let sections = vec![
+            section("<span id=\"chip\">a</span>", "[carry] #chip : move 400ms\n"),
+            "<h2 id=\"chip\">a</h2>".to_string(),
+        ];
+        assert!(carry_warnings(&sections).is_empty());
+    }
+
+    #[test]
+    fn a_carry_the_next_slide_cannot_receive_warns() {
+        let sections = vec![
+            section("<span id=\"chip\">a</span>", "[carry] #chip : move 400ms\n"),
+            "<h2 id=\"other\">a</h2>".to_string(),
+        ];
+        let w = carry_warnings(&sections);
+        assert_eq!(w.len(), 1);
+        assert!(
+            w[0].contains("slide 2 has no element with id `chip`"),
+            "{w:?}"
+        );
+    }
+
+    #[test]
+    fn a_carry_on_the_last_slide_warns() {
+        let sections = vec![section(
+            "<span id=\"chip\">a</span>",
+            "[carry] #chip : move 400ms\n",
+        )];
+        let w = carry_warnings(&sections);
+        assert_eq!(w.len(), 1);
+        assert!(w[0].contains("no next slide"), "{w:?}");
+    }
+
+    #[test]
+    fn an_ordinary_track_is_not_mistaken_for_a_carry() {
+        // `#chip` is animated on slide 1 and absent from slide 2, which is
+        // perfectly ordinary: only a carry is a claim about the next slide.
+        let sections = vec![
+            section(
+                "<span id=\"chip\">a</span>",
+                "[enter] #chip : fade-in 400ms\n",
+            ),
+            "<p>nothing</p>".to_string(),
+        ];
+        assert!(carry_warnings(&sections).is_empty());
     }
 
     #[test]

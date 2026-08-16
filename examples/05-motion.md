@@ -257,6 +257,79 @@ arrow #a2 from(#store.s) to(#serve.n)
 |  head                              |
 +------------------------------------+
 |                                    |
+|  row                               |
+|                                    |
++------------------------------------+
+|                                    |
+|  note                              |
++------------------------------------+
+```
+
+::: pane head
+[Carrying]{.eyebrow}
+## Three components
+:::
+
+::: pane row {valign=middle align=center}
+[Ingest]{#c-ingest .box}  [Store]{.box}  [Serve]{.box}
+:::
+
+::: pane note {valign=middle}
+[Press `→`. The page turns, and one of these does not go with it.]{.small}
+:::
+
+```anim
+[carry] #c-ingest : move 600ms ease=out-cubic
+```
+
+<!-- note: The carry is declared here, on the earlier slide of the pair. -->
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|  src             |  body           |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Carrying]{.eyebrow}
+## Ingest {#c-ingest}
+:::
+
+::: pane src {.card valign=middle}
+````markdown
+```anim
+[carry] #c-ingest : move 600ms ease=out-cubic
+```
+````
+
+The same `#id` on both slides is what makes them the same thing. The line goes
+on the first of the two, and `←` plays it the other way.
+:::
+
+::: pane body {valign=middle}
+The heading arrived from the row on the slide before, while everything else
+turned the page around it.
+
+[A copy does the travelling, in a layer above both slides, and hands over to the real heading as it lands — so the slide you are reading is an ordinary slide, and the PDF has two of them.]{.small}
+:::
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------------------------+
+|                                    |
 |  body                              |
 |                                    |
 +------------------------------------+
