@@ -79,14 +79,15 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   same warning the other reserved keys give.
 
 ### Fixed
-- **The light hero's violet accents can now be seen.** The dotted arcs, the
-  crosses and the dot grids in `mirzam-hero-light.webp` sat a few levels above
-  the pale ground and all but vanished on the landing page, while dark mode
-  showed the whole composition. The faint marks were deepened first; then the
-  planet limb, which is all a phone's narrow crop shows of the art, got its
-  violet deepened too — the flare and the ground are untouched, so nothing
-  behind text got busier. Look at the site header at `/next/` in light mode,
-  on a phone especially.
+- **The light hero now spends its violet the way the dark one does.** The
+  dark art keeps space and the planet dark and puts the violet on what glows
+  — the limb, the flare, the drawn arcs. The light art had it inverted: the
+  glow was white and the violet sat on the planet itself, which is why its
+  accents read as a pale wash however much they were strengthened. Both
+  heroes are regenerated at the source as a matched pair — same composition
+  in both modes, pale space and white light, the violet in the glowing limb
+  and the linework, the ground quiet. Look at the site header at `/next/`
+  in either mode.
 - **The rule under a section heading is a gradient in light mode too.** Its
   pale end was `#8b7cff`, close enough to the `#6557d9` it starts from that
   the ramp read as one flat colour; it now ends at `#c0b7ff`, the same pale
