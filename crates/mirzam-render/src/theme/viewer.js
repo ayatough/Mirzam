@@ -136,6 +136,7 @@
     // one displayed - so it runs here, before anything else measures anything.
     if (window.__mirzamFit) window.__mirzamFit(sec);
     if (anim) anim.show(sec, step, transition, { play: turn, backwards: backwards && changed, arriving: changed });
+    media(sec, changed || !!(opts && opts.first));
     showStep(sec);
     updateHud(ss.length, sec);
     // replaceState throws inside srcdoc iframes (editor previews). Recording the
@@ -159,6 +160,45 @@
   // The slide being left has to stay painted for as long as its exit takes,
   // so it animates out over the slide arriving rather than vanishing first.
   let leaveTimer = null;
+  // `autoplay` has to mean "when the slide is shown". The attribute means "when
+  // the deck loads", and a slide behind `display: none` plays perfectly well:
+  // a recording on slide nine started over the opening slide, and a clip was
+  // already seconds in by the time anyone saw it. So arriving is what starts a
+  // clip here, and leaving is what stops it - a slide nobody is looking at is
+  // never making a sound. The attribute stays in the markup, because without
+  // this script it is still the only thing that plays anything.
+  //
+  // A hosted video cannot be paused from here at all - it is another origin -
+  // so its autoplay URL waits in `data-mz-play` and is swapped in on arrival,
+  // which is also what keeps the frame off the network until then.
+  const restingSrc = new WeakMap();
+  function media(sec, arriving) {
+    for (const m of document.querySelectorAll('section.slide video, section.slide audio')) {
+      const auto = m.hasAttribute('autoplay');
+      if (m.closest('section.slide') === sec) {
+        // Arriving is the only thing that starts a clip. A resize or a step
+        // lands here too, and must not restart what is playing - nor resume
+        // what the presenter deliberately paused.
+        if (auto && arriving) {
+          // A browser that refuses to start audible media rejects the promise
+          // rather than throwing, and an unhandled rejection on every arrival
+          // is a console full of noise about a policy we cannot argue with.
+          try { m.currentTime = 0; const p = m.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+        }
+      } else if (!m.paused || (auto && m.currentTime)) {
+        try { m.pause(); if (auto) m.currentTime = 0; } catch (e) {}
+      }
+    }
+    for (const f of document.querySelectorAll('section.slide .mz-embed[data-mz-play] iframe')) {
+      const box = f.closest('.mz-embed');
+      if (!restingSrc.has(f)) restingSrc.set(f, f.getAttribute('src') || '');
+      const want = f.closest('section.slide') === sec ? box.dataset.mzPlay : restingSrc.get(f);
+      // Only on a change: assigning the same URL reloads the frame, which on
+      // this slide would restart the video the reader is watching.
+      if (f.getAttribute('src') !== want) f.setAttribute('src', want);
+    }
+  }
+
   function leave(sec, backwards) {
     if (!anim) return;
     const ms = anim.leave(sec, transition, backwards);

@@ -32,6 +32,20 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
   `o` and `h` are now viewer keys, so an `effects` block can no longer bind
   them — the same warning the other reserved keys give.
+- **A hosted video starts where the link says, and plays when you get there.**
+  `![talk](https://youtu.be/ID?t=90)` opens at 1:30 — the timestamp YouTube's
+  own share dialog writes was being read for the video id and thrown away, so
+  "start at the good bit" silently meant "start at the beginning". `{start=…}`
+  overrides the link, and `{.autoplay}`, `{.loop}` and `{.muted}` are the same
+  flags a local `<video>` already took, in each host's spelling (YouTube needs
+  `playlist=<id>` to loop at all; autoplay implies muted, because every browser
+  blocks audible autoplay). A Vimeo link takes its offset in the fragment and
+  gets it back there. The PDF's link carries the timestamp too, since that link
+  is a printed deck's only way to play anything.
+- **A recording, in the sample deck.** Audio has worked since it shipped and no
+  deck under `examples/` had one, which is the exact hole `markup_coverage.rs`
+  exists to close — so the component gallery now carries a player, and the list
+  holds it there.
 - **A build says when a deck stops being one file.** An image or a video
   referenced by URL cannot be inlined, so the deck needs the network to show it
   — and until now nothing said so: the promise the whole asset pass exists to
@@ -41,6 +55,15 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   already documents, so it stays silent.
 
 ### Fixed
+- **`autoplay` waits for its slide.** It meant "when the deck loads", and a slide
+  behind `display: none` plays perfectly well: a recording on slide nine started
+  over the opening slide, and an autoplaying clip was already seconds in by the
+  time anyone reached it — measured at 2.0s on a two-slide deck. Arriving now
+  starts a clip from the beginning, leaving stops it, and a clip paused by hand
+  stays paused through a resize. The presenter window's next-slide preview was
+  worse: it inserted the authored markup verbatim, so the *preview* of slide two
+  played its audio while slide one was on screen. It now strips playback and
+  frame sources the way the overview grid already did.
 - **A hosted video no longer clips its own bottom edge.** The player frame took
   its height from the pane's width, and the default pane on a 16:9 slide is
   wider than 16:9 — so every deck that embedded a YouTube or Vimeo video lost

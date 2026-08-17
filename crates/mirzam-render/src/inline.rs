@@ -290,8 +290,8 @@ fn image_attrs(line: &str) -> String {
         if is_audio(src) {
             return audio_html(src, &alt, &attrs);
         }
-        if let Some(embed) = embed_url(src) {
-            return embed_html(&embed, src, &alt, &attrs);
+        if let Some(hosted) = embed_url(src) {
+            return embed_html(&hosted, src, &alt, &attrs);
         }
         format!(
             "<img src=\"{src}\" alt=\"{alt}\"{}{style_attr}>",
@@ -359,12 +359,116 @@ pub(crate) fn is_player_url(src: &str) -> bool {
     src.starts_with(YOUTUBE_PLAYER) || src.starts_with(VIMEO_PLAYER)
 }
 
-/// The player URL for a video-host page, or `None` when this is not one.
+/// Which host a page URL belongs to. They take the same three requests —
+/// start here, play on arrival, loop — and spell all of them differently.
+#[derive(Clone, Copy, PartialEq)]
+enum Host {
+    YouTube,
+    Vimeo,
+}
+
+/// A hosted video, resolved from the page URL the author wrote.
+struct Hosted {
+    host: Host,
+    /// The video's id, which YouTube needs *again* to loop: `loop=1` alone
+    /// plays once, and `playlist=<id>` is what makes it repeat.
+    id: String,
+    /// Where to start, in whole seconds, as carried by the page URL itself —
+    /// `?t=90`, `&t=1m30s`, `#t=30s`. This is the link YouTube's own share
+    /// dialog hands you when you tick "start at", so dropping it (which is what
+    /// this used to do) loses the one thing the author went out of their way to
+    /// say.
+    start: Option<u32>,
+}
+
+impl Hosted {
+    /// The player URL, with whatever the slide asked the player to do.
+    fn player(&self, start: Option<u32>, autoplay: bool, loop_: bool, muted: bool) -> String {
+        let mut params: Vec<String> = Vec::new();
+        match self.host {
+            Host::YouTube => {
+                if let Some(s) = start {
+                    params.push(format!("start={s}"));
+                }
+                if autoplay {
+                    params.push("autoplay=1".into());
+                }
+                // Audible autoplay is blocked by every browser, so asking for
+                // it without this is asking for a frame that never starts.
+                if muted || autoplay {
+                    params.push("mute=1".into());
+                }
+                if loop_ {
+                    params.push("loop=1".into());
+                    params.push(format!("playlist={}", self.id));
+                }
+                let q = params.join("&");
+                let sep = if q.is_empty() { "" } else { "?" };
+                format!("{YOUTUBE_PLAYER}{}{sep}{q}", self.id)
+            }
+            Host::Vimeo => {
+                if autoplay {
+                    params.push("autoplay=1".into());
+                }
+                if muted || autoplay {
+                    params.push("muted=1".into());
+                }
+                if loop_ {
+                    params.push("loop=1".into());
+                }
+                let q = params.join("&");
+                let sep = if q.is_empty() { "" } else { "?" };
+                // Vimeo takes the offset in the fragment, not the query.
+                let frag = start.map(|s| format!("#t={s}s")).unwrap_or_default();
+                format!("{VIMEO_PLAYER}{}{sep}{q}{frag}", self.id)
+            }
+        }
+    }
+
+    /// The page URL to send a PDF reader to, carrying the start time even when
+    /// it came from the attribute block rather than from the link — a printed
+    /// deck's only way to play anything is that link, so it should land where
+    /// the slide would have.
+    fn page(&self, page: &str, start: Option<u32>) -> String {
+        let Some(s) = start else {
+            return page.to_string();
+        };
+        // The link already says it, so leave the author's own URL alone.
+        if self.start == Some(s) {
+            return page.to_string();
+        }
+        // Otherwise replace the offset it carried rather than appending a second
+        // one: two of them and the player picks, which is not the same as the
+        // slide choosing.
+        let without_fragment = page.split('#').next().unwrap_or(page);
+        let (path, query) = match without_fragment.split_once('?') {
+            Some((p, q)) => (p, q),
+            None => (without_fragment, ""),
+        };
+        let kept = query
+            .split('&')
+            .filter(|p| !p.is_empty() && !p.starts_with("t=") && !p.starts_with("start="))
+            .collect::<Vec<_>>()
+            .join("&");
+        match self.host {
+            Host::YouTube => {
+                let sep = if kept.is_empty() { "" } else { "&" };
+                format!("{path}?{kept}{sep}t={s}")
+            }
+            Host::Vimeo => {
+                let sep = if kept.is_empty() { "" } else { "?" };
+                format!("{path}{sep}{kept}#t={s}s")
+            }
+        }
+    }
+}
+
+/// The hosted video a page URL names, or `None` when this is not one.
 ///
 /// Only the two hosts worth special-casing: anything else can be written as a
 /// link, and an author who wants some other embed can still write the `iframe`
 /// by hand.
-fn embed_url(src: &str) -> Option<String> {
+fn embed_url(src: &str) -> Option<Hosted> {
     let rest = src
         .strip_prefix("https://")
         .or_else(|| src.strip_prefix("http://"))?;
@@ -374,6 +478,13 @@ fn embed_url(src: &str) -> Option<String> {
             && s.chars()
                 .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
     };
+    // `t` in the query (YouTube) or in the fragment (Vimeo, and YouTube links
+    // of the older `#t=` shape), whichever the link happens to carry.
+    let start_of = |s: &str| {
+        s.split(['?', '&', '#'])
+            .find_map(|p| p.strip_prefix("t=").or_else(|| p.strip_prefix("start=")))
+            .and_then(parse_timecode)
+    };
 
     if let Some(q) = rest.strip_prefix("youtube.com/watch?") {
         let id = q
@@ -381,20 +492,64 @@ fn embed_url(src: &str) -> Option<String> {
             .find_map(|p| p.strip_prefix("v="))?
             .split('#')
             .next()?;
-        return id_ok(id).then(|| format!("{YOUTUBE_PLAYER}{id}"));
+        return id_ok(id).then(|| Hosted {
+            host: Host::YouTube,
+            id: id.to_string(),
+            start: start_of(q),
+        });
     }
-    if let Some(id) = rest.strip_prefix("youtu.be/") {
-        let id = id.split(['?', '#']).next()?;
-        return id_ok(id).then(|| format!("{YOUTUBE_PLAYER}{id}"));
+    if let Some(rest) = rest.strip_prefix("youtu.be/") {
+        let id = rest.split(['?', '#']).next()?;
+        return id_ok(id).then(|| Hosted {
+            host: Host::YouTube,
+            id: id.to_string(),
+            start: start_of(rest),
+        });
     }
-    if let Some(id) = rest.strip_prefix("vimeo.com/") {
-        let id = id.split(['?', '#', '/']).next()?;
-        return id
-            .chars()
-            .all(|c| c.is_ascii_digit())
-            .then(|| format!("{VIMEO_PLAYER}{id}"));
+    if let Some(rest) = rest.strip_prefix("vimeo.com/") {
+        let id = rest.split(['?', '#', '/']).next()?;
+        return id.chars().all(|c| c.is_ascii_digit()).then(|| Hosted {
+            host: Host::Vimeo,
+            id: id.to_string(),
+            start: start_of(rest),
+        });
     }
     None
+}
+
+/// `90`, `90s`, `1m30s`, `1h2m3s` — the forms a share link and a person both
+/// use — in whole seconds. `None` for anything else, so a malformed timecode
+/// starts the video at the beginning rather than at second zero of nowhere.
+fn parse_timecode(raw: &str) -> Option<u32> {
+    let raw = raw.trim();
+    if raw.is_empty() {
+        return None;
+    }
+    if let Ok(n) = raw.parse::<u32>() {
+        return Some(n);
+    }
+    let mut total: u32 = 0;
+    let mut digits = String::new();
+    for ch in raw.chars() {
+        match ch {
+            '0'..='9' => digits.push(ch),
+            'h' | 'm' | 's' if !digits.is_empty() => {
+                let n: u32 = digits.parse().ok()?;
+                digits.clear();
+                total = total.checked_add(n.checked_mul(match ch {
+                    'h' => 3600,
+                    'm' => 60,
+                    _ => 1,
+                })?)?;
+            }
+            _ => return None,
+        }
+    }
+    // A trailing number with no unit is seconds: `1m30` reads the way it looks.
+    if !digits.is_empty() {
+        total = total.checked_add(digits.parse::<u32>().ok()?)?;
+    }
+    Some(total)
 }
 
 /// A hosted video, as an `iframe` filling its pane.
@@ -403,12 +558,52 @@ fn embed_url(src: &str) -> Option<String> {
 /// fetched when the slide is shown. The original page URL is carried on the
 /// wrapper so the print path can offer it as a link instead — a PDF cannot
 /// play anything.
-fn embed_html(player: &str, page: &str, alt: &str, attrs: &Attrs) -> String {
+///
+/// `{.autoplay}`, `{.loop}`, `{.muted}` and `{start=90}` are the same four
+/// requests a local `<video>` takes, in the spelling each host wants. Autoplay
+/// is the one that cannot simply be put in `src`: a cross-origin frame cannot
+/// be paused from here, so a player told to autoplay would start the moment the
+/// deck loaded, from whatever slide the reader was on. The autoplay URL
+/// therefore rides along in `data-mz-play` and the viewer swaps it in when the
+/// slide is shown — leaving `src` a frame that loads and waits, which is also
+/// exactly what a reader with no JavaScript should get.
+fn embed_html(hosted: &Hosted, page: &str, alt: &str, attrs: &Attrs) -> String {
+    // Boolean attributes accept either class syntax (`.autoplay`) or `key=true`,
+    // the same way a local video's do.
+    let flag = |name: &str| -> bool {
+        attrs.classes.iter().any(|c| c == name)
+            || matches!(attrs.kv.get(name).map(String::as_str), Some("" | "true"))
+    };
+    let autoplay = flag("autoplay");
+    let loop_ = flag("loop");
+    let muted = flag("muted");
+    // The attribute block wins over the link: it is the more specific of the
+    // two, and it is the only way to override a timestamp the URL came with.
+    let start = attrs
+        .kv
+        .get("start")
+        .and_then(|s| parse_timecode(s))
+        .or(hosted.start);
+
+    // The player URLs carry `&` between their parameters, which an attribute
+    // value has to escape - the same way a rewritten link does.
+    let resting = html_escape(&hosted.player(start, false, loop_, muted));
+    let playing = autoplay.then(|| html_escape(&hosted.player(start, true, loop_, muted)));
+    let play_attr = playing
+        .map(|url| format!(" data-mz-play=\"{url}\""))
+        .unwrap_or_default();
+
+    let mut carried = attrs.clone();
+    carried
+        .classes
+        .retain(|c| !matches!(c.as_str(), "autoplay" | "loop" | "muted"));
+
     format!(
-        "<div class=\"mz-embed\"{} data-href=\"{page}\" data-title=\"{alt}\">\
-         <iframe src=\"{player}\" title=\"{alt}\" loading=\"lazy\" allowfullscreen \
+        "<div class=\"mz-embed\"{} data-href=\"{href}\" data-title=\"{alt}\"{play_attr}>\
+         <iframe src=\"{resting}\" title=\"{alt}\" loading=\"lazy\" allowfullscreen \
          allow=\"accelerometer; clipboard-write; encrypted-media; picture-in-picture\"></iframe></div>",
-        attrs.html_id_class()
+        carried.html_id_class(),
+        href = html_escape(&hosted.page(page, start)),
     )
 }
 
@@ -905,10 +1100,97 @@ mod tests {
 
     #[test]
     fn a_link_that_merely_mentions_a_host_is_not_an_embed() {
-        assert_eq!(embed_url("https://example.com/youtube.com/watch?v=x"), None);
-        assert_eq!(embed_url("https://www.youtube.com/watch?list=x"), None);
-        assert_eq!(embed_url("https://vimeo.com/channels/staffpicks"), None);
-        assert_eq!(embed_url("img/a.png"), None);
+        for url in [
+            "https://example.com/youtube.com/watch?v=x",
+            "https://www.youtube.com/watch?list=x",
+            "https://vimeo.com/channels/staffpicks",
+            "img/a.png",
+        ] {
+            assert!(embed_url(url).is_none(), "{url}");
+        }
+    }
+
+    #[test]
+    fn a_share_links_timestamp_reaches_the_player() {
+        // The link YouTube's share dialog writes when you tick "start at". It
+        // used to be parsed for the id and thrown away, so the frame opened at
+        // the beginning and nothing said why.
+        for (url, expected) in [
+            ("https://youtu.be/dQw4w9WgXcQ?t=30", "start=30"),
+            (
+                "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=90",
+                "start=90",
+            ),
+            (
+                "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=1m30s",
+                "start=90",
+            ),
+        ] {
+            let out = preprocess(&format!("![Talk]({url})\n"));
+            assert!(out.contains(expected), "{url}: {out}");
+        }
+        // Vimeo takes it in the fragment instead.
+        let out = preprocess("![V](https://vimeo.com/76979871#t=1m5s)\n");
+        assert!(out.contains("/video/76979871#t=65s"), "{out}");
+    }
+
+    #[test]
+    fn the_attribute_block_overrides_the_links_own_timestamp() {
+        let out = preprocess("![Talk](https://youtu.be/abc?t=30){start=2m}\n");
+        assert!(out.contains("start=120"), "{out}");
+        assert!(!out.contains("start=30"), "{out}");
+        // And it reaches the link the PDF offers, which is a printed deck's
+        // only way to play anything.
+        assert!(
+            out.contains("data-href=\"https://youtu.be/abc?t=120\""),
+            "{out}"
+        );
+    }
+
+    #[test]
+    fn autoplay_rides_in_a_data_attribute_so_it_waits_for_its_slide() {
+        let out = preprocess("![Talk](https://youtu.be/abc){.autoplay .loop}\n");
+        // `src` is the frame that loads and waits: a cross-origin player told to
+        // autoplay cannot be paused from here, so putting it in `src` would play
+        // it from whatever slide the reader happened to be on.
+        let src = out
+            .split("src=\"")
+            .nth(1)
+            .and_then(|s| s.split('"').next())
+            .expect("iframe src");
+        assert!(!src.contains("autoplay"), "{src}");
+        assert!(src.contains("loop=1"), "{src}");
+        // YouTube loops only when told which playlist to repeat - itself.
+        assert!(src.contains("playlist=abc"), "{src}");
+        let play = out
+            .split("data-mz-play=\"")
+            .nth(1)
+            .and_then(|s| s.split('"').next())
+            .expect("data-mz-play");
+        assert!(play.contains("autoplay=1"), "{play}");
+        // Audible autoplay is blocked everywhere, so asking for it implies mute.
+        assert!(play.contains("mute=1"), "{play}");
+    }
+
+    #[test]
+    fn a_frame_nobody_asked_to_autoplay_carries_no_play_url() {
+        let out = preprocess("![Talk](https://youtu.be/abc)\n");
+        assert!(!out.contains("data-mz-play"), "{out}");
+        // And no query at all, so the plain case stays the plain case.
+        assert!(out.contains("embed/abc\""), "{out}");
+    }
+
+    #[test]
+    fn timecodes_are_read_the_way_they_are_written() {
+        assert_eq!(parse_timecode("90"), Some(90));
+        assert_eq!(parse_timecode("90s"), Some(90));
+        assert_eq!(parse_timecode("1m30s"), Some(90));
+        assert_eq!(parse_timecode("1m30"), Some(90));
+        assert_eq!(parse_timecode("1h2m3s"), Some(3723));
+        // Nonsense starts the video at the beginning rather than at second
+        // zero of nowhere.
+        assert_eq!(parse_timecode("half past"), None);
+        assert_eq!(parse_timecode(""), None);
     }
 
     #[test]

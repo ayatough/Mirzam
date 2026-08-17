@@ -363,23 +363,64 @@ The PDF export uses the first frame.
 :::
 
 ::: pane desc {valign=middle}
-A YouTube or Vimeo page URL becomes a player, on the host alone:
+A page URL becomes a player, from where the link says:
 
 ```markdown
-![The talk](https://youtu.be/aqz-KE-bpKQ)
+![The talk](https://youtu.be/aqz-KE-bpKQ?t=33)
 ```
 
 - Served from `youtube-nocookie.com`, fetched when the slide is
   shown — **the one thing here that is not self-contained**
-- 16:9 inside its pane, whatever the pane's shape
-- The PDF gets the link; an image by URL is the same trade
+- `{start=1m30s}` overrides the link; `{.autoplay}` and `{.loop}`
+  play it on arrival, muted as browsers insist
+- The PDF gets the link, timestamp and all
 :::
 
 ::: pane clip {valign=middle}
-![Big Buck Bunny, the Blender Foundation's open movie](https://www.youtube.com/watch?v=aqz-KE-bpKQ)
+![Big Buck Bunny, the Blender Foundation's open movie](https://www.youtube.com/watch?v=aqz-KE-bpKQ&t=33)
 :::
 
 <!-- note: This frame is the only thing in the deck that needs the network. The clip is Blender's own open movie, so the sample does not lean on anybody else's video. -->
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|  desc            |  clip           |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Media]{.eyebrow}
+## A recording is a player
+:::
+
+::: pane desc {valign=middle}
+An audio file becomes a player labelled with its alt text:
+
+```markdown
+![Interview with the author](media/chime.wav)
+```
+
+- `mp3`, `m4a`, `aac`, `wav`, `ogg`, `opus`, `flac`
+- Inlined like any other asset, so the deck is still one file
+- `{.autoplay}` starts it **when the slide is shown**, not when
+  the deck loads, and leaving the slide stops it
+- The PDF keeps the label and drops the transport
+:::
+
+::: pane clip {valign=middle}
+![A chime, three notes long](media/chime.wav)
+:::
+
+<!-- note: The sample is a wav because this repository ships no encoder; every format above takes the same path. Press play - autoplay is deliberately not set here, since a gallery deck that makes noise on arrival is a bad neighbour. -->
 
 ---
 

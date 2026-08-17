@@ -985,11 +985,13 @@ that particular job.
 
 ```markdown
 ![Interview with the author](media/talk.mp3)
-![The paper's own talk](https://www.youtube.com/watch?v=…)
+![The paper's own talk](https://youtu.be/…?t=90)
+![The bit that matters](https://www.youtube.com/watch?v=…){start=1m30s .autoplay}
 ```
 
 - An audio file becomes a player with the alt text as its label, inlined like
-  any other asset — a deck with a recording in it is still one file.
+  any other asset — a deck with a recording in it is still one file. `mp3`,
+  `m4a`, `aac`, `wav`, `ogg`, `opus` and `flac`.
 - A YouTube or Vimeo page URL becomes an embed, served from
   `youtube-nocookie.com`. **This is the one thing in a deck that is not
   self-contained:** the frame is fetched when the slide is shown, so it needs
@@ -1001,6 +1003,42 @@ that particular job.
   being asked to.
 - What a reference *is* follows from what it points at, so the attribute block
   is optional: `![clip](talk.mp4)` is a video whether or not you wrote `{}`.
+
+### Where it starts, and when it plays
+
+| You write | It does |
+|---|---|
+| `![t](https://youtu.be/ID?t=90)` | starts at 1:30 — the link's own timestamp |
+| `…watch?v=ID&t=1m30s` | the same; `90`, `90s`, `1m30s`, `1h2m3s` all read |
+| `![t](https://vimeo.com/ID#t=65s)` | the same, in the shape Vimeo writes it |
+| `{start=1m30s}` | overrides whatever the link said |
+| `{.autoplay}` | plays when the slide is shown |
+| `{.loop}` | repeats |
+| `{.muted}` | no sound (`.autoplay` implies it) |
+
+The same four flags work on a local `<video>` and the first three on an
+`<audio>`, so `![clip](demo.mp4){.autoplay .loop}` and
+`![tape](talk.mp3){.autoplay}` mean what they look like.
+
+**`.autoplay` means "when the slide is shown", not "when the deck loads".** The
+distinction is the whole feature: a slide behind `display: none` plays perfectly
+well, so a recording on slide nine would otherwise start over the opening slide,
+and a clip would be half over by the time anyone saw it. Arriving starts it from
+the beginning, leaving stops it, and a clip you paused yourself stays paused
+through a resize. A hosted video is held at its first frame until you arrive,
+which also keeps it off the network until then. The presenter window's next-slide
+preview never plays or fetches anything — it is a picture of the slide, not the
+slide.
+
+One thing no deck can decide for itself: a browser will not start *audible*
+media until the reader has interacted with the page. A recording set to autoplay
+on the opening slide may therefore stay silent until the first key or click,
+which is why `.autoplay` on a video implies `.muted` and why a hosted video is
+muted when it starts on arrival.
+
+Without JavaScript, `autoplay` falls back to what the attribute has always meant
+to a browser: media starts at load. That is the documented fallback rather than a
+broken state, and it is the only thing that plays anything at all with no script.
 
 **An image or a video by URL is the same trade.** `![art](https://host/art.png)`
 is left exactly as written — there is nothing on disk to inline — so the deck

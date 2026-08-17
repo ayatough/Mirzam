@@ -141,6 +141,15 @@
       // that walks the document looking for slides.
       const sec = stage.querySelector('section.slide');
       if (sec) { sec.classList.remove('slide'); sec.classList.add('pv-slide'); }
+      // A preview is a picture of the next slide, not the next slide: it must
+      // not play, and it must not fetch. Both would happen on their own -
+      // `autoplay` does not care that this is a clone, and an embed would pull
+      // its frame down a slide early, on a network the venue may not have.
+      for (const m of stage.querySelectorAll('video, audio')) {
+        m.removeAttribute('autoplay');
+        try { m.pause(); } catch (e) {}
+      }
+      for (const f of stage.querySelectorAll('iframe')) f.removeAttribute('src');
     }
     const live = document.querySelector('section.slide.active aside.notes');
     notes.innerHTML = live && live.innerHTML.trim() ? live.innerHTML : '<em>(no notes)</em>';

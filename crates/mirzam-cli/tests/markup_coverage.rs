@@ -143,6 +143,22 @@ const MARKS: &[Mark] = &[
         documented_as: "`youtube-nocookie.com`",
         shown_as: "https://www.youtube.com/watch?v=",
     },
+    Mark {
+        // The timestamp a share link carries. It used to be read for the id and
+        // dropped, so "start at 1:30" silently became "start at the beginning".
+        source: "![talk](https://youtu.be/dQw4w9WgXcQ?t=90)",
+        html: "start=90",
+        documented_as: "`{start=1m30s}`",
+        shown_as: "?t=33",
+    },
+    Mark {
+        // A recording was the third thing in this file's own list of failures:
+        // it rendered, it was documented, and no deck had one.
+        source: "![Interview](media/talk.mp3)",
+        html: r#"<audio src="media/talk.mp3""#,
+        documented_as: "becomes a player with the alt text as its label",
+        shown_as: "](media/chime.wav)",
+    },
 ];
 
 /// The `.bib` the citation mark is rendered against, so the row above is
