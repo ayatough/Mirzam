@@ -403,24 +403,24 @@ A page URL becomes a player, from where the link says:
 :::
 
 ::: pane desc {valign=middle}
-An audio file becomes a player labelled with its alt text:
+An audio file becomes a player labelled with its alt text, and
+`cover=` gives it a sleeve:
 
 ```markdown
-![Interview with the author](media/chime.wav)
+![Interview](talk.mp3){cover=art.jpg}
 ```
 
 - `mp3`, `m4a`, `aac`, `wav`, `ogg`, `opus`, `flac`
-- Inlined like any other asset, so the deck is still one file
-- `{.autoplay}` starts it **when the slide is shown**, not when
-  the deck loads, and leaving the slide stops it
-- The PDF keeps the label and drops the transport
+- Both inlined, so the deck is still one file
+- `{.autoplay}` starts it **when the slide is shown**
+- The PDF keeps the sleeve and the label
 :::
 
 ::: pane clip {valign=middle}
-![A chime, three notes long](media/chime.wav)
+![A chime, three notes long](media/chime.wav){cover=media/chime-cover.svg}
 :::
 
-<!-- note: The sample is a wav because this repository ships no encoder; every format above takes the same path. Press play - autoplay is deliberately not set here, since a gallery deck that makes noise on arrival is a bad neighbour. -->
+<!-- note: The sample is a wav because this repository ships no encoder; every format above takes the same path. Autoplay is deliberately not set here - a gallery deck that makes noise on arrival is a bad neighbour. `poster=` works too, since that is the word a video uses. -->
 
 ---
 

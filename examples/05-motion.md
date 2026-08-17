@@ -377,3 +377,46 @@ m : danmaku "this bit matters"
 ```anim
 [enter] .m-fx : fade-in 400ms
 ```
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|  desc            |  clip           |
+|                  |                 |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Media]{.eyebrow}
+## A clip that starts on arrival
+:::
+
+::: pane desc {valign=middle}
+The clip began playing when you turned to this slide, not when
+the deck loaded:
+
+```markdown
+![Demo](media/demo.webm){.autoplay .loop .muted}
+```
+
+- Turn back a page and it stops and rewinds; return and it
+  starts again from the top
+- `autoplay` implies `muted`, since no browser starts audible
+  media on its own
+
+*Press `←` then `→`: it starts over.*
+:::
+
+::: pane clip {valign=middle}
+![Demo clip, playing on arrival](media/demo.webm){.autoplay .loop .muted fit=contain}
+:::
+
+<!-- note: This is the one slide in the samples that plays by itself. It is muted, and it is deliberately in the motion deck rather than the gallery: arriving is the trigger, which makes it motion. -->

@@ -226,21 +226,21 @@ play it on arrival, muted as browsers insist</li>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Media</span></p>
 <h2>A recording is a player</h2>
 </div>
-<div class="pane pane-desc" data-pane="desc" style="grid-area:desc;display:flex;flex-direction:column;justify-content:center"><p>An audio file becomes a player labelled with its alt text:</p>
-<pre><code class="language-markdown"><span class="tok-string">![Interview with the author]</span>(media/chime.wav)
+<div class="pane pane-desc" data-pane="desc" style="grid-area:desc;display:flex;flex-direction:column;justify-content:center"><p>An audio file becomes a player labelled with its alt text, and
+<code>cover=</code> gives it a sleeve:</p>
+<pre><code class="language-markdown"><span class="tok-string">![Interview]</span>(talk.mp3){cover=art.jpg}
 </code></pre>
 <ul>
 <li><code>mp3</code>, <code>m4a</code>, <code>aac</code>, <code>wav</code>, <code>ogg</code>, <code>opus</code>, <code>flac</code></li>
-<li>Inlined like any other asset, so the deck is still one file</li>
-<li><code>{.autoplay}</code> starts it <strong>when the slide is shown</strong>, not when
-the deck loads, and leaving the slide stops it</li>
-<li>The PDF keeps the label and drops the transport</li>
+<li>Both inlined, so the deck is still one file</li>
+<li><code>{.autoplay}</code> starts it <strong>when the slide is shown</strong></li>
+<li>The PDF keeps the sleeve and the label</li>
 </ul>
 </div>
-<div class="pane pane-clip" data-pane="clip" style="grid-area:clip;display:flex;flex-direction:column;justify-content:center"><div class="mz-audio"><audio src="<data-uri len=44882>" title="A chime, three notes long" controls></audio><span class="mz-audio-label">A chime, three notes long</span></div>
+<div class="pane pane-clip" data-pane="clip" style="grid-area:clip;display:flex;flex-direction:column;justify-content:center"><div class="mz-audio mz-audio-card"><img class="mz-audio-art" src="<data-uri len=1378>" alt=""><span class="mz-audio-body"><span class="mz-audio-label">A chime, three notes long</span><audio src="<data-uri len=44882>" title="A chime, three notes long" controls></audio></span></div>
 </div>
 </div>
-<aside class="notes"><p>The sample is a wav because this repository ships no encoder; every format above takes the same path. Press play - autoplay is deliberately not set here, since a gallery deck that makes noise on arrival is a bad neighbour.</p>
+<aside class="notes"><p>The sample is a wav because this repository ships no encoder; every format above takes the same path. Autoplay is deliberately not set here - a gallery deck that makes noise on arrival is a bad neighbour. <code>poster=</code> works too, since that is the word a video uses.</p>
 </aside>
 </section>
 <section class="slide" data-index="11">

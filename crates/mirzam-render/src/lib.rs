@@ -2873,6 +2873,26 @@ mod tests {
         assert!(out.contains("Demo clip"));
     }
 
+    /// A printed recording keeps everything a page can carry — the sleeve and
+    /// the title — and loses only the transport, which is the one part of it a
+    /// page cannot offer.
+    #[test]
+    fn print_keeps_a_recordings_sleeve_and_label() {
+        let card = "<div class=\"mz-audio mz-audio-card\">\
+                    <img class=\"mz-audio-art\" src=\"art.png\" alt=\"\">\
+                    <span class=\"mz-audio-body\">\
+                    <span class=\"mz-audio-label\">Interview</span>\
+                    <audio src=\"talk.mp3\" title=\"Interview\" controls></audio>\
+                    </span></div>";
+        let out = videos_to_stills(card);
+        assert!(
+            out.contains("<img class=\"mz-audio-art\" src=\"art.png\""),
+            "{out}"
+        );
+        assert!(out.contains("Interview"), "{out}");
+        assert!(!out.contains("<audio"), "{out}");
+    }
+
     #[test]
     fn slide_without_layout_is_single_pane() {
         let slide = parse_slide("# Hello {.title-slide}\n\nworld\n");

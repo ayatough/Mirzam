@@ -992,6 +992,11 @@ that particular job.
 - An audio file becomes a player with the alt text as its label, inlined like
   any other asset — a deck with a recording in it is still one file. `mp3`,
   `m4a`, `aac`, `wav`, `ogg`, `opus` and `flac`.
+- `{cover=art.jpg}` puts the sleeve beside the transport, which is what a
+  recording looks like everywhere else a person plays one; the artwork is
+  inlined with everything else. `poster=` is accepted for it too, since that is
+  the word a video uses for the same idea. In the PDF the sleeve and the label
+  stay and only the transport goes.
 - A YouTube or Vimeo page URL becomes an embed, served from
   `youtube-nocookie.com`. **This is the one thing in a deck that is not
   self-contained:** the frame is fetched when the slide is shown, so it needs
@@ -1016,9 +1021,11 @@ that particular job.
 | `{.loop}` | repeats |
 | `{.muted}` | no sound (`.autoplay` implies it) |
 
-The same four flags work on a local `<video>` and the first three on an
-`<audio>`, so `![clip](demo.mp4){.autoplay .loop}` and
+`{.autoplay}`, `{.loop}` and `{.muted}` work on a local `<video>` too, and the
+first two on an `<audio>`, so `![clip](demo.mp4){.autoplay .loop}` and
 `![tape](talk.mp3){.autoplay}` mean what they look like.
+`examples/05-motion.md` has a slide that plays on arrival, since that is the one
+thing a picture of a deck cannot show.
 
 **`.autoplay` means "when the slide is shown", not "when the deck loads".** The
 distinction is the whole feature: a slide behind `display: none` plays perfectly
@@ -1035,6 +1042,25 @@ media until the reader has interacted with the page. A recording set to autoplay
 on the opening slide may therefore stay silent until the first key or click,
 which is why `.autoplay` on a video implies `.muted` and why a hosted video is
 muted when it starts on arrival.
+
+### The player and the deck's keys
+
+A player's native controls live in a shadow tree the page cannot listen to, so
+while one holds focus the arrow keys, Space and every other deck key are its
+keys, not the deck's — they never arrive here at all. Clicking a player therefore
+**hands focus straight back to the deck**: the click has already pressed play or
+moved the scrubber, so nothing is lost, and the next arrow key turns the page as
+it should. Clicking a player, its label, or the card around it never turns a page
+either, so reaching for the transport is safe.
+
+A reader who *tabs* to a player keeps focus, and with it the native seek keys —
+there focus is the only thing they have to work with, and Tab is the way back
+out.
+
+A hosted video is a document of its own: while the reader is inside its controls,
+its keys really are gone, and nothing in the deck can take them back mid-play.
+The first click back on the slide only returns focus — it does not also turn the
+page.
 
 Without JavaScript, `autoplay` falls back to what the attribute has always meant
 to a browser: media starts at load. That is the documented fallback rather than a

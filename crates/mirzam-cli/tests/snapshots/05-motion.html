@@ -201,3 +201,26 @@ press the key.</p>
 <script type="application/json" class="mz-anim">{"steps":0,"tracks":[{"delay":0,"dur":400,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".m-fx","split":null},"trigger":{"kind":"enter"}}]}</script>
 <script type="application/json" class="mz-fx">[{"key":"1","effect":"flash"},{"key":"2","effect":"shake"},{"key":"3","effect":"lines"},{"key":"4","effect":"boom"},{"key":"e","effect":"burst","arg":"🎉"},{"key":"c","effect":"confetti"},{"key":"m","effect":"danmaku","arg":"this bit matters"}]</script>
 </section>
+<section class="slide" data-index="9">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 6fr;grid-template-areas:"head head" "desc clip"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Media</span></p>
+<h2>A clip that starts on arrival</h2>
+</div>
+<div class="pane pane-desc" data-pane="desc" style="grid-area:desc;display:flex;flex-direction:column;justify-content:center"><p>The clip began playing when you turned to this slide, not when
+the deck loaded:</p>
+<pre><code class="language-markdown"><span class="tok-string">![Demo]</span>(media/demo.webm){.autoplay .loop .muted}
+</code></pre>
+<ul>
+<li>Turn back a page and it stops and rewinds; return and it
+starts again from the top</li>
+<li><code>autoplay</code> implies <code>muted</code>, since no browser starts audible
+media on its own</li>
+</ul>
+<p><em>Press <code>←</code> then <code>→</code>: it starts over.</em></p>
+</div>
+<div class="pane pane-clip" data-pane="clip" style="grid-area:clip;display:flex;flex-direction:column;justify-content:center"><p><video src="<data-uri len=93951>" title="Demo clip, playing on arrival" autoplay muted loop playsinline style="object-fit:contain;width:100%;height:100%;"></video></p>
+</div>
+</div>
+<aside class="notes"><p>This is the one slide in the samples that plays by itself. It is muted, and it is deliberately in the motion deck rather than the gallery: arriving is the trigger, which makes it motion.</p>
+</aside>
+</section>

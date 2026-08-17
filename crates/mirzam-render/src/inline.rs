@@ -323,6 +323,11 @@ fn is_audio(src: &str) -> bool {
 
 /// `![Interview](clip.mp3)` becomes an `<audio>`. The file is inlined like
 /// any other asset, so a deck with a recording in it is still one file.
+///
+/// `{cover=art.jpg}` makes it a card with the artwork beside the transport,
+/// which is what a recording looks like everywhere else a person plays one. It
+/// is spelled `poster=` on a video, so both names are taken: whichever one the
+/// author reaches for first is the right one.
 fn audio_html(src: &str, alt: &str, attrs: &Attrs) -> String {
     let autoplay = attrs.classes.iter().any(|c| c == "autoplay");
     let mut flags = String::from(" controls");
@@ -332,15 +337,27 @@ fn audio_html(src: &str, alt: &str, attrs: &Attrs) -> String {
     if attrs.classes.iter().any(|c| c == "loop") {
         flags.push_str(" loop");
     }
+    let cover = attrs.kv.get("cover").or_else(|| attrs.kv.get("poster"));
     let mut carried = attrs.clone();
     carried
         .classes
         .retain(|c| !matches!(c.as_str(), "autoplay" | "loop" | "controls"));
-    format!(
-        "<div class=\"mz-audio\"{}><audio src=\"{src}\" title=\"{alt}\"{flags}></audio>\
-         <span class=\"mz-audio-label\">{alt}</span></div>",
-        carried.html_id_class()
-    )
+    let player = format!("<audio src=\"{src}\" title=\"{alt}\"{flags}></audio>");
+    let label = format!("<span class=\"mz-audio-label\">{alt}</span>");
+    match cover {
+        // The artwork is decoration for a player the label already names, so its
+        // `alt` is empty on purpose: a screen reader announcing the title twice
+        // is worse than one that does not mention the sleeve.
+        Some(art) => format!(
+            "<div class=\"mz-audio mz-audio-card\"{}><img class=\"mz-audio-art\" src=\"{art}\" alt=\"\">\
+             <span class=\"mz-audio-body\">{label}{player}</span></div>",
+            carried.html_id_class()
+        ),
+        None => format!(
+            "<div class=\"mz-audio\"{}>{player}{label}</div>",
+            carried.html_id_class()
+        ),
+    }
 }
 
 /// Where the two hosts' frames are served from. Named because the asset pass

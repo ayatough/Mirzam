@@ -710,6 +710,36 @@ video { background: #000; /* theme-independent: letterbox behind the frame */ bo
 .mz-audio audio { width: 100%; }
 .mz-audio-label { color: var(--mz-muted); font-size: .9em; }
 
+/* With `cover=`, the sleeve beside the transport - which is what a recording
+   looks like everywhere else a person plays one, and the difference between a
+   slide with a recording on it and a slide with a grey bar on it. The artwork
+   is square because sleeves are, and it keeps its own size rather than
+   stretching to the pane: a card is a thing on the slide, not the slide. */
+.mz-audio-card {
+  flex-direction: row; align-items: center; gap: 1.1em;
+  padding: .9em 1.1em;
+  background: var(--mz-surface); border: 1px solid var(--mz-border);
+  border-radius: 10px;
+}
+.mz-audio-art {
+  flex: none; width: clamp(64px, 26%, 152px); aspect-ratio: 1;
+  object-fit: cover; border-radius: 6px;
+  box-shadow: 0 2px 12px rgb(0 0 0 / .28); /* theme-independent: a shadow, not a surface */
+}
+.mz-audio-body { display: flex; flex-direction: column; gap: .55em; min-width: 0; flex: 1; }
+.mz-audio-card .mz-audio-label {
+  color: var(--mz-fg); font-size: 1em; font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* In print the transport becomes a placeholder (see `strip_media_for_print`),
+   and a 200px dashed box where a 30px control bar was would push the sleeve out
+   of the card. A recording that cannot be played is a caption, not a hole. */
+.mz-audio .mz-video-still {
+  min-height: 0; height: auto; padding: .35em .9em;
+  border-width: 1px; border-style: dashed;
+}
+.mz-audio .mz-video-still span { font-size: 1.2em; }
+
 /* A hosted video. The one thing in a deck that is not self-contained - the
    frame is fetched when the slide is shown - so it is drawn on a surface that
    still looks deliberate if the network is not there. */

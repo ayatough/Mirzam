@@ -185,7 +185,10 @@
           // is a console full of noise about a policy we cannot argue with.
           try { m.currentTime = 0; const p = m.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
         }
-      } else if (!m.paused || (auto && m.currentTime)) {
+      } else if (!m.paused || (auto && m.currentTime) || document.activeElement === m) {
+        // Focus goes with it: a player left focused on the slide behind is an
+        // invisible owner for keys nobody meant to send it.
+        if (document.activeElement === m) m.blur();
         try { m.pause(); if (auto) m.currentTime = 0; } catch (e) {}
       }
     }
@@ -811,6 +814,10 @@
       if (e.key === 'Escape') { t.blur(); toggleOverview(false); }
       return;
     }
+    // A focused control owns the keys that press it: Space on the mode toggle is
+    // that button, not a page turn as well as one.
+    if (t && t.closest && t.closest('button, a[href], summary')
+        && (e.key === ' ' || e.key === 'Enter')) return;
     if (e.key === '/' || e.key === '?') { e.preventDefault(); toggleKeys(); return; }
     // Escape closes the sheet. It also clears effects, which `effects.js`
     // handles on its own listener, so this one only owns the overlay.
@@ -891,6 +898,39 @@
     else notesPanel.hidden = dy >= 0;
   }, { passive: true });
 
+  // ---- Giving the keys back ----
+  // A player's native controls live in a shadow tree the page cannot listen to.
+  // Click one and *nothing* reaches this script - not the click, not the
+  // pointer events, and not the arrow keys and Space the player then receives -
+  // so a presenter who pressed play found the deck had stopped turning pages,
+  // and the only way back, clicking off the player, turned one. Two events do
+  // survive, `focus` and `focusin`, and focus is exactly what does the damage:
+  // the click has already pressed the button by the time this runs, so handing
+  // focus back costs the reader nothing and returns every key. The controls
+  // stay where they are - they answer the mouse, which never needed focus.
+  //
+  // A reader who *tabbed* to the player keeps it, along with the native seek
+  // keys, because then focus is the only thing they have to work with. Tab is
+  // an ordinary key, so unlike the click it is visible here.
+  let tabbedAt = -1e9;
+  addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') tabbedAt = e.timeStamp || performance.now();
+  }, true);
+  addEventListener('focusin', (e) => {
+    const m = e.target.closest && e.target.closest('video, audio');
+    if (!m) return;
+    if ((e.timeStamp || performance.now()) - tabbedAt < 500) return;
+    m.blur();
+  });
+  // A hosted video is a document of its own, so its keys are genuinely gone
+  // while it holds focus - nothing here can take them back mid-play. What this
+  // can do is make the way out not cost a slide: the first click back on the
+  // deck only returns focus.
+  let framed = false;
+  addEventListener('blur', () => {
+    framed = !!(document.activeElement && document.activeElement.tagName === 'IFRAME');
+  });
+
   // Click to advance, but never while the reader is selecting text or using a
   // control: a drag that ends on the deck is a selection, not a page turn.
   let downAt = null;
@@ -904,7 +944,21 @@
     if (handled) { handled = false; return; }
     if (moved) return;
     if ((getSelection()?.toString() || '').trim()) return;
-    if (e.target.closest('a, video, details, summary, button, input')) return;
+    // Anything a reader operates rather than reads: a click on a player, its
+    // label, or the card around it is aimed at the player. Every one of those
+    // used to turn a page - the label went *back* one, because it sits in the
+    // left half of the slide.
+    if (e.target.closest('a, video, audio, iframe, .mz-audio, .mz-embed, details, summary, button, input')) return;
+    // Coming back from a hosted video's own controls: this click is the reader
+    // reaching for the deck again, not asking it for the next slide.
+    if (framed) {
+      framed = false;
+      // Blur rather than focus something: `#deck` is not a focusable element, and
+      // taking focus off the frame is all the keys need.
+      const a = document.activeElement;
+      if (a && a.blur) a.blur();
+      return;
+    }
     const r = deck.getBoundingClientRect();
     (e.clientX - r.left) / r.width < 0.3 ? retreat() : advance();
   });

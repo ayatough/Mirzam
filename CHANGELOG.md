@@ -42,10 +42,15 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   blocks audible autoplay). A Vimeo link takes its offset in the fragment and
   gets it back there. The PDF's link carries the timestamp too, since that link
   is a printed deck's only way to play anything.
-- **A recording, in the sample deck.** Audio has worked since it shipped and no
-  deck under `examples/` had one, which is the exact hole `markup_coverage.rs`
-  exists to close — so the component gallery now carries a player, and the list
-  holds it there.
+- **A recording, in the sample deck, with its sleeve.** `{cover=art.jpg}` puts
+  the artwork beside the transport, which is what a recording looks like
+  everywhere else a person plays one — a slide with a recording on it was a slide
+  with a grey bar on it. (`poster=` is accepted too, since that is the word a
+  video uses.) Audio itself has worked since it shipped and no deck under
+  `examples/` had any, which is the exact hole `markup_coverage.rs` exists to
+  close, so the component gallery now carries a player and the list holds it
+  there. `examples/05-motion.md` gains the slide that plays on arrival: the one
+  thing a picture of a deck cannot show.
 - **A build says when a deck stops being one file.** An image or a video
   referenced by URL cannot be inlined, so the deck needs the network to show it
   — and until now nothing said so: the promise the whole asset pass exists to
@@ -55,6 +60,18 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   already documents, so it stays silent.
 
 ### Fixed
+- **A player no longer takes the deck's keys hostage.** Press play and the arrow
+  keys stopped turning pages: a player's native controls live in a shadow tree
+  the page cannot listen to, so every key a focused player receives — and its
+  clicks, and its pointer events — never reach the deck at all. The way back was
+  to click off the player, which turned a page. Clicking a player now hands focus
+  straight back to the deck, after the click has already done its work, so the
+  transport still answers the mouse and the next arrow key turns the page. A
+  reader who *tabs* to a player keeps it, and the native seek keys with it.
+  Clicking a player, its label, or the card around it no longer turns a page
+  either — the label went *backwards* one, being in the left half of the slide —
+  and coming back from a hosted video's own controls costs a click, not a slide.
+  Space on a focused control button presses the button instead of doing both.
 - **`autoplay` waits for its slide.** It meant "when the deck loads", and a slide
   behind `display: none` plays perfectly well: a recording on slide nine started
   over the opening slide, and an autoplaying clip was already seconds in by the

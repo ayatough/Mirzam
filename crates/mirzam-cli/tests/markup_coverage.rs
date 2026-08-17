@@ -246,6 +246,40 @@ fn every_listed_mark_appears_in_a_sample_deck() {
 /// for you is wrong a third of the time.
 const TERM_MODES: &[&str] = &["terms-aligned", "terms-stacked"];
 
+/// The flags a media reference takes, held to two of the three conditions: the
+/// renderer's own tests check what each one emits, but a flag no deck uses is
+/// one nobody has ever watched work. `autoplay` is the case in point — it meant
+/// "when the deck loads" for three releases, which a single sample slide would
+/// have caught the first time anyone turned a page.
+const MEDIA_FLAGS: &[&str] = &["autoplay", "loop", "muted", "cover"];
+
+#[test]
+fn every_media_flag_is_documented_and_shown() {
+    let doc = std::fs::read_to_string(repo_root().join("docs/syntax.md")).expect("docs/syntax.md");
+    let decks: String = std::fs::read_dir(repo_root().join("examples"))
+        .expect("examples/")
+        .filter_map(Result::ok)
+        .filter(|e| e.path().extension().is_some_and(|x| x == "md"))
+        .filter_map(|e| std::fs::read_to_string(e.path()).ok())
+        .collect();
+    for flag in MEDIA_FLAGS {
+        // `cover=` is written with its value, the rest as classes.
+        let (in_doc, in_deck) = if *flag == "cover" {
+            (format!("`{{{flag}="), format!("{{{flag}="))
+        } else {
+            (format!("`{{.{flag}}}`"), format!(".{flag}"))
+        };
+        assert!(
+            doc.contains(&in_doc),
+            "docs/syntax.md never mentions {in_doc}"
+        );
+        assert!(
+            decks.contains(&in_deck),
+            "no deck under examples/ uses {in_deck}"
+        );
+    }
+}
+
 #[test]
 fn every_term_list_mode_is_styled_documented_and_shown() {
     let css = std::fs::read_to_string(repo_root().join("crates/mirzam-render/src/theme/base.css"))
