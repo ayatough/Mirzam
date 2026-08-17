@@ -1520,13 +1520,8 @@ they came from long gone, so a deck that uses one arrives with the reference
 intact and the file missing, which the editor reports the way it reports any
 missing asset. Drag the picture in and it resolves again.
 
-**`serve` always carries the panel** — no flag, and `V` works from the first
-page load. It follows your edits: save, and the panel shows what you just
-typed without the page reloading under you. The flags are `build`'s because a
-built deck is a file you hand to somebody, and whether it carries its own
-source is a decision about that file; a live preview has no such question to
-answer. `--editor-url` implies `--embed-source`, and neither applies to
-`serve`, which has no editor to point at but the one you are already in.
+`--editor-url` implies `--embed-source`. Both are `build` only: `serve` already
+has your source open in the editor beside it.
 
 ### The presenter window
 

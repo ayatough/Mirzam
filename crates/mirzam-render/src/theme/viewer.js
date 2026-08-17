@@ -335,7 +335,6 @@
   // slide's entrance: the presenter is looking at a step, not at slide one.
   window.__mirzamRefresh = () => {
     pristine = slides().map((s) => s.outerHTML);
-    readSource();
     show(cur, { play: false });
   };
   // Let a host (editor extension) jump to a specific slide. Cursor sync fires
@@ -435,18 +434,10 @@
   const sourcePanel = document.getElementById('source-panel');
   const sourceBtn = document.getElementById('mz-source-btn');
   let SOURCE = null;
-  // Re-read rather than parsed once: under `serve` the payload is swapped into
-  // the page on every edit, and a panel still showing the text from before the
-  // keystroke is the one thing this panel must never do.
-  function readSource() {
-    try {
-      const tag = document.getElementById('mz-source');
-      SOURCE = tag ? JSON.parse(tag.textContent) : null;
-    } catch (e) {
-      // A half-written payload is worse than the last good one.
-    }
-  }
-  readSource();
+  try {
+    const tag = document.getElementById('mz-source');
+    if (tag) SOURCE = JSON.parse(tag.textContent);
+  } catch (e) {}
   const hasSource = !!(SOURCE && SOURCE.doc && SOURCE.at && SOURCE.at.length);
   if (hasSource) {
     DISPLAY.splice(1, 0, [['V'], 'The Markdown behind this slide']);

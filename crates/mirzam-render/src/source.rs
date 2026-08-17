@@ -66,18 +66,6 @@ impl DeckSource {
     /// are indexed in. A deck written in Japanese would otherwise show every
     /// slide from the wrong place.
     pub fn script(&self) -> String {
-        match self.payload() {
-            p if p.is_empty() => p,
-            p => format!("<script type=\"application/json\" id=\"mz-source\">{p}</script>\n"),
-        }
-    }
-
-    /// The payload on its own, which is what a live reload sends: an edit
-    /// changes the deck's text, and a panel showing the version before it is
-    /// worse than no panel. `serve` puts this in the change event and the
-    /// client swaps it into the tag, so the source follows the deck without
-    /// the page having to reload under the reader.
-    pub fn payload(&self) -> String {
         if self.doc.is_empty() || self.starts.is_empty() {
             return String::new();
         }
@@ -113,7 +101,10 @@ impl DeckSource {
                     .join(",")
             ));
         }
-        format!("{{{}}}", fields.join(","))
+        format!(
+            "<script type=\"application/json\" id=\"mz-source\">{{{}}}</script>\n",
+            fields.join(",")
+        )
     }
 }
 
