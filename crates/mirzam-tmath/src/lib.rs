@@ -173,8 +173,23 @@ mod tests {
     fn cases_split_cells_on_align() {
         assert_eq!(
             latex("cases(x^2 &\"if\" x > 0, 0 &\"otherwise\")"),
-            "\\begin{cases}x^{2} & \\text{if} x > 0 \\\\ 0 & \\text{otherwise}\\end{cases}"
+            "\\begin{cases}x^{2} & \\text{if} \\ x > 0 \\\\ 0 & \\text{otherwise}\\end{cases}"
         );
+    }
+
+    #[test]
+    fn a_space_beside_quoted_text_is_the_one_typst_keeps() {
+        // Typst ignores the spaces around operators and keeps the one next to
+        // a quoted run — `a"is"b` and `a "is" b` are different formulas. LaTeX
+        // has no such rule, so `\text{if} x` came out as `ifx`, which is the
+        // reading a slide gets checked for and the one nobody catches.
+        assert_eq!(latex("a \"is\" b"), "a \\ \\text{is} \\ b");
+        assert_eq!(latex("a\"is\"b"), "a \\text{is} b");
+        assert_eq!(latex("x \"is natural\""), "x \\ \\text{is natural}");
+        // Only beside text. Everything else already carries its own spacing,
+        // and a word space there would be wider than the formula wants.
+        assert_eq!(latex("a + b"), "a + b");
+        assert_eq!(latex("f (x)"), "f \\left(x\\right)");
     }
 
     #[test]
@@ -379,7 +394,7 @@ mod tests {
         // A bare `%` opens a LaTeX comment, which used to swallow the rest of
         // the formula with no error and no warning: `99% "of the mass"` came
         // out as `99`.
-        assert_eq!(latex("99% \"of it\""), "99 \\% \\text{of it}");
+        assert_eq!(latex("99% \"of it\""), "99 \\% \\ \\text{of it}");
         assert_eq!(latex("p = 5%"), "p = 5 \\%");
     }
 

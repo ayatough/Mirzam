@@ -436,10 +436,10 @@ cut something.</p>
 <span class="tok-function">math:</span> typst
 ---
 </code></pre>
-<pre><code class="language-markdown"><span class="tok-number">$x = (-b pm sqrt(b^2 - 4a c))/(2a)$</span>
+<pre><code class="language-markdown"><span class="tok-number">$hat(beta) = overline(y)$</span>, <span class="tok-number">$arrow(v) &quot;at&quot; 99%$</span>
 </code></pre>
 <p>Which renders as:</p>
-<p><math><mi>x</mi><mo>=</mo><mfrac><mrow><mo lspace="0" rspace="0">−</mo><mi>b</mi><mo lspace="0" rspace="0">±</mo><msqrt><mrow><msup><mi>b</mi><mn>2</mn></msup><mo lspace="0" rspace="0">−</mo><mn>4</mn><mi>a</mi><mi>c</mi></mrow></msqrt></mrow><mrow><mn>2</mn><mi>a</mi></mrow></mfrac></math></p>
+<p><math><mover accent="true"><mi>β</mi><mo stretchy="false">ˆ</mo></mover><mo>=</mo><mover accent="true"><mi>y</mi><mo stretchy="true">‾</mo></mover></math>, <math><mover accent="true"><mi>v</mi><mo stretchy="false">→</mo></mover><mtext> </mtext><mtext>at</mtext><mtext> </mtext><mn>99</mn><mi>%</mi></math></p>
 </div>
 <div class="pane pane-what" data-pane="what" style="grid-area:what;display:flex;flex-direction:column;justify-content:center"><ul>
 <li>Typst's math syntax, without the backslashes: <code>a/b</code> is a fraction, <code>sqrt()</code>

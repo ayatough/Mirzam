@@ -696,12 +696,12 @@ math: typst
 ```
 
 ```markdown
-$x = (-b pm sqrt(b^2 - 4a c))/(2a)$
+$hat(beta) = overline(y)$, $arrow(v) "at" 99%$
 ```
 
 Which renders as:
 
-$x = (-b pm sqrt(b^2 - 4a c))/(2a)$
+$hat(beta) = overline(y)$, $arrow(v) "at" 99%$
 :::
 
 ::: pane what {valign=middle}

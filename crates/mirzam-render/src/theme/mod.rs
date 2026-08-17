@@ -484,6 +484,25 @@ mod tests {
         assert!(reset < own && reset < base.unwrap());
     }
 
+    /// `math-core` does not draw its own MathML: three of its constructs
+    /// need the stylesheet it ships with, and a page without it shows an
+    /// accent resting on its letter and `cancel(x)` as an unstruck `x` —
+    /// wrong, and silent, because the markup is fine. Every deck's CSS
+    /// carries it, so this holds `base.css` to all three rules.
+    #[test]
+    fn the_stylesheet_math_core_requires_ships_with_every_deck() {
+        for rule in [
+            // The accent gap Chromium and Safari leave at zero.
+            "mover[accent=\"true\" i] > mo:nth-child(2)",
+            // The `menclose` Chromium has no implementation of.
+            "mrow.menclose-updiagonalstrike",
+            // The `mtd` padding Firefox does not apply.
+            "mtd { padding:",
+        ] {
+            assert!(BASE_CSS.contains(rule), "base.css lost `{rule}`");
+        }
+    }
+
     /// A deck's own theme file overrides tokens with a plain `:root { }`
     /// block.
     /// `:root[data-theme="x"]` outranks that on specificity, so wrapping the

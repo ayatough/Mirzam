@@ -730,7 +730,7 @@ MathML path:
 | Vectors | `vec(1, 2)` is a column; `binom(n, k)` a binomial |
 | Cases | `cases(x^2 &"if" x > 0, 0 &"otherwise")` |
 | Braces | `underbrace(a + b, "label")`, `overbrace`, `cancel(x)` — keep the *base* under about eight em and put the words in the label; see below |
-| Text | `"km/h"` renders upright, spaces kept |
+| Text | `"km/h"` renders upright, spaces kept — inside the quotes, and beside them: `a "is" b` is spaced where `a"is"b` is not, as in Typst |
 | Alignment | `&` lines up equations, `\` breaks the line |
 | Escapes | `#` strips the next character of its meaning: `a #/ b` is a slash, not a fraction |
 

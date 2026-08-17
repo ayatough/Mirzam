@@ -33,6 +33,31 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   `o` and `h` are now viewer keys, so an `effects` block can no longer bind
   them — the same warning the other reserved keys give.
 
+### Fixed
+- **Accents sit above their letter, not on it.** Every deck's CSS now carries
+  the stylesheet `math-core` requires alongside its MathML, which Mirzam had
+  never shipped. Three things were wrong without it and none of them announced
+  itself, because the markup was correct and only the drawing was not: Chromium
+  and Safari left no gap under an accent, so a `hat(x)` rested on the `x` — the
+  larger the formula the more it showed, which is why display math looked worse
+  than the same formula inline; `cancel(x)` reached the slide as an unstruck
+  `x`, since Chromium has no `menclose` and the strike needs the polyfill; and
+  matrix cells lost the padding the spec gives them, so a `mat(...)` sat away
+  from its own delimiters.
+- **`overline`, `underline` and `arrow` draw over their base.** These three
+  arrived from `math-core` as combining marks, which have no width — so the
+  browser centred nothing and the ink landed off the letter's left shoulder:
+  `overline(z)` put its bar beside the `z` and `arrow(v)` hung the arrow
+  outside the `v`, in inline and display math alike. They are now the spacing
+  characters that draw the same marks, and `arrow` is one arrow at both widths
+  instead of two different ones either side of `arrow(A B)`.
+- **A space beside quoted text survives into the slide.** Typst keeps the space
+  an author types next to a `"quoted"` run — `a"is"b` and `a "is" b` are
+  different formulas — and the syntax guide already promised it. LaTeX has no
+  such rule, so the space was dropped: `cases(x^2 &"if" x > 0)` read as
+  `ifx > 0`, and `99% "of it"` as `99%of it`. Writing `"if "` to buy the space
+  back is no longer needed, and now adds a second one.
+
 ## [0.7.0] - 2026-08-16
 
 ### Removed

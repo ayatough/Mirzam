@@ -57,12 +57,15 @@ const CORPUS: &[(&str, &str)] = &[
         "mat(1, 2; 3, 4)",
         r"\begin{pmatrix}1 & 2\\ 3 & 4\end{pmatrix}",
     ),
+    // The space before `x` is one the author typed beside a quoted run, so
+    // Typst keeps it — writing `"if "` to buy it back is the workaround this
+    // no longer needs.
     (
-        "cases(x^2 &\"if \" x > 0, 0 &\"otherwise\")",
-        r"\begin{cases}x^{2} & \text{if }x>0\\ 0 & \text{otherwise}\end{cases}",
+        "cases(x^2 &\"if\" x > 0, 0 &\"otherwise\")",
+        r"\begin{cases}x^{2} & \text{if}\ x>0\\ 0 & \text{otherwise}\end{cases}",
     ),
     // Text, escapes, alignment.
-    ("v = 60 \"km/h\"", r"v=60\text{km/h}"),
+    ("v = 60 \"km/h\"", r"v=60\ \text{km/h}"),
     ("a #& b", r"a\&b"),
     (
         "f(x) &= x^2 \\ g(x) &= 2x",

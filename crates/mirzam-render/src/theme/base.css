@@ -522,6 +522,48 @@ section.slide:has(.title-slide) p { color: var(--mz-muted); font-size: 1.5em; }
 /* Math: converted to MathML at build time and drawn natively by the browser */
 math { font-size: 1.15em; }
 math[display="block"] { font-size: 1.35em; margin: .5em 0; }
+
+/* The stylesheet `math-core` requires alongside its MathML (`css/mathmlfixes.css`,
+   MIT). Without it the markup is not wrong, it is just drawn wrong, and a deck
+   has no way to notice: an accent sits on top of its letter instead of above it,
+   and `cancel(x)` comes out as an unstruck `x`. Display math is where it shows,
+   because display math is the larger of the two. */
+
+/* The `mtd` padding MathML Core specifies, which Firefox does not apply. Edge
+   cells lose it so a matrix is not indented away from its own delimiters. */
+mtd { padding: 0.5ex 0.4em; }
+mtr > mtd:first-child { padding-left: 0; }
+mtr > mtd:last-child { padding-right: 0; }
+
+/* Chromium only: it has no `menclose`, so `cancel(x)` would render as a bare
+   `x` — a formula silently missing its strike. `math-core` emits an empty
+   marker row for the stroke; this draws it. */
+@supports (not (-webkit-backdrop-filter: blur(1px))) and (not (-moz-appearance: none)) {
+  menclose { position: relative; padding: 0.5ex 0; }
+  mrow.menclose-updiagonalstrike,
+  mrow.menclose-downdiagonalstrike,
+  mrow.menclose-horizontalstrike {
+    display: inline-block; position: absolute; left: .5px; bottom: 0;
+    width: 100%; height: 100%; background-color: currentcolor;
+  }
+  mrow.menclose-updiagonalstrike {
+    clip-path: polygon(.05em 100%, 0 calc(100% - .05em), calc(100% - .05em) 0, 100% .05em);
+  }
+  mrow.menclose-downdiagonalstrike {
+    clip-path: polygon(0 .05em, .05em 0, 100% calc(100% - .05em), calc(100% - .05em) 100%);
+  }
+  mrow.menclose-horizontalstrike {
+    clip-path: polygon(0 calc(55% + .0333em), 0 calc(55% - .0333em),
+                       100% calc(55% - .0333em), 100% calc(55% + .0333em));
+  }
+}
+
+/* Chromium and Safari only: both set the accent gap to zero, so a hat rests on
+   the letter it belongs over. This is the gap Firefox already leaves. */
+@supports (not (-moz-appearance: none)) {
+  mover[accent="true" i] > mo:nth-child(2) { margin-bottom: 0.15ex; }
+}
+
 /* Fallback when conversion fails: show the TeX source */
 .math-error {
   font-family: var(--mz-font-mono, 'SF Mono', Consolas, Menlo, monospace); font-style: normal;

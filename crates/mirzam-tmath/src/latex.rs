@@ -26,7 +26,36 @@ pub(crate) fn emit_root(nodes: &[Node]) -> String {
 }
 
 fn emit_seq(nodes: &[Node]) -> String {
-    nodes.iter().map(emit).collect::<Vec<_>>().join(" ")
+    let mut out = String::new();
+    for (i, node) in nodes.iter().enumerate() {
+        if i > 0 {
+            // LaTeX ignores the separator; a kept space has to be asked for.
+            out.push_str(if keeps_space(&nodes[i - 1], node) {
+                " \\ "
+            } else {
+                " "
+            });
+        }
+        out.push_str(&emit(node));
+    }
+    out
+}
+
+/// Whether the space the author typed between two items is one Typst keeps.
+///
+/// Typst ignores the spaces around operators — they carry their own — but
+/// keeps the one beside a `"quoted"` run, which is the difference between
+/// `a"is"b` and `a "is" b`. Nothing else in a formula is written expecting a
+/// word space, so nothing else asks for one here: this is what stops
+/// `cases(x^2 &"if" x > 0)` reading as `ifx > 0` and `99% "of it"` as
+/// `99%of it`.
+///
+/// The spans are the whole record of what the author typed — a gap between
+/// them is whitespace and nothing else — so this needs no node of its own,
+/// and `print` keeps reproducing the source it already reproduced.
+fn keeps_space(before: &Node, after: &Node) -> bool {
+    let text = matches!(before.kind, NodeKind::Text(_)) || matches!(after.kind, NodeKind::Text(_));
+    text && before.span.end < after.span.start
 }
 
 fn emit(node: &Node) -> String {

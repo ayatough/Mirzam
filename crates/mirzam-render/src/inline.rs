@@ -627,9 +627,50 @@ fn math_html(src: &str, display: math_core::MathDisplay, math: MathDialect) -> S
         },
     };
     match math_converter().convert_with_local_state(&tex, display) {
-        Ok(r) => r.mathml,
+        Ok(r) => widen_accent_glyphs(r.mathml),
         Err(e) => math_error(src, &e.to_string(), display),
     }
+}
+
+/// Swaps the three accent characters `math-core` picks that no browser can
+/// place, for the spacing characters that draw the same mark.
+///
+/// A combining mark has no advance width and its ink sits to the *left* of the
+/// origin, because it is drawn over the character already typed. An `mover`
+/// centres its accent on the base by advance width, so a zero-width mark lands
+/// beside the letter rather than above it: `overline(z)` puts the bar off the
+/// left shoulder of the `z`, and `arrow(v)` hangs the arrow outside the `v`.
+/// The mark only lands right when the browser stretches it — which it does for
+/// `\widehat`'s U+0302, and does not for a base too narrow to need stretching.
+///
+/// Every other accent already arrives as a spacing character (`\hat` U+02C6,
+/// `\bar` U+00AF, `\dot` U+02D9), which is why only these three are wrong, and
+/// why they are wrong the same way in display and inline math. The replacements
+/// are the spacing twins of the same marks, and U+2192 is what `\overrightarrow`
+/// is already given — so `arrow(v)` and `arrow(A B)`, one Typst function that
+/// lowers to `\vec` or `\overrightarrow` by width, stop drawing two arrows.
+fn widen_accent_glyphs(mathml: String) -> String {
+    // Cheap reject: the marks are rare, the pages are not.
+    if !mathml.contains(['\u{332}', '\u{20d7}']) {
+        return mathml;
+    }
+    mathml
+        // U+0332 is `\overline` above and `\underline` below — one character
+        // for both, so which spacing twin it wants depends on the element.
+        .replace(
+            "<mo stretchy=\"true\">\u{332}</mo></mover>",
+            "<mo stretchy=\"true\">\u{203e}</mo></mover>",
+        )
+        .replace(
+            "<mo stretchy=\"true\">\u{332}</mo></munder>",
+            "<mo stretchy=\"true\">\u{5f}</mo></munder>",
+        )
+        // `\vec`. Scoped to the `mo` it arrives in, so the same character
+        // typed inside `\text{...}` reaches the slide as the author wrote it.
+        .replace(
+            "<mo stretchy=\"false\">\u{20d7}</mo>",
+            "<mo stretchy=\"false\">\u{2192}</mo>",
+        )
 }
 
 /// Renders one formula on its own — MathML, or the error span a deck would
@@ -923,6 +964,54 @@ mod tests {
         assert!(out.contains("mfrac"), "{out}");
         assert!(out.contains('α'), "{out}");
         assert!(!out.contains("math-error"), "{out}");
+    }
+
+    #[test]
+    fn accents_land_over_their_base_not_beside_it() {
+        // A combining mark has no advance width, so an `mover` centres it on
+        // the base and the ink lands off the letter's left shoulder. These
+        // three are the only accents `math-core` hands over as combining
+        // marks, and the same three are the only ones that ever looked wrong.
+        for (src, want) in [
+            ("overline(z)", '\u{203e}'),
+            ("underline(w)", '\u{5f}'),
+            ("arrow(v)", '\u{2192}'),
+            ("arrow(A B)", '\u{2192}'),
+        ] {
+            for block in [false, true] {
+                let out = render_math(src, MathDialect::Typst, block);
+                assert!(out.contains(want), "{src} (block={block}): {out}");
+            }
+        }
+        // Nothing zero-width is left anywhere in the formula. If `math-core`
+        // ever changes the shape this rewrite matches on, this is what says
+        // so — a silent miss would put the mark back beside the letter.
+        for src in [
+            "overline(z)",
+            "underline(w)",
+            "arrow(v)",
+            "overline(A B)",
+            "underline(A B)",
+            "arrow(A B)",
+            "overline(hat(x))",
+        ] {
+            let out = render_math(src, MathDialect::Typst, true);
+            assert!(!out.contains(['\u{332}', '\u{20d7}']), "{src}: {out}");
+        }
+        // The dialects share the converter, so LaTeX decks get the same fix.
+        assert!(render_math("\\vec{v}", MathDialect::Latex, false).contains('\u{2192}'));
+    }
+
+    #[test]
+    fn the_accents_that_were_already_right_are_left_alone() {
+        // `\hat` and `\bar` arrive as spacing characters, which browsers do
+        // place correctly; `\widehat` arrives combining but is always
+        // stretched, which gives it a width. Rewriting them would be a
+        // regression, so they are pinned here.
+        assert!(render_math("hat(x)", MathDialect::Typst, true).contains('\u{2c6}'));
+        assert!(render_math("macron(x)", MathDialect::Typst, true).contains('\u{af}'));
+        assert!(render_math("tilde(y)", MathDialect::Typst, true).contains('\u{2dc}'));
+        assert!(render_math("hat(A B)", MathDialect::Typst, true).contains('\u{302}'));
     }
 
     #[test]
