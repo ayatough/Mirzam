@@ -46,6 +46,8 @@ const RESERVED: &[&str] = &[
     "d",
     "v",
     "h",
+    "o",
+    "a",
 ];
 
 struct Binding {
@@ -129,7 +131,7 @@ fn parse_line(line: &str) -> Result<Binding, String> {
     if RESERVED.contains(&key.to_lowercase().as_str()) {
         return Err(format!(
             "`{key}` is taken by the viewer (navigation, notes, source, fullscreen, \
-             layout, mode, chrome)"
+             layout, mode, chrome, overview, autoplay)"
         ));
     }
 

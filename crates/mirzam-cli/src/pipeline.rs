@@ -220,6 +220,14 @@ pub fn build_deck_with(
         }
     }
 
+    // Same shape for `autoplay:`: a value that does not parse is a deck driven
+    // by hand, which on a kiosk looks exactly like the feature not existing.
+    if let Some(src) = &meta.autoplay {
+        if let Err(e) = mirzam_anim::parse_autoplay(src) {
+            warnings.push(format!("autoplay: {e}"));
+        }
+    }
+
     // Load the deck's own stylesheets, in the order `theme:` names them.
     // Failures are warnings, not errors: a deck without its theme is still a
     // deck.

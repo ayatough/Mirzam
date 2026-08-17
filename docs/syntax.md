@@ -54,6 +54,7 @@ author: Your Name
 aspect: "16:9"        # or "4:3"
 theme: mirzam         # a built-in name, a .css path, or a list of both
 transition: fade      # how pages turn; see Animations below
+autoplay: 8s loop     # the deck turns its own pages; see Driving the viewer
 masters: masters.md   # named slide shapes; see Slide masters below
 layout: body          # the master a slide takes when it draws no grid
 footer: Internal      # drawn on every slide, and in the PDF
@@ -1460,6 +1461,7 @@ nobody can guess. `Esc` or `/` closes it.
 | `P` | Presenter window |
 | `F` | Fullscreen |
 | `D` | Dark / light |
+| `A` | Pause / resume autoplay, in [a deck that plays itself](#the-deck-playing-itself) |
 | `L` | Outline the layout |
 | `/` | The cheat sheet |
 | `Esc` | Close the sheet; clear any effect in flight |
@@ -1505,6 +1507,36 @@ by somebody else — add `?controls=none` to the URL, or `?controls=auto` to
 force them back on. Unlike `D`, this does **not** travel between the presenter
 window and the audience window: the projector wants nothing on the slide and
 the laptop wants its controls, and they are looking at the same deck.
+
+### The deck playing itself
+
+```yaml
+---
+autoplay: 8s loop
+---
+```
+
+One advance every interval, where one advance is one press of `→`: a click
+step while the slide has any left, then the next slide — so an animated slide
+plays through at the same pace as the pages turn, and a photo with a caption
+that arrives line by line is a slideshow, not a page flip. `loop` wraps the
+deck from the last slide back to the first, forwards, entrances and all;
+without it the deck plays through once and rests. The interval reads in
+seconds (`8s`, `1.5s`, or a bare `8`), with `ms` accepted like everywhere
+else.
+
+`?autoplay=8s+loop` starts **any** deck playing without editing it — a `+` is
+how a URL spells the space — and `?autoplay=off` stills one whose frontmatter
+asked to play. With [`?controls=none`](#hiding-the-controls) beside it, a link
+is a kiosk: an exhibition loop, a screensaver, a display nobody is standing
+next to.
+
+`A` pauses and resumes. Anything else that navigates — a key, a tap, a
+clicker — restarts the countdown rather than switching the loop off, so a
+visitor who flips ahead walks away and the loop picks itself back up. A
+hidden tab turns no pages, and the presenter window never plays itself: it
+mirrors the window that does. The PDF export is untouched, as with every
+other kind of motion.
 
 ### The Markdown behind a slide
 

@@ -57,6 +57,7 @@ split: h2                   # also start a new slide at every h1/h2/h3
 fit: shrink                 # scale an overfull pane's text down instead of clipping
 math: typst                 # latex (default) | typst
 transition: slide-left 400ms ease=out-cubic
+autoplay: 8s loop           # the deck advances itself; `loop` wraps to the start
 masters: masters.md         # named layouts; a path, or a mapping of name to drawing
 layout: body                # the master a slide takes when it draws no grid
 footer: Internal            # drawn on every slide and in the PDF
@@ -72,6 +73,11 @@ vars:
 `transition:` takes `none`, `fade`, `slide-left|right|up|down`,
 `wipe-left|right|up|down`, `zoom`, `iris`, each optionally with a duration and
 `ease=`.
+
+`autoplay:` takes an interval — seconds by default (`8s`, `1.5s`, bare `8`),
+`ms` accepted — and optionally `loop`. One advance is one click step, then the
+next slide. In the viewer, `?autoplay=8s+loop` plays any deck and
+`?autoplay=off` stills one; `A` pauses and resumes.
 
 ## Slides
 

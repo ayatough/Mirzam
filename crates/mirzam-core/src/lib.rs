@@ -29,6 +29,12 @@ pub struct DeckMeta {
     /// declares its own whole-slide `[enter]`/`[exit]` track overrides the
     /// matching half. Parsed by `mirzam_anim::parse_transition`.
     pub transition: Option<String>,
+    /// The deck turns its own pages: `8s`, or `8s loop` to wrap back to the
+    /// start — a kiosk loop, a screensaver, an exhibition display. One advance
+    /// is one click step, so animated slides play through at the same pace.
+    /// Parsed by `mirzam_anim::parse_autoplay`; the viewer's `?autoplay=`
+    /// overrides it for one view.
+    pub autoplay: Option<String>,
     /// `fit: shrink` asks every pane to shrink its text rather than clip it.
     /// Panes opt in individually with `{fit=shrink}`; this is the same thing
     /// said once for the whole deck.

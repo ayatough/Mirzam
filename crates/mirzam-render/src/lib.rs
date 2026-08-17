@@ -438,6 +438,21 @@ fn transition_attr(meta: &DeckMeta) -> String {
     }
 }
 
+/// The `data-autoplay` payload for `#deck`, or an empty string when the deck
+/// declares no autoplay or an unusable one. Same contract as
+/// [`transition_attr`]: reporting the problem is the build pipeline's job.
+/// Autoplay needs no runtime beyond the viewer itself — advancing is what the
+/// viewer already does — so nothing extra is inlined for it.
+fn autoplay_attr(meta: &DeckMeta) -> String {
+    match meta.autoplay.as_deref().map(mirzam_anim::parse_autoplay) {
+        Some(Ok(a)) => format!(
+            " data-autoplay=\"{}\"",
+            inline::html_escape(&mirzam_anim::autoplay_json(&a))
+        ),
+        _ => String::new(),
+    }
+}
+
 /// Resolves frontmatter `theme:`/`mode:` to the attributes baked onto
 /// `<html>`. Always valid, silently falling back to `mirzam`/no mode
 /// attribute for a name that is not a built-in: a caller that wants to
@@ -540,6 +555,7 @@ pub fn page_fingerprint(meta: &DeckMeta, sections: &[String], opts: &PageOptions
     theme_attrs(meta).hash(&mut h);
     themes_used(meta, sections, opts.all_themes).hash(&mut h);
     transition_attr(meta).hash(&mut h);
+    autoplay_attr(meta).hash(&mut h);
     deck_fit_attr(meta).hash(&mut h);
     sections_have_math(sections).hash(&mut h);
     deck_has_anim(meta, sections).hash(&mut h);
@@ -636,6 +652,7 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
         "\n<button id=\"mz-source-btn\" type=\"button\" aria-label=\"The Markdown behind this slide\">&lt;/&gt;</button>".to_string()
     };
     let transition = transition_attr(meta);
+    let autoplay = autoplay_attr(meta);
     let (theme_name, mode_attr) = theme_attrs(meta);
     format!(
         r#"<!doctype html>
@@ -651,7 +668,7 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <style>{grid_css}</style>
 </head>
 <body{body_theme}>
-<div id="deck" data-slide-w="{w}" data-slide-h="{h}"{transition}{fit}>
+<div id="deck" data-slide-w="{w}" data-slide-h="{h}"{transition}{autoplay}{fit}>
 {sections}</div>
 <div id="chrome">
 <div id="hud"></div>
@@ -2447,6 +2464,31 @@ mod tests {
         };
         let html = assemble_page(&meta, &[], &PageOptions::default());
         assert!(!html.contains("data-transition"));
+    }
+
+    /// Autoplay rides on the viewer itself — advancing is what the viewer
+    /// already does — so the attribute appears without pulling in the
+    /// animation runtime, and an unusable value leaves a deck driven by hand.
+    #[test]
+    fn autoplay_is_an_attribute_and_nothing_more() {
+        let meta = DeckMeta {
+            autoplay: Some("8s loop".into()),
+            ..Default::default()
+        };
+        let html = assemble_page(&meta, &[], &PageOptions::default());
+        assert!(html.contains(r#"data-autoplay="{&quot;loop&quot;:true,&quot;ms&quot;:8000}""#));
+        assert!(!html.contains("window.MZAnim = {"));
+
+        let bad = DeckMeta {
+            autoplay: Some("whenever".into()),
+            ..Default::default()
+        };
+        let html = assemble_page(&bad, &[], &PageOptions::default());
+        assert!(!html.contains("data-autoplay"));
+        assert!(
+            !assemble_page(&DeckMeta::default(), &[], &PageOptions::default())
+                .contains("data-autoplay")
+        );
     }
 
     #[test]

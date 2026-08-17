@@ -57,6 +57,16 @@
   const anim = window.MZAnim || null;
   let transition = null;
   try { transition = JSON.parse(deck.dataset.transition || 'null'); } catch (e) {}
+  // The deck turning its own pages: frontmatter `autoplay:` baked the pace
+  // into #deck, and `?autoplay=8s+loop` (a `+` is how a URL spells the space)
+  // sets or overrides it for one view — `?autoplay=off` stills a deck that
+  // asked to play. The presenter window never plays itself: it mirrors this
+  // one, and two windows keeping time would both turn the page.
+  let auto = null;
+  try { auto = JSON.parse(deck.dataset.autoplay || 'null'); } catch (e) {}
+  const qAuto = query.get('autoplay');
+  if (qAuto !== null) auto = parseAutoplay(qAuto);
+  if (PRESENTING) auto = null;
   // How far through the current slide's click steps we are.
   let step = 0;
   // The annotation overlay is loaded after this file, and is absent from decks
@@ -108,6 +118,10 @@
   // replay the slide's entrance.
   function show(i, opts) {
     const play = !opts || opts.play !== false;
+    // A looping deck wrapping from the last slide to the first is a forward
+    // arrival, not sixty pages of retreat: the first slide enters at step 0
+    // with its entrance, and on a one-slide loop it re-enters in place.
+    const wrap = !!(opts && opts.wrap);
     const ss = slides();
     const from = ss[cur];
     const idx = Math.min(Math.max(i, 0), ss.length - 1);
@@ -115,9 +129,9 @@
     // retreating before the start, End on the last page - is not an arrival,
     // and must not replay the slide's entrance. Only the initial paint plays
     // in place.
-    if (play && from && idx === cur && !(opts && opts.first)) return;
-    const backwards = idx < cur;
-    const changed = from && idx !== cur;
+    if (play && from && idx === cur && !(opts && opts.first) && !wrap) return;
+    const backwards = idx < cur && !wrap;
+    const changed = (from && idx !== cur) || wrap;
     // Parts of a slide broken by `<!-- next -->` are one slide the author chose
     // to serve in instalments: every other pane holds the same elements in the
     // same places, so moving between them is a cut, not a page turn.
@@ -761,6 +775,54 @@
   // glyph too, or the button starts lying about where it goes.
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', paintModeButton);
 
+  // ---- Autoplay ----
+  // `8s` and `loop` in whichever order, `off` or `none` to still the deck.
+  // Mirrors mirzam-anim's parse_autoplay, minus the errors: a URL nobody
+  // compiled has nowhere to put a warning, so a value that does not parse is
+  // a deck that does not play.
+  function parseAutoplay(src) {
+    let ms = 0, loop = false;
+    for (const tok of (src || '').trim().split(/\s+/)) {
+      if (tok === 'loop') loop = true;
+      else if (tok === 'off' || tok === 'none') return null;
+      else {
+        const m = /^(\d+(?:\.\d+)?)(ms|s)?$/.exec(tok);
+        if (!m) return null;
+        ms = +m[1] * (m[2] === 'ms' ? 1 : 1000);
+      }
+    }
+    return ms >= 100 ? { ms, loop } : null;
+  }
+
+  // One tick is one press of `→`: a click step while the slide has any left,
+  // then the next slide — an animated caption plays through at the same pace
+  // as the pages turn. Touching the deck restarts the countdown rather than
+  // stopping it: a kiosk visitor who flips a page walks away, and the loop
+  // picks itself back up on the next interval. `A` is the deliberate stop.
+  let autoOn = !!auto;
+  let autoTimer = null;
+  function autoTick() {
+    const ss = slides();
+    if (cur >= ss.length - 1 && step >= stepsOn(ss[cur])) {
+      // Played through: wrap forwards, or rest until `A` starts it again.
+      if (auto.loop) show(0, { wrap: true });
+      else autoOn = false;
+    } else {
+      advance();
+    }
+  }
+  function armAuto() {
+    if (!auto) return;
+    clearTimeout(autoTimer);
+    // A hidden tab turns no pages; coming back re-arms via the listener.
+    if (autoOn && !document.hidden) autoTimer = setTimeout(autoTick, auto.ms);
+  }
+  // Every navigation — the tick's own included — lands in updateHud, so the
+  // countdown restarts from whatever just happened.
+  watchers.push(armAuto);
+  document.addEventListener('visibilitychange', armAuto);
+  if (auto) DISPLAY.push([['A'], 'Pause / resume the autoplay']);
+
   addEventListener('keydown', (e) => {
     // A modified key belongs to the browser: Cmd-R, Ctrl-F, Alt-Tab.
     if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -796,6 +858,8 @@
       notify();
     }
     else if (e.key === 'd' || e.key === 'D') toggleMode();
+    // Only in a deck that plays itself; elsewhere the key stays free.
+    else if ((e.key === 'a' || e.key === 'A') && auto) { autoOn = !autoOn; armAuto(); }
     else if (e.key === 'h' || e.key === 'H') {
       chromeOn = !chromeOn;
       try { localStorage.setItem(CHROME_KEY, chromeOn ? 'on' : 'off'); } catch (e) {}

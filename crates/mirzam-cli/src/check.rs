@@ -356,6 +356,7 @@ fn build_kind(message: &str) -> &'static str {
         // that cannot be read on its own background.
         ("theme: `", "build.theme"),
         ("transition:", "build.transition"),
+        ("autoplay:", "build.autoplay"),
         ("no slides:", "build.deck"),
         ("<!-- next -->", "build.continuation"),
         ("file not found", "build.asset"),

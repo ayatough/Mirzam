@@ -370,3 +370,47 @@ m : danmaku "this bit matters"
 ```anim
 [enter] .m-fx : fade-in 400ms
 ```
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|  src             |  note           |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Autoplay]{.eyebrow}
+## A deck that turns its own pages
+:::
+
+::: pane src {.card valign=middle}
+```yaml
+---
+autoplay: 8s loop
+---
+```
+
+One advance every eight seconds — a click step while the slide has any
+left, then the next slide — and `loop` wraps back to the start.
+:::
+
+::: pane note {valign=middle}
+[An exhibition loop, a screensaver, a photo slideshow whose captions animate in: every slide above plays through at the same pace as the pages turn.]{.m-auto1}
+
+[This deck does not ask for it — reopen with `?autoplay=4s+loop` in the address and watch it drive itself. `A` pauses; anything else just restarts the countdown.]{.m-auto2 .small}
+:::
+
+```anim
+[enter]   .m-auto1 : fade-in 400ms
+[click 1] .m-auto2 : slide-in 400ms dir=up
+```
+
+<!-- note: Autoplay advances by click steps too, so this slide's own reveal plays on the loop. -->

@@ -313,6 +313,66 @@ pub fn parse_transition(src: &str) -> Result<Transition, String> {
     })
 }
 
+/// A deck that turns its own pages, from frontmatter `autoplay:`.
+///
+/// Autoplay is pacing rather than animation, but it lives here because this
+/// is where the timing grammar lives: the interval is written the way a
+/// track's duration is, and the viewer consumes it from `#deck` the way it
+/// consumes the transition.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Autoplay {
+    /// Milliseconds between advances. One advance is one click step while the
+    /// slide has any left, then the next slide — the same thing `→` does, so
+    /// an animated slide plays through at the same pace as pages turn.
+    pub interval_ms: u32,
+    /// Whether the deck wraps from the last slide back to the first — a kiosk
+    /// loop or a screensaver, rather than a talk that ends.
+    pub looped: bool,
+}
+
+/// Parses frontmatter `autoplay:`, e.g. `8s`, `8s loop`, `4000ms`.
+/// A bare number is seconds: how long a slide stays up is something people
+/// think of in seconds, unlike an animation's duration.
+pub fn parse_autoplay(src: &str) -> Result<Autoplay, String> {
+    let mut interval_ms: Option<u32> = None;
+    let mut looped = false;
+    for tok in src.split_whitespace() {
+        if tok == "loop" {
+            looped = true;
+            continue;
+        }
+        let (num, scale) = if let Some(n) = tok.strip_suffix("ms") {
+            (n, 1.0)
+        } else if let Some(n) = tok.strip_suffix('s') {
+            (n, 1000.0)
+        } else {
+            (tok, 1000.0)
+        };
+        let v: f64 = num.parse().map_err(|_| {
+            format!("unexpected token `{tok}`; write `autoplay: 8s` or `autoplay: 8s loop`")
+        })?;
+        interval_ms = Some((v * scale).round() as u32);
+    }
+    let interval_ms =
+        interval_ms.ok_or("no interval; write `autoplay: 8s` or `autoplay: 8s loop`")?;
+    // `as u32` saturates a negative interval to zero, so this floor catches
+    // nonsense as well as intervals shorter than any page turn could be.
+    if interval_ms < 100 {
+        return Err(format!(
+            "`{src}` is shorter than any page turn; 100ms is the floor"
+        ));
+    }
+    Ok(Autoplay {
+        interval_ms,
+        looped,
+    })
+}
+
+/// Serializes autoplay for the `data-autoplay` attribute on `#deck`.
+pub fn autoplay_json(a: &Autoplay) -> String {
+    serde_json::json!({ "ms": a.interval_ms, "loop": a.looped }).to_string()
+}
+
 /// Serializes a transition for the `data-transition` attribute on `#deck`.
 pub fn transition_json(t: &Transition) -> String {
     let mut v = serde_json::json!({
@@ -956,5 +1016,40 @@ mod tests {
         let t = parse_transition("fade 300ms ease=spring(1,180,20)").unwrap();
         let json: serde_json::Value = serde_json::from_str(&transition_json(&t)).unwrap();
         assert!(json["ease"].as_str().unwrap().starts_with("linear("));
+    }
+
+    /// The interval reads in seconds by default because that is the unit a
+    /// dwell time is thought in; `ms` is still accepted for symmetry with
+    /// every other duration in the file.
+    #[test]
+    fn autoplay_parses_an_interval_and_a_loop() {
+        let a = parse_autoplay("8s").unwrap();
+        assert_eq!(a.interval_ms, 8000);
+        assert!(!a.looped);
+
+        let a = parse_autoplay("1.5s loop").unwrap();
+        assert_eq!(a.interval_ms, 1500);
+        assert!(a.looped);
+
+        // Order-insensitive, bare numbers are seconds, `ms` is milliseconds.
+        assert_eq!(parse_autoplay("loop 4").unwrap().interval_ms, 4000);
+        assert_eq!(parse_autoplay("750ms").unwrap().interval_ms, 750);
+
+        let json: serde_json::Value =
+            serde_json::from_str(&autoplay_json(&parse_autoplay("8s loop").unwrap())).unwrap();
+        assert_eq!(json["ms"], 8000);
+        assert_eq!(json["loop"], true);
+    }
+
+    #[test]
+    fn autoplay_refuses_nonsense() {
+        // `loop` alone has no pace to play at.
+        assert!(parse_autoplay("loop").is_err());
+        assert!(parse_autoplay("").is_err());
+        assert!(parse_autoplay("fast").is_err());
+        // Zero, negative and sub-100ms intervals would spin the deck.
+        assert!(parse_autoplay("0s").is_err());
+        assert!(parse_autoplay("-5s").is_err());
+        assert!(parse_autoplay("50ms").is_err());
     }
 }

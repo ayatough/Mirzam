@@ -80,6 +80,7 @@ there is. The model column follows from that:
 | W21 | An authoring contract for agents | B | Opus | — | ✅ |
 | W22 | One door to a deck's look: `theme:` absorbs `css:` | B | Opus | — | ✅ |
 | W23 | Mermaid diagrams, rendered at build time | B | Opus | — | ✅ |
+| W24 | Autoplay: the deck turns its own pages | C | Fable | — | ✅ |
 
 ### What is deferred, and why
 
@@ -1495,6 +1496,40 @@ and is not part of this stream.
 **Contention.** `docs/syntax.md`, `docs/llms.md`. The snapshots were expected
 to move and did not, for the reason above: no sample deck gained a fence, so
 `crates/mirzam-cli/tests/snapshots/*.html` is byte-identical.
+
+## W24 — Autoplay: the deck turns its own pages ✅
+
+**Difficulty C · Fable · landed**
+
+**What it is for.** The unattended screen: an exhibition loop, a kiosk, a
+screensaver, a photo slideshow whose captions animate in. A deck already knows
+how to advance — `→` steps through clicks, then turns the page — so autoplay is
+that same advance on a timer, not a second navigation system. `autoplay: 8s
+loop` in frontmatter is the authored form; `?autoplay=8s+loop` plays a deck
+that never asked, and `?controls=none` beside it makes the link a kiosk.
+
+**What is not free.** Three decisions, all about who wins a disagreement with
+the clock:
+
+- **Looping is not paging back.** `show(0)` from the last slide reads as
+  retreat — backwards transition, slide arriving fully revealed — which on a
+  loop would mean the first slide never plays its entrance and its steps are
+  already spent. The wrap is its own arrival (`{wrap: true}`): forwards,
+  step 0, entrances and all, and on a one-slide deck it re-enters in place.
+- **A visitor outranks the timer, briefly.** Navigation restarts the countdown
+  rather than stopping the loop — a kiosk that a passer-by can permanently
+  silence with one tap is a broken kiosk. `A` is the deliberate stop, listed
+  on the cheat sheet only when autoplay is configured; `a` and `o` join the
+  reserved effect keys.
+- **Only one clock per deck.** The presenter window mirrors the main one, so
+  it never runs its own timer; a hidden tab holds until it is visible again.
+
+**Stops at:** one deck-wide interval. Per-slide dwell, waiting for a video's
+`ended`, Ken Burns drift on backgrounds and video export are named in the
+[roadmap](roadmap.md)'s "unattended screen" entry, and each is its own stream.
+
+**Contention.** `viewer.js` (the driver and the `wrap` arrival),
+`crates/mirzam-cli/tests/snapshots/05-motion.html` (the sample slide).
 
 ## W5 — Typst-flavoured math ✅
 

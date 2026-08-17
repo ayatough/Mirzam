@@ -8,6 +8,21 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- **`autoplay: 8s loop` plays the deck by itself.** One advance every
+  interval, where one advance is one press of `→` — a click step while the
+  slide has any left, then the next slide — so animated slides play through
+  at the same pace as the pages turn. `loop` wraps from the last slide back
+  to the first, forwards, entrances and all: an exhibition loop, a
+  screensaver, a photo slideshow with animated captions. `?autoplay=8s+loop`
+  starts any deck playing without editing it, `?autoplay=off` stills one
+  that asked to, and with `?controls=none` beside it a link is a kiosk. `A`
+  pauses and resumes; any other navigation restarts the countdown rather
+  than stopping the loop, a hidden tab turns no pages, and the presenter
+  window never plays itself. See slide 9 of the motion deck at `/next/`.
+
+  `a` joins the reserved effect keys, and `o` — a viewer key since the
+  overview landed, though nothing had actually stopped an `effects` block
+  from binding it — is now genuinely reserved too.
 - **`O` shows every slide at once.** A grid of thumbnails, each captioned with
   its own heading; click one to go there. It is the contents page nobody had to
   write, and the way back when a question sends the talk six slides in the

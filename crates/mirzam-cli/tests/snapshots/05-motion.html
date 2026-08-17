@@ -199,3 +199,23 @@ press the key.</p>
 <script type="application/json" class="mz-anim">{"steps":0,"tracks":[{"delay":0,"dur":400,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".m-fx","split":null},"trigger":{"kind":"enter"}}]}</script>
 <script type="application/json" class="mz-fx">[{"key":"1","effect":"flash"},{"key":"2","effect":"shake"},{"key":"3","effect":"lines"},{"key":"4","effect":"boom"},{"key":"e","effect":"burst","arg":"🎉"},{"key":"c","effect":"confetti"},{"key":"m","effect":"danmaku","arg":"this bit matters"}]</script>
 </section>
+<section class="slide" data-index="9">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src note"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Autoplay</span></p>
+<h2>A deck that turns its own pages</h2>
+</div>
+<div class="pane pane-src card" data-pane="src" style="grid-area:src;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-yaml">---
+<span class="tok-function">autoplay:</span> <span class="tok-number">8</span>s loop
+---
+</code></pre>
+<p>One advance every eight seconds — a click step while the slide has any
+left, then the next slide — and <code>loop</code> wraps back to the start.</p>
+</div>
+<div class="pane pane-note" data-pane="note" style="grid-area:note;display:flex;flex-direction:column;justify-content:center"><p><span class="m-auto1">An exhibition loop, a screensaver, a photo slideshow whose captions animate in: every slide above plays through at the same pace as the pages turn.</span></p>
+<p><span class="m-auto2 small">This deck does not ask for it — reopen with <code>?autoplay=4s+loop</code> in the address and watch it drive itself. <code>A</code> pauses; anything else just restarts the countdown.</span></p>
+</div>
+</div>
+<script type="application/json" class="mz-anim">{"steps":1,"tracks":[{"delay":0,"dur":400,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".m-auto1","split":null},"trigger":{"kind":"enter"}},{"delay":0,"dir":"up","dur":400,"ease":"linear","effect":"slide-in","stagger":0,"target":{"sel":".m-auto2","split":null},"trigger":{"kind":"click","n":1}}]}</script>
+<aside class="notes"><p>Autoplay advances by click steps too, so this slide's own reveal plays on the loop.</p>
+</aside>
+</section>

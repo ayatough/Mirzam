@@ -48,6 +48,7 @@ keep changing.
 | Syntax highlighting in code blocks (36 languages, theme-token colours) | Done |
 | An authoring contract for agents (`check --format json`, `llms.txt`) | Done |
 | Mermaid rendered to SVG at build time, in the deck's own colours | Done |
+| Autoplay (`autoplay: 8s loop`, `?autoplay=`) — kiosk loops, screensavers | Done |
 | Plugins, PPTX export | Later |
 
 Each of those has a brief — what it is for, what is not free about it, and where
@@ -147,6 +148,32 @@ separate, larger question that depends on adopting a text layout engine.
 **Editing anywhere.** The WASM core already runs in a browser; a progressive web
 app on top of it is what makes phone editing real. An Obsidian plugin reuses the
 same core.
+
+**The unattended screen, beyond autoplay.** `autoplay: 8s loop` landed as
+pacing: one deck-wide interval driving the same advance the arrow key does,
+which already covers the exhibition loop and the captioned photo slideshow.
+What it deliberately does not do yet, in rough order of pull:
+
+- **A per-slide dwell** — `<!-- autoplay: 20s -->` on the slide that needs
+  reading time — the natural next syntax, since slide-level overrides of
+  deck-wide dials are already the house pattern (`<!-- theme: -->`,
+  `<!-- layout: -->`, `<!-- chrome: -->`).
+- **Waiting for media**: a slide holding a video should turn when the video
+  ends, not cut it off mid-sentence. The viewer knows the video is there; it
+  just does not listen for `ended` yet.
+- **Pan and zoom on background images** (the Ken Burns effect), which is what
+  separates "slides on a loop" from a screensaver made of photographs. It
+  belongs to the `bg` attribute grammar, not to `anim`: the drift is a
+  property of the image, repeated every time the slide comes round.
+- **Video export.** A deck driving itself is a deck a recording harness can
+  film with no script to write — `scripts/record-demo.mjs` already drives a
+  live tab for the README demo — so `mirzam export video deck.md` producing a
+  `.webm` is mostly plumbing that exists. That is the piece that turns the
+  telop-over-image pattern into simple video authoring: write Markdown, get a
+  clip.
+- **A progress hint** for the kiosk visitor: some quiet mark that the screen
+  is a loop and where it is in it, in the chrome that `?controls=none`
+  removes — so a display can choose between perfectly bare and legible.
 
 **Richer data.** Column aggregation in tables, more chart types, and data-driven
 slides — a run of slides generated from the rows of a CSV, the one structural
