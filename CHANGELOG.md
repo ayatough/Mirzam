@@ -7,7 +7,19 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- **`mirzam serve` carries the source panel**, with no flag to remember: `V`
+  works from the first page load, and the `</>` control is there beside the
+  page turns. It was `build --embed-source` only, on the reasoning that
+  somebody running a live preview has the source open in their editor already
+  — which is true and beside the point. The panel answers *which lines made
+  this slide*, and that question is asked most while writing, when the deck is
+  a screen of panes and drawings that all look alike.
+
+  It follows the deck: an edit swaps the payload into the page along with the
+  slides it changed, so the panel shows what you just typed without the page
+  reloading under you. `--editor-url` stays a `build` flag — a live preview has
+  no editor to hand a deck to but the one you are already in.
 
 ## [0.7.0] - 2026-08-16
 

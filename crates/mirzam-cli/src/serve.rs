@@ -5,7 +5,7 @@
 //! - Clients long-poll `/events?v=N` for the diff and patch only the
 //!   `<section>` elements that changed
 
-use crate::pipeline::{build_deck, BuildOutput, RenderCache};
+use crate::pipeline::{build_deck, deck_source, BuildOutput, RenderCache};
 use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex};
@@ -22,6 +22,11 @@ struct Snapshot {
     hashes: Vec<u64>,
     page_fingerprint: u64,
     file_themes: Vec<mirzam_render::FileTheme>,
+    /// The deck's own Markdown, for the viewer's `V` panel. Always carried
+    /// here, unlike `build`, where it is a flag: the person watching a live
+    /// preview is the person writing the deck, and the panel costs a local
+    /// page nothing.
+    source: mirzam_render::DeckSource,
     /// Hash lists from previous versions, used to compute diffs.
     history: VecDeque<(u64, Vec<u64>)>,
 }
@@ -38,6 +43,8 @@ pub fn serve(input: &Path, port: u16) -> Result<(), String> {
         println!("  ⚠ {w}");
     }
     let mut watch_files = first.files.clone();
+    // Built before the fields it reads are moved into the snapshot.
+    let first_source = deck_source(&first, input, first.frontmatter.clone(), None);
     let shared = Arc::new(Shared {
         snap: Mutex::new(Snapshot {
             version: 1,
@@ -46,6 +53,7 @@ pub fn serve(input: &Path, port: u16) -> Result<(), String> {
             hashes: first.hashes.clone(),
             page_fingerprint: first.page_fingerprint,
             file_themes: first.file_themes,
+            source: first_source,
             history: VecDeque::from([(1, first.hashes)]),
         }),
         changed: Condvar::new(),
@@ -69,7 +77,7 @@ pub fn serve(input: &Path, port: u16) -> Result<(), String> {
                     Ok(out) => {
                         watch_files = out.files.clone();
                         mtimes = collect_mtimes(&watch_files);
-                        publish(&shared, out, t0);
+                        publish(&shared, out, &input, t0);
                     }
                     Err(e) => {
                         // Transient errors while editing are reported but keep the last good state.
@@ -91,7 +99,7 @@ pub fn serve(input: &Path, port: u16) -> Result<(), String> {
     Ok(())
 }
 
-fn publish(shared: &Shared, out: BuildOutput, t0: Instant) {
+fn publish(shared: &Shared, out: BuildOutput, input: &Path, t0: Instant) {
     for w in &out.warnings {
         println!("  ⚠ {w}");
     }
@@ -114,11 +122,13 @@ fn publish(shared: &Shared, out: BuildOutput, t0: Instant) {
         .filter(|(a, b)| a != b)
         .count()
         + out.hashes.len().abs_diff(snap.hashes.len());
+    let source = deck_source(&out, input, out.frontmatter.clone(), None);
     snap.meta = out.meta;
     snap.sections = out.sections;
     snap.hashes = out.hashes.clone();
     snap.page_fingerprint = out.page_fingerprint;
     snap.file_themes = out.file_themes;
+    snap.source = source;
     let v = snap.version;
     snap.history.push_back((v, out.hashes));
     while snap.history.len() > HISTORY_LIMIT {
@@ -152,6 +162,7 @@ fn handle(request: tiny_http::Request, shared: Arc<Shared>) {
                 // adding `theme=` to a pane is otherwise a change the page
                 // cannot show until the next full reload.
                 all_themes: true,
+                source: Some(snap.source.clone()),
                 ..Default::default()
             };
             let html = mirzam_render::assemble_page(&snap.meta, &snap.sections, &opts);
@@ -209,8 +220,15 @@ fn wait_for_change(shared: &Shared, client_v: u64) -> String {
                 // setting changed (custom CSS, ...) and the page must reload.
                 serde_json::json!({ "v": snap.version, "changes": [], "full": true }).to_string()
             } else {
-                serde_json::json!({ "v": snap.version, "changes": changes, "full": false })
-                    .to_string()
+                // The source panel's payload rides along: the slides the reader
+                // can see are patched, and so is the text behind them.
+                serde_json::json!({
+                    "v": snap.version,
+                    "changes": changes,
+                    "full": false,
+                    "source": snap.source.payload(),
+                })
+                .to_string()
             }
         }
         // Slide count changed, or history expired: reload the whole page.

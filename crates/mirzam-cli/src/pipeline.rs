@@ -539,6 +539,70 @@ pub fn build_deck_with(
     })
 }
 
+/// The deck's own Markdown, as the page carries it.
+///
+/// `frontmatter` is what the handed-over document should say about itself:
+/// the deck's own text for `serve`, and for `build` whatever the command line
+/// overrode it with. `editor_url` is where the panel's way out points, if it
+/// has one.
+pub fn deck_source(
+    out: &BuildOutput,
+    input: &Path,
+    frontmatter: Option<String>,
+    editor_url: Option<String>,
+) -> mirzam_render::DeckSource {
+    // The document the renderer read, frontmatter included: one text, which
+    // the panel and the handover both take slices of.
+    let head = match frontmatter {
+        Some(fm) => format!("---\n{fm}\n---\n"),
+        None => String::new(),
+    };
+    mirzam_render::DeckSource {
+        starts: out.slides.iter().map(|s| head.len() + s.start).collect(),
+        doc: head + &out.body,
+        section_slides: out.section_slides.clone(),
+        files: embedded_files(input, &out.meta, &out.file_themes),
+        editor_url,
+    }
+}
+
+/// The text files a handed-over deck needs and cannot get anywhere else.
+///
+/// Images and chart data are not among them: they go through the asset table
+/// as data URIs, which would put a megabyte in a URL, so a handed-over deck
+/// that uses one arrives with the reference intact and the file missing —
+/// reported by the editor the way any missing asset is.
+///
+/// A file that cannot be read is left out rather than failing the build: the
+/// deck itself has already reported it, and a second copy of the same warning
+/// helps nobody.
+fn embedded_files(
+    input: &Path,
+    meta: &mirzam_core::DeckMeta,
+    file_themes: &[mirzam_render::FileTheme],
+) -> Vec<(String, String)> {
+    let base = input.parent().unwrap_or(Path::new("."));
+    // The stylesheets have already been read, once, by whoever resolved
+    // `theme:` — the pipeline, or `--theme` on top of it. Reading them again
+    // here could disagree with the deck this page is.
+    let mut out: Vec<(String, String)> = file_themes
+        .iter()
+        .map(|t| (t.path.clone(), t.css.clone()))
+        .collect();
+    // The other two keys naming a file the core reads through a provider. A
+    // slide drawn on a master and handed over without one is not the slide:
+    // it has no grid at all, and renders as a single pane.
+    for rel in [meta.bibliography_file(), meta.masters_file()]
+        .into_iter()
+        .flatten()
+    {
+        if let Ok(text) = std::fs::read_to_string(base.join(rel)) {
+            out.push((rel.to_string(), text));
+        }
+    }
+    out
+}
+
 fn mtime(path: &Path) -> Option<SystemTime> {
     std::fs::metadata(path).and_then(|m| m.modified()).ok()
 }

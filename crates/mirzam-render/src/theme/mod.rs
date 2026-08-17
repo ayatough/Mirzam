@@ -449,6 +449,11 @@ pub const LIVE_JS: &str = r#"
         const sec = document.querySelector(`section.slide[data-index="${i}"]`);
         if (sec) sec.outerHTML = html;
       }
+      // The deck's own Markdown moved too, and the source panel may be open
+      // on it. Swapped rather than reloaded: this is the one panel whose whole
+      // job is to show what you just typed.
+      const src = document.getElementById('mz-source');
+      if (src && typeof j.source === 'string' && j.source) src.textContent = j.source;
       if (window.__mirzamRefresh) window.__mirzamRefresh();
     } catch (e) {
       await new Promise(r => setTimeout(r, 1000));

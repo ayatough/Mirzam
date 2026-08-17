@@ -689,44 +689,6 @@ fn apply_deck_overrides(out: &mut pipeline::BuildOutput, deck: &DeckArgs) -> Res
     Ok(())
 }
 
-/// The text files a handed-over slide needs and cannot get anywhere else.
-///
-/// Only the bibliography today. The stylesheet is already inlined in the page
-/// and the viewer reads it back from there; images and chart data go through
-/// the asset table as data URIs, which would put a megabyte in a URL, so a
-/// handed-over slide that uses one arrives with the reference intact and the
-/// file missing — reported by the editor the way any missing asset is.
-///
-/// A file that cannot be read is left out rather than failing the build: the
-/// deck itself has already reported it, and a second copy of the same warning
-/// helps nobody.
-fn embedded_files(
-    input: &Path,
-    meta: &mirzam_core::DeckMeta,
-    file_themes: &[mirzam_render::FileTheme],
-) -> Vec<(String, String)> {
-    let base = input.parent().unwrap_or(Path::new("."));
-    // The stylesheets have already been read, once, by whoever resolved
-    // `theme:` — the pipeline, or `--theme` on top of it. Reading them again
-    // here could disagree with the deck this page is.
-    let mut out: Vec<(String, String)> = file_themes
-        .iter()
-        .map(|t| (t.path.clone(), t.css.clone()))
-        .collect();
-    // The other two keys naming a file the core reads through a provider. A
-    // slide drawn on a master and handed over without one is not the slide:
-    // it has no grid at all, and renders as a single pane.
-    for rel in [meta.bibliography_file(), meta.masters_file()]
-        .into_iter()
-        .flatten()
-    {
-        if let Ok(text) = std::fs::read_to_string(base.join(rel)) {
-            out.push((rel.to_string(), text));
-        }
-    }
-    out
-}
-
 /// The frontmatter a handed-over slide carries, saying what the deck was
 /// actually built in rather than only what its own text says.
 ///
@@ -812,19 +774,12 @@ fn build(input: &Path, args: &BuildArgs) -> Result<(), String> {
         // actually uses and no more.
         all_themes: false,
         source: (args.embed_source || args.editor_url.is_some()).then(|| {
-            // The document the renderer read, frontmatter included: one text,
-            // which the panel and the handover both take slices of.
-            let head = match handover_frontmatter(&out, &args.deck) {
-                Some(fm) => format!("---\n{fm}\n---\n"),
-                None => String::new(),
-            };
-            mirzam_render::DeckSource {
-                starts: out.slides.iter().map(|s| head.len() + s.start).collect(),
-                doc: head + &out.body,
-                section_slides: out.section_slides.clone(),
-                files: embedded_files(input, &out.meta, &out.file_themes),
-                editor_url: args.editor_url.clone(),
-            }
+            pipeline::deck_source(
+                &out,
+                input,
+                handover_frontmatter(&out, &args.deck),
+                args.editor_url.clone(),
+            )
         }),
     };
     let html = mirzam_render::assemble_page(&out.meta, &out.sections, &opts);
