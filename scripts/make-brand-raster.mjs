@@ -1,7 +1,8 @@
 // Renders the raster brand assets that a vector file cannot stand in for: the
-// social preview card (link unfurls want a PNG) and the square app icon.
+// social preview card (link unfurls want a PNG), the square app icon, and the
+// extension icon, which the marketplaces will not take as an SVG either.
 //
-//   node scripts/make-brand-raster.mjs           # writes into docs/brand/
+//   node scripts/make-brand-raster.mjs           # writes the files listed below
 //   MIRZAM_CHROMIUM=/path/to/chrome node scripts/make-brand-raster.mjs
 //
 // Everything it composes is already in docs/brand/, and the wordmark carries its
@@ -44,24 +45,43 @@ const cardHtml = `<!doctype html><meta charset="utf-8"><style>
 <div class="bg"></div><div class="scrim"></div>
 <img src="${asset("mirzam-logo-dark.svg")}" alt="Mirzam">`;
 
-const iconHtml = `<!doctype html><meta charset="utf-8"><style>
+const iconHtml = (svg) => `<!doctype html><meta charset="utf-8"><style>
   html, body { margin: 0; width: 512px; height: 512px; }
   img { display: block; width: 512px; height: 512px; }
 </style>
-<img src="${asset("mirzam-icon-light.svg")}" alt="Mirzam">`;
+<img src="${asset(svg)}" alt="Mirzam">`;
+
+const ICON = { width: 512, height: 512 };
+const ROOT = resolve(BRAND, "..", "..");
 
 const browser = await chromium.launch({ executablePath: process.env.MIRZAM_CHROMIUM || undefined });
 try {
-  for (const [file, html, viewport] of [
-    ["mirzam-social-card.png", cardHtml, CARD],
-    ["mirzam-icon-512.png", iconHtml, { width: 512, height: 512 }],
+  for (const [out, html, viewport, opts = {}] of [
+    [join(BRAND, "mirzam-social-card.png"), cardHtml, CARD],
+    [join(BRAND, "mirzam-icon-512.png"), iconHtml("mirzam-icon-light.svg"), ICON],
+
+    // The extension icon. A marketplace shows one icon against a pale web page
+    // *and* a dark extensions sidebar and takes no theme variants, so it gets
+    // the tile that carries its own ground rather than the light one, which
+    // would be a white square wherever it landed.
+    //
+    // `omitBackground` is what makes the tile's rounded corners transparent
+    // rather than page-white: a screenshot has no alpha by default, and four
+    // white triangles on a dark sidebar is the whole reason this file is not
+    // just a copy of the light raster.
+    [
+      join(ROOT, "editors", "vscode", "media", "icon.png"),
+      iconHtml("mirzam-icon-dark.svg"),
+      ICON,
+      { omitBackground: true },
+    ],
   ]) {
     const page = await browser.newPage({ viewport });
     await page.setContent(html);
     await page.waitForTimeout(200);
-    writeFileSync(join(BRAND, file), await page.screenshot());
+    writeFileSync(out, await page.screenshot(opts));
     await page.close();
-    console.log(`  ${file}  ${viewport.width}x${viewport.height}`);
+    console.log(`  ${out.slice(ROOT.length + 1)}  ${viewport.width}x${viewport.height}`);
   }
 } finally {
   await browser.close();

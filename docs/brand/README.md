@@ -21,6 +21,7 @@ Sirius, and announces it.
 | `mirzam-logo-light.svg` / `-dark.svg` | The same lockup with the tagline set under the name. Wide placements only — below about 420px the tagline stops being legible. |
 | `mirzam-icon-light.svg` / `-dark.svg` | Square app mark: favicon, avatar, extension icon. Reads down to 16px. |
 | `mirzam-icon-512.png` | Raster of the light icon, for the places that will not take an SVG (apple-touch-icon, app stores, some registries). |
+| `editors/vscode/media/icon.png` | The extension icon, and the one raster that does not live here — a marketplace reads it out of the package. Rastered from the **dark** icon with transparent corners, because a listing shows it against a pale web page and a dark sidebar and takes no theme variants. `scripts/make-brand-raster.mjs` writes it; do not hand-edit it. |
 
 Pick the variant by the background it sits on, not by the reader's theme:
 `-light` is the ink-on-pale version, `-dark` is the pale-on-ink one. In Markdown,
@@ -150,7 +151,7 @@ time and nothing in this directory depends on a font being installed:
 
 ```bash
 npm i playwright-core && npx playwright install --with-deps chromium
-node scripts/make-brand-raster.mjs        # social card + icon PNG
+node scripts/make-brand-raster.mjs        # social card + icon PNG + extension icon
 ```
 
 The wordmark outlines were produced with [opentype.js][ot] from Space Grotesk

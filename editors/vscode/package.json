@@ -5,9 +5,14 @@
   "version": "0.7.0",
   "publisher": "mirzam",
   "license": "MIT",
+  "icon": "media/icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/ayatough/Mirzam"
+  },
+  "homepage": "https://ayatough.github.io/Mirzam/",
+  "bugs": {
+    "url": "https://github.com/ayatough/Mirzam/issues"
   },
   "engines": {
     "vscode": "^1.75.0"

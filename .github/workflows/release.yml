@@ -1,7 +1,8 @@
 name: Release
 
 # Publishes prebuilt `mirzam` binaries so using it does not require a Rust
-# toolchain.
+# toolchain, and the VS Code extension so previewing a deck does not require
+# building one.
 #
 # Two ways in, and the second exists because pushing a tag is not always
 # available to whoever is cutting the release — a CI job, an agent, anyone
@@ -158,9 +159,53 @@ jobs:
           path: dist/skill/mirzam-writing-skill.zip
           if-no-files-found: error
 
+  # The extension is the same package everywhere — a webview and a `.wasm`, no
+  # native code — so it is built once rather than per target. It is not part of
+  # the matrix above because it needs a different toolchain (the wasm32 target
+  # and a version-matched `wasm-bindgen`) and none of the binaries.
+  extension:
+    name: vs code extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: wasm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # build-vsix.sh builds the WASM into media/ and installs the matching
+      # wasm-bindgen CLI itself, so this is the same command a contributor runs.
+      - name: package
+        id: package
+        run: |
+          set -euo pipefail
+          ./scripts/build-vsix.sh
+          vsix=$(ls -t editors/vscode/*.vsix | head -1)
+          echo "vsix=$vsix" >> "$GITHUB_OUTPUT"
+
+      # The extension carries its own version, and the Marketplace refuses one
+      # it has already seen — so a `package.json` left behind by a bump would
+      # publish binaries under the new version and an extension under the old,
+      # or fail at the Marketplace with the release already cut. This is the
+      # same five-file check CI runs on `main`, run again where it is expensive
+      # to be wrong.
+      - name: every version agrees
+        run: ./scripts/check-versions.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: ${{ steps.package.outputs.vsix }}
+          if-no-files-found: error
+
   publish:
     name: publish release
-    needs: build
+    needs: [build, extension]
     if: startsWith(github.ref, 'refs/tags/v') || inputs.publish
     runs-on: ubuntu-latest
     steps:
@@ -221,3 +266,57 @@ jobs:
             --title '${{ steps.rel.outputs.tag }}' \
             --notes-file notes.md \
             dist/*
+
+  # The extension goes to two marketplaces: Microsoft's, which VS Code reads,
+  # and Open VSX, which is where Cursor, VSCodium and Windsurf look. Neither is
+  # reachable without a token, and both tokens are one-time human setup — see
+  # the release checklist in docs/development.md.
+  #
+  # So each step is gated on its own secret rather than assumed. Before the
+  # publisher exists this job runs, publishes nothing, and says so; the release
+  # itself is already cut by then and does not depend on it. Adding a secret
+  # later starts that marketplace with no other change.
+  #
+  # It runs after `publish` rather than beside it, because `publish` holds the
+  # refuse-to-republish guard. A marketplace cannot take a version back, so
+  # nothing should reach one until the release it belongs to exists.
+  marketplace:
+    name: publish the extension
+    needs: [extension, publish]
+    runs-on: ubuntu-latest
+    env:
+      # The `secrets` context is not available to an `if:`, so the tokens come
+      # through `env`, which is. An unset secret is the empty string.
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      OVSX_PAT: ${{ secrets.OVSX_PAT }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: vsix
+          path: dist
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: name the package
+        id: pkg
+        run: echo "vsix=$(ls dist/*.vsix | head -1)" >> "$GITHUB_OUTPUT"
+
+      # Publishing the artifact rather than rebuilding it: what reaches the
+      # Marketplace is then byte-for-byte the file attached to the release, so
+      # "the version I installed" and "the version I downloaded" cannot differ.
+      # `vsce` reads VSCE_PAT from the environment.
+      - name: VS Code Marketplace
+        if: env.VSCE_PAT != ''
+        run: npx --yes @vscode/vsce publish --packagePath '${{ steps.pkg.outputs.vsix }}'
+
+      - name: Open VSX
+        if: env.OVSX_PAT != ''
+        run: npx --yes ovsx publish '${{ steps.pkg.outputs.vsix }}' -p "$OVSX_PAT"
+
+      # A skipped step is easy to miss in a green run, and "the release worked"
+      # while the extension quietly went nowhere is exactly the thing to notice.
+      - name: report what was skipped
+        run: |
+          [ -n "$VSCE_PAT" ] || echo "::warning::VSCE_PAT is not set - nothing was published to the VS Code Marketplace."
+          [ -n "$OVSX_PAT" ] || echo "::warning::OVSX_PAT is not set - nothing was published to Open VSX."

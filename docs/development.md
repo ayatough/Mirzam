@@ -384,6 +384,11 @@ push or tag, because those are the steps worth looking at.
    yet. That earlier run rebuilds the root from the previous release, so until
    the release-triggered one lands the front page is a version behind. If it
    did not fire, run Pages by hand.
+10. Check the extension went out. The same workflow publishes it to the VS Code
+    Marketplace and Open VSX, but only for the marketplaces whose token is set —
+    the others are skipped with a warning in the run log rather than a failure.
+    See [Publishing the extension](#publishing-the-extension) for the one-time
+    setup and for why a published version can never be taken back.
 
 ### The tag is what the public sees
 
@@ -397,3 +402,63 @@ stranger lands on. Two consequences worth holding on to:
   more the documentation people actually read describes a version that no
   longer exists. Somewhere around three or four unreleased features, or any
   markup change, is the point to cut one.
+
+### Publishing the extension
+
+The Release workflow builds the `.vsix`, attaches it to the GitHub release, and
+publishes it to two marketplaces — Microsoft's, which VS Code reads, and
+[Open VSX](https://open-vsx.org/), which is where Cursor, VSCodium and Windsurf
+look. Both need a token, and **each publish step is skipped when its token is
+unset**, with a warning in the run log. So a release before any of this is set
+up ships the binaries exactly as it used to; setting a secret later is the only
+change needed to start that marketplace.
+
+The setup below is once per project, and has to be done by a human in a
+browser: creating a publisher requires an interactive sign-in that no token can
+stand in for.
+
+**VS Code Marketplace.**
+
+1. Create an Azure DevOps organization, signed in with the Microsoft account
+   that will own this.
+2. At [marketplace.visualstudio.com/manage](https://marketplace.visualstudio.com/manage),
+   **Create publisher**. The ID is permanent and cannot be changed later; it has
+   to match `publisher` in `editors/vscode/package.json`, which currently reads
+   `mirzam`. If that ID is taken, change the manifest rather than the plan.
+3. In Azure DevOps, create a Personal Access Token. Two settings are the ones
+   people get wrong, and both fail later as an unexplained `401`: Organization
+   must be **All accessible organizations**, not the one you just made, and the
+   scope must be **Marketplace → Manage** under the custom scopes.
+4. Put it in the repository as the `VSCE_PAT` secret.
+
+**Open VSX.** Sign in at [open-vsx.org](https://open-vsx.org/) with a GitHub
+account, sign the Eclipse Foundation Publisher Agreement, create an access
+token, and claim the namespace: `npx ovsx create-namespace mirzam -p <token>`.
+The secret is `OVSX_PAT`.
+
+**A published version is permanent.** Neither marketplace lets a version be
+replaced — a mistake is only ever fixed by publishing a higher one. This is why
+the publish job runs *after* the GitHub release rather than beside it: the
+release step holds the refuse-to-republish guard, and nothing should reach a
+marketplace until the release it belongs to exists. It is also why the
+extension job runs `check-versions.sh` again: a `package.json` left behind by a
+half-finished bump would otherwise publish binaries under the new version and
+an extension under the old.
+
+**PATs are on a deadline.** Azure DevOps retires global Personal Access Tokens
+on **2026-12-01**, and "All accessible organizations" is exactly what that
+means — so the token above stops working on that date. The replacement is Entra
+ID with `vsce publish --azure-credential`, but Microsoft's instructions assume
+Azure Pipelines with a managed identity, and there are open reports of the
+GitHub Actions path failing for a personal-account publisher
+([vscode-vsce#1023](https://github.com/microsoft/vscode-vsce/issues/1023)).
+Worth checking where that stands before December rather than on the release
+that breaks. Open VSX is unaffected.
+
+**The first publish is the one to watch.** Run the Release workflow with
+`publish` unchecked first: it builds the `.vsix` and uploads it as an artifact
+without cutting anything, which is how to find out that the icon is wrong or a
+file is missing from the package while it still costs nothing. Once the first
+real publish lands, add the install line to `README.md` and
+`editors/vscode/README.md` — until then neither should claim the extension is
+on a marketplace, because it is not.

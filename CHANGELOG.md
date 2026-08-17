@@ -33,6 +33,19 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   `o` and `h` are now viewer keys, so an `effects` block can no longer bind
   them — the same warning the other reserved keys give.
 
+- **The VS Code extension is published by the release.** Until now the only way
+  to get the live preview was to clone the repository, build the WASM and
+  install a `.vsix` by hand — which is to say, the people most likely to want a
+  preview of a deck were the least likely to have one. The Release workflow now
+  builds the extension, attaches the `.vsix` to the GitHub release, and pushes
+  it to the VS Code Marketplace and to Open VSX, where Cursor, VSCodium and
+  Windsurf look for it.
+
+  Each marketplace is gated on its own token, so a release with neither set
+  publishes the binaries exactly as before and says in the log that the
+  extension went nowhere. The one-time account setup is in
+  [docs/development.md](docs/development.md#publishing-the-extension).
+
 ## [0.7.0] - 2026-08-16
 
 ### Removed

@@ -14,7 +14,11 @@ rm -f "$EXT_DIR/media"/*.d.ts
 
 echo "==> packaging with vsce"
 cd "$EXT_DIR"
-npx --yes @vscode/vsce package --allow-missing-repository --skip-license
+# No suppression flags: the extension carries its own `repository`, LICENSE and
+# icon, which are what the two `--allow-*`/`--skip-*` flags used to paper over.
+# They are also what the Marketplace listing is built from, so a package that
+# needs those flags again is a listing that has lost something.
+npx --yes @vscode/vsce package
 
 VSIX=$(ls -t ./*.vsix | head -1)
 echo "✓ $EXT_DIR/$(basename "$VSIX")"
