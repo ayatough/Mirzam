@@ -734,7 +734,7 @@ MathML path:
 | Alignment | `&` lines up equations, `\` breaks the line |
 | Escapes | `#` strips the next character of its meaning: `a #/ b` is a slash, not a fraction |
 
-Two things to know that are not the parser's doing:
+Three things to know that are not the parser's doing:
 
 - **A brace stops growing at about eight em.** `underbrace` and `overbrace`
   draw a stretchy character the browser assembles out of pieces, and it stops
@@ -749,6 +749,13 @@ Two things to know that are not the parser's doing:
   blackboard letters in this subset — `EE`, `PP`, `RR`, `NN`, `ZZ`, `QQ`, `CC`
   — because a deck writing `EE[x]` means an expectation far more often than it
   means "there exists". Write `exists` for ∃.
+- **A radical's bar joins its hook about 0.05 em too high in Chromium**, and a
+  fence drawn around a bare `sqrt(...)` is taken one size larger than it needs.
+  Both are the browser's own drawing: STIX Two Math is built for the join
+  (its hook is exactly `RadicalRuleThickness` thick and flush with the glyph's
+  top), no MATH-table value closes the gap, and the bar is painted with no
+  element for CSS to reach. About two pixels on a 1080p projector, and in the
+  PDF for the same reason. Nothing to write differently.
 
 It is a deliberate subset — a parser of our own rather than a dependency on
 Typst, whose own math goes through its layout engine to SVG, not MathML. A
