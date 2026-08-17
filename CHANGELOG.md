@@ -7,7 +7,31 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- **`O` shows every slide at once.** A grid of thumbnails, each captioned with
+  its own heading; click one to go there. It is the contents page nobody had to
+  write, and the way back when a question sends the talk six slides in the
+  wrong direction. The field in the corner goes to a slide **by number** — `O`,
+  `12`, Enter — and is focused the moment the grid opens. Digits stay unbound,
+  because an `effects` block binds them and a performance key must not become a
+  page turn.
+
+  It runs in the **presenter window** too, where clicking a slide moves both
+  screens. On a phone the `⊞` control in the cluster opens the same grid. The
+  thumbnails are stills built from the authored markup, like the next-slide
+  preview: nothing in the grid animates, plays or fetches anything, and the
+  clones carry no ids, so nothing that walks the document can mistake one for
+  the slide it is a picture of.
+- **`H` hides the control cluster**, page counter and all, for a projector. A
+  screen the same shape as the deck leaves no margin for chrome to sit in, so
+  the cluster lands on the slide; this takes it away, and remembers the choice
+  the way the colour mode is remembered. `?controls=none` opens a deck with it
+  already hidden, `?controls=auto` forces it back. Unlike `D` it does not
+  travel between windows — the projector wants nothing on the slide and the
+  laptop wants its controls, and they are looking at the same deck.
+
+  `o` and `h` are now viewer keys, so an `effects` block can no longer bind
+  them — the same warning the other reserved keys give.
 
 ## [0.7.0] - 2026-08-16
 

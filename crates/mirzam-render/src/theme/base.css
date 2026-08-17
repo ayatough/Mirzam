@@ -843,6 +843,10 @@ aside.notes { display: none; }
   opacity: 0; pointer-events: none; transition: opacity .25s ease;
 }
 html.mz-awake #controls { opacity: 1; pointer-events: auto; }
+/* `H`, or `?controls=none`. The whole cluster, page counter included: on a
+   projector the deck is the screen, and anything drawn over it is drawn over
+   the slide. */
+html.mz-no-chrome #chrome { display: none; }
 #controls button {
   width: 30px; height: 30px; padding: 0; line-height: 1;
   font: inherit; font-size: 16px; cursor: pointer;
@@ -909,8 +913,70 @@ html.mz-awake #controls { opacity: 1; pointer-events: auto; }
 }
 #keys .mz-keys-close { margin: 16px 0 0; color: var(--mz-ui-dim); font-size: 13px; }
 
+/* The overview: every slide at once, and the way to any of them. It is what a
+   deck has instead of a contents page you have to write - the headings are the
+   slides' own - and what a presenter reaches for when a question sends the talk
+   back six slides.
+
+   Each thumbnail is the slide's authored markup at the deck's own size, scaled
+   into its frame, exactly as the presenter window's next-slide preview is. It
+   is a still: nothing in here animates, plays or draws connectors, and the
+   clones carry no ids, so nothing that walks the document can mistake one for
+   the slide it is a picture of. */
+#overview {
+  position: fixed; inset: 0; z-index: 21;
+  display: flex; flex-direction: column;
+  /* Opaque, unlike the cheat sheet's scrim: this covers the whole screen and
+     is read as a page of its own, and a slide showing faintly through a grid
+     of slides is only noise. */
+  background: var(--mz-ui-bg); color: var(--mz-ui-fg);
+}
+#overview[hidden] { display: none; }
+.mz-ov-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 18px; border-bottom: 1px solid var(--mz-ui-line);
+  background: var(--mz-ui-bg);
+}
+.mz-ov-bar h4 {
+  flex: 1; margin: 0; color: var(--mz-accent2);
+  font-size: 12px; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap;
+}
+.mz-ov-bar input, .mz-ov-bar button {
+  font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 8px;
+  color: var(--mz-ui-fg); background: var(--mz-ui-chip);
+  border: 1px solid var(--mz-ui-line);
+}
+.mz-ov-bar input { width: 7em; }
+.mz-ov-bar button { cursor: pointer; }
+.mz-ov-bar button:hover, .mz-ov-bar input:focus { border-color: var(--mz-accent2); outline: none; }
+.mz-ov-grid {
+  flex: 1; overflow: auto; padding: 18px;
+  display: grid; gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  align-content: start;
+}
+.mz-ov-item {
+  display: block; padding: 0; cursor: pointer; text-align: left;
+  background: none; border: 0; color: inherit; font: inherit;
+}
+.mz-ov-frame {
+  display: block; position: relative; overflow: hidden;
+  border: 1px solid var(--mz-ui-line); border-radius: 8px;
+  background: var(--mz-slide-bg);
+}
+.mz-ov-item:hover .mz-ov-frame, .mz-ov-item:focus-visible .mz-ov-frame { border-color: var(--mz-accent2); }
+.mz-ov-item[aria-current] .mz-ov-frame { border-color: var(--mz-accent1); border-width: 2px; }
+.mz-ov-stage { position: absolute; top: 0; left: 0; transform-origin: top left; }
+.mz-ov-slide { position: absolute; inset: 0; display: block; color: var(--mz-fg); background: var(--mz-slide-bg); }
+.mz-ov-cap {
+  display: block; margin-top: 6px; font-size: 13px; line-height: 1.4;
+  color: var(--mz-ui-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mz-ov-cap b { color: var(--mz-ui-fg); margin-right: .5em; font-variant-numeric: tabular-nums; }
+.mz-ov-item[aria-current] .mz-ov-cap b { color: var(--mz-accent1); }
+
 /* Chrome is the viewer, never the document. */
-@media print { #chrome, #keys, #notes-panel, #source-panel, #presenter { display: none !important; } }
+@media print { #chrome, #keys, #notes-panel, #source-panel, #overview, #presenter { display: none !important; } }
 
 /* The presenter window: the same file with `?presenter=1`. Only this window
    gets the extra furniture — the audience window is untouched. */

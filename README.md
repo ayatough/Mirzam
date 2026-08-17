@@ -166,8 +166,10 @@ so the syntax a model reads is the syntax it drives —
 `mirzam check --format json`, and the `.zip` for claude.ai and phones.
 
 In the viewer: `←` `→` to navigate (and to step through a slide's animation),
-`N` for speaker notes, `F` for fullscreen, `D` for dark mode, `L` to outline the
-layout, `P` for a presenter window with the next slide, your notes and a timer.
+`O` for every slide at once — click one, or type its number — `N` for speaker
+notes, `F` for fullscreen, `D` for dark mode, `H` to hide the controls when a
+projector leaves them no margin to sit in, `L` to outline the layout, `P` for a
+presenter window with the next slide, your notes and a timer.
 Press `/` for the full list, including the effect keys this particular deck
 binds. Build with `--embed-source` and `V` shows the Markdown a slide was
 written as, beside the slide; add `--editor-url` and one click opens the whole

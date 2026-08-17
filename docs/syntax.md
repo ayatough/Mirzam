@@ -40,7 +40,7 @@ This file runs long; jump straight to the one you need.
 | [Presentation effects](#presentation-effects) | The `effects` block: flourishes bound to a key, fired while presenting |
 | [Annotations](#annotations) | The `annotate` block: circle, underline, box, arrow, pointing at a live element |
 | [Animations](#animations) | The `anim` block: entrances, click steps, exits |
-| [Driving the viewer](#driving-the-viewer) | Keyboard shortcuts, presenter mode, the `/` shortcut sheet, [the Markdown behind a slide](#the-markdown-behind-a-slide) |
+| [Driving the viewer](#driving-the-viewer) | Keyboard shortcuts, presenter mode, the `/` shortcut sheet, [every slide at once](#every-slide-at-once), [the Markdown behind a slide](#the-markdown-behind-a-slide) |
 | [Theming](#theming) | `theme:` — a built-in name or [a theme of your own](#a-theme-of-your-own-in-a-file) — `mode:`, [a theme on one pane](#a-theme-smaller-than-a-deck), and the tokens a theme writes in |
 
 ## Deck and slides
@@ -1447,6 +1447,7 @@ nobody can guess. `Esc` or `/` closes it.
 | `→` `Space` `PageDown` | Next click step, then the next slide |
 | `←` `PageUp` | Back a step, then the previous slide |
 | `Home` `End` | First / last slide |
+| `O` | [Every slide at once](#every-slide-at-once) — click one, or type its number |
 | `N` | Speaker notes |
 | `V` | The Markdown this slide was written as ([see below](#the-markdown-behind-a-slide)) |
 | `P` | Presenter window |
@@ -1464,6 +1465,39 @@ A quiet control cluster sits below the bottom-right corner — previous, next an
 the cheat sheet — and fades in when you move the pointer or touch the screen.
 It is outside the deck, so it never covers slide content, and it is never
 printed.
+
+### Every slide at once
+
+`O` opens the overview: every slide as a thumbnail, captioned with its own
+heading. Click one to go there. It is the contents page nobody had to write —
+the headings are the slides' own — and the way back when a question sends the
+talk six slides in the wrong direction.
+
+The field in the corner goes to a slide by number: `O`, type `12`, Enter. It is
+focused as soon as the overview opens, so that is four keystrokes from anywhere
+in the deck. (Digits are not bound directly, because an `effects` block binds
+them and a performance key must not become a page turn.)
+
+On a phone the `⊞` control in the cluster opens the same grid, and a tap goes to
+that slide.
+
+It works in the presenter window too, where clicking a slide moves **both**
+screens — the audience window follows the position, exactly as it does for the
+arrow keys. The thumbnails are stills built from the authored markup, like the
+next-slide preview: nothing in the grid animates, plays or fetches anything.
+
+### Hiding the controls
+
+A projector fills the screen with the deck, and on a screen the same shape as
+the deck there is no margin left for the control cluster to sit in — it lands on
+the slide. `H` hides it, page counter and all, and the choice is remembered the
+way the colour mode is, so the next deck of the same talk opens the same way.
+
+For a link that opens with the deck already bare — a kiosk, a projector set up
+by somebody else — add `?controls=none` to the URL, or `?controls=auto` to
+force them back on. Unlike `D`, this does **not** travel between the presenter
+window and the audience window: the projector wants nothing on the slide and
+the laptop wants its controls, and they are looking at the same deck.
 
 ### The Markdown behind a slide
 

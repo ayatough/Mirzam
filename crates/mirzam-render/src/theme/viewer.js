@@ -23,6 +23,27 @@
   const PRESENTING = query.get('presenter') === '1';
   if (PRESENTING) html.dataset.presenter = '1';
 
+  // The control cluster, which a projector puts *on* the slide rather than
+  // beside it: the deck is scaled to the screen, and on a screen the same
+  // shape as the deck there is no margin left for chrome to sit in. `H` hides
+  // it, `?controls=none` opens a deck with it already hidden, and the choice
+  // is remembered like the colour mode is - the next deck of the same talk
+  // opens the way this one was left.
+  //
+  // Unlike the mode, it does *not* travel between windows: the projector wants
+  // nothing on the slide and the laptop wants its controls, and they are
+  // looking at the same deck.
+  const CHROME_KEY = 'mirzam-chrome';
+  const qControls = query.get('controls');
+  let chromeOn = true;
+  try {
+    if (qControls === 'none' || qControls === 'off') chromeOn = false;
+    else if (qControls === 'auto' || qControls === 'on') chromeOn = true;
+    else chromeOn = localStorage.getItem(CHROME_KEY) !== 'off';
+  } catch (e) {}
+  const applyChrome = () => html.classList.toggle('mz-no-chrome', !chromeOn);
+  applyChrome();
+
   const deck = document.getElementById('deck');
   const hud = document.getElementById('hud');
   const notesPanel = document.getElementById('notes-panel');
@@ -354,10 +375,12 @@
   // Its own list because a deck built with `--embed-source` adds a row to it
   // and a deck without one must not advertise a key that does nothing.
   const DISPLAY = [
+    [['O'], 'All slides — click one, or type its number'],
     [['N'], 'Speaker notes'],
     [['P'], 'Presenter window'],
     [['F'], 'Fullscreen'],
     [['D'], 'Dark / light'],
+    [['H'], 'Hide the controls (for a projector)'],
     [['L'], 'Outline the layout'],
   ];
   const KEYS = [
@@ -373,6 +396,7 @@
   // with a touchscreen still gets the keyboard first.
   const COARSE = matchMedia('(pointer: coarse)').matches;
   const TOUCH = ['Touch', [
+    [['⊞ button'], 'All slides — tap one to go there'],
     [['Swipe ←', 'Swipe →'], 'Next / previous'],
     [['Swipe ↑', 'Swipe ↓'], 'Show / hide notes'],
     [['Two-finger tap'], 'This sheet'],
@@ -560,6 +584,131 @@
   // the Markdown of a slide that is no longer on screen.
   watchers.push(() => { if (sourcePanel && !sourcePanel.hidden) renderSource(); });
 
+  // ---- Every slide at once ----
+  // The overview answers two questions the deck could not: *where am I in
+  // this talk*, and *take me to slide 12*. A grid of every slide, captioned
+  // with its own heading, is a contents page nobody had to write and a way to
+  // any of them in one click - which is what a presenter needs when a question
+  // sends the talk back six slides.
+  //
+  // It runs in the presenter window too, where clicking a slide moves both
+  // screens: the audience window follows the same state the arrow keys move.
+  const overview = document.getElementById('overview');
+  const ovBtn = document.getElementById('mz-ov-btn');
+  // What the grid was built from. A live reload changes the deck under it, so
+  // a stale grid is rebuilt rather than shown.
+  let ovStamp = '';
+
+  const ovKey = () => slides().length + ':' + pristine.length + ':' + (pristine[cur] || '').length;
+
+  function buildOverview() {
+    const ss = slides();
+    const cells = ss
+      .map(
+        (s, i) =>
+          `<button class="mz-ov-item" type="button" data-go="${i}">` +
+          `<span class="mz-ov-frame" style="aspect-ratio:${W} / ${H}">` +
+          `<span class="mz-ov-stage" style="width:${W}px;height:${H}px">${pristine[i] || s.outerHTML}</span>` +
+          '</span><span class="mz-ov-cap"></span></button>',
+      )
+      .join('');
+    overview.innerHTML =
+      '<div class="mz-ov-bar"><h4>All slides</h4>' +
+      `<input id="mz-ov-go" type="number" min="1" max="${ss.length}" placeholder="Go to…" aria-label="Go to slide number">` +
+      '<button type="button" data-ov-close>Close</button></div>' +
+      `<div class="mz-ov-grid">${cells}</div>`;
+
+    // A clone is a picture of a slide, not a slide: strip what would make
+    // anything else treat it as one, and stop it playing to itself.
+    for (const sec of overview.querySelectorAll('section.slide')) {
+      sec.className = 'mz-ov-slide';
+    }
+    for (const el of overview.querySelectorAll('[id]')) {
+      if (el.id !== 'mz-ov-go') el.removeAttribute('id');
+    }
+    for (const m of overview.querySelectorAll('video, audio')) {
+      m.removeAttribute('autoplay');
+      m.removeAttribute('controls');
+      try { m.pause(); } catch (e) {}
+    }
+    // An embed would fetch itself once per thumbnail, on a network the venue
+    // may not have.
+    for (const f of overview.querySelectorAll('iframe')) f.removeAttribute('src');
+
+    // The caption is the slide's own heading, which is what makes this list a
+    // contents page rather than a wall of numbers.
+    overview.querySelectorAll('.mz-ov-item').forEach((item, i) => {
+      const head = item.querySelector('h1, h2, h3, h4');
+      const title = (head ? head.textContent : '').trim();
+      item.querySelector('.mz-ov-cap').innerHTML =
+        `<b>${i + 1}</b>${esc(title)}`;
+    });
+    ovStamp = ovKey();
+  }
+
+  /** Scales every thumbnail into the width its column ended up with. */
+  function layoutOverview() {
+    for (const stage of overview.querySelectorAll('.mz-ov-stage')) {
+      const frame = stage.parentElement.getBoundingClientRect();
+      if (frame.width) stage.style.transform = `scale(${frame.width / W})`;
+    }
+  }
+
+  function markOverview() {
+    overview.querySelectorAll('.mz-ov-item').forEach((item, i) => {
+      if (i === cur) item.setAttribute('aria-current', 'true');
+      else item.removeAttribute('aria-current');
+    });
+  }
+
+  function toggleOverview(on) {
+    if (!overview) return;
+    const want = on === undefined ? overview.hidden : on;
+    if (want === !overview.hidden) return;
+    if (want) {
+      if (ovStamp !== ovKey()) buildOverview();
+      overview.hidden = false;
+      markOverview();
+      layoutOverview();
+      // Typing a number is the other way in, so the field is ready for it.
+      const go = document.getElementById('mz-ov-go');
+      if (go) { go.value = ''; go.focus(); }
+      // The thumbnail you are on, in view - a talk is usually not on slide 1.
+      const here = overview.querySelector('.mz-ov-item[aria-current]');
+      if (here && here.scrollIntoView) here.scrollIntoView({ block: 'nearest' });
+    } else {
+      overview.hidden = true;
+    }
+    if (ovBtn) ovBtn.setAttribute('aria-pressed', String(want));
+  }
+
+  function goToNumber(value) {
+    const n = parseInt(value, 10);
+    if (!(n >= 1 && n <= slides().length)) return false;
+    toggleOverview(false);
+    show(n - 1);
+    return true;
+  }
+
+  if (overview) {
+    overview.addEventListener('click', (e) => {
+      if (e.target.closest('[data-ov-close]')) { toggleOverview(false); return; }
+      const item = e.target.closest('.mz-ov-item');
+      if (!item) return;
+      toggleOverview(false);
+      show(+item.dataset.go);
+    });
+    overview.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      const go = e.target.closest('#mz-ov-go');
+      if (go) { e.preventDefault(); goToNumber(go.value); }
+    });
+  }
+  if (ovBtn) ovBtn.addEventListener('click', () => toggleOverview());
+  // The grid outlives a page turn while it is open, so the mark has to follow.
+  watchers.push(() => { if (overview && !overview.hidden) markOverview(); });
+  addEventListener('resize', () => { if (overview && !overview.hidden) layoutOverview(); });
+
   // ---- The control cluster ----
   // Quiet until someone reaches for it. `mz-awake` only drives an opacity, so
   // waking the chrome mid-sentence cannot reflow the slide.
@@ -615,15 +764,24 @@
   addEventListener('keydown', (e) => {
     // A modified key belongs to the browser: Cmd-R, Ctrl-F, Alt-Tab.
     if (e.metaKey || e.ctrlKey || e.altKey) return;
+    // Somebody typing a slide number is typing, not driving the deck: every
+    // digit and letter belongs to the field until they leave it.
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+      if (e.key === 'Escape') { t.blur(); toggleOverview(false); }
+      return;
+    }
     if (e.key === '/' || e.key === '?') { e.preventDefault(); toggleKeys(); return; }
     // Escape closes the sheet. It also clears effects, which `effects.js`
     // handles on its own listener, so this one only owns the overlay.
-    if (e.key === 'Escape') { toggleKeys(false); toggleSource(false); return; }
+    if (e.key === 'Escape') { toggleKeys(false); toggleSource(false); toggleOverview(false); return; }
     if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); advance(); }
     else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); retreat(); }
     else if (e.key === 'Home') show(0);
     else if (e.key === 'End') show(slides().length - 1);
     else if (e.key === 'n' || e.key === 'N') notesPanel.hidden = !notesPanel.hidden;
+    // Every slide at once, and the field that goes to one by number.
+    else if (e.key === 'o' || e.key === 'O') { e.preventDefault(); toggleOverview(); }
     // Absent in a deck built without `--embed-source`, where there is nothing
     // to show and the key does nothing at all.
     else if (e.key === 'v' || e.key === 'V') toggleSource();
@@ -638,6 +796,11 @@
       notify();
     }
     else if (e.key === 'd' || e.key === 'D') toggleMode();
+    else if (e.key === 'h' || e.key === 'H') {
+      chromeOn = !chromeOn;
+      try { localStorage.setItem(CHROME_KEY, chromeOn ? 'on' : 'off'); } catch (e) {}
+      applyChrome();
+    }
   });
 
   // ---- Touch: a phone has no keyboard ----

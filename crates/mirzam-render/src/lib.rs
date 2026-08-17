@@ -658,6 +658,7 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <div id="controls">
 <button id="mz-prev" type="button" aria-label="Previous">‹</button>
 <button id="mz-next" type="button" aria-label="Next">›</button>
+<button id="mz-ov-btn" type="button" aria-label="All slides">⊞</button>
 <button id="mz-mode" type="button" aria-label="Switch colour mode"></button>{source_button}
 <button id="mz-help" type="button" aria-label="Keyboard shortcuts">?</button>
 </div>
@@ -665,6 +666,7 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <div id="keys" hidden></div>
 <div id="notes-panel" hidden></div>
 <div id="source-panel" hidden></div>
+<div id="overview" hidden></div>
 {source_script}{fit_js}{anim_js}{annot_js}<script>{js}</script>
 <script>{presenter_js}</script>
 {effects_js}{live_js}</body>

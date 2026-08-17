@@ -209,6 +209,7 @@ mirzam export pdf deck.md -o deck.pdf
 | Key | |
 |---|---|
 | `→` `←` | next / previous, and step through a build |
+| `O` | every slide at once; click one, or type its number |
 | `N` | speaker notes |
 | `V` | the Markdown behind this slide |
 | `P` | presenter window: next slide, notes, timer |
