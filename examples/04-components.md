@@ -351,6 +351,45 @@ The PDF export uses the first frame.
 +------------------+-----------------+
 |                  |                 |
 |                  |                 |
+|  desc            |  clip           |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Media]{.eyebrow}
+## Video that lives somewhere else
+:::
+
+::: pane desc {valign=middle}
+A YouTube or Vimeo page URL becomes a player, on the host alone:
+
+```markdown
+![The talk](https://youtu.be/aqz-KE-bpKQ)
+```
+
+- Served from `youtube-nocookie.com`, fetched when the slide is
+  shown — **the one thing here that is not self-contained**
+- 16:9 inside its pane, whatever the pane's shape
+- The PDF gets the link; an image by URL is the same trade
+:::
+
+::: pane clip {valign=middle}
+![Big Buck Bunny, the Blender Foundation's open movie](https://www.youtube.com/watch?v=aqz-KE-bpKQ)
+:::
+
+<!-- note: This frame is the only thing in the deck that needs the network. The clip is Blender's own open movie, so the sample does not lean on anybody else's video. -->
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
 |  src             |  hero           |
 |                  |                 |
 |                  |                 |

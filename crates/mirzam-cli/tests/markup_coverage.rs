@@ -132,6 +132,17 @@ const MARKS: &[Mark] = &[
         documented_as: "`[@key]`",
         shown_as: "[@vaswani2017]",
     },
+    Mark {
+        // A hosted video is an image reference like any other — what it becomes
+        // follows from what it points at — and it was the third failure in this
+        // file's list exactly: it rendered, it was documented, and no deck
+        // showed one. So `mirzam check` never laid a player frame out, and the
+        // frame clipped its own bottom edge on every deck that had one.
+        source: "![talk](https://www.youtube.com/watch?v=dQw4w9WgXcQ)",
+        html: r#"src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ""#,
+        documented_as: "`youtube-nocookie.com`",
+        shown_as: "https://www.youtube.com/watch?v=",
+    },
 ];
 
 /// The `.bib` the citation mark is rendered against, so the row above is

@@ -995,8 +995,26 @@ that particular job.
   self-contained:** the frame is fetched when the slide is shown, so it needs
   the network and it cannot be printed. The PDF gets a placeholder carrying
   the link instead, and audio gets its label without the transport.
+- The frame is **16:9 and inside its pane**, both at once: its height comes from
+  whichever of the pane's two axes runs out first, and from the room a heading
+  beside it leaves, so it fits a narrow column and a full-bleed pane without
+  being asked to.
 - What a reference *is* follows from what it points at, so the attribute block
   is optional: `![clip](talk.mp4)` is a video whether or not you wrote `{}`.
+
+**An image or a video by URL is the same trade.** `![art](https://host/art.png)`
+is left exactly as written — there is nothing on disk to inline — so the deck
+needs the network to show it. The build says so once per reference:
+
+```
+⚠ https://host/art.png: fetched over the network when the slide is shown, so this deck is not self-contained
+```
+
+That is a warning rather than an error: a deck built for a machine that will
+have the network is a reasonable thing to want. `--strict` turns it into a
+failed build, which is what a deck that has to survive a room with no Wi-Fi
+wants. A hosted video is the documented exception and stays silent — its player
+URL is one Mirzam wrote itself.
 
 ## When a slide has too much on it
 

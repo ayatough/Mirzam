@@ -53,13 +53,28 @@ pub fn embed_assets(
 }
 
 /// One reference: left alone if it is already a URI, inlined otherwise.
+///
+/// A reference the build cannot read off disk cannot be inlined, so it is
+/// reported: the deck still builds and still shows the image wherever there is
+/// a network, but it is no longer the one self-contained file the rest of this
+/// module exists to keep — and nothing else in a build said so. A hosted video
+/// is the exception the syntax documents, and it arrives here as a player URL
+/// Mirzam wrote itself, so that one is silent.
 fn embed_one(
     src: &str,
     source: &dyn AssetSource,
     warnings: &mut Vec<String>,
     referenced: &mut Vec<PathBuf>,
 ) -> String {
-    if src.starts_with("data:") || src.contains("://") || src.starts_with('#') {
+    if src.starts_with("data:") || src.starts_with('#') {
+        return src.to_string();
+    }
+    if src.contains("://") {
+        if !crate::inline::is_player_url(src) {
+            warnings.push(format!(
+                "{src}: fetched over the network when the slide is shown, so this deck is not self-contained"
+            ));
+        }
         return src.to_string();
     }
     let (result, path) = source.resolve(src);
@@ -251,7 +266,35 @@ mod tests {
         let html = r#"<img src="https://example.com/a.png" srcset="https://example.com/b.png 2x">"#;
         let (out, warnings, referenced) = embed(html);
         assert_eq!(out, html);
-        assert!(warnings.is_empty());
         assert!(referenced.is_empty());
+        // Left alone, but not left unsaid: neither URL can be inlined, so this
+        // deck needs the network for both.
+        assert_eq!(warnings.len(), 2, "{warnings:?}");
+        assert!(
+            warnings.iter().all(|w| w.contains("not self-contained")),
+            "{warnings:?}"
+        );
+    }
+
+    #[test]
+    fn a_hosted_videos_player_is_the_documented_exception() {
+        // The syntax says a hosted video is the one thing in a deck that is not
+        // self-contained, and this URL is one Mirzam wrote for a reference that
+        // asked for exactly that. Reporting it would make the documented case
+        // look like a mistake — and make `--strict` unusable for any deck with
+        // a talk in it.
+        let html = r#"<div class="mz-embed"><iframe src="https://www.youtube-nocookie.com/embed/abc123"></iframe></div>"#;
+        let (out, warnings, _) = embed(html);
+        assert_eq!(out, html);
+        assert!(warnings.is_empty(), "{warnings:?}");
+
+        let vimeo = r#"<iframe src="https://player.vimeo.com/video/76979871"></iframe>"#;
+        let (_, warnings, _) = embed(vimeo);
+        assert!(warnings.is_empty(), "{warnings:?}");
+
+        // A page on the same host that is *not* a player URL is an ordinary
+        // remote reference, so it is reported like any other.
+        let (_, warnings, _) = embed(r#"<img src="https://player.vimeo.com/logo.png">"#);
+        assert_eq!(warnings.len(), 1, "{warnings:?}");
     }
 }

@@ -343,6 +343,22 @@ fn audio_html(src: &str, alt: &str, attrs: &Attrs) -> String {
     )
 }
 
+/// Where the two hosts' frames are served from. Named because the asset pass
+/// has to recognise a URL this file wrote — see [`is_player_url`].
+const YOUTUBE_PLAYER: &str = "https://www.youtube-nocookie.com/embed/";
+const VIMEO_PLAYER: &str = "https://player.vimeo.com/video/";
+
+/// Whether this is a player URL Mirzam generated for a hosted video.
+///
+/// The asset pass reports every reference it leaves on the network, because a
+/// deck that quietly stops being one file is worth knowing about. A hosted
+/// video is the documented exception (`docs/syntax.md`), so it must not be
+/// reported as a surprise — and the prefixes come from the constants
+/// [`embed_url`] builds with, so the two cannot drift apart.
+pub(crate) fn is_player_url(src: &str) -> bool {
+    src.starts_with(YOUTUBE_PLAYER) || src.starts_with(VIMEO_PLAYER)
+}
+
 /// The player URL for a video-host page, or `None` when this is not one.
 ///
 /// Only the two hosts worth special-casing: anything else can be written as a
@@ -365,18 +381,18 @@ fn embed_url(src: &str) -> Option<String> {
             .find_map(|p| p.strip_prefix("v="))?
             .split('#')
             .next()?;
-        return id_ok(id).then(|| format!("https://www.youtube-nocookie.com/embed/{id}"));
+        return id_ok(id).then(|| format!("{YOUTUBE_PLAYER}{id}"));
     }
     if let Some(id) = rest.strip_prefix("youtu.be/") {
         let id = id.split(['?', '#']).next()?;
-        return id_ok(id).then(|| format!("https://www.youtube-nocookie.com/embed/{id}"));
+        return id_ok(id).then(|| format!("{YOUTUBE_PLAYER}{id}"));
     }
     if let Some(id) = rest.strip_prefix("vimeo.com/") {
         let id = id.split(['?', '#', '/']).next()?;
         return id
             .chars()
             .all(|c| c.is_ascii_digit())
-            .then(|| format!("https://player.vimeo.com/video/{id}"));
+            .then(|| format!("{VIMEO_PLAYER}{id}"));
     }
     None
 }

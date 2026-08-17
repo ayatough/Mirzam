@@ -32,6 +32,26 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
   `o` and `h` are now viewer keys, so an `effects` block can no longer bind
   them — the same warning the other reserved keys give.
+- **A build says when a deck stops being one file.** An image or a video
+  referenced by URL cannot be inlined, so the deck needs the network to show it
+  — and until now nothing said so: the promise the whole asset pass exists to
+  keep was dropped in silence. Each such reference is now a warning naming the
+  URL, and `--strict` fails the build, which is what a deck that has to survive
+  a room with no Wi-Fi wants. A hosted video is the exception the syntax
+  already documents, so it stays silent.
+
+### Fixed
+- **A hosted video no longer clips its own bottom edge.** The player frame took
+  its height from the pane's width, and the default pane on a 16:9 slide is
+  wider than 16:9 — so every deck that embedded a YouTube or Vimeo video lost
+  24px of the frame with nothing else on the slide, and 88px with a heading
+  above it. `fit: shrink` could not save it either, because the frame's height
+  never depended on the type size. The height now comes from whichever of the
+  pane's two axes runs out first, and from the room a heading leaves, so the
+  frame stays 16:9 and inside the pane in a narrow column, beside prose, and
+  two to a pane. It went unnoticed because no deck under `examples/` had one:
+  the sample gap and the layout bug were the same bug, so the reference deck now
+  carries a frame and `markup_coverage.rs` holds it there.
 
 ### Fixed
 - **`slide-in`, `zoom-in` and `pop` now move the thing they are pointed at.**

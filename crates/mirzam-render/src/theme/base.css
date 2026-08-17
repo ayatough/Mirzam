@@ -718,6 +718,34 @@ video { background: #000; /* theme-independent: letterbox behind the frame */ bo
   background: var(--mz-surface); border: 1px solid var(--mz-border);
   border-radius: 8px; overflow: hidden;
 }
+/* A frame sized from the pane's width alone is taller than the pane it sits
+   in: the default pane on a 16:9 slide is *wider* than 16:9 - vertical padding
+   costs more of the height than horizontal padding costs of the width - so a
+   full-width 16:9 box clipped its own bottom edge on every deck that embedded
+   a hosted video, even with nothing else on the slide. Take the height from
+   whichever of the pane's two axes runs out first (that is what
+   `container-type` is for) and let the width follow from the ratio rather than
+   from the pane, so the frame stays 16:9 while it fits. Laying the pane out as
+   a column adds the other half: `min-height: 0` lets the frame shrink to the
+   room a heading beside it leaves, where a block-flow percentage can only ever
+   see the whole pane. Unlike an image or a video, an iframe has no intrinsic
+   size to shrink from - which is why `max-height` alone would leave a frame
+   wider than 16:9 with the player letterboxing inside it. Guarded, because
+   without container queries the full-width box above is the right fallback.
+
+   The pane's own children are the case this applies to. A frame further in -
+   inside a `columns=N` wrapper, say - has a containing block narrower than the
+   pane, which the pane's own dimensions cannot describe: sized from those it
+   would come out at the pane's full height and overflow a column that the
+   width-driven box fitted. There the fallback is already right. */
+@supports (container-type: size) {
+  .pane:has(> .mz-embed) { container-type: size; display: flex; flex-direction: column; }
+  .pane > .mz-embed {
+    height: min(100cqh, calc(100cqw * 9 / 16));
+    width: fit-content; max-width: 100%; min-height: 0;
+    margin-inline: auto;
+  }
+}
 .mz-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 
 /* Video placeholder in PDF output, when no poster is given */
