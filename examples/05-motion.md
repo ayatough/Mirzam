@@ -328,6 +328,59 @@ turned the page around it.
 +------------------------------------+
 |                                    |
 |  head                              |
++----------+------------+------------+
+|          |            |            |
+|  a       |  b         |  c         |
+|          |            |            |
++----------+------------+------------+
+|  foot                              |
++------------------------------------+
+```
+
+::: pane head
+[Focus]{.eyebrow}
+## One at a time, on one slide
+:::
+
+::: pane a {#f-ingest .card valign=middle}
+### Ingest
+
+[Reads the firehose, batches it, and never blocks the producer.]{.f-a .small}
+:::
+
+::: pane b {#f-store .card valign=middle}
+### Store
+
+[Columnar, partitioned by day, and cheap to scan.]{.f-b .small}
+:::
+
+::: pane c {#f-serve .card valign=middle}
+### Serve
+
+[One query path, cached at the edge.]{.f-c .small}
+:::
+
+::: pane foot
+[`focus` brings one forward and sends the rest back. Three clicks, three components, no page turn — and `←` walks it back the same way.]{.small}
+:::
+
+```anim
+[click 1] #f-ingest : focus 450ms ease=out-cubic
+[click 1] .f-a      : fade-in 350ms delay=120ms
+[click 2] #f-store  : focus 450ms ease=out-cubic
+[click 2] .f-b      : fade-in 350ms delay=120ms
+[click 3] #f-serve  : focus 450ms ease=out-cubic
+[click 3] .f-c      : fade-in 350ms delay=120ms
+```
+
+<!-- note: The detail arrives with its pane because a fade-in shares the step; focus itself only decides which one is forward. -->
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
 +------------------------------------+
 |                                    |
 |  body                              |

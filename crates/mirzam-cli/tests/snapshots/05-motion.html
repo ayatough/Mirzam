@@ -152,6 +152,27 @@ turned the page around it.</p>
 </div>
 </section>
 <section class="slide" data-index="8">
+<div class="grid" style='grid-template-columns:10fr 12fr 12fr;grid-template-rows:2fr 3fr 1fr;grid-template-areas:"head head head" "a b c" "foot foot foot"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Focus</span></p>
+<h2>One at a time, on one slide</h2>
+</div>
+<div class="pane pane-a card" id="f-ingest" data-pane="a" style="grid-area:a;display:flex;flex-direction:column;justify-content:center"><h3>Ingest</h3>
+<p><span class="f-a small">Reads the firehose, batches it, and never blocks the producer.</span></p>
+</div>
+<div class="pane pane-b card" id="f-store" data-pane="b" style="grid-area:b;display:flex;flex-direction:column;justify-content:center"><h3>Store</h3>
+<p><span class="f-b small">Columnar, partitioned by day, and cheap to scan.</span></p>
+</div>
+<div class="pane pane-c card" id="f-serve" data-pane="c" style="grid-area:c;display:flex;flex-direction:column;justify-content:center"><h3>Serve</h3>
+<p><span class="f-c small">One query path, cached at the edge.</span></p>
+</div>
+<div class="pane pane-foot" data-pane="foot" style="grid-area:foot"><p><span class="small"><code>focus</code> brings one forward and sends the rest back. Three clicks, three components, no page turn — and <code>←</code> walks it back the same way.</span></p>
+</div>
+</div>
+<script type="application/json" class="mz-anim">{"steps":3,"tracks":[{"delay":0,"dur":450,"ease":"cubic-bezier(.33,1,.68,1)","effect":"focus","stagger":0,"target":{"sel":"#f-ingest","split":null},"trigger":{"kind":"click","n":1}},{"delay":120,"dur":350,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".f-a","split":null},"trigger":{"kind":"click","n":1}},{"delay":0,"dur":450,"ease":"cubic-bezier(.33,1,.68,1)","effect":"focus","stagger":0,"target":{"sel":"#f-store","split":null},"trigger":{"kind":"click","n":2}},{"delay":120,"dur":350,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".f-b","split":null},"trigger":{"kind":"click","n":2}},{"delay":0,"dur":450,"ease":"cubic-bezier(.33,1,.68,1)","effect":"focus","stagger":0,"target":{"sel":"#f-serve","split":null},"trigger":{"kind":"click","n":3}},{"delay":120,"dur":350,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".f-c","split":null},"trigger":{"kind":"click","n":3}}]}</script>
+<aside class="notes"><p>The detail arrives with its pane because a fade-in shares the step; focus itself only decides which one is forward.</p>
+</aside>
+</section>
+<section class="slide" data-index="9">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:2fr 3fr;grid-template-areas:"head" "body"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Page turns</span></p>
 <h2 class="m-h">This slide arrives by wiping</h2>
@@ -166,7 +187,7 @@ of that with an ordinary whole-slide track — this one wipes in and irises out:
 </div>
 <script type="application/json" class="mz-anim">{"steps":0,"tracks":[{"delay":0,"dir":"right","dur":450,"ease":"linear","effect":"wipe-in","stagger":0,"target":{"sel":":scope","split":null},"trigger":{"kind":"enter"}},{"delay":0,"dur":450,"ease":"linear","effect":"iris-out","stagger":0,"target":{"sel":":scope","split":null},"trigger":{"kind":"exit"}}]}</script>
 </section>
-<section class="slide" data-index="9">
+<section class="slide" data-index="10">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:2fr 3fr;grid-template-areas:"head" "body"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">The rule</span></p>
 <h2 class="m-last"><span class="mz-split-item">Motion</span> <span class="mz-split-item">is</span> <span class="mz-split-item">something</span> <span class="mz-split-item">a</span> <span class="mz-split-item">deck</span> <span class="mz-split-item">gains</span></h2>
@@ -177,7 +198,7 @@ of that with an ordinary whole-slide track — this one wipes in and irises out:
 </div>
 <script type="application/json" class="mz-anim">{"steps":2,"tracks":[{"delay":0,"dur":500,"ease":"linear","effect":"blur-in","stagger":60,"target":{"sel":".m-last","split":"words"},"trigger":{"kind":"enter"}},{"delay":0,"dur":400,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".m-p1","split":null},"trigger":{"kind":"click","n":1}},{"delay":0,"dur":400,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".m-p2","split":null},"trigger":{"kind":"click","n":2}},{"delay":0,"dur":400,"ease":"linear","effect":"zoom-in","stagger":0,"target":{"sel":":scope","split":null},"trigger":{"kind":"enter"}}]}</script>
 </section>
-<section class="slide" data-index="10">
+<section class="slide" data-index="11">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "keys stage"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Effects</span></p>
 <h2>Things you do, not things the deck does</h2>

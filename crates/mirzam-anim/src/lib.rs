@@ -131,6 +131,7 @@ const EFFECTS: &[&str] = &[
     "draw",
     "iris-out",
     "move",
+    "focus",
 ];
 
 /// Effects that travel, and so need `dir=` to say which way.
@@ -140,6 +141,12 @@ const DIRECTIONAL: &[&str] = &["slide-in", "slide-out", "wipe-in", "wipe-out"];
 /// its own, only two boxes on two different slides. It is therefore the only
 /// effect `[carry]` accepts, and the only one every other trigger rejects.
 const CARRY_EFFECT: &str = "move";
+
+/// `focus` is the other effect that is not a from/to pair: it says *this one,
+/// and not the others*, so what it does to an element depends on what the rest
+/// of the slide's focus tracks name. It is a step in a sequence by definition,
+/// which is why it takes only the triggers that are steps.
+const FOCUS_EFFECT: &str = "focus";
 
 /// Named easing curves the DSL accepts, beyond `spring(...)`, each paired with
 /// the CSS easing function it lowers to. The lowering happens here rather than
@@ -489,6 +496,20 @@ fn parse_line(line: &str) -> Result<Track, String> {
             "`{CARRY_EFFECT}` needs two slides to move between; write it as `[carry] {} : {CARRY_EFFECT} 450ms`",
             target.sel
         ));
+    }
+    if parsed.effect == FOCUS_EFFECT && !matches!(trigger, Trigger::Enter | Trigger::Click(_)) {
+        return Err(format!(
+            "`{FOCUS_EFFECT}` brings one element forward and sends the others back, so it belongs \
+             to a step: use `[enter]` or `[click N]`, not `[{}]`",
+            match trigger {
+                Trigger::Exit => "exit".to_string(),
+                Trigger::Carry => "carry".to_string(),
+                _ => "after #id".to_string(),
+            }
+        ));
+    }
+    if parsed.effect == FOCUS_EFFECT && target.split.is_some() {
+        return Err("`focus` moves whole elements, so it cannot also split their text".into());
     }
     if carrying {
         // What identifies the element on the *next* slide is its id, so a
@@ -961,6 +982,49 @@ mod tests {
         let doc = parse("[carry] #chip : words move 450ms\n");
         assert_eq!(doc.errors.len(), 1);
         assert!(doc.errors[0].contains("split"), "{:?}", doc.errors);
+    }
+
+    #[test]
+    fn focus_is_a_step_so_it_takes_the_step_triggers() {
+        let doc = parse("[click 1] #a : focus 450ms ease=out-cubic\n[enter] #b : focus 450ms\n");
+        assert!(doc.errors.is_empty(), "{:?}", doc.errors);
+        assert_eq!(doc.tracks[0].effect, "focus");
+        assert_eq!(doc.tracks[0].trigger, Trigger::Click(1));
+        assert_eq!(doc.tracks[1].trigger, Trigger::Enter);
+    }
+
+    #[test]
+    fn focus_refuses_the_triggers_that_are_not_steps() {
+        for src in [
+            "[exit] #a : focus 450ms\n",
+            "[after #b +100ms] #a : focus 450ms\n",
+        ] {
+            let doc = parse(src);
+            assert_eq!(doc.errors.len(), 1, "{src}");
+            assert!(doc.errors[0].contains("step"), "{:?}", doc.errors);
+        }
+        // `[carry] … : focus` is refused by the carry rule first, which says
+        // the more useful thing: a carry's only effect is `move`.
+        let doc = parse("[carry] #a : focus 450ms\n");
+        assert_eq!(doc.errors.len(), 1);
+        assert!(doc.errors[0].contains("`move`"), "{:?}", doc.errors);
+    }
+
+    #[test]
+    fn focus_does_not_split_text() {
+        let doc = parse("[click 1] #a : words focus 450ms\n");
+        assert_eq!(doc.errors.len(), 1);
+        assert!(doc.errors[0].contains("split"), "{:?}", doc.errors);
+    }
+
+    #[test]
+    fn a_class_may_bring_several_things_forward_together() {
+        // Two panes forward on one step is a legitimate thing to want, so the
+        // target rules are the ordinary ones — unlike `carry`, which needs an
+        // id to pair across slides.
+        let doc = parse("[click 1] .pair : focus 450ms\n");
+        assert!(doc.errors.is_empty(), "{:?}", doc.errors);
+        assert_eq!(doc.tracks[0].target.sel, ".pair");
     }
 
     #[test]

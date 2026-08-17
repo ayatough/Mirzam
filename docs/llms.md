@@ -326,7 +326,7 @@ One line is one track: `[trigger] target : effect duration attributes…`
   `lines` before the effect splits the text.
 - **Effects:** `fade-in` `fade-out` `slide-in` `slide-out` `wipe-in` `wipe-out`
   (those four need `dir=left|right|up|down`), `zoom-in` `zoom-out` `blur-in`
-  `grow-x` `grow-y` `pop` `draw` `iris-out`, `move`.
+  `grow-x` `grow-y` `pop` `draw` `iris-out`, `move`, `focus`.
 - **Attributes:** a bare `400ms` is the duration; `delay=`, `stagger=`, `ease=`
   (a named curve or `spring(mass,stiffness,damping)`).
 
@@ -334,6 +334,13 @@ One line is one track: `[trigger] target : effect duration attributes…`
 letting the page turn take it. Written on the earlier slide of the pair; the
 same `#id` must exist on both, or the build warns and nothing moves. `carry`
 takes only `move`, `move` only `carry`, and the target must be an `#id`.
+
+`[click N] #id : focus 450ms` brings one of a set forward and sends the rest
+back, **on one slide, with no page turn**. Every `focus` target on the slide is
+one group. Pair it with a `fade-in` at the same step to bring that one's detail
+in with it. Name a pane by writing `::: pane a {#id}`. Takes `[enter]` and
+`[click N]` only. Dials: `--mz-focus-scale`, `--mz-focus-back-scale`,
+`--mz-focus-back-opacity`.
 
 Elements are laid out in their **final** state, so a deck read without
 JavaScript, and the PDF, show every slide fully revealed.

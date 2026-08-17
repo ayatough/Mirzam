@@ -918,6 +918,26 @@ mod tests {
         assert!(!VIEWER_JS.contains("MZAnim."));
     }
 
+    /// `focus` decides which of a set is forward, which is a property of the
+    /// step rather than of the stylesheet — so the transform is the runtime's
+    /// to apply. How *far* forward is the deck's, which is why the three dials
+    /// are tokens and the runtime reads them off the slide rather than
+    /// carrying numbers of its own.
+    #[test]
+    fn how_far_focus_moves_is_the_decks_to_say() {
+        for dial in [
+            "--mz-focus-scale",
+            "--mz-focus-back-scale",
+            "--mz-focus-back-opacity",
+        ] {
+            assert!(BASE_CSS.contains(dial), "{dial} is not defined anywhere");
+            assert!(ANIM_JS.contains(dial), "anim.js never reads {dial}");
+        }
+        // Forward has to be forward *of its neighbours*, which a transform
+        // alone does not settle.
+        assert!(BASE_CSS.contains(".mz-focus { z-index:"));
+    }
+
     /// A carried element flies in a layer belonging to neither slide, so the
     /// layer's name is shared between the runtime that creates it and the
     /// stylesheet that positions it. It also has to sit above both slides:

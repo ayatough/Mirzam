@@ -1377,8 +1377,10 @@ One line is one track: `[trigger] target : effect duration attributes...`.
   intact), a multi-byte character, or an HTML entity.
 - **Effects:** `fade-in`, `fade-out`, `slide-in` / `slide-out` and `wipe-in` /
   `wipe-out` (all four require `dir=left|right|up|down`), `zoom-in`,
-  `zoom-out`, `blur-in`, `grow-x`, `grow-y`, `pop`, `draw`, `iris-out`, and
-  `move`, which only a `carry` takes.
+  `zoom-out`, `blur-in`, `grow-x`, `grow-y`, `pop`, `draw`, `iris-out`,
+  `move`, which only a `carry` takes, and
+  [`focus`](#one-of-several-forward-the-rest-back), which brings one element
+  forward and sends the rest back.
   A `slide` travels; a `wipe` stays put while an edge uncovers it. `draw`
   runs the strokes tip-first over the full duration and inks the fills —
   an arrow's head, a label's glyphs — in over the last stretch, once the
@@ -1402,6 +1404,44 @@ a slide the room has already seen.
 
 Stepping back within a slide snaps rather than playing in reverse: going back is
 a correction, and a correction should be immediate.
+
+### One of several, forward — the rest back
+
+A slide shows three components and the talk is about each of them in turn. A
+page turn each loses the other two; leaving all three flat gives the room
+nothing to look at. `focus` keeps them all on the one slide and changes which
+one is being looked at:
+
+````markdown
+```anim
+[click 1] #ingest : focus 450ms ease=out-cubic
+[click 1] .d-ingest : fade-in 350ms delay=120ms
+[click 2] #store  : focus 450ms ease=out-cubic
+[click 2] .d-store  : fade-in 350ms delay=120ms
+```
+````
+
+Every element named by a `focus` track on the slide is one group. On each step
+the one named comes forward and every other member goes back — which is why
+`focus` is a *state* rather than an effect on one element, and why stepping
+back through it plays rather than snaps: pointing the room somewhere else looks
+the same whichever way the talk is going.
+
+- **The detail is a separate track**, at the same step. `focus` only decides
+  what is forward; a `fade-in` on the paragraph inside the pane is what makes
+  its explanation arrive with it. Keeping the two apart means the detail can be
+  a chart, an image, a whole second pane, or nothing at all.
+- **Name the pane with `{#id}`** — `::: pane a {#ingest}` — or with a class if
+  two things should come forward together.
+- **Before the first step nothing is forward**, so the slide is exactly as it
+  was laid out. That is also what a reader without JavaScript and the PDF see:
+  three components, side by side, every explanation visible.
+- **How far it moves is the deck's to say.** `--mz-focus-scale` (1.06),
+  `--mz-focus-back-scale` (0.92) and `--mz-focus-back-opacity` (0.4) are
+  ordinary tokens — set the two scales to `1` and the step becomes a change in
+  emphasis with no movement at all.
+
+`examples/05-motion.md`, slide 9, is three components stepped through this way.
 
 ### An element that moves to the next slide
 

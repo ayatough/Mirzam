@@ -1401,6 +1401,15 @@ fn render_grid_slide(
             extra_cls.push_str(" mz-fit");
         }
         extra_cls.push_str(&bleed_edge_classes(&attrs, || grid.edges(name)));
+        // `{#id}` on a pane. Parsed all along and dropped on the floor, which
+        // made it the one place in the deck where writing an id got you
+        // nothing — and a pane is exactly what an author wants to name when
+        // an animation, an annotation or a connector is about the whole
+        // column rather than a word in it.
+        let pane_id = match attrs.id.as_deref() {
+            Some(id) if !id.is_empty() => format!(" id=\"{}\"", inline::html_escape(id)),
+            _ => String::new(),
+        };
         let content = toc::extract(&content, errors);
         let content = cite::extract(&content, errors);
         let content = if ctx.citations {
@@ -1473,7 +1482,7 @@ fn render_grid_slide(
             &ctx.file_themes,
         );
         panes_html.push_str(&format!(
-            "<div class=\"pane pane-{name}{extra_cls}{}\" data-pane=\"{name}\"{pane_theme} style=\"{style}\">{}{body}{}</div>\n",
+            "<div class=\"pane pane-{name}{extra_cls}{}\"{pane_id} data-pane=\"{name}\"{pane_theme} style=\"{style}\">{}{body}{}</div>\n",
             bg.pane_class, bg.layers, bg.close
         ));
     }

@@ -8,6 +8,29 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- **Several things on one slide, one of them forward at a time.** A slide shows
+  three components and the talk is about each of them in turn: a page turn each
+  loses the other two, and leaving all three flat gives the room nothing to
+  look at. `[click 1] #ingest : focus 450ms` keeps them all on the one slide
+  and changes which one is being looked at — the named one comes forward, every
+  other element a `focus` track names goes back, and the page never turns. A
+  `fade-in` at the same step is what brings that one's explanation in with it,
+  so the detail can be a paragraph, a chart or nothing at all. `←` walks it
+  back the same way it came, because pointing the room somewhere else looks the
+  same whichever direction the talk is going. `examples/05-motion.md`, slide 9
+  at `/next/`.
+
+  Before the first step nothing is forward, so the slide is exactly as it was
+  laid out — which is also what a reader without JavaScript and the PDF get:
+  three components side by side with every explanation visible. How far it
+  moves is the deck's to say, not the runtime's: `--mz-focus-scale` (1.06),
+  `--mz-focus-back-scale` (0.92) and `--mz-focus-back-opacity` (0.4) are
+  ordinary tokens, and setting the two scales to `1` leaves a change in
+  emphasis with no movement at all.
+- **`{#id}` on a `::: pane` now reaches the slide.** It was parsed and dropped,
+  which made a pane the one thing in a deck you could name and get nothing for
+  — and a pane is exactly what you want to name when an animation, an
+  annotation or a connector is about the whole column rather than a word in it.
 - **An element can move to the next slide instead of turning with it.** A slide
   shows three components and the next one takes the first of them: until now
   that was a page turn, and the audience had to find the component again on the

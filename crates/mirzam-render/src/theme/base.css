@@ -739,6 +739,22 @@ svg.mz-shapes, svg.mz-connect {
 }
 .mz-fx-shake { animation: mz-fx-shake 520ms cubic-bezier(.36,.07,.19,.97); }
 
+/* `focus`: one of a set forward, the rest back, without turning the page.
+   theme/anim.js reads these three off the slide, so a deck can make the move a
+   whisper or a shove — or, by setting the two scales to 1, reduce it to a
+   change in emphasis alone — without touching the runtime. The transform is
+   applied by the runtime rather than by a rule here, because which element is
+   forward is a property of the step, not of the stylesheet. */
+section.slide {
+  --mz-focus-scale: 1.06;
+  --mz-focus-back-scale: 0.92;
+  --mz-focus-back-opacity: 0.4;
+}
+/* The one part that *is* the stylesheet's business: what comes forward has to
+   come forward over its neighbours, and stop them taking clicks. */
+.mz-focus { z-index: 3; position: relative; }
+.mz-unfocus { pointer-events: none; }
+
 /* A carried element flies here: a child of #deck rather than of either slide,
    because the slide it leaves is on its way out while the slide it lands on is
    on its way in, and neither is around for the whole trip. It inherits the

@@ -330,6 +330,102 @@
     return playTrack(sec, t, true);
   }
 
+  // ---- Focus: one of a set forward, the rest back, without turning the page ----
+  //
+  // Three panes on a slide, and the talk is about each of them in turn. A page
+  // turn per pane loses the other two; showing all three at once has nothing
+  // to look at. `focus` keeps all three on the slide and changes which one the
+  // room is looking at: the named one comes forward, every other element named
+  // by a `focus` track on the same slide goes back.
+  //
+  // It is a *state*, not a from/to pair, which is why it is not in the
+  // `keyframes` table: what `focus` does to an element depends on what the
+  // other tracks name and on which step the deck is on. Stepping back is
+  // therefore just the same state recomputed for a smaller step, which is what
+  // makes going back through a sequence of these look like going forward.
+  //
+  // The resting state is untouched: with no step applied — a deck read without
+  // JavaScript, and the PDF — every pane sits where the grid put it, at full
+  // size and full opacity.
+
+  const focusing = new WeakMap();   // element -> the animation holding its state
+
+  // How far forward and how far back, as theme tokens rather than constants,
+  // so a deck can make it a whisper or a shove without touching this file.
+  function focusDial(sec, name, fallback) {
+    const v = parseFloat(getComputedStyle(sec).getPropertyValue(name));
+    return Number.isFinite(v) ? v : fallback;
+  }
+
+  function focusTracks(sec) {
+    return (timeline(sec)?.tracks || []).filter((t) => t.effect === 'focus');
+  }
+
+  // The state each member of the group should be in at `step`: the tracks due
+  // by now name what is forward, and the most recent of them wins. Before the
+  // first one nothing is forward, and the slide looks as it was laid out.
+  function focusState(sec, step) {
+    const tracks = focusTracks(sec);
+    if (!tracks.length) return null;
+    const stepOf = (t) => (t.trigger.kind === 'click' ? t.trigger.n : 0);
+    let due = -1;
+    for (const t of tracks) {
+      const n = stepOf(t);
+      if (n <= step && n > due) due = n;
+    }
+    const front = new Set();
+    if (due >= 0) {
+      for (const t of tracks) {
+        if (stepOf(t) === due) for (const el of t.els) front.add(el);
+      }
+    }
+    const all = [];
+    for (const t of tracks) for (const el of t.els) if (!all.includes(el)) all.push(el);
+    return { all, front, any: due >= 0, dur: tracks[0].dur, ease: tracks[0].ease };
+  }
+
+  function applyFocus(sec, step, play) {
+    const s = focusState(sec, step);
+    if (!s) return;
+    const fwd = focusDial(sec, '--mz-focus-scale', 1.06);
+    const back = focusDial(sec, '--mz-focus-back-scale', 0.92);
+    const dim = focusDial(sec, '--mz-focus-back-opacity', 0.4);
+    const dur = REDUCED || !play ? 1 : s.dur;
+    for (const el of s.all) {
+      // Nothing is forward yet, so nothing is back either: the slide has not
+      // started, and it must look exactly as it was laid out.
+      const to = !s.any
+        ? { transform: 'none', opacity: '1' }
+        : s.front.has(el)
+          ? { transform: `scale(${fwd})`, opacity: '1' }
+          : { transform: `scale(${back})`, opacity: String(dim) };
+      // Where the element is *now*, read before the animation holding it there
+      // is cancelled. Starting from that rather than from a written-down
+      // previous state is what lets a step pressed during the last one carry
+      // on from where it got to instead of jumping back.
+      const cs = getComputedStyle(el);
+      const from = { transform: cs.transform, opacity: cs.opacity };
+      const prev = focusing.get(el);
+      if (prev) { try { prev.cancel(); } catch (e) {} }
+      // An animation rather than an inline style, so a repaint that re-arms
+      // the slide's other tracks cannot overwrite it, and so `settle` has one
+      // thing to cancel rather than styles to guess at.
+      focusing.set(el, el.animate([from, to], { duration: dur, easing: s.ease, fill: 'both' }));
+      el.classList.toggle('mz-focus', s.any && s.front.has(el));
+      el.classList.toggle('mz-unfocus', s.any && !s.front.has(el));
+    }
+  }
+
+  function clearFocus(sec) {
+    const s = focusState(sec, 0);
+    if (!s) return;
+    for (const el of s.all) {
+      const a = focusing.get(el);
+      if (a) { try { a.cancel(); } catch (e) {} focusing.delete(el); }
+      el.classList.remove('mz-focus', 'mz-unfocus');
+    }
+  }
+
   // ---- Carrying an element from one slide to the next ----
   //
   // A `[carry] #id : move` track names an element that is on this slide and on
@@ -631,6 +727,9 @@
         return;
       }
       for (const t of tl.tracks) {
+        // `focus` is a state over a whole group rather than one element's
+        // from/to, so it is applied once below instead of armed per track.
+        if (t.effect === 'focus') continue;
         const played = t.batch === 'enter'
           || (t.batch.startsWith('click:') && +t.batch.slice(6) <= step);
         // Exit tracks rest visible too - they have not played yet - but they
@@ -638,6 +737,9 @@
         if (played || t.batch === 'exit') finalTrack(sec, t, played);
         else armTrack(sec, t);
       }
+      // Staged, not played: arriving at a slide part-way through shows it as
+      // it stands, and only a step pressed while watching animates.
+      applyFocus(sec, step, false);
       if (!play) return;
       turnIn();
       // Entering backwards lands on a slide the audience has already seen, so
@@ -649,7 +751,9 @@
     // viewer does not wait for - it only needs to know something happened.
     step(sec, n) {
       stopFinished(sec);
-      return playBatch(sec, 'click:' + n);
+      const end = playBatch(sec, 'click:' + n);
+      applyFocus(sec, n, true);
+      return Math.max(end, focusTracks(sec).length ? focusState(sec, n).dur : 0);
     },
 
     // Steps back within a slide by re-arming that step. Snapping back rather
@@ -666,6 +770,10 @@
         }
         armTrack(sec, t);
       }
+      // Focus is the exception to "going back snaps": it is not a reveal being
+      // taken back but the room being pointed somewhere else, and pointing
+      // somewhere else looks the same whichever direction the talk is going.
+      applyFocus(sec, n - 1, true);
     },
 
     // Leaves a slide: its `exit` tracks, plus the deck's page turn. Returns
@@ -683,6 +791,7 @@
     // is nothing left to hold.
     settle(sec) {
       stop(sec);
+      clearFocus(sec);
       const tl = timeline(sec);
       if (!tl) return;
       for (const t of tl.tracks) {

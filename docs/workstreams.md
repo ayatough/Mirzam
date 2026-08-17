@@ -73,6 +73,7 @@ there is. The model column follows from that:
 | W16 | Showing the thing working: demo recording, themes gallery | C | — | — | ✅ |
 | W17 | A theme per slide | B | — | — | ✅ |
 | W18 | Carrying an element from one slide to the next | S | — | W2 | ✅ |
+| W24 | Focus: one of several forward, without a page turn | B | — | W1, W2 | ✅ |
 | W5 | Typst-flavoured math | A | Sonnet | — | ✅ |
 | W19 | Structural math editing: tap and place, not type | S | Fable | W5 | withdrawn |
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | read half ✅ |
@@ -982,6 +983,45 @@ whose id is missing next door, and one on the last slide, are both warnings
 naming the slides (`mirzam_render::carry_warnings`, run over the assembled deck
 after `resolve_citations`, so `<!-- next -->` parts count as the separate
 sections they are by then).
+
+## W24 — Focus: one of several forward, without a page turn ✅
+
+**Difficulty B · landed**
+
+Written after W18, because W18 answered a question next to this one rather than
+this one. A slide shows three components and the talk takes each in turn. W18's
+answer is that the component *moves onto its own slide*; the answer wanted here
+is that **the page does not turn at all** — the three stay where they are, and
+which one the room is looking at changes.
+
+`[click 1] #ingest : focus 450ms`. Every element a `focus` track names on the
+slide is one group; on each step the named one comes forward and the rest go
+back. Three decisions:
+
+- **`focus` is a state, not an effect.** It is not in the `keyframes` table,
+  because what it does to an element depends on what the *other* tracks name
+  and on which step the deck is on. So it is applied once per step over the
+  whole group rather than armed per track, and `show` skips it in the arm loop.
+- **Backwards plays, it does not snap.** The rest of the runtime snaps on
+  `unstep`, on the reasoning that going back is a correction and a correction
+  should be instant. A focus step is not a reveal being taken back — it is the
+  room being pointed somewhere else, and that looks the same in both
+  directions.
+- **The detail is the author's own track.** `focus` only decides what is
+  forward; a `fade-in` at the same step is what brings an explanation in with
+  its pane. Fusing the two would have fixed the detail to be a paragraph inside
+  the pane, when it is as likely to be a chart, a second pane, or nothing.
+
+How far it moves is three tokens (`--mz-focus-scale`, `--mz-focus-back-scale`,
+`--mz-focus-back-opacity`) read off the slide, so the runtime carries no
+numbers of its own and a deck can turn the movement down to nothing while
+keeping the change in emphasis. The resting state is untouched: before the
+first step every pane is where the grid put it, which is what the PDF and a
+reader without JavaScript get.
+
+`{#id}` on a `::: pane` was parsed and thrown away, so this stream also made a
+pane nameable — the thing an author most wants to name once animation is about
+columns rather than words.
 
 ## W20 — Syntax highlighting at build time
 

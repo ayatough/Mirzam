@@ -43,6 +43,7 @@ keep changing.
 | A theme per slide, and per pane | Done |
 | A theme sets type, not only colour; `theme:` takes a path | Done |
 | Carrying an element from one slide to the next | Done |
+| Focusing one of several things on a slide, without turning the page | Done |
 | Demo recording (the edit loop, typed live) and a generated themes gallery | Done |
 | Dragging an annotation back into the Markdown | Next |
 | Syntax highlighting in code blocks (36 languages, theme-token colours) | Done |
@@ -65,12 +66,17 @@ a formula into shape on the phone it was built for. The effort went into the
 math grammar instead, which is why `v0.4.0` says more about what `$...$` can
 hold than about how it is edited.
 
-The one that was worth naming here — **carrying an element from one slide to
-the next**, where a slide presents three components and the component *moves*
-into its own slide rather than the deck turning the page under it — has landed:
-`[carry] #id : move` in an `anim` block, described in
-[syntax.md](syntax.md#an-element-that-moves-to-the-next-slide). It was the last
-animation a deck tool gets asked for that Mirzam had no answer to.
+The one that was worth naming here — a slide presents three components and the
+talk takes each of them in turn — turned out to be two questions, and both have
+landed. **Carrying an element from one slide to the next** is the answer where
+the component *moves* into its own slide rather than the deck turning the page
+under it: `[carry] #id : move`, described in
+[syntax.md](syntax.md#an-element-that-moves-to-the-next-slide). **Focus** is the
+answer where the page does not turn at all — the three stay where they are and
+which one the room is looking at changes: `[click 1] #id : focus`, described in
+[syntax.md](syntax.md#one-of-several-forward-the-rest-back). Between them they
+close the last animation a deck tool gets asked for that Mirzam had no answer
+to.
 
 ### Measured performance
 
