@@ -34,6 +34,27 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   them — the same warning the other reserved keys give.
 
 ### Fixed
+- **`slide-in`, `zoom-in` and `pop` now move the thing they are pointed at.**
+  A target written the obvious way — `[a line]{.point}`, or any `chars`/`words`
+  split, all of which are spans — never travelled, grew or popped: a browser
+  ignores a transform on an inline box, so the runtime set one, nothing
+  happened, and every one of those effects quietly became `fade-in`. The
+  element is now given a box for as long as its track owns it, and handed back
+  afterwards; it sits on the line it already occupied, so nothing reflows.
+  Slide 3 of `05-motion` is the demonstration — `slide-in` arrives travelling
+  and `zoom-in` grows, which is what both lines have always claimed to do.
+- **A diagram waiting to be drawn leaves no stub behind.** A `draw` track hid
+  its stroke behind a dash gap exactly as long as the stroke, which ends where
+  the stroke does — so a rasteriser rounding the offset the other way painted
+  the first sliver of the next dash, a couple of pixels sitting at the tip of
+  an arrow nobody had drawn yet. The gap now has slack, and an armed stroke is
+  transparent as well, so being invisible is no longer an argument about
+  arithmetic. Slide 5 of `05-motion`, before the first click.
+- **`05-motion`'s opening slide gives its animation somewhere to happen.**
+  The two lines it reveals were the smallest, faintest text on a slide that was
+  otherwise a wide band of empty space, so the one thing the slide exists to
+  show was the thing hardest to notice. The prose now holds the left half and
+  the reveals land large in the right, where a room can see them.
 - **Accents sit above their letter, not on it.** Every deck's CSS now carries
   the stylesheet `math-core` requires alongside its MathML, which Mirzam had
   never shipped. Three things were wrong without it and none of them announced

@@ -1386,7 +1386,11 @@ One line is one track: `[trigger] target : effect duration attributes...`.
   A `slide` travels; a `wipe` stays put while an edge uncovers it. `draw`
   runs the strokes tip-first over the full duration and inks the fills —
   an arrow's head, a label's glyphs — in over the last stretch, once the
-  line has arrived at them.
+  line has arrived at them. The ones that move a target — `slide-*`, `zoom-*`,
+  `pop`, `grow-*` — need a box to move, so an inline target (an attribute span,
+  or a `chars`/`words` split) is given one for as long as its track is playing
+  and handed back afterwards. A span that sits on one line keeps its place
+  exactly, which is what every reveal written as `[a line]{.point}` is.
 - **Attributes:** a bare `400ms` sets the duration; `delay=`, `stagger=` (for a
   split target) and `ease=` are otherwise `key=value`. `ease` is a named curve
   (`out-cubic`, `in-out-back`, …) or `spring(mass,stiffness,damping)`, resolved

@@ -20,10 +20,13 @@ lines of Markdown, and none of it is needed to read the deck.
 +------------------------------------+
 |                                    |
 |  head                              |
-+------------------------------------+
-|                                    |
-|  body                              |
-+------------------------------------+
++-----------------+------------------+
+|                 |                  |
+|                 |                  |
+|  body           |  stage           |
+|                 |                  |
+|                 |                  |
++-----------------+------------------+
 ```
 
 ::: pane head
@@ -34,11 +37,15 @@ lines of Markdown, and none of it is needed to read the deck.
 ::: pane body {valign=middle}
 An `anim` block compiles to a timeline embedded in the slide — triggers,
 targets, effects and easing all resolved at build time, so the runtime plays a
-curve instead of computing one. Press `→` twice.
+curve instead of computing one.
+:::
 
-[This line waited for a click.]{.m-callout .small}
+::: pane stage {valign=middle}
+[Press `→` twice.]{.small}
 
-[And this one followed it, unprompted.]{.m-echo .small}
+[This line waited for a click.]{.m-callout .big .accent}
+
+[And this one followed it, unprompted.]{.m-echo .big}
 :::
 
 ```anim

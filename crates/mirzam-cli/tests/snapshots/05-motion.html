@@ -9,15 +9,17 @@ lines of Markdown, and none of it is needed to read the deck.</p>
 </aside>
 </section>
 <section class="slide" data-index="1">
-<div class="grid" style='grid-template-columns:36fr;grid-template-rows:2fr 2fr;grid-template-areas:"head" "body"'>
+<div class="grid" style='grid-template-columns:17fr 18fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "body stage"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">The idea</span></p>
 <h2 class="m-tl"><span class="mz-split-item">A</span><span class="mz-split-item">n</span><span class="mz-split-item">i</span><span class="mz-split-item">m</span><span class="mz-split-item">a</span><span class="mz-split-item">t</span><span class="mz-split-item">i</span><span class="mz-split-item">o</span><span class="mz-split-item">n</span><span class="mz-split-item"> </span><span class="mz-split-item">i</span><span class="mz-split-item">s</span><span class="mz-split-item"> </span><span class="mz-split-item">a</span><span class="mz-split-item"> </span><span class="mz-split-item">t</span><span class="mz-split-item">i</span><span class="mz-split-item">m</span><span class="mz-split-item">e</span><span class="mz-split-item">l</span><span class="mz-split-item">i</span><span class="mz-split-item">n</span><span class="mz-split-item">e</span><span class="mz-split-item">,</span><span class="mz-split-item"> </span><span class="mz-split-item">n</span><span class="mz-split-item">o</span><span class="mz-split-item">t</span><span class="mz-split-item"> </span><span class="mz-split-item">a</span><span class="mz-split-item"> </span><span class="mz-split-item">p</span><span class="mz-split-item">l</span><span class="mz-split-item">u</span><span class="mz-split-item">g</span><span class="mz-split-item">i</span><span class="mz-split-item">n</span></h2>
 </div>
 <div class="pane pane-body" data-pane="body" style="grid-area:body;display:flex;flex-direction:column;justify-content:center"><p>An <code>anim</code> block compiles to a timeline embedded in the slide — triggers,
 targets, effects and easing all resolved at build time, so the runtime plays a
-curve instead of computing one. Press <code>→</code> twice.</p>
-<p><span class="m-callout small">This line waited for a click.</span></p>
-<p><span class="m-echo small">And this one followed it, unprompted.</span></p>
+curve instead of computing one.</p>
+</div>
+<div class="pane pane-stage" data-pane="stage" style="grid-area:stage;display:flex;flex-direction:column;justify-content:center"><p><span class="small">Press <code>→</code> twice.</span></p>
+<p><span class="m-callout big accent">This line waited for a click.</span></p>
+<p><span class="m-echo big">And this one followed it, unprompted.</span></p>
 </div>
 </div>
 <script type="application/json" class="mz-anim">{"steps":2,"tracks":[{"delay":0,"dur":400,"ease":"cubic-bezier(.33,1,.68,1)","effect":"fade-in","stagger":30,"target":{"sel":".m-tl","split":"chars"},"trigger":{"kind":"enter"}},{"delay":0,"dir":"up","dur":400,"ease":"linear(0.0000, 0.0242, 0.0860, 0.1714, 0.2697, 0.3726, 0.4739, 0.5696, 0.6568, 0.7341, 0.8009, 0.8572, 0.9035, 0.9406, 0.9695, 0.9913, 1.0071, 1.0180, 1.0248, 1.0285, 1.0298, 1.0293, 1.0277, 1.0253)","effect":"slide-in","stagger":0,"target":{"sel":".m-callout","split":null},"trigger":{"kind":"click","n":1}},{"delay":0,"dur":300,"ease":"linear","effect":"fade-in","stagger":0,"target":{"sel":".m-echo","split":null},"trigger":{"kind":"click","n":2}}]}</script>
