@@ -4,7 +4,7 @@ author: Mirzam
 aspect: "16:9"
 theme: mirzam
 mode: dark
-transition: fade 500ms
+transition: fade 1500ms
 autoplay: 6s loop
 ---
 
@@ -20,15 +20,15 @@ autoplay: 6s loop
 [Mirzam]{.eyebrow}
 ## Slides on a loop {.sl-title}
 
-[This deck is turning its own pages — `autoplay: 6s loop` in the frontmatter. `A` pauses it; anything else just restarts the countdown.]{.sl-note .small}
+[This deck is turning its own pages — `autoplay: 6s loop` in the frontmatter. `A` pauses it, `H` shows the controls it hides.]{.sl-note .small}
 :::
 
 ```anim
-[enter]   .sl-title : words blur-in 500ms stagger=60ms
-[click 1] .sl-note  : fade-in 400ms
+[enter] .sl-title : words blur-in 500ms stagger=60ms
+[enter] .sl-note  : fade-in 400ms delay=1100ms
 ```
 
-<!-- note: The loop advances by click steps, so the caption above gets its own six seconds. -->
+<!-- note: Everything on a slide plays on arrival; the loop only turns pages. -->
 
 ---
 
@@ -47,8 +47,8 @@ autoplay: 6s loop
 :::
 
 ```anim
-[enter]   .sl-city : chars fade-in 400ms stagger=20ms
-[click 1] .sl-c1   : slide-in 400ms dir=up
+[enter] .sl-city : chars fade-in 400ms stagger=20ms
+[enter] .sl-c1   : slide-in 400ms dir=up delay=800ms
 ```
 
 ---
@@ -62,20 +62,20 @@ autoplay: 6s loop
 ```
 
 ::: pane hero {.bleed bg=media/bg/mountains.jpg dim=0.35 scrim=bottom valign=bottom}
-## Captions keep the pace {.sl-mtn}
+## Captions on their own clock {.sl-mtn}
 
-[Every advance is one click step — the same step `→` would take.]{.sl-m1}
+[Each line lands a beat after the one before — a `delay=` on its entrance.]{.sl-m1}
 
-[So a slide with two lines holds the screen two beats longer.]{.sl-m2}
+[Nothing waits for the page to turn; the loop keeps one clock.]{.sl-m2}
 :::
 
 ```anim
-[enter]   .sl-mtn : words fade-in 400ms stagger=40ms
-[click 1] .sl-m1  : slide-in 400ms dir=up
-[click 2] .sl-m2  : slide-in 400ms dir=up
+[enter] .sl-mtn : words fade-in 400ms stagger=40ms
+[enter] .sl-m1  : slide-in 400ms dir=up delay=900ms
+[enter] .sl-m2  : slide-in 400ms dir=up delay=1700ms
 ```
 
-<!-- note: Two steps here, so this slide takes three intervals in the loop. -->
+<!-- note: Click steps would hold a slide one interval per step; a loop of photos wants everything on arrival instead. -->
 
 ---
 
@@ -99,15 +99,17 @@ autoplay: 6s loop
 ````markdown
 ---
 autoplay: 6s loop
-transition: fade 500ms
 ---
 
 ::: pane hero {.bleed bg=photo.jpg dim=0.4 scrim=bottom}
 ## A caption that arrives on its own beat {.telop}
+
+[And a line that follows it, unprompted.]{.sub}
 :::
 
 ```anim
 [enter] .telop : words blur-in 500ms stagger=60ms
+[enter] .sub   : fade-in 400ms delay=900ms
 ```
 ````
 :::
@@ -127,12 +129,12 @@ transition: fade 500ms
 ::: pane hero {.bleed bg=media/bg/city-night.jpg bg-pos=top dim=0.5 scrim=bottom valign=middle align=center}
 ## Write Markdown. Loop it anywhere. {.sl-end}
 
-[`?autoplay=off` stills this deck · `?controls=none` bares the screen · github.com/ayatough/Mirzam]{.sl-e1 .small}
+[`?autoplay=off` stills this deck · `H` shows the controls · github.com/ayatough/Mirzam]{.sl-e1 .small}
 :::
 
 ```anim
-[enter]   .sl-end : words fade-in 450ms stagger=50ms
-[click 1] .sl-e1  : fade-in 400ms
+[enter] .sl-end : words fade-in 450ms stagger=50ms
+[enter] .sl-e1  : fade-in 400ms delay=1200ms
 ```
 
-<!-- note: After this step the deck wraps forwards to the first slide, entrances and all. -->
+<!-- note: After this slide the deck wraps forwards to the first, entrances and all. -->

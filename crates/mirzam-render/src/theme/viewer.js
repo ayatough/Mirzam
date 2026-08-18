@@ -36,10 +36,24 @@
   const CHROME_KEY = 'mirzam-chrome';
   const qControls = query.get('controls');
   let chromeOn = true;
+  // Whether anybody decided — the URL, or an `H` this browser remembers. An
+  // undecided deck shows its controls, except under autoplay (below), where
+  // the undecided default flips: a deck playing itself is usually a screen
+  // nobody is standing next to.
+  let chromeChosen = false;
   try {
-    if (qControls === 'none' || qControls === 'off') chromeOn = false;
-    else if (qControls === 'auto' || qControls === 'on') chromeOn = true;
-    else chromeOn = localStorage.getItem(CHROME_KEY) !== 'off';
+    if (qControls === 'none' || qControls === 'off') {
+      chromeOn = false;
+      chromeChosen = true;
+    } else if (qControls === 'auto' || qControls === 'on') {
+      chromeChosen = true;
+    } else {
+      const remembered = localStorage.getItem(CHROME_KEY);
+      if (remembered) {
+        chromeOn = remembered !== 'off';
+        chromeChosen = true;
+      }
+    }
   } catch (e) {}
   const applyChrome = () => html.classList.toggle('mz-no-chrome', !chromeOn);
   applyChrome();
@@ -67,6 +81,13 @@
   const qAuto = query.get('autoplay');
   if (qAuto !== null) auto = parseAutoplay(qAuto);
   if (PRESENTING) auto = null;
+  // Autoplay flips the undecided chrome default to hidden. `H` and
+  // `?controls=on` still bring the controls back, and a choice this browser
+  // already remembers is kept — the flip is only for nobody-said-anything.
+  if (auto && !chromeChosen) {
+    chromeOn = false;
+    applyChrome();
+  }
   // How far through the current slide's click steps we are.
   let step = 0;
   // The annotation overlay is loaded after this file, and is absent from decks

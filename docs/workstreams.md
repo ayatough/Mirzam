@@ -1508,7 +1508,7 @@ that same advance on a timer, not a second navigation system. `autoplay: 8s
 loop` in frontmatter is the authored form; `?autoplay=8s+loop` plays a deck
 that never asked, and `?controls=none` beside it makes the link a kiosk.
 
-**What is not free.** Three decisions, all about who wins a disagreement with
+**What is not free.** Four decisions, all about who wins a disagreement with
 the clock:
 
 - **Looping is not paging back.** `show(0)` from the last slide reads as
@@ -1523,6 +1523,9 @@ the clock:
   reserved effect keys.
 - **Only one clock per deck.** The presenter window mirrors the main one, so
   it never runs its own timer; a hidden tab holds until it is visible again.
+- **A playing deck opens bare.** Autoplay flips the undecided chrome default
+  to hidden — the link is a kiosk with nothing more said — but only the
+  undecided one: `?controls=`, and an `H` the browser remembers, still win.
 
 **Stops at:** one deck-wide interval. Per-slide dwell, waiting for a video's
 `ended`, Ken Burns drift on backgrounds and video export are named in the

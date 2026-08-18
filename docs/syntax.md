@@ -1527,9 +1527,13 @@ else.
 
 `?autoplay=8s+loop` starts **any** deck playing without editing it — a `+` is
 how a URL spells the space — and `?autoplay=off` stills one whose frontmatter
-asked to play. With [`?controls=none`](#hiding-the-controls) beside it, a link
-is a kiosk: an exhibition loop, a screensaver, a display nobody is standing
-next to.
+asked to play.
+
+A deck playing itself is usually a screen nobody is standing next to, so
+under autoplay [the control cluster](#hiding-the-controls) starts hidden:
+the link is a kiosk with nothing more said. `H` or `?controls=on` brings the
+controls back, and a choice the browser already remembers is kept — the
+hidden default only covers nobody-said-anything.
 
 `A` pauses and resumes. Anything else that navigates — a key, a tap, a
 clicker — restarts the countdown rather than switching the loop off, so a
@@ -1538,9 +1542,16 @@ hidden tab turns no pages, and the presenter window never plays itself: it
 mirrors the window that does. The PDF export is untouched, as with every
 other kind of motion.
 
+Click steps hold a slide on screen one interval per step, which is right
+when the deck is a talk rehearsing itself. A loop of photographs usually
+wants the opposite — every caption playing the moment the slide arrives — so
+trigger them on `[enter]` with a `delay=` for each later beat, and the loop
+keeps one clock: the page turn.
+
 [`examples/slideshow.md`](../examples/slideshow.md) is the whole pattern as a
-deck: full-bleed photographs, captions animating in on their own beat, and
-`autoplay: 6s loop` driving it — open it and it is already playing.
+deck: full-bleed photographs, captions entering on their own beat, a slow
+fade between pages, and `autoplay: 6s loop` driving it — open it and it is
+already playing, bare.
 
 ### The Markdown behind a slide
 
