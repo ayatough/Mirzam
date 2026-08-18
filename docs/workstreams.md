@@ -1528,8 +1528,10 @@ the clock:
 `ended`, Ken Burns drift on backgrounds and video export are named in the
 [roadmap](roadmap.md)'s "unattended screen" entry, and each is its own stream.
 
-**Contention.** `viewer.js` (the driver and the `wrap` arrival),
-`crates/mirzam-cli/tests/snapshots/05-motion.html` (the sample slide).
+**Contention.** `viewer.js` (the driver and the `wrap` arrival), and two
+snapshots: `05-motion.html` (the syntax slide) and `slideshow.html` — the use
+case as a whole deck, full-bleed photos with captions animating in, playing
+itself from the moment it opens.
 
 ## W5 — Typst-flavoured math ✅
 

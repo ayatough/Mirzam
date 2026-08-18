@@ -39,7 +39,7 @@ cargo test --workspace                       # 23 suites
 cargo clippy --workspace --all-targets       # zero warnings
 cargo fmt --all -- --check
 node --test editors/vscode/test/*.test.js   # only if you touched editors/vscode
-for d in 01-start 02-writing 03-layout 04-components 05-motion 06-theming pitch research seminar; do
+for d in 01-start 02-writing 03-layout 04-components 05-motion 06-theming pitch research seminar slideshow; do
   cargo run -q --bin mirzam -- check "examples/$d.md"   # needs a browser, nothing else
 done
 ```
@@ -152,9 +152,11 @@ a change by "which deck owns this":
 | `05-motion.md` | `anim`, transitions, `effects` |
 | `06-theming.md` | Themes, frontmatter, attributes, custom CSS |
 
-`pitch.md`, `research.md` and `seminar.md` are the third group: complete decks,
-written the way somebody would write one for an audience. They are not feature catalogues, so do
-not add a slide to them to demonstrate something.
+`pitch.md`, `research.md`, `seminar.md` and `slideshow.md` are the third group:
+complete decks, written the way somebody would write one for an audience —
+`slideshow.md`'s audience being whoever walks past the kiosk it loops on. They
+are not feature catalogues, so do not add a slide to them to demonstrate
+something.
 
 A feature gets **one** home. Before adding a slide, check the feature is not
 already shown in a sibling deck — the previous layout had video in two files and

@@ -16,7 +16,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 OUT="${1:-site}"
-DECKS=(01-start 02-writing 03-layout 04-components 05-motion 06-theming pitch research seminar)
+DECKS=(01-start 02-writing 03-layout 04-components 05-motion 06-theming pitch research seminar slideshow)
 
 CHANNEL="${MIRZAM_SITE_CHANNEL:-stable}"
 # Falls back to `git describe` so a build run by hand is stamped too. The
@@ -421,6 +421,7 @@ try {
     <a class="card" href="decks/pitch/"><b>A sales pitch</b><span>Metric tiles, charts from CSV, one hero image per colour mode</span></a>
     <a class="card" href="decks/research/"><b>A research report</b><span>Maths, a chart, and a bibliography cited from four slides</span></a>
     <a class="card" href="decks/seminar/"><b>A research talk, in Japanese</b><span>Maths, a quoted figure, citations, CJK typography</span></a>
+    <a class="card" href="decks/slideshow/"><b>A loop for a kiosk</b><span>Full-bleed photos, captions that animate in, and the deck turning its own pages</span></a>
   </div>
 
   <h2>How it works</h2>

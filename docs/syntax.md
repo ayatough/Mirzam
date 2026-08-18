@@ -1538,6 +1538,10 @@ hidden tab turns no pages, and the presenter window never plays itself: it
 mirrors the window that does. The PDF export is untouched, as with every
 other kind of motion.
 
+[`examples/slideshow.md`](../examples/slideshow.md) is the whole pattern as a
+deck: full-bleed photographs, captions animating in on their own beat, and
+`autoplay: 6s loop` driving it — open it and it is already playing.
+
 ### The Markdown behind a slide
 
 A deck built with `--embed-source` carries the document it was built from:

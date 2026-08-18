@@ -76,6 +76,7 @@ fn example_slide_counts() {
         ("pitch.md", 9),
         ("research.md", 9),
         ("seminar.md", 12),
+        ("slideshow.md", 5),
     ] {
         let mut cache = HashMap::new();
         let out = mirzam_cli::pipeline::build_deck(&example(deck), &mut cache).unwrap();

@@ -29,6 +29,7 @@ pub const EXAMPLE_DECKS: &[&str] = &[
     "pitch.md",
     "research.md",
     "seminar.md",
+    "slideshow.md",
 ];
 
 /// Normalizes output for snapshot comparison.

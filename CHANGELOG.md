@@ -18,7 +18,10 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   that asked to, and with `?controls=none` beside it a link is a kiosk. `A`
   pauses and resumes; any other navigation restarts the countdown rather
   than stopping the loop, a hidden tab turns no pages, and the presenter
-  window never plays itself. See slide 9 of the motion deck at `/next/`.
+  window never plays itself. The syntax is on the motion deck's last slide,
+  and `examples/slideshow.md` is the use case as a whole deck — full-bleed
+  photos, captions animating in, `autoplay: 6s loop` — new under "Whole
+  decks" on the site and already playing when it opens.
 
   `a` joins the reserved effect keys, and `o` — a viewer key since the
   overview landed, though nothing had actually stopped an `effects` block
