@@ -986,18 +986,127 @@ that particular job.
 
 ```markdown
 ![Interview with the author](media/talk.mp3)
-![The paper's own talk](https://www.youtube.com/watch?v=…)
+![The paper's own talk](https://youtu.be/…?t=90)
+![The bit that matters](https://www.youtube.com/watch?v=…){start=1m30s .autoplay}
 ```
 
 - An audio file becomes a player with the alt text as its label, inlined like
-  any other asset — a deck with a recording in it is still one file.
+  any other asset — a deck with a recording in it is still one file. `mp3`,
+  `m4a`, `aac`, `wav`, `ogg`, `opus` and `flac`.
+- `{cover=art.jpg}` puts the sleeve beside the transport, which is what a
+  recording looks like everywhere else a person plays one; the artwork is
+  inlined with everything else. `poster=` is accepted for it too, since that is
+  the word a video uses for the same idea. In the PDF the sleeve and the label
+  stay and only the transport goes.
 - A YouTube or Vimeo page URL becomes an embed, served from
   `youtube-nocookie.com`. **This is the one thing in a deck that is not
   self-contained:** the frame is fetched when the slide is shown, so it needs
   the network and it cannot be printed. The PDF gets a placeholder carrying
   the link instead, and audio gets its label without the transport.
+- The frame is **16:9 and inside its pane**, both at once: its height comes from
+  whichever of the pane's two axes runs out first, and from the room a heading
+  beside it leaves, so it fits a narrow column and a full-bleed pane without
+  being asked to.
 - What a reference *is* follows from what it points at, so the attribute block
   is optional: `![clip](talk.mp4)` is a video whether or not you wrote `{}`.
+
+### Where it starts, and when it plays
+
+| You write | It does |
+|---|---|
+| `![t](https://youtu.be/ID?t=90)` | starts at 1:30 — the link's own timestamp |
+| `…watch?v=ID&t=1m30s` | the same; `90`, `90s`, `1m30s`, `1h2m3s` all read |
+| `![t](https://vimeo.com/ID#t=65s)` | the same, in the shape Vimeo writes it |
+| `{start=1m30s}` | overrides whatever the link said |
+| `{.autoplay}` | plays when the slide is shown |
+| `{.manual}` | plays only when someone presses its own button |
+| `{.loop}` | repeats |
+| `{.muted}` | no sound (`.autoplay` implies it) |
+
+`{.autoplay}`, `{.manual}`, `{.loop}` and `{.muted}` work on a local `<video>`
+too, and all but `.muted` on an `<audio>`, so `![clip](demo.mp4){.autoplay .loop}`
+and `![tape](talk.mp3){.manual}` mean what they look like.
+`examples/05-motion.md` has a slide that plays on arrival, since that is the one
+thing a picture of a deck cannot show.
+
+### When a clip starts
+
+Three answers, and the one you get by writing nothing is the middle one:
+
+| | Starts |
+|---|---|
+| `{.autoplay}` | as the slide appears |
+| *nothing* | **on the next click**, as a step on the slide |
+| `{.manual}` | never on its own — its own play button, and nothing else |
+
+The default is what a video placed in Google Slides or Keynote does, and it is
+the one a talk actually wants: you reach the slide, say the sentence that sets
+the clip up, and click once more. Until then the first frame sits there, which
+is the picture you wanted on the slide anyway.
+
+A clip waiting for a click **is a step**, so it is counted like any reveal: the
+page counter reads `4 / 12 · 0/1` on arrival and `· 1/1` once the clip is
+playing, and the click after that turns the page. Stepping back stops the clip
+and rewinds it, and stepping forward again replays it. Coming back to a slide
+from a later one leaves its reveals done and its clip *not* replayed — the same
+rule the animations follow.
+
+`{.manual}` is for a recording you want on the slide but not in the way — a
+sound sample somebody may ask about, an interview clip you will play only if
+there is time.
+
+**`.autoplay` means "when the slide is shown", not "when the deck loads".** The
+distinction is the whole feature: a slide behind `display: none` plays perfectly
+well, so a recording on slide nine would otherwise start over the opening slide,
+and a clip would be half over by the time anyone saw it. Arriving starts it from
+the beginning, leaving stops it, and a clip you paused yourself stays paused
+through a resize. A hosted video is held at its first frame until you arrive,
+which also keeps it off the network until then. The presenter window's next-slide
+preview never plays or fetches anything — it is a picture of the slide, not the
+slide.
+
+One thing no deck can decide for itself: a browser will not start *audible*
+media until the reader has interacted with the page. A recording set to autoplay
+on the opening slide may therefore stay silent until the first key or click,
+which is why `.autoplay` on a video implies `.muted` and why a hosted video is
+muted when it starts on arrival.
+
+### The player and the deck's keys
+
+A player's native controls live in a shadow tree the page cannot listen to, so
+while one holds focus the arrow keys, Space and every other deck key are its
+keys, not the deck's — they never arrive here at all. Clicking a player therefore
+**hands focus straight back to the deck**: the click has already pressed play or
+moved the scrubber, so nothing is lost, and the next arrow key turns the page as
+it should. Clicking a player, its label, or the card around it never turns a page
+either, so reaching for the transport is safe.
+
+A reader who *tabs* to a player keeps focus, and with it the native seek keys —
+there focus is the only thing they have to work with, and Tab is the way back
+out.
+
+A hosted video is a document of its own: while the reader is inside its controls,
+its keys really are gone, and nothing in the deck can take them back mid-play.
+The first click back on the slide only returns focus — it does not also turn the
+page.
+
+Without JavaScript, `autoplay` falls back to what the attribute has always meant
+to a browser: media starts at load. That is the documented fallback rather than a
+broken state, and it is the only thing that plays anything at all with no script.
+
+**An image or a video by URL is the same trade.** `![art](https://host/art.png)`
+is left exactly as written — there is nothing on disk to inline — so the deck
+needs the network to show it. The build says so once per reference:
+
+```
+⚠ https://host/art.png: fetched over the network when the slide is shown, so this deck is not self-contained
+```
+
+That is a warning rather than an error: a deck built for a machine that will
+have the network is a reasonable thing to want. `--strict` turns it into a
+failed build, which is what a deck that has to survive a room with no Wi-Fi
+wants. A hosted video is the documented exception and stays silent — its player
+URL is one Mirzam wrote itself.
 
 ## When a slide has too much on it
 
@@ -1387,7 +1496,11 @@ One line is one track: `[trigger] target : effect duration attributes...`.
   A `slide` travels; a `wipe` stays put while an edge uncovers it. `draw`
   runs the strokes tip-first over the full duration and inks the fills —
   an arrow's head, a label's glyphs — in over the last stretch, once the
-  line has arrived at them.
+  line has arrived at them. The ones that move a target — `slide-*`, `zoom-*`,
+  `pop`, `grow-*` — need a box to move, so an inline target (an attribute span,
+  or a `chars`/`words` split) is given one for as long as its track is playing
+  and handed back afterwards. A span that sits on one line keeps its place
+  exactly, which is what every reveal written as `[a line]{.point}` is.
 - **Attributes:** a bare `400ms` sets the duration; `delay=`, `stagger=` (for a
   split target) and `ease=` are otherwise `key=value`. `ease` is a named curve
   (`out-cubic`, `in-out-back`, …) or `spring(mass,stiffness,damping)`, resolved

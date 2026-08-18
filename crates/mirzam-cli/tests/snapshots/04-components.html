@@ -178,7 +178,7 @@
 <li>The file is embedded, so one HTML is the whole deck</li>
 </ul>
 </div>
-<div class="pane pane-clip" data-pane="clip" style="grid-area:clip"><p><video src="<data-uri len=93951>" title="Demo clip" poster="<data-uri len=38274>" autoplay muted loop controls playsinline style="object-fit:contain;width:100%;height:100%;"></video></p>
+<div class="pane pane-clip" data-pane="clip" style="grid-area:clip"><p><video src="<data-uri len=93951>" title="Demo clip" poster="<data-uri len=38274>" autoplay muted loop controls playsinline data-mz-play-on="show" style="object-fit:contain;width:100%;height:100%;"></video></p>
 </div>
 </div>
 <aside class="notes"><p>mp4, webm, ogv and mov all work. The samples are webm because a Chromium built without proprietary codecs cannot play H.264.</p>
@@ -200,6 +200,51 @@ player to configure and no flag to set.</p>
 </div>
 </section>
 <section class="slide" data-index="9">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "desc clip"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Media</span></p>
+<h2>Video that lives somewhere else</h2>
+</div>
+<div class="pane pane-desc" data-pane="desc" style="grid-area:desc;display:flex;flex-direction:column;justify-content:center"><p>A page URL becomes a player, from where the link says:</p>
+<pre><code class="language-markdown"><span class="tok-string">![The talk]</span>(<span class="tok-string">https://youtu.be/aqz-KE-bpKQ?t=33</span>)
+</code></pre>
+<ul>
+<li>Served from <code>youtube-nocookie.com</code> — <strong>the one thing here that
+is not self-contained</strong></li>
+<li>The next click starts it, <code>{start=1m30s}</code> overrides the link,
+and <code>{.autoplay}</code> moves it to arrival</li>
+<li>The PDF gets the link, timestamp and all</li>
+</ul>
+</div>
+<div class="pane pane-clip" data-pane="clip" style="grid-area:clip;display:flex;flex-direction:column;justify-content:center"><div class="mz-embed" data-href="https://www.youtube.com/watch?v=aqz-KE-bpKQ&amp;t=33" data-title="Big Buck Bunny, the Blender Foundation's open movie" data-mz-play="https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?start=33&amp;autoplay=1&amp;mute=1" data-mz-play-on="advance"><iframe src="https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?start=33" title="Big Buck Bunny, the Blender Foundation's open movie" loading="lazy" allowfullscreen allow="accelerometer; clipboard-write; encrypted-media; picture-in-picture"></iframe></div>
+</div>
+</div>
+<aside class="notes"><p>This frame is the only thing in the deck that needs the network. The clip is Blender's own open movie, so the sample does not lean on anybody else's video.</p>
+</aside>
+</section>
+<section class="slide" data-index="10">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "desc clip"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Media</span></p>
+<h2>A recording is a player</h2>
+</div>
+<div class="pane pane-desc" data-pane="desc" style="grid-area:desc;display:flex;flex-direction:column;justify-content:center"><p>An audio file becomes a player labelled with its alt text, and
+<code>cover=</code> gives it a sleeve:</p>
+<pre><code class="language-markdown"><span class="tok-string">![Interview]</span>(talk.mp3){cover=art.jpg}
+</code></pre>
+<ul>
+<li><code>mp3</code>, <code>m4a</code>, <code>aac</code>, <code>wav</code>, <code>ogg</code>, <code>opus</code>, <code>flac</code></li>
+<li>Both inlined, so the deck is still one file</li>
+<li><code>{.autoplay}</code> on arrival, <code>{.manual}</code> only on its button;
+otherwise the next click plays it</li>
+<li>The PDF keeps the sleeve and the label</li>
+</ul>
+</div>
+<div class="pane pane-clip" data-pane="clip" style="grid-area:clip;display:flex;flex-direction:column;justify-content:center"><div class="mz-audio mz-audio-card"><img class="mz-audio-art" src="<data-uri len=1378>" alt=""><span class="mz-audio-body"><span class="mz-audio-label">A chime, three notes long</span><audio src="<data-uri len=44882>" title="A chime, three notes long" controls data-mz-play-on="manual"></audio></span></div>
+</div>
+</div>
+<aside class="notes"><p>The sample is a wav because this repository ships no encoder; every format above takes the same path. Autoplay is deliberately not set here - a gallery deck that makes noise on arrival is a bad neighbour. <code>poster=</code> works too, since that is the word a video uses.</p>
+</aside>
+</section>
+<section class="slide" data-index="11">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src hero"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Backgrounds</span></p>
 <h2>A photo behind the words</h2>
@@ -221,7 +266,7 @@ player to configure and no flag to set.</p>
 </div></div>
 </div>
 </section>
-<section class="slide" data-index="10">
+<section class="slide" data-index="12">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:1fr 4fr;grid-template-areas:"head head" "src hero"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Backgrounds</span></p>
 <h2>One photo per colour mode</h2>
@@ -244,7 +289,7 @@ is rewritten into this, so a README keeps its logo</li>
 </div></div>
 </div>
 </section>
-<section class="slide" data-index="11" data-connectors="[{&quot;arrow&quot;:&quot;end&quot;,&quot;color&quot;:&quot;var(--mz-accent2)&quot;,&quot;curve&quot;:null,&quot;dashed&quot;:false,&quot;from&quot;:&quot;t-hot&quot;,&quot;fromEdge&quot;:null,&quot;to&quot;:&quot;hot&quot;,&quot;toEdge&quot;:null}]">
+<section class="slide" data-index="13" data-connectors="[{&quot;arrow&quot;:&quot;end&quot;,&quot;color&quot;:&quot;var(--mz-accent2)&quot;,&quot;curve&quot;:null,&quot;dashed&quot;:false,&quot;from&quot;:&quot;t-hot&quot;,&quot;fromEdge&quot;:null,&quot;to&quot;:&quot;hot&quot;,&quot;toEdge&quot;:null}]">
 <div class="grid" style='grid-template-columns:21fr 18fr;grid-template-rows:3fr 7fr;grid-template-areas:"head head" "shot text"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Annotations</span></p>
 <h2>Circle the thing you are talking about</h2>
@@ -263,7 +308,7 @@ slide.</p>
 <aside class="notes"><p>The connector's endpoint is drawn by the annotation overlay, so it only exists once the marks do - and it arrives with them.</p>
 </aside>
 </section>
-<section class="slide" data-index="12">
+<section class="slide" data-index="14">
 <div class="grid" style='grid-template-columns:18fr 21fr;grid-template-rows:3fr 4fr 1fr;grid-template-areas:"head head" "text shot" "foot ."'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Annotations</span></p>
 <h2>The same three lines, after you moved everything</h2>
@@ -282,7 +327,7 @@ shape, and lost a third of its width.</p>
 <aside class="notes"><p>Byte for byte the block on the slide before. Nothing in it knows where the pane went.</p>
 </aside>
 </section>
-<section class="slide" data-index="13">
+<section class="slide" data-index="15">
 <div class="grid" style='grid-template-columns:21fr 18fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "bars note"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Annotations</span></p>
 <h2>A chart mark needs no coordinates</h2>
@@ -303,7 +348,7 @@ rect <span class="tok-function">#load-0-2 : pad=10 step=1</span>
 <aside class="notes"><p>The next slide changes two numbers in the CSV. The annotate block is identical.</p>
 </aside>
 </section>
-<section class="slide" data-index="14">
+<section class="slide" data-index="16">
 <div class="grid" style='grid-template-columns:21fr 18fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "bars note"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Annotations</span></p>
 <h2>Change the numbers; the box follows</h2>
@@ -325,7 +370,7 @@ rect <span class="tok-function">#load-0-2 : pad=10 step=1</span>
 <aside class="notes"><p>A hand-measured rectangle would now be pointing at empty air.</p>
 </aside>
 </section>
-<section class="slide" data-index="15">
+<section class="slide" data-index="17">
 <div class="grid" style='grid-template-columns:18fr 21fr;grid-template-rows:2fr 6fr;grid-template-areas:"head head" "prose src"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Annotations</span></p>
 <h2>Point at a phrase, not across the slide</h2>
@@ -354,7 +399,7 @@ browser's business.</p>
 <aside class="notes"><p>Three clicks. The underlined phrase wraps, so watch it marked line by line rather than as one box swallowing the gap.</p>
 </aside>
 </section>
-<section class="slide" data-index="16">
+<section class="slide" data-index="18">
 <div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src out"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">References</span></p>
 <h2>Cite once, list once</h2>
@@ -369,26 +414,26 @@ draw them<span class="tok-string">[@tufte2001]</span>.
 the frontmatter. <code>[^key]</code> is still there for
 a remark that belongs to one slide.</p>
 </div>
-<div class="pane pane-out" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><p>Attention replaced recurrence<span class="mz-cite">[<a href="#18">1</a>]</span>,
-and the same block pretrains<span class="mz-cite">[<a href="#18">2</a>]</span>.</p>
-<p>Both are read the way Tufte would draw them<span class="mz-cite">[<a href="#18">3</a>]</span>.</p>
+<div class="pane pane-out" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><p>Attention replaced recurrence<span class="mz-cite">[<a href="#20">1</a>]</span>,
+and the same block pretrains<span class="mz-cite">[<a href="#20">2</a>]</span>.</p>
+<p>Both are read the way Tufte would draw them<span class="mz-cite">[<a href="#20">3</a>]</span>.</p>
 <p><em>Each mark jumps to the list on the next slide, and each entry jumps back to
 every slide that cited it.</em></p>
 </div>
 </div>
 </section>
-<section class="slide" data-index="17">
+<section class="slide" data-index="19">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:2fr 3fr;grid-template-areas:"head" "refs"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">References</span></p>
 <h2>The list writes itself</h2>
 </div>
-<div class="pane pane-refs" data-pane="refs" style="grid-area:refs"><ul class="mz-bib"><li id="mz-bib-vaswani2017"><span class="mz-bib-mark">[1]</span><span class="mz-bib-entry">Vaswani, Shazeer, Parmar et al. <em>Attention Is All You Need</em>. NeurIPS, 2017. <a href="https://arxiv.org/abs/1706.03762">arXiv:1706.03762</a></span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#17">17</a></span></li><li id="mz-bib-devlin2019"><span class="mz-bib-mark">[2]</span><span class="mz-bib-entry">Devlin, Chang, Lee et al. <em>BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding</em>. NAACL, 2019. <a href="https://arxiv.org/abs/1810.04805">arXiv:1810.04805</a></span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#17">17</a></span></li><li id="mz-bib-tufte2001"><span class="mz-bib-mark">[3]</span><span class="mz-bib-entry">Tufte. <em>The Visual Display of Quantitative Information</em>. Graphics Press, 2001.</span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#17">17</a></span></li></ul>
+<div class="pane pane-refs" data-pane="refs" style="grid-area:refs"><ul class="mz-bib"><li id="mz-bib-vaswani2017"><span class="mz-bib-mark">[1]</span><span class="mz-bib-entry">Vaswani, Shazeer, Parmar et al. <em>Attention Is All You Need</em>. NeurIPS, 2017. <a href="https://arxiv.org/abs/1706.03762">arXiv:1706.03762</a></span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#19">19</a></span></li><li id="mz-bib-devlin2019"><span class="mz-bib-mark">[2]</span><span class="mz-bib-entry">Devlin, Chang, Lee et al. <em>BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding</em>. NAACL, 2019. <a href="https://arxiv.org/abs/1810.04805">arXiv:1810.04805</a></span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#19">19</a></span></li><li id="mz-bib-tufte2001"><span class="mz-bib-mark">[3]</span><span class="mz-bib-entry">Tufte. <em>The Visual Display of Quantitative Information</em>. Graphics Press, 2001.</span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#19">19</a></span></li></ul>
 </div>
 </div>
 <aside class="notes"><p>Numbered in the order they were first cited. The ↩ after each entry is the slide it was cited on; on this deck they all point back one slide.</p>
 </aside>
 </section>
-<section class="slide" data-index="18">
+<section class="slide" data-index="20">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:3fr 1fr;grid-template-areas:"main" "foot"'>
 <div class="pane pane-main" data-pane="main" style="grid-area:main;text-align:center;display:flex;flex-direction:column;justify-content:center"><h2>That is the whole vocabulary</h2>
 <p><code>pane</code> · <code>::: pane</code> · <code>chart</code> · <code>shape</code> · <code>connect</code> · <code>annotate</code> · <code>bibliography</code> · attributes · variables</p>

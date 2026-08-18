@@ -54,8 +54,68 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
   `o` and `h` are now viewer keys, so an `effects` block can no longer bind
   them — the same warning the other reserved keys give.
+- **A clip plays when you click, the way it does in Google Slides.** Three
+  answers to when a clip starts, where there was one: `{.autoplay}` as the slide
+  appears, `{.manual}` only ever from its own play button, and — writing
+  nothing — **on the next click**, counted as a step on the slide. The page
+  counter reads `· 0/1` on arrival and `· 1/1` once it is playing, stepping back
+  stops and rewinds it, stepping forward replays it, and coming back from a later
+  slide leaves it alone the way the animations are left alone. A presenter should
+  not have to go looking for a play button mid-sentence, and the first frame
+  sitting there until then is the picture the slide wanted anyway.
+
+  **This changes what a media reference does by default**: a deck with a clip on
+  a slide now spends one click playing it before the click that turns the page.
+  `{.manual}` is the old behaviour, exactly.
+- **A hosted video starts where the link says, and plays when you get there.**
+  `![talk](https://youtu.be/ID?t=90)` opens at 1:30 — the timestamp YouTube's
+  own share dialog writes was being read for the video id and thrown away, so
+  "start at the good bit" silently meant "start at the beginning". `{start=…}`
+  overrides the link, and `{.autoplay}`, `{.loop}` and `{.muted}` are the same
+  flags a local `<video>` already took, in each host's spelling (YouTube needs
+  `playlist=<id>` to loop at all; autoplay implies muted, because every browser
+  blocks audible autoplay). A Vimeo link takes its offset in the fragment and
+  gets it back there. The PDF's link carries the timestamp too, since that link
+  is a printed deck's only way to play anything.
+- **A recording, in the sample deck, with its sleeve.** `{cover=art.jpg}` puts
+  the artwork beside the transport, which is what a recording looks like
+  everywhere else a person plays one — a slide with a recording on it was a slide
+  with a grey bar on it. (`poster=` is accepted too, since that is the word a
+  video uses.) Audio itself has worked since it shipped and no deck under
+  `examples/` had any, which is the exact hole `markup_coverage.rs` exists to
+  close, so the component gallery now carries a player and the list holds it
+  there. `examples/05-motion.md` gains the slide that plays on arrival: the one
+  thing a picture of a deck cannot show.
+- **A build says when a deck stops being one file.** An image or a video
+  referenced by URL cannot be inlined, so the deck needs the network to show it
+  — and until now nothing said so: the promise the whole asset pass exists to
+  keep was dropped in silence. Each such reference is now a warning naming the
+  URL, and `--strict` fails the build, which is what a deck that has to survive
+  a room with no Wi-Fi wants. A hosted video is the exception the syntax
+  already documents, so it stays silent.
 
 ### Fixed
+- **`slide-in`, `zoom-in` and `pop` now move the thing they are pointed at.**
+  A target written the obvious way — `[a line]{.point}`, or any `chars`/`words`
+  split, all of which are spans — never travelled, grew or popped: a browser
+  ignores a transform on an inline box, so the runtime set one, nothing
+  happened, and every one of those effects quietly became `fade-in`. The
+  element is now given a box for as long as its track owns it, and handed back
+  afterwards; it sits on the line it already occupied, so nothing reflows.
+  Slide 3 of `05-motion` is the demonstration — `slide-in` arrives travelling
+  and `zoom-in` grows, which is what both lines have always claimed to do.
+- **A diagram waiting to be drawn leaves no stub behind.** A `draw` track hid
+  its stroke behind a dash gap exactly as long as the stroke, which ends where
+  the stroke does — so a rasteriser rounding the offset the other way painted
+  the first sliver of the next dash, a couple of pixels sitting at the tip of
+  an arrow nobody had drawn yet. The gap now has slack, and an armed stroke is
+  transparent as well, so being invisible is no longer an argument about
+  arithmetic. Slide 5 of `05-motion`, before the first click.
+- **`05-motion`'s opening slide gives its animation somewhere to happen.**
+  The two lines it reveals were the smallest, faintest text on a slide that was
+  otherwise a wide band of empty space, so the one thing the slide exists to
+  show was the thing hardest to notice. The prose now holds the left half and
+  the reveals land large in the right, where a room can see them.
 - **Accents sit above their letter, not on it.** Every deck's CSS now carries
   the stylesheet `math-core` requires alongside its MathML, which Mirzam had
   never shipped. Three things were wrong without it and none of them announced
@@ -79,6 +139,38 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   such rule, so the space was dropped: `cases(x^2 &"if" x > 0)` read as
   `ifx > 0`, and `99% "of it"` as `99%of it`. Writing `"if "` to buy the space
   back is no longer needed, and now adds a second one.
+- **A player no longer takes the deck's keys hostage.** Press play and the arrow
+  keys stopped turning pages: a player's native controls live in a shadow tree
+  the page cannot listen to, so every key a focused player receives — and its
+  clicks, and its pointer events — never reach the deck at all. The way back was
+  to click off the player, which turned a page. Clicking a player now hands focus
+  straight back to the deck, after the click has already done its work, so the
+  transport still answers the mouse and the next arrow key turns the page. A
+  reader who *tabs* to a player keeps it, and the native seek keys with it.
+  Clicking a player, its label, or the card around it no longer turns a page
+  either — the label went *backwards* one, being in the left half of the slide —
+  and coming back from a hosted video's own controls costs a click, not a slide.
+  Space on a focused control button presses the button instead of doing both.
+- **`autoplay` waits for its slide.** It meant "when the deck loads", and a slide
+  behind `display: none` plays perfectly well: a recording on slide nine started
+  over the opening slide, and an autoplaying clip was already seconds in by the
+  time anyone reached it — measured at 2.0s on a two-slide deck. Arriving now
+  starts a clip from the beginning, leaving stops it, and a clip paused by hand
+  stays paused through a resize. The presenter window's next-slide preview was
+  worse: it inserted the authored markup verbatim, so the *preview* of slide two
+  played its audio while slide one was on screen. It now strips playback and
+  frame sources the way the overview grid already did.
+- **A hosted video no longer clips its own bottom edge.** The player frame took
+  its height from the pane's width, and the default pane on a 16:9 slide is
+  wider than 16:9 — so every deck that embedded a YouTube or Vimeo video lost
+  24px of the frame with nothing else on the slide, and 88px with a heading
+  above it. `fit: shrink` could not save it either, because the frame's height
+  never depended on the type size. The height now comes from whichever of the
+  pane's two axes runs out first, and from the room a heading leaves, so the
+  frame stays 16:9 and inside the pane in a narrow column, beside prose, and
+  two to a pane. It went unnoticed because no deck under `examples/` had one:
+  the sample gap and the layout bug were the same bug, so the reference deck now
+  carries a frame and `markup_coverage.rs` holds it there.
 
 ## [0.7.0] - 2026-08-16
 

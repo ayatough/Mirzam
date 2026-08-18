@@ -20,10 +20,13 @@ lines of Markdown, and none of it is needed to read the deck.
 +------------------------------------+
 |                                    |
 |  head                              |
-+------------------------------------+
-|                                    |
-|  body                              |
-+------------------------------------+
++-----------------+------------------+
+|                 |                  |
+|                 |                  |
+|  body           |  stage           |
+|                 |                  |
+|                 |                  |
++-----------------+------------------+
 ```
 
 ::: pane head
@@ -34,11 +37,15 @@ lines of Markdown, and none of it is needed to read the deck.
 ::: pane body {valign=middle}
 An `anim` block compiles to a timeline embedded in the slide — triggers,
 targets, effects and easing all resolved at build time, so the runtime plays a
-curve instead of computing one. Press `→` twice.
+curve instead of computing one.
+:::
 
-[This line waited for a click.]{.m-callout .small}
+::: pane stage {valign=middle}
+[Press `→` twice.]{.small}
 
-[And this one followed it, unprompted.]{.m-echo .small}
+[This line waited for a click.]{.m-callout .big .accent}
+
+[And this one followed it, unprompted.]{.m-echo .big}
 :::
 
 ```anim
@@ -370,6 +377,49 @@ m : danmaku "this bit matters"
 ```anim
 [enter] .m-fx : fade-in 400ms
 ```
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|  desc            |  clip           |
+|                  |                 |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Media]{.eyebrow}
+## A clip that starts on arrival
+:::
+
+::: pane desc {valign=middle}
+The clip began playing when you turned to this slide, not when
+the deck loaded:
+
+```markdown
+![Demo](media/demo.webm){.autoplay .loop .muted}
+```
+
+- Turn back a page and it stops and rewinds; return and it
+  starts again from the top
+- Without `.autoplay` a clip waits for the next click, and
+  counts as a step; `.manual` waits for its own button
+
+*Press `←` then `→`: it starts over.*
+:::
+
+::: pane clip {valign=middle}
+![Demo clip, playing on arrival](media/demo.webm){.autoplay .loop .muted fit=contain}
+:::
+
+<!-- note: This is the one slide in this deck that plays by itself. It is muted, and it is deliberately in the motion deck rather than the gallery: arriving is the trigger, which makes it motion. -->
 
 ---
 

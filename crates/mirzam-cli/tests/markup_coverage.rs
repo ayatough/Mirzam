@@ -132,6 +132,33 @@ const MARKS: &[Mark] = &[
         documented_as: "`[@key]`",
         shown_as: "[@vaswani2017]",
     },
+    Mark {
+        // A hosted video is an image reference like any other — what it becomes
+        // follows from what it points at — and it was the third failure in this
+        // file's list exactly: it rendered, it was documented, and no deck
+        // showed one. So `mirzam check` never laid a player frame out, and the
+        // frame clipped its own bottom edge on every deck that had one.
+        source: "![talk](https://www.youtube.com/watch?v=dQw4w9WgXcQ)",
+        html: r#"src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ""#,
+        documented_as: "`youtube-nocookie.com`",
+        shown_as: "https://www.youtube.com/watch?v=",
+    },
+    Mark {
+        // The timestamp a share link carries. It used to be read for the id and
+        // dropped, so "start at 1:30" silently became "start at the beginning".
+        source: "![talk](https://youtu.be/dQw4w9WgXcQ?t=90)",
+        html: "start=90",
+        documented_as: "`{start=1m30s}`",
+        shown_as: "?t=33",
+    },
+    Mark {
+        // A recording was the third thing in this file's own list of failures:
+        // it rendered, it was documented, and no deck had one.
+        source: "![Interview](media/talk.mp3)",
+        html: r#"<audio src="media/talk.mp3""#,
+        documented_as: "becomes a player with the alt text as its label",
+        shown_as: "](media/chime.wav)",
+    },
 ];
 
 /// The `.bib` the citation mark is rendered against, so the row above is
@@ -218,6 +245,40 @@ fn every_listed_mark_appears_in_a_sample_deck() {
 /// because which one is right is a per-list question, and a renderer that picks
 /// for you is wrong a third of the time.
 const TERM_MODES: &[&str] = &["terms-aligned", "terms-stacked"];
+
+/// The flags a media reference takes, held to two of the three conditions: the
+/// renderer's own tests check what each one emits, but a flag no deck uses is
+/// one nobody has ever watched work. `autoplay` is the case in point — it meant
+/// "when the deck loads" for three releases, which a single sample slide would
+/// have caught the first time anyone turned a page.
+const MEDIA_FLAGS: &[&str] = &["autoplay", "manual", "loop", "muted", "cover"];
+
+#[test]
+fn every_media_flag_is_documented_and_shown() {
+    let doc = std::fs::read_to_string(repo_root().join("docs/syntax.md")).expect("docs/syntax.md");
+    let decks: String = std::fs::read_dir(repo_root().join("examples"))
+        .expect("examples/")
+        .filter_map(Result::ok)
+        .filter(|e| e.path().extension().is_some_and(|x| x == "md"))
+        .filter_map(|e| std::fs::read_to_string(e.path()).ok())
+        .collect();
+    for flag in MEDIA_FLAGS {
+        // `cover=` is written with its value, the rest as classes.
+        let (in_doc, in_deck) = if *flag == "cover" {
+            (format!("`{{{flag}="), format!("{{{flag}="))
+        } else {
+            (format!("`{{.{flag}}}`"), format!(".{flag}"))
+        };
+        assert!(
+            doc.contains(&in_doc),
+            "docs/syntax.md never mentions {in_doc}"
+        );
+        assert!(
+            decks.contains(&in_deck),
+            "no deck under examples/ uses {in_deck}"
+        );
+    }
+}
 
 #[test]
 fn every_term_list_mode_is_styled_documented_and_shown() {

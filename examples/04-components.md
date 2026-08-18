@@ -351,6 +351,87 @@ The PDF export uses the first frame.
 +------------------+-----------------+
 |                  |                 |
 |                  |                 |
+|  desc            |  clip           |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Media]{.eyebrow}
+## Video that lives somewhere else
+:::
+
+::: pane desc {valign=middle}
+A page URL becomes a player, from where the link says:
+
+```markdown
+![The talk](https://youtu.be/aqz-KE-bpKQ?t=33)
+```
+
+- Served from `youtube-nocookie.com` — **the one thing here that
+  is not self-contained**
+- The next click starts it, `{start=1m30s}` overrides the link,
+  and `{.autoplay}` moves it to arrival
+- The PDF gets the link, timestamp and all
+:::
+
+::: pane clip {valign=middle}
+![Big Buck Bunny, the Blender Foundation's open movie](https://www.youtube.com/watch?v=aqz-KE-bpKQ&t=33)
+:::
+
+<!-- note: This frame is the only thing in the deck that needs the network. The clip is Blender's own open movie, so the sample does not lean on anybody else's video. -->
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|  desc            |  clip           |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Media]{.eyebrow}
+## A recording is a player
+:::
+
+::: pane desc {valign=middle}
+An audio file becomes a player labelled with its alt text, and
+`cover=` gives it a sleeve:
+
+```markdown
+![Interview](talk.mp3){cover=art.jpg}
+```
+
+- `mp3`, `m4a`, `aac`, `wav`, `ogg`, `opus`, `flac`
+- Both inlined, so the deck is still one file
+- `{.autoplay}` on arrival, `{.manual}` only on its button;
+  otherwise the next click plays it
+- The PDF keeps the sleeve and the label
+:::
+
+::: pane clip {valign=middle}
+![A chime, three notes long](media/chime.wav){cover=media/chime-cover.svg .manual}
+:::
+
+<!-- note: The sample is a wav because this repository ships no encoder; every format above takes the same path. Autoplay is deliberately not set here - a gallery deck that makes noise on arrival is a bad neighbour. `poster=` works too, since that is the word a video uses. -->
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
 |  src             |  hero           |
 |                  |                 |
 |                  |                 |

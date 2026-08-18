@@ -17,7 +17,8 @@
   // and put back afterwards, so an inline style the renderer set (a pane's
   // grid-area, a blurred background's transform) is never lost.
   const PROPS = ['opacity', 'transform', 'transformOrigin', 'clipPath', 'filter',
-                 'strokeDasharray', 'strokeDashoffset', 'fillOpacity'];
+                 'strokeDasharray', 'strokeDashoffset', 'strokeOpacity', 'fillOpacity',
+                 'display'];
   const PAINTED = 'path,line,polyline,polygon,circle,ellipse,rect,text';
 
   // Live reload replaces whole <section> elements, so keying on the element
@@ -116,6 +117,28 @@
       : { from: { opacity: '0' }, to: { opacity: '1' } };
   }
 
+  // `transform` does not apply to a non-replaced inline box, so a target
+  // written the obvious way — `[a line]{.point}`, or a `chars` split, both of
+  // which are spans — used to fade but never travel, grow or pop: the runtime
+  // set the transform, the browser ignored it, and the effect the author asked
+  // for silently became `fade-in`. A box is what a transform needs, so the
+  // element becomes one for as long as a track owns it.
+  //
+  // `inline-block` and not `block`: the box is shrink-to-fit and sits on the
+  // line it was already on, so a span that fitted on one line occupies exactly
+  // the space it did before. It is restored with everything else arming wrote.
+  const moves = (kf) => !!kf && !kf.draw
+    && [kf.from, kf.to].some((s) => s && s.transform && s.transform !== 'none');
+
+  // Stages `which` half of a keyframe pair on an element, saving what was
+  // there first. Every write to an element's initial or held state goes
+  // through here, so nothing can set a transform without the box to show it.
+  function stage(el, kf, which) {
+    save(el);
+    if (moves(kf) && getComputedStyle(el).display === 'inline') el.style.display = 'inline-block';
+    Object.assign(el.style, kf[which]);
+  }
+
   function elementsFor(sec, target) {
     const base = target.sel === ':scope'
       ? [sec]
@@ -143,6 +166,15 @@
     return parts;
   }
   const INK = 0.65;   // fills start inking at this fraction of the duration
+
+  // The dash pattern a stroke hides behind while it waits, in the stroke's own
+  // user units. It has to be *longer* than the stroke: a gap of exactly the
+  // path's length ends where the path does, and an engine that rounds the
+  // offset the other way paints the leading sliver of the next dash — a couple
+  // of pixels of stroke sitting at the tip of an arrow nobody has drawn yet,
+  // which is the resting-state rule broken by arithmetic. The slack costs the
+  // last 2% of the beat, where the line has already arrived.
+  const dashOf = (len) => len * 1.02 + 0.5;
 
   // Resolves the timeline once per section: which elements each track owns,
   // which batch it belongs to, and when within that batch it starts. `after`
@@ -227,14 +259,18 @@
         for (const p of drawParts(el)) {
           save(p.el);
           if (p.len) {
-            p.el.style.strokeDasharray = p.len;
-            p.el.style.strokeDashoffset = p.len;
+            p.el.style.strokeDasharray = dashOf(p.len);
+            p.el.style.strokeDashoffset = dashOf(p.len);
+            // And hidden outright while it waits. "The gap is longer than the
+            // path" is an argument about a rasteriser's arithmetic, and a
+            // slide sitting there before its first click should not depend on
+            // winning it: an arrow nobody has drawn yet leaves no stub.
+            p.el.style.strokeOpacity = '0';
           }
           if (p.fill) p.el.style.fillOpacity = '0';
         }
       } else {
-        save(el);
-        Object.assign(el.style, kf.from);
+        stage(el, kf, 'from');
       }
     }
   }
@@ -252,10 +288,7 @@
     }
     const kf = played && keyframes(t.effect, t.dir, farFor(sec, t));
     if (kf && kf.out) {
-      for (const el of t.els) {
-        save(el);
-        Object.assign(el.style, kf.to);
-      }
+      for (const el of t.els) stage(el, kf, 'to');
     }
   }
 
@@ -275,12 +308,15 @@
           // is handed back to the stylesheet only when its last animation ends.
           let open = 0;
           const done = (a) => { a.cancel(); if (--open === 0) unsave(p.el); };
+          // Hand back what arming wrote before staging the draw: the armed
+          // state hides the stroke, and a stroke being drawn has to be visible.
+          unsave(p.el);
           save(p.el);
           if (p.len) {
-            p.el.style.strokeDasharray = p.len;
+            p.el.style.strokeDasharray = dashOf(p.len);
             open += 1;
             const a = track(sec, p.el.animate(
-              [{ strokeDashoffset: p.len }, { strokeDashoffset: 0 }],
+              [{ strokeDashoffset: dashOf(p.len) }, { strokeDashoffset: 0 }],
               { duration: dur, delay, easing: t.ease, fill: 'both' }
             ));
             a.onfinish = () => done(a);
@@ -297,8 +333,7 @@
         }
         return;
       }
-      save(el);
-      Object.assign(el.style, kf.from);
+      stage(el, kf, 'from');
       const a = track(sec, el.animate([kf.from, kf.to], {
         duration: dur, delay, easing: t.ease, fill: 'both',
       }));
@@ -377,10 +412,13 @@
         if (!kf || kf.out) continue;
         for (const el of t.els) {
           if (kf.draw) {
-            // A stroke still offset by its own length has drawn nothing.
+            // A stroke still offset by its own length, or still transparent,
+            // has drawn nothing — arming does both, so either one left behind
+            // is an arrow the room cannot see.
             for (const p of drawParts(el)) {
               const s = getComputedStyle(p.el);
-              if (p.len && Math.abs(parseFloat(s.strokeDashoffset) || 0) > 1) { n++; break; }
+              if (p.len && (Math.abs(parseFloat(s.strokeDashoffset) || 0) > 1
+                            || +s.strokeOpacity < 0.05)) { n++; break; }
               if (p.fill && +s.fillOpacity < 0.05) { n++; break; }
             }
           } else if (gone(el)) {
