@@ -7,6 +7,10 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.8.0] - 2026-08-18
+
 ### Added
 - **`autoplay: 8s loop` plays the deck by itself.** One advance every
   interval, where one advance is one press of `→` — a click step while the

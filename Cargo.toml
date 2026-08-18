@@ -17,7 +17,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 # Set by the dependency graph, not by us: `math-core` needs 1.91. CI builds the
 # workspace on exactly this toolchain so the number stays true.
