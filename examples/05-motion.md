@@ -409,8 +409,8 @@ the deck loaded:
 
 - Turn back a page and it stops and rewinds; return and it
   starts again from the top
-- `autoplay` implies `muted`, since no browser starts audible
-  media on its own
+- Without `.autoplay` a clip waits for the next click, and
+  counts as a step; `.manual` waits for its own button
 
 *Press `←` then `→`: it starts over.*
 :::

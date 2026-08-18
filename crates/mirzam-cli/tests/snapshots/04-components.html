@@ -178,7 +178,7 @@
 <li>The file is embedded, so one HTML is the whole deck</li>
 </ul>
 </div>
-<div class="pane pane-clip" data-pane="clip" style="grid-area:clip"><p><video src="<data-uri len=93951>" title="Demo clip" poster="<data-uri len=38274>" autoplay muted loop controls playsinline style="object-fit:contain;width:100%;height:100%;"></video></p>
+<div class="pane pane-clip" data-pane="clip" style="grid-area:clip"><p><video src="<data-uri len=93951>" title="Demo clip" poster="<data-uri len=38274>" autoplay muted loop controls playsinline data-mz-play-on="show" style="object-fit:contain;width:100%;height:100%;"></video></p>
 </div>
 </div>
 <aside class="notes"><p>mp4, webm, ogv and mov all work. The samples are webm because a Chromium built without proprietary codecs cannot play H.264.</p>
@@ -208,14 +208,14 @@ player to configure and no flag to set.</p>
 <pre><code class="language-markdown"><span class="tok-string">![The talk]</span>(<span class="tok-string">https://youtu.be/aqz-KE-bpKQ?t=33</span>)
 </code></pre>
 <ul>
-<li>Served from <code>youtube-nocookie.com</code>, fetched when the slide is
-shown — <strong>the one thing here that is not self-contained</strong></li>
-<li><code>{start=1m30s}</code> overrides the link; <code>{.autoplay}</code> and <code>{.loop}</code>
-play it on arrival, muted as browsers insist</li>
+<li>Served from <code>youtube-nocookie.com</code> — <strong>the one thing here that
+is not self-contained</strong></li>
+<li>The next click starts it, <code>{start=1m30s}</code> overrides the link,
+and <code>{.autoplay}</code> moves it to arrival</li>
 <li>The PDF gets the link, timestamp and all</li>
 </ul>
 </div>
-<div class="pane pane-clip" data-pane="clip" style="grid-area:clip;display:flex;flex-direction:column;justify-content:center"><div class="mz-embed" data-href="https://www.youtube.com/watch?v=aqz-KE-bpKQ&amp;t=33" data-title="Big Buck Bunny, the Blender Foundation's open movie"><iframe src="https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?start=33" title="Big Buck Bunny, the Blender Foundation's open movie" loading="lazy" allowfullscreen allow="accelerometer; clipboard-write; encrypted-media; picture-in-picture"></iframe></div>
+<div class="pane pane-clip" data-pane="clip" style="grid-area:clip;display:flex;flex-direction:column;justify-content:center"><div class="mz-embed" data-href="https://www.youtube.com/watch?v=aqz-KE-bpKQ&amp;t=33" data-title="Big Buck Bunny, the Blender Foundation's open movie" data-mz-play="https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?start=33&amp;autoplay=1&amp;mute=1" data-mz-play-on="advance"><iframe src="https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?start=33" title="Big Buck Bunny, the Blender Foundation's open movie" loading="lazy" allowfullscreen allow="accelerometer; clipboard-write; encrypted-media; picture-in-picture"></iframe></div>
 </div>
 </div>
 <aside class="notes"><p>This frame is the only thing in the deck that needs the network. The clip is Blender's own open movie, so the sample does not lean on anybody else's video.</p>
@@ -233,11 +233,12 @@ play it on arrival, muted as browsers insist</li>
 <ul>
 <li><code>mp3</code>, <code>m4a</code>, <code>aac</code>, <code>wav</code>, <code>ogg</code>, <code>opus</code>, <code>flac</code></li>
 <li>Both inlined, so the deck is still one file</li>
-<li><code>{.autoplay}</code> starts it <strong>when the slide is shown</strong></li>
+<li><code>{.autoplay}</code> on arrival, <code>{.manual}</code> only on its button;
+otherwise the next click plays it</li>
 <li>The PDF keeps the sleeve and the label</li>
 </ul>
 </div>
-<div class="pane pane-clip" data-pane="clip" style="grid-area:clip;display:flex;flex-direction:column;justify-content:center"><div class="mz-audio mz-audio-card"><img class="mz-audio-art" src="<data-uri len=1378>" alt=""><span class="mz-audio-body"><span class="mz-audio-label">A chime, three notes long</span><audio src="<data-uri len=44882>" title="A chime, three notes long" controls></audio></span></div>
+<div class="pane pane-clip" data-pane="clip" style="grid-area:clip;display:flex;flex-direction:column;justify-content:center"><div class="mz-audio mz-audio-card"><img class="mz-audio-art" src="<data-uri len=1378>" alt=""><span class="mz-audio-body"><span class="mz-audio-label">A chime, three notes long</span><audio src="<data-uri len=44882>" title="A chime, three notes long" controls data-mz-play-on="manual"></audio></span></div>
 </div>
 </div>
 <aside class="notes"><p>The sample is a wav because this repository ships no encoder; every format above takes the same path. Autoplay is deliberately not set here - a gallery deck that makes noise on arrival is a bad neighbour. <code>poster=</code> works too, since that is the word a video uses.</p>

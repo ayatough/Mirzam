@@ -321,6 +321,24 @@ fn is_audio(src: &str) -> bool {
     )
 }
 
+/// When a piece of media starts playing, which is a question with three answers
+/// and only ever had one. `{.autoplay}` starts on arrival; `{.manual}` waits for
+/// its own play button; everything else starts on the next click, the way a
+/// video placed in Google Slides or Keynote does — a presenter who has to find a
+/// play button mid-sentence has already lost the room.
+///
+/// The viewer reads this off `data-mz-play-on`; the default is a *step* on the
+/// slide, so the deck counts it like any other reveal.
+fn play_on(flag: impl Fn(&str) -> bool) -> &'static str {
+    if flag("autoplay") {
+        "show"
+    } else if flag("manual") {
+        "manual"
+    } else {
+        "advance"
+    }
+}
+
 /// `![Interview](clip.mp3)` becomes an `<audio>`. The file is inlined like
 /// any other asset, so a deck with a recording in it is still one file.
 ///
@@ -329,20 +347,27 @@ fn is_audio(src: &str) -> bool {
 /// is spelled `poster=` on a video, so both names are taken: whichever one the
 /// author reaches for first is the right one.
 fn audio_html(src: &str, alt: &str, attrs: &Attrs) -> String {
-    let autoplay = attrs.classes.iter().any(|c| c == "autoplay");
+    let flag = |name: &str| -> bool {
+        attrs.classes.iter().any(|c| c == name)
+            || matches!(attrs.kv.get(name).map(String::as_str), Some("" | "true"))
+    };
+    let autoplay = flag("autoplay");
     let mut flags = String::from(" controls");
     if autoplay {
         flags.push_str(" autoplay");
     }
-    if attrs.classes.iter().any(|c| c == "loop") {
+    if flag("loop") {
         flags.push_str(" loop");
     }
     let cover = attrs.kv.get("cover").or_else(|| attrs.kv.get("poster"));
     let mut carried = attrs.clone();
     carried
         .classes
-        .retain(|c| !matches!(c.as_str(), "autoplay" | "loop" | "controls"));
-    let player = format!("<audio src=\"{src}\" title=\"{alt}\"{flags}></audio>");
+        .retain(|c| !matches!(c.as_str(), "autoplay" | "loop" | "controls" | "manual"));
+    let player = format!(
+        "<audio src=\"{src}\" title=\"{alt}\"{flags} data-mz-play-on=\"{when}\"></audio>",
+        when = play_on(flag)
+    );
     let label = format!("<span class=\"mz-audio-label\">{alt}</span>");
     match cover {
         // The artwork is decoration for a player the label already names, so its
@@ -591,7 +616,11 @@ fn embed_html(hosted: &Hosted, page: &str, alt: &str, attrs: &Attrs) -> String {
         attrs.classes.iter().any(|c| c == name)
             || matches!(attrs.kv.get(name).map(String::as_str), Some("" | "true"))
     };
-    let autoplay = flag("autoplay");
+    let when = play_on(flag);
+    // A frame that waits for its own play button is never handed a URL that
+    // would start it; the other two both need one, and differ only in when the
+    // viewer swaps it in.
+    let wants_play = when != "manual";
     let loop_ = flag("loop");
     let muted = flag("muted");
     // The attribute block wins over the link: it is the more specific of the
@@ -605,7 +634,7 @@ fn embed_html(hosted: &Hosted, page: &str, alt: &str, attrs: &Attrs) -> String {
     // The player URLs carry `&` between their parameters, which an attribute
     // value has to escape - the same way a rewritten link does.
     let resting = html_escape(&hosted.player(start, false, loop_, muted));
-    let playing = autoplay.then(|| html_escape(&hosted.player(start, true, loop_, muted)));
+    let playing = wants_play.then(|| html_escape(&hosted.player(start, true, loop_, muted)));
     let play_attr = playing
         .map(|url| format!(" data-mz-play=\"{url}\""))
         .unwrap_or_default();
@@ -613,10 +642,11 @@ fn embed_html(hosted: &Hosted, page: &str, alt: &str, attrs: &Attrs) -> String {
     let mut carried = attrs.clone();
     carried
         .classes
-        .retain(|c| !matches!(c.as_str(), "autoplay" | "loop" | "muted"));
+        .retain(|c| !matches!(c.as_str(), "autoplay" | "loop" | "muted" | "manual"));
 
     format!(
-        "<div class=\"mz-embed\"{} data-href=\"{href}\" data-title=\"{alt}\"{play_attr}>\
+        "<div class=\"mz-embed\"{} data-href=\"{href}\" data-title=\"{alt}\"{play_attr} \
+         data-mz-play-on=\"{when}\">\
          <iframe src=\"{resting}\" title=\"{alt}\" loading=\"lazy\" allowfullscreen \
          allow=\"accelerometer; clipboard-write; encrypted-media; picture-in-picture\"></iframe></div>",
         carried.html_id_class(),
@@ -653,12 +683,16 @@ fn video_html(src: &str, alt: &str, attrs: &Attrs, style_attr: &str) -> String {
         .unwrap_or_default();
     // Drop the boolean-flag classes from the emitted class list.
     let mut carried = attrs.clone();
-    carried
-        .classes
-        .retain(|c| !matches!(c.as_str(), "autoplay" | "muted" | "loop" | "controls"));
+    carried.classes.retain(|c| {
+        !matches!(
+            c.as_str(),
+            "autoplay" | "muted" | "loop" | "controls" | "manual"
+        )
+    });
     format!(
-        "<video src=\"{src}\" title=\"{alt}\"{}{poster}{flags}{style_attr}></video>",
-        carried.html_id_class()
+        "<video src=\"{src}\" title=\"{alt}\"{}{poster}{flags} data-mz-play-on=\"{when}\"{style_attr}></video>",
+        carried.html_id_class(),
+        when = play_on(flag)
     )
 }
 
@@ -1190,11 +1224,55 @@ mod tests {
     }
 
     #[test]
-    fn a_frame_nobody_asked_to_autoplay_carries_no_play_url() {
+    fn when_a_clip_starts_is_written_on_the_element() {
+        // The default is the click, which is what a video placed in Google
+        // Slides or Keynote does: the presenter reaches the slide, says the
+        // sentence that sets it up, and clicks once more.
+        let out = preprocess("![Clip](demo.mp4)\n");
+        assert!(out.contains("data-mz-play-on=\"advance\""), "{out}");
+        assert!(!out.contains(" autoplay"), "{out}");
+
+        let out = preprocess("![Clip](demo.mp4){.autoplay}\n");
+        assert!(out.contains("data-mz-play-on=\"show\""), "{out}");
+        // The attribute stays for a reader with no JavaScript, for whom it is
+        // the only thing that plays anything.
+        assert!(out.contains(" autoplay"), "{out}");
+
+        let out = preprocess("![Clip](demo.mp4){.manual .controls}\n");
+        assert!(out.contains("data-mz-play-on=\"manual\""), "{out}");
+        // `manual` is a request about playback, not a class for a stylesheet.
+        assert!(!out.contains("class=\"manual\""), "{out}");
+
+        // A recording answers the same question the same way.
+        let out = preprocess("![Tape](talk.mp3)\n");
+        assert!(out.contains("data-mz-play-on=\"advance\""), "{out}");
+        let out = preprocess("![Tape](talk.mp3){.manual}\n");
+        assert!(out.contains("data-mz-play-on=\"manual\""), "{out}");
+    }
+
+    #[test]
+    fn a_hosted_video_gets_a_play_url_unless_it_is_left_to_its_button() {
+        // Waiting for a click still needs the URL that starts it; waiting for
+        // its own button does not, and must not have one lying around.
         let out = preprocess("![Talk](https://youtu.be/abc)\n");
-        assert!(!out.contains("data-mz-play"), "{out}");
-        // And no query at all, so the plain case stays the plain case.
-        assert!(out.contains("embed/abc\""), "{out}");
+        assert!(out.contains("data-mz-play-on=\"advance\""), "{out}");
+        assert!(out.contains("data-mz-play=\""), "{out}");
+
+        let out = preprocess("![Talk](https://youtu.be/abc){.manual}\n");
+        assert!(out.contains("data-mz-play-on=\"manual\""), "{out}");
+        assert!(!out.contains("data-mz-play=\""), "{out}");
+    }
+
+    #[test]
+    fn a_frame_that_is_not_playing_yet_rests_on_a_plain_url() {
+        // Whatever it is waiting for, the `src` it loads with starts nothing:
+        // the frame the reader sees before the click carries no parameters at
+        // all, which is also what a reader with no JavaScript is left with.
+        let out = preprocess("![Talk](https://youtu.be/abc)\n");
+        assert!(
+            out.contains("src=\"https://www.youtube-nocookie.com/embed/abc\""),
+            "{out}"
+        );
     }
 
     #[test]

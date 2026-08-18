@@ -64,12 +64,19 @@
   const annot = () => window.MZAnnot || null;
   // A slide's steps are however many the animation and the annotations
   // between them ask for: either may be the last thing waiting for a click.
-  const stepsOn = (sec) => {
+  const revealSteps = (sec) => {
     if (!sec) return 0;
     const a = anim ? anim.steps(sec) : 0;
     const n = annot();
     return Math.max(a, n ? n.steps(sec) : 0);
   };
+  // Media that waits for a click takes a step of its own, after everything the
+  // slide reveals: a clip is one more thing on the slide that happens when the
+  // presenter says so, and counting it means the page counter says how many
+  // clicks are left before the deck moves on.
+  const stepMedia = (sec) =>
+    sec ? Array.from(sec.querySelectorAll('[data-mz-play-on="advance"]')) : [];
+  const stepsOn = (sec) => revealSteps(sec) + stepMedia(sec).length;
   const showStep = (sec) => {
     const n = annot();
     if (n && sec) n.show(sec, step);
@@ -136,6 +143,9 @@
     // one displayed - so it runs here, before anything else measures anything.
     if (window.__mirzamFit) window.__mirzamFit(sec);
     if (anim) anim.show(sec, step, transition, { play: turn, backwards: backwards && changed, arriving: changed });
+    // Arriving backwards lands on a slide with its reveals already done; a clip
+    // that was waiting for a click is not replayed on the way past.
+    mediaSpent = changed && backwards;
     media(sec, changed || !!(opts && opts.first));
     showStep(sec);
     updateHud(ss.length, sec);
@@ -172,9 +182,49 @@
   // so its autoplay URL waits in `data-mz-play` and is swapped in on arrival,
   // which is also what keeps the frame off the network until then.
   const restingSrc = new WeakMap();
+  // Start or stop one thing, whichever of the three kinds it is. A hosted video
+  // is the odd one: another origin, so all this side has is which URL the frame
+  // is pointed at.
+  function playMedia(el) {
+    if (el.classList.contains('mz-embed')) {
+      const f = el.querySelector('iframe');
+      if (!f || !el.dataset.mzPlay) return;
+      if (!restingSrc.has(f)) restingSrc.set(f, f.getAttribute('src') || '');
+      if (f.getAttribute('src') !== el.dataset.mzPlay) f.setAttribute('src', el.dataset.mzPlay);
+      return;
+    }
+    if (!el.paused) return;
+    try { const p = el.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+  }
+  function stopMedia(el, rewind) {
+    if (el.classList.contains('mz-embed')) {
+      const f = el.querySelector('iframe');
+      if (!f || !restingSrc.has(f)) return;
+      const resting = restingSrc.get(f);
+      if (f.getAttribute('src') !== resting) f.setAttribute('src', resting);
+      return;
+    }
+    if (document.activeElement === el) el.blur();
+    try { el.pause(); if (rewind) el.currentTime = 0; } catch (e) {}
+  }
+
+  // Media that waits for a click plays when the step that owns it is reached,
+  // and stops when the presenter steps back past it. Arriving at a slide never
+  // starts one - not even backwards onto a slide whose steps are all counted as
+  // spent, where the reveal is meant to be already done and the clip is not
+  // meant to be halfway through.
+  let mediaSpent = false;
+  function applyStepMedia(sec) {
+    const base = revealSteps(sec);
+    stepMedia(sec).forEach((el, i) => {
+      if (step >= base + i + 1) { if (!mediaSpent) playMedia(el); }
+      else stopMedia(el, true);
+    });
+  }
+
   function media(sec, arriving) {
     for (const m of document.querySelectorAll('section.slide video, section.slide audio')) {
-      const auto = m.hasAttribute('autoplay');
+      const auto = m.dataset.mzPlayOn === 'show';
       if (m.closest('section.slide') === sec) {
         // Arriving is the only thing that starts a clip. A resize or a step
         // lands here too, and must not restart what is playing - nor resume
@@ -184,18 +234,25 @@
           // rather than throwing, and an unhandled rejection on every arrival
           // is a console full of noise about a policy we cannot argue with.
           try { m.currentTime = 0; const p = m.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+        } else if (arriving && m.dataset.mzPlayOn === 'advance') {
+          // Its step has not been reached yet, however this slide was reached.
+          stopMedia(m, true);
         }
       } else if (!m.paused || (auto && m.currentTime) || document.activeElement === m) {
         // Focus goes with it: a player left focused on the slide behind is an
         // invisible owner for keys nobody meant to send it.
-        if (document.activeElement === m) m.blur();
-        try { m.pause(); if (auto) m.currentTime = 0; } catch (e) {}
+        stopMedia(m, auto || m.dataset.mzPlayOn === 'advance');
       }
     }
     for (const f of document.querySelectorAll('section.slide .mz-embed[data-mz-play] iframe')) {
       const box = f.closest('.mz-embed');
       if (!restingSrc.has(f)) restingSrc.set(f, f.getAttribute('src') || '');
-      const want = f.closest('section.slide') === sec ? box.dataset.mzPlay : restingSrc.get(f);
+      // On arrival only the frames set to start on arrival are pointed at their
+      // playing URL; a frame waiting for a click is left resting until its step.
+      const want =
+        f.closest('section.slide') === sec && box.dataset.mzPlayOn === 'show'
+          ? box.dataset.mzPlay
+          : restingSrc.get(f);
       // Only on a change: assigning the same URL reloads the frame, which on
       // this slide would restart the video the reader is watching.
       if (f.getAttribute('src') !== want) f.setAttribute('src', want);
@@ -220,8 +277,10 @@
     const sec = slides()[cur];
     if (step < stepsOn(sec)) {
       step += 1;
+      mediaSpent = false;
       if (anim) anim.step(sec, step);
       showStep(sec);
+      applyStepMedia(sec);
       updateHud(slides().length, sec);
     } else {
       show(cur + 1);
@@ -233,7 +292,9 @@
     if (step > 0) {
       if (anim) anim.unstep(sec, step);
       step -= 1;
+      mediaSpent = false;
       showStep(sec);
+      applyStepMedia(sec);
       updateHud(slides().length, sec);
     } else {
       show(cur - 1);
@@ -391,6 +452,7 @@
       while (step < want) { step += 1; if (anim) anim.step(sec, step); }
       while (step > want) { if (anim) anim.unstep(sec, step); step -= 1; }
       showStep(sec);
+      applyStepMedia(sec);
       updateHud(ss.length, sec);
     },
   };

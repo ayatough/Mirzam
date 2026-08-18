@@ -251,7 +251,7 @@ const TERM_MODES: &[&str] = &["terms-aligned", "terms-stacked"];
 /// one nobody has ever watched work. `autoplay` is the case in point — it meant
 /// "when the deck loads" for three releases, which a single sample slide would
 /// have caught the first time anyone turned a page.
-const MEDIA_FLAGS: &[&str] = &["autoplay", "loop", "muted", "cover"];
+const MEDIA_FLAGS: &[&str] = &["autoplay", "manual", "loop", "muted", "cover"];
 
 #[test]
 fn every_media_flag_is_documented_and_shown() {

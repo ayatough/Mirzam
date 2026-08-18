@@ -369,10 +369,10 @@ A page URL becomes a player, from where the link says:
 ![The talk](https://youtu.be/aqz-KE-bpKQ?t=33)
 ```
 
-- Served from `youtube-nocookie.com`, fetched when the slide is
-  shown — **the one thing here that is not self-contained**
-- `{start=1m30s}` overrides the link; `{.autoplay}` and `{.loop}`
-  play it on arrival, muted as browsers insist
+- Served from `youtube-nocookie.com` — **the one thing here that
+  is not self-contained**
+- The next click starts it, `{start=1m30s}` overrides the link,
+  and `{.autoplay}` moves it to arrival
 - The PDF gets the link, timestamp and all
 :::
 
@@ -412,12 +412,13 @@ An audio file becomes a player labelled with its alt text, and
 
 - `mp3`, `m4a`, `aac`, `wav`, `ogg`, `opus`, `flac`
 - Both inlined, so the deck is still one file
-- `{.autoplay}` starts it **when the slide is shown**
+- `{.autoplay}` on arrival, `{.manual}` only on its button;
+  otherwise the next click plays it
 - The PDF keeps the sleeve and the label
 :::
 
 ::: pane clip {valign=middle}
-![A chime, three notes long](media/chime.wav){cover=media/chime-cover.svg}
+![A chime, three notes long](media/chime.wav){cover=media/chime-cover.svg .manual}
 :::
 
 <!-- note: The sample is a wav because this repository ships no encoder; every format above takes the same path. Autoplay is deliberately not set here - a gallery deck that makes noise on arrival is a bad neighbour. `poster=` works too, since that is the word a video uses. -->

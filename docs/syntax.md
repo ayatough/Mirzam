@@ -1018,14 +1018,41 @@ that particular job.
 | `![t](https://vimeo.com/ID#t=65s)` | the same, in the shape Vimeo writes it |
 | `{start=1m30s}` | overrides whatever the link said |
 | `{.autoplay}` | plays when the slide is shown |
+| `{.manual}` | plays only when someone presses its own button |
 | `{.loop}` | repeats |
 | `{.muted}` | no sound (`.autoplay` implies it) |
 
-`{.autoplay}`, `{.loop}` and `{.muted}` work on a local `<video>` too, and the
-first two on an `<audio>`, so `![clip](demo.mp4){.autoplay .loop}` and
-`![tape](talk.mp3){.autoplay}` mean what they look like.
+`{.autoplay}`, `{.manual}`, `{.loop}` and `{.muted}` work on a local `<video>`
+too, and all but `.muted` on an `<audio>`, so `![clip](demo.mp4){.autoplay .loop}`
+and `![tape](talk.mp3){.manual}` mean what they look like.
 `examples/05-motion.md` has a slide that plays on arrival, since that is the one
 thing a picture of a deck cannot show.
+
+### When a clip starts
+
+Three answers, and the one you get by writing nothing is the middle one:
+
+| | Starts |
+|---|---|
+| `{.autoplay}` | as the slide appears |
+| *nothing* | **on the next click**, as a step on the slide |
+| `{.manual}` | never on its own — its own play button, and nothing else |
+
+The default is what a video placed in Google Slides or Keynote does, and it is
+the one a talk actually wants: you reach the slide, say the sentence that sets
+the clip up, and click once more. Until then the first frame sits there, which
+is the picture you wanted on the slide anyway.
+
+A clip waiting for a click **is a step**, so it is counted like any reveal: the
+page counter reads `4 / 12 · 0/1` on arrival and `· 1/1` once the clip is
+playing, and the click after that turns the page. Stepping back stops the clip
+and rewinds it, and stepping forward again replays it. Coming back to a slide
+from a later one leaves its reveals done and its clip *not* replayed — the same
+rule the animations follow.
+
+`{.manual}` is for a recording you want on the slide but not in the way — a
+sound sample somebody may ask about, an interview clip you will play only if
+there is time.
 
 **`.autoplay` means "when the slide is shown", not "when the deck loads".** The
 distinction is the whole feature: a slide behind `display: none` plays perfectly
