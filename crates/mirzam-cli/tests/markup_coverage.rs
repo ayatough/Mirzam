@@ -162,6 +162,15 @@ const MARKS: &[Mark] = &[
         shown_as: "](media/sandbox.html)",
     },
     Mark {
+        // A picture's source. It rendered nowhere before: the only way to
+        // credit a figure was a sentence beside it, which is a caption saying
+        // two things at once, and a `[@key]` in it was as loud as the claim.
+        source: "![Fig. 3](fig3.png){credit=\"Fig. 3 of [@vaswani2017]\"}",
+        html: r#"<span class="mz-fig-credit">Fig. 3 of <span class="mz-cite">[1]</span></span>"#,
+        documented_as: "`credit=`",
+        shown_as: "credit=\"Fig. 3 of [@vaswani2017], redrawn\"",
+    },
+    Mark {
         // A recording was the third thing in this file's own list of failures:
         // it rendered, it was documented, and no deck had one.
         source: "![Interview](media/talk.mp3)",
@@ -341,6 +350,8 @@ fn every_presentation_dial_is_read_with_its_default_as_a_fallback() {
         ("--mz-number-3", "decimal"),
         ("--mz-marker", "currentColor"),
         ("--mz-bib-size", "1.05em"),
+        ("--mz-caption-size", ".82em"),
+        ("--mz-credit-size", ".72em"),
     ] {
         assert!(
             css.contains(&format!("var({dial}, {default})")),

@@ -103,6 +103,7 @@ email.
 | **Video, audio and embeds** | Files inlined; YouTube and Vimeo embedded, with a link in the PDF |
 | **Citations** | `[^key]` footnotes land at the foot of the slide that cites them |
 | **References** | `[@key]` against a BibTeX file; the `bibliography` block lists what was cited, links each mark to it and each entry back to the slides that cited it |
+| **A picture's source** | `caption=` and `credit=` under a figure — the credit small and quiet, and a `[@key]` in it joins the deck's references like any other citation |
 | **A contents page that writes itself** | `toc` collects the deck's headings, links each to its slide, and marks the section you are in |
 | **Nothing silently lost** | `fit: shrink` scales an overfull pane down instead of clipping it |
 | **Your break, not the box's** | `<!-- next -->` carries one pane on to the next slide while the rest hold still |
@@ -229,7 +230,7 @@ source beside the slides is the example.
 |---|---|
 | [`examples/pitch.md`](examples/pitch.md) | A sales pitch: metric tiles, charts from CSV, the project's own theme in dark |
 | [`examples/research.md`](examples/research.md) | A research report: maths, a chart, and a bibliography cited from four slides |
-| [`examples/seminar.md`](examples/seminar.md) | The same shape in Japanese: maths, a quoted figure, footnotes beside a cited bibliography, CJK typography |
+| [`examples/seminar.md`](examples/seminar.md) | The same shape in Japanese: maths, a quoted figure credited under the picture, a footnote beside a cited bibliography, CJK typography |
 
 ```bash
 cargo run --bin mirzam -- build examples/01-start.md -o out && open out/index.html

@@ -199,36 +199,33 @@
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">先行研究</span></p>
 <h2>元論文の Fig. 3 と、本測定の対応</h2>
 </div>
-<div class="pane pane-fig" data-pane="fig" style="grid-area:fig;display:flex;flex-direction:column;justify-content:center"><img src="<data-uri len=78378>" alt="Fig. 3 of the reference paper" style="object-fit:contain;width:100%;height:100%;">
+<div class="pane pane-fig" data-pane="fig" style="grid-area:fig;display:flex;flex-direction:column;justify-content:center"><figure class="mz-figure"><img src="<data-uri len=78378>" alt="Fig. 3 of the reference paper" style="object-fit:contain;"><figcaption class="mz-figcaption"><span class="mz-fig-credit">出典: <span class="mz-cite">[<a href="#11">Researcher+26</a>]</span> Fig. 3</span></figcaption></figure>
 </div>
-<div class="pane pane-read mz-fit" data-pane="read" style="grid-area:read;display:flex;flex-direction:column;justify-content:center"><p>論文<sup class="footnote-ref"><a href="#fn-ref1" id="fnref-ref1" data-footnote-ref>1</a></sup> では τ ≈ 5 µs で忠実度が<span id="t-peak" class="u">頭打ちになる</span>と報告されている。
+<div class="pane pane-read mz-fit" data-pane="read" style="grid-area:read;display:flex;flex-direction:column;justify-content:center"><p>元論文<span class="mz-cite">[<a href="#11">Researcher+26</a>]</span> では τ ≈ 5 µs で忠実度が<span id="t-peak" class="u">頭打ちになる</span>と報告されている。
 本測定でも同じ位置に極大が出ており、以降の低下は <math><msub><mi>T</mi><mn>1</mn></msub></math> 緩和で説明できる。</p>
 <p><math display="block"><mi>F</mi><mo stretchy="false">(</mo><mi>τ</mi><mo stretchy="false">)</mo><mo>=</mo><msub><mi>F</mi><mi>∞</mi></msub><mspace style="margin-left:-0.16666667em;"/><mrow><mo>(</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo lspace="0" rspace="0">−</mo><mi>τ</mi><mo lspace="0" rspace="0">/</mo><msub><mi>τ</mi><mi>c</mi></msub></mrow></msup><mo>)</mo></mrow><mo>−</mo><mi>α</mi><mspace width="0.16666667em"/><msup><mi>τ</mi><mn>2</mn></msup></math></p>
-<p>第2項が緩和による損失で、係数 <math><mi>α</mi></math> は <math><msub><mi>T</mi><mn>1</mn></msub></math> から独立に決まる<sup class="footnote-ref"><a href="#fn-ref2" id="fnref-ref2" data-footnote-ref>2</a></sup>。</p>
+<p>第2項が緩和による損失で、係数 <math><mi>α</mi></math> は <math><msub><mi>T</mi><mn>1</mn></msub></math> から独立に決まる<sup class="footnote-ref"><a href="#fn-ref2" id="fnref-ref2" data-footnote-ref>1</a></sup>。</p>
 <section class="footnotes" data-footnotes>
 <ol>
-<li id="fn-ref1">
-<p>A. Researcher et al., <em>Dispersive readout with a parametric amplifier</em>, Phys. Rev. Applied <strong>21</strong>, 034001 (2026). <a href="https://doi.org/10.1103/PhysRevApplied.21.034001">https://doi.org/10.1103/PhysRevApplied.21.034001</a> <a href="#fnref-ref1" class="footnote-backref" data-footnote-backref data-footnote-backref-idx="1" aria-label="Back to reference 1">↩</a></p>
-</li>
 <li id="fn-ref2">
-<p>B. Coauthor and C. Third, <em>Relaxation-limited readout</em>, arXiv:2601.00042. <a href="#fnref-ref2" class="footnote-backref" data-footnote-backref data-footnote-backref-idx="2" aria-label="Back to reference 2">↩</a></p>
+<p>B. Coauthor and C. Third, <em>Relaxation-limited readout</em>, arXiv:2601.00042. <a href="#fnref-ref2" class="footnote-backref" data-footnote-backref data-footnote-backref-idx="1" aria-label="Back to reference 1">↩</a></p>
 </li>
 </ol>
 </section>
 </div>
 </div>
 <script type="application/json" class="mz-annot" data-target="[data-pane=&quot;fig&quot;]">{"items":[{"kind":"circle","id":"peak","x":52,"y":14,"w":22,"h":16,"label":"τ ≈ 5 µs","step":1}]}</script>
-<aside class="notes"><p>図は引用。出典は脚注に置き、スライド内で完結させる</p>
+<aside class="notes"><p>図は引用。出典は図そのものの credit に置くので、薄字で図の下に出て、そのまま参考文献にも載る。脚注はこのスライド限りの補足([^ref2])だけに残した</p>
 </aside>
 </section>
 <section class="slide" data-index="10">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:1fr 4fr;grid-template-areas:"head" "refs"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><h2>参考文献</h2>
 </div>
-<div class="pane pane-refs" data-pane="refs" style="grid-area:refs"><ul class="mz-bib"><li id="mz-bib-twpa2026"><span class="mz-bib-mark">[Fifth26]</span><span class="mz-bib-entry">Fifth. <em>Travelling-wave parametric amplifiers in practice</em>. J. Cryogenic Electronics, 2026.</span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#9">9</a></span></li><li id="mz-bib-jpa2025"><span class="mz-bib-mark">[Researcher+25]</span><span class="mz-bib-entry">Researcher, Coauthor, Third et al. <em>Near-quantum-limited amplification for qubit readout</em>. Proc. Quantum Measurement Workshop, 2025. <a href="https://arxiv.org/abs/2601.00317">arXiv:2601.00317</a></span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#4">4</a>, <a href="#5">5</a></span></li><li id="mz-bib-dispersive2024"><span class="mz-bib-mark">[山田+24]</span><span class="mz-bib-entry">山田, 鈴木. <em>分散読み出しの基礎と最適化</em>. 応用物理, 2024.</span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#3">3</a>, <a href="#5">5</a></span></li></ul>
+<div class="pane pane-refs" data-pane="refs" style="grid-area:refs"><ul class="mz-bib"><li id="mz-bib-twpa2026"><span class="mz-bib-mark">[Fifth26]</span><span class="mz-bib-entry">Fifth. <em>Travelling-wave parametric amplifiers in practice</em>. J. Cryogenic Electronics, 2026.</span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#9">9</a></span></li><li id="mz-bib-jpa2025"><span class="mz-bib-mark">[Researcher+25]</span><span class="mz-bib-entry">Researcher, Coauthor, Third et al. <em>Near-quantum-limited amplification for qubit readout</em>. Proc. Quantum Measurement Workshop, 2025. <a href="https://arxiv.org/abs/2601.00317">arXiv:2601.00317</a></span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#4">4</a>, <a href="#5">5</a></span></li><li id="mz-bib-readout2026"><span class="mz-bib-mark">[Researcher+26]</span><span class="mz-bib-entry">Researcher, Second, Third. <em>Dispersive readout with a parametric amplifier</em>. Phys. Rev. Applied 21, 034001, 2026. <a href="https://doi.org/10.1103/PhysRevApplied.21.034001">doi:10.1103/PhysRevApplied.21.034001</a></span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#10">10</a></span></li><li id="mz-bib-dispersive2024"><span class="mz-bib-mark">[山田+24]</span><span class="mz-bib-entry">山田, 鈴木. <em>分散読み出しの基礎と最適化</em>. 応用物理, 2024.</span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#3">3</a>, <a href="#5">5</a></span></li></ul>
 </div>
 </div>
-<aside class="notes"><p>前スライドの脚注とは別の道具。図の出典のようにそのスライドで完結するものは脚注、本文で何度も引く文献はここ。JPA の文献は 4 枚目と 5 枚目の両方から引いているので ↩ が二つ並ぶ</p>
+<aside class="notes"><p>前スライドの脚注とは別の道具。そのスライドで完結する補足は脚注、本文や図の credit から引く文献はここ。JPA の文献は 4 枚目と 5 枚目の両方から引いているので ↩ が二つ並ぶ</p>
 </aside>
 </section>
 <section class="slide" data-index="11">
