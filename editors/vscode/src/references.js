@@ -191,4 +191,54 @@ function isTextFile(rel) {
   return [".md", ".bib", ".css"].some((ext) => rel.endsWith(ext));
 }
 
-module.exports = { references, chartData, frontmatterPath, themeFiles, isTextFile, withoutCode };
+/**
+ * Whether a reference is a widget: an HTML document the core inlines as an
+ * asset and then walks, because unlike an image it has references of its own.
+ */
+function isWidget(rel) {
+  const p = rel.split(/[?#]/)[0].toLowerCase();
+  return p.endsWith(".html") || p.endsWith(".htm");
+}
+
+/**
+ * Every local path a widget's own markup names — its script, its stylesheet,
+ * the picture it draws. Relative to the widget, not to the deck, so the caller
+ * resolves them against the widget's directory the way the core does.
+ *
+ * A `<link>` is included here and nowhere else: on a slide `href` is a link and
+ * has to stay one, but inside a document it is how a page loads its
+ * stylesheet. Mirrors `embed_within` in `mirzam-render`'s `assets.rs`.
+ */
+function htmlReferences(html) {
+  const out = new Set();
+  const push = (raw) => {
+    const p = String(raw).trim();
+    if (!p || p.startsWith("data:") || p.includes("://") || p.startsWith("#")) return;
+    out.add(p);
+  };
+  const attrs = /\b(?:src|poster)="([^"]*)"/g;
+  const link = /<link\b[^>]*?\bhref="([^"]*)"/g;
+  for (const re of [attrs, link]) {
+    let m;
+    while ((m = re.exec(html))) push(m[1]);
+  }
+  const srcset = /\bsrcset="([^"]*)"/g;
+  let m;
+  while ((m = srcset.exec(html))) {
+    for (const candidate of m[1].split(",")) {
+      push(candidate.trim().split(/\s+/)[0] || "");
+    }
+  }
+  return [...out];
+}
+
+module.exports = {
+  references,
+  chartData,
+  frontmatterPath,
+  themeFiles,
+  isTextFile,
+  isWidget,
+  htmlReferences,
+  withoutCode,
+};

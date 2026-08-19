@@ -1045,6 +1045,49 @@
     else notesPanel.hidden = dy >= 0;
   }, { passive: true });
 
+  // ---- A widget, expanded ----
+  // The frame is another document: it cannot be styled, measured or resized
+  // from here, and it cannot put a control outside itself. So the button sits
+  // on the wrapper, and the wrapper is what goes fullscreen - which is also
+  // what takes the widget out from under the deck's scaling transform and
+  // hands it the whole screen rather than the slide's share of it.
+  const fullEl = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+  addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('.mz-html > .mz-expand');
+    if (!btn) return;
+    const box = btn.parentElement;
+    if (fullEl() === box) {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen;
+      if (exit) { const p = exit.call(document); if (p && p.catch) p.catch(() => {}); }
+      return;
+    }
+    const ask = box.requestFullscreen || box.webkitRequestFullscreen;
+    if (ask) { const p = ask.call(box); if (p && p.catch) p.catch(() => {}); }
+  });
+  // A control that says "expand" while the thing is expanded is a control
+  // pointing the wrong way, and Escape leaves fullscreen without ever passing
+  // through the handler above - so the label follows the state, not the click.
+  function markExpanded() {
+    const full = fullEl();
+    for (const b of document.querySelectorAll('.mz-html > .mz-expand')) {
+      const on = b.parentElement === full;
+      b.textContent = on ? '⤡' : '⛶';
+      b.title = on ? 'Leave fullscreen' : 'Fullscreen';
+      b.setAttribute('aria-label', b.title);
+    }
+  }
+  for (const ev of ['fullscreenchange', 'webkitfullscreenchange']) {
+    document.addEventListener(ev, markExpanded);
+  }
+  // Turning the page while a widget is expanded leaves the reader looking at a
+  // slide nobody is on. The page turn wins: it is the deliberate act.
+  watchers.push(() => {
+    const full = fullEl();
+    if (!full || !full.closest || full.closest('section.slide.active')) return;
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if (exit) { const p = exit.call(document); if (p && p.catch) p.catch(() => {}); }
+  });
+
   // ---- Giving the keys back ----
   // A player's native controls live in a shadow tree the page cannot listen to.
   // Click one and *nothing* reaches this script - not the click, not the

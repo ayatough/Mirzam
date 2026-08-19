@@ -34,3 +34,8 @@ nav.mz-toc a { text-decoration: none; }
    which entry, the backlink says which page — so both keep their text and
    only lose the underline a printer would render as a smudge. */
 span.mz-cite a, ul.mz-bib a { text-decoration: none; }
+
+/* The expand button belongs to the frame it expands, and paper has neither.
+   The export replaces the whole widget with a still, so this is the belt to
+   that braces - a viewer page printed from the browser has one too. */
+.mz-expand { display: none; }

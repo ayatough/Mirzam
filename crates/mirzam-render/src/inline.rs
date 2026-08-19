@@ -260,7 +260,12 @@ fn image_attrs(line: &str) -> String {
         let alt = html_escape(&c[1]);
         let src = &c[2];
         let braces = c.get(3);
-        if braces.is_none() && !is_video(src) && !is_audio(src) && embed_url(src).is_none() {
+        if braces.is_none()
+            && !is_video(src)
+            && !is_audio(src)
+            && !is_html(src)
+            && embed_url(src).is_none()
+        {
             return c[0].to_string();
         }
         let attrs = parse_attrs(braces.map(|m| m.as_str()).unwrap_or(""));
@@ -293,6 +298,9 @@ fn image_attrs(line: &str) -> String {
         if let Some(hosted) = embed_url(src) {
             return embed_html(&hosted, src, &alt, &attrs);
         }
+        if is_html(src) {
+            return html_frame(src, &alt, &attrs, &style_attr);
+        }
         format!(
             "<img src=\"{src}\" alt=\"{alt}\"{}{style_attr}>",
             attrs.html_id_class()
@@ -312,6 +320,12 @@ fn is_video(src: &str) -> bool {
         extension_of(src).as_deref(),
         Some("mp4" | "webm" | "ogv" | "mov" | "m4v")
     )
+}
+
+/// Whether an image reference points at an HTML document, which is a thing the
+/// reader operates rather than a picture they look at.
+fn is_html(src: &str) -> bool {
+    matches!(extension_of(src).as_deref(), Some("html" | "htm"))
 }
 
 fn is_audio(src: &str) -> bool {
@@ -651,6 +665,43 @@ fn embed_html(hosted: &Hosted, page: &str, alt: &str, attrs: &Attrs) -> String {
          allow=\"accelerometer; clipboard-write; encrypted-media; picture-in-picture\"></iframe></div>",
         carried.html_id_class(),
         href = html_escape(&hosted.page(page, start)),
+    )
+}
+
+/// `![Sandbox](widget.html)` becomes a frame the reader can operate.
+///
+/// Unlike a hosted video this one *is* self-contained: `assets.rs` inlines the
+/// document, and the references inside it, exactly as it inlines an image, so a
+/// deck with a widget in it is still one file. The frame is sandboxed all the
+/// same — scripts and forms yes, the deck's own DOM no — which is what keeps a
+/// widget's stray `id` or global from reaching the slide around it, and what
+/// keeps its keystrokes from turning the page.
+///
+/// The button is the expand control. A slide can hold more than one widget, so
+/// "the" embed is not a thing a key could name; the affordance belongs on the
+/// frame it expands, the way a video player's does. It asks for fullscreen on
+/// the wrapper rather than on the frame, so the widget arrives at full size
+/// instead of at the size the slide's own transform had scaled it to.
+fn html_frame(src: &str, alt: &str, attrs: &Attrs, style_attr: &str) -> String {
+    let id = attrs
+        .id
+        .as_ref()
+        .map(|i| format!(" id=\"{i}\""))
+        .unwrap_or_default();
+    // The author's own classes join ours rather than replacing them: a second
+    // `class` attribute on the same tag is the first one thrown away.
+    let mut classes = String::from("mz-embed mz-html");
+    for c in &attrs.classes {
+        classes.push(' ');
+        classes.push_str(c);
+    }
+    format!(
+        "<div class=\"{classes}\"{id}{style_attr} data-title=\"{alt}\">\
+         <iframe src=\"{src}\" title=\"{alt}\" \
+         sandbox=\"allow-scripts allow-forms allow-modals allow-popups\" \
+         allow=\"fullscreen\" allowfullscreen></iframe>\
+         <button type=\"button\" class=\"mz-expand\" aria-label=\"Fullscreen\" \
+         title=\"Fullscreen\">⛶</button></div>"
     )
 }
 
@@ -1501,5 +1552,42 @@ mod tests {
         );
         assert!(out.contains(r#"class="hero mz-only-light""#), "got: {out}");
         assert!(out.contains(r#"class="hero mz-only-dark""#), "got: {out}");
+    }
+
+    /// A reference to an HTML file is a widget: a document the reader operates
+    /// inside the slide, rather than a picture of one.
+    #[test]
+    fn an_html_reference_becomes_a_frame() {
+        let out = preprocess("![Damped oscillation](sandbox.html)\n");
+        assert!(out.contains(r#"class="mz-embed mz-html""#), "got: {out}");
+        assert!(out.contains(r#"<iframe src="sandbox.html""#), "got: {out}");
+        // Sandboxed, or a widget's stray global is the slide's problem too.
+        assert!(out.contains(r#"sandbox="allow-scripts"#), "got: {out}");
+        // The one control the frame cannot offer from the inside.
+        assert!(out.contains(r#"class="mz-expand""#), "got: {out}");
+        // And with no attribute block either, because what a reference *is*
+        // follows from what it points at.
+        assert!(preprocess("![x](w.htm)\n").contains("mz-html"));
+    }
+
+    /// The wrapper already carries two classes of its own, so an author's have
+    /// to join them: a second `class` attribute is the first one thrown away.
+    #[test]
+    fn a_widget_keeps_the_authors_own_id_and_classes() {
+        let out = preprocess("![Sim](sim.html){#sim .wide}\n");
+        assert!(
+            out.contains(r#"class="mz-embed mz-html wide""#),
+            "got: {out}"
+        );
+        assert!(out.contains(r#"id="sim""#), "got: {out}");
+        assert_eq!(out.matches("class=\"mz-embed").count(), 1, "got: {out}");
+    }
+
+    /// A widget is sized like the frame it is: `{w=}` and `{h=}` land on the
+    /// wrapper, which is what carries the box the frame fills.
+    #[test]
+    fn a_widget_takes_a_size() {
+        let out = preprocess("![Sim](sim.html){w=60% h=300px}\n");
+        assert!(out.contains("width:60%;height:300px;"), "got: {out}");
     }
 }

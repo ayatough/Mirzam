@@ -8,7 +8,7 @@
 const vscode = require("vscode");
 const path = require("path");
 const fs = require("fs");
-const { references, isTextFile } = require("./references");
+const { references, isTextFile, isWidget, htmlReferences } = require("./references");
 
 /** Open previews, keyed by document URI. */
 const panels = new Map();
@@ -209,7 +209,18 @@ function collectResources(text, baseDir) {
       } catch {
         continue; // Missing files fall back to the core's placeholder handling.
       }
-      if (rel.endsWith(".md")) {
+      if (isWidget(rel)) {
+        // A widget is inlined like an image and then walked, because unlike an
+        // image it has references of its own: its script, its stylesheet, the
+        // picture it draws. They are relative to the widget, and the core asks
+        // for them by the deck-relative key this loop writes - so a `.css`
+        // inside one is an asset here, not the theme `isTextFile` takes it for.
+        if (stat.size <= maxSize) {
+          assets[key] = dataUri(abs);
+          sources.set(abs, key);
+          walkWidget(readText(abs), path.dirname(abs), 1);
+        }
+      } else if (rel.endsWith(".md")) {
         const content = readText(abs);
         files[key] = content;
         sources.set(abs, key);
@@ -226,6 +237,27 @@ function collectResources(text, baseDir) {
         assets[key] = dataUri(abs);
         sources.set(abs, key);
       }
+    }
+  };
+  // One level into a widget, and no further than the core goes: a document
+  // that embeds itself is a loop, and the core stops at three.
+  const walkWidget = (html, dir, depth) => {
+    if (depth > 3) return;
+    for (const rel of htmlReferences(html)) {
+      const abs = path.resolve(dir, rel);
+      const key = normalize(rel, dir, baseDir);
+      if (seen.has(abs)) continue;
+      seen.add(abs);
+      let stat;
+      try {
+        stat = fs.statSync(abs);
+      } catch {
+        continue; // Missing files fall back to the core's placeholder handling.
+      }
+      if (stat.size > maxSize) continue;
+      assets[key] = dataUri(abs);
+      sources.set(abs, key);
+      if (isWidget(rel)) walkWidget(readText(abs), path.dirname(abs), depth + 1);
     }
   };
   walk(text, baseDir);
@@ -285,6 +317,16 @@ function dataUri(file) {
       // Chart data. Not media, but it travels the same way: the core decodes
       // it back out of the data URI.
       ".csv": "text/csv",
+      // A widget, and what a widget loads. These spellings have to match
+      // `mirzam-render`'s exactly: the charset is how the core recognises the
+      // one asset that has references of its own, and a script served as
+      // octet-stream from a `data:` URI is refused outright.
+      ".html": "text/html;charset=utf-8",
+      ".htm": "text/html;charset=utf-8",
+      ".js": "text/javascript;charset=utf-8",
+      ".mjs": "text/javascript;charset=utf-8",
+      ".css": "text/css;charset=utf-8",
+      ".json": "application/json;charset=utf-8",
     }[ext] || "application/octet-stream";
   return `data:${mime};base64,${fs.readFileSync(file).toString("base64")}`;
 }

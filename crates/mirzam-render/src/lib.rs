@@ -789,8 +789,8 @@ fn split_origin(base: &str) -> (&str, &str) {
 /// Replaces the things a page cannot play with something a page can show.
 ///
 /// A `<video>` becomes its poster, or a placeholder; a hosted embed becomes a
-/// placeholder carrying the link it came from; an `<audio>` keeps its label
-/// and loses its controls. PDF output is static, and silently printing an
+/// placeholder carrying the link it came from; a widget and an `<audio>` keep
+/// their labels and lose the controls paper cannot offer. PDF output is static, and silently printing an
 /// empty box would be worse than saying what is missing.
 fn videos_to_stills(html: &str) -> String {
     static RE: OnceLock<Regex> = OnceLock::new();
@@ -829,6 +829,23 @@ fn videos_to_stills(html: &str) -> String {
                 "<div class=\"mz-video-still\"><span>▶</span><em>{}</em>\
                  <a href=\"{}\">{}</a></div>",
                 &c[2], &c[1], &c[1]
+            )
+        })
+        .into_owned();
+
+    // A widget cannot be printed at all: it is a document that only exists
+    // while something is running it. Its label is all paper can carry, and an
+    // empty box would say less than the dashed one saying so.
+    static WIDGET: OnceLock<Regex> = OnceLock::new();
+    let widget = WIDGET.get_or_init(|| {
+        Regex::new(r#"<div class="mz-embed mz-html[^"]*"[^>]*data-title="([^"]*)"[^>]*>.*?</div>"#)
+            .expect("static regex")
+    });
+    let out = widget
+        .replace_all(&out, |c: &regex::Captures| {
+            format!(
+                "<div class=\"mz-video-still\"><span>⧉</span><em>{}</em></div>",
+                &c[1]
             )
         })
         .into_owned();
@@ -2933,6 +2950,20 @@ mod tests {
         );
         assert!(out.contains("Interview"), "{out}");
         assert!(!out.contains("<audio"), "{out}");
+    }
+
+    /// A widget is the one thing on a slide that cannot be printed at all: it
+    /// is a document that only exists while something is running it. Paper
+    /// gets its label, in the same box a clip that cannot play gets.
+    #[test]
+    fn print_replaces_a_widget_with_its_label() {
+        let widget = "<div class=\"mz-embed mz-html\" data-title=\"Damped oscillation\">\
+                      <iframe src=\"data:text/html;charset=utf-8;base64,PGI+\"></iframe>\
+                      <button type=\"button\" class=\"mz-expand\">⛶</button></div>";
+        let out = videos_to_stills(widget);
+        assert!(out.contains("Damped oscillation"), "{out}");
+        assert!(!out.contains("<iframe"), "{out}");
+        assert!(!out.contains("<button"), "{out}");
     }
 
     #[test]

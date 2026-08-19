@@ -432,6 +432,45 @@ An audio file becomes a player labelled with its alt text, and
 +------------------+-----------------+
 |                  |                 |
 |                  |                 |
+|  desc            |  demo           |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Media]{.eyebrow}
+## A widget you can actually use
+:::
+
+::: pane desc {valign=middle}
+An HTML file becomes a frame the room can operate:
+
+```markdown
+![Damped oscillation](sandbox.html)
+```
+
+- Inlined script, stylesheet and all, so the deck is one file
+- Sandboxed: it runs, it cannot reach the slide
+- Its button expands it to the screen; `Esc` comes back
+- The PDF gets the label — paper runs nothing
+:::
+
+::: pane demo {valign=middle}
+![Damped oscillation, with frequency and damping to drag](media/sandbox.html)
+:::
+
+<!-- note: Drag either slider. The widget paints its own panel because it is a document of its own: it inherits none of the deck's colour or type. -->
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
 |  src             |  hero           |
 |                  |                 |
 |                  |                 |

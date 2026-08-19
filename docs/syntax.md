@@ -1108,6 +1108,46 @@ failed build, which is what a deck that has to survive a room with no Wi-Fi
 wants. A hosted video is the documented exception and stays silent — its player
 URL is one Mirzam wrote itself.
 
+## A widget the room can use
+
+An HTML file **becomes a frame the reader can operate**, without leaving the
+slide:
+
+```markdown
+![Damped oscillation](sandbox.html)
+```
+
+- The document is **inlined like every other asset**, and so is everything it
+  loads: the `src` of a script or an image, the `href` of a `<link>`, three
+  levels deep. A deck with a widget in it is still one file, and every file the
+  widget uses is watched, so editing its stylesheet rebuilds the deck.
+- The frame is **sandboxed**. Scripts, forms, dialogs and pop-ups run; the slide
+  around it is out of reach. A widget's stray `id` or global cannot collide with
+  the deck's, and the deck's stylesheet cannot restyle the widget.
+- It is **16:9 inside its pane** by default, like a hosted video; `{w=}` and
+  `{h=}` override that, and `{#id .class}` lands on the frame's wrapper.
+- The button in its top-right corner **expands it to the whole screen**, and
+  `Esc` — or the button again — gives the slide back. There is no key for it: a
+  slide may hold two widgets, and a key can name neither. Turning the page while
+  a widget is expanded closes it.
+- Clicking inside a widget never turns the page. While it holds focus the deck's
+  keys are the widget's, exactly as with a hosted video; the first click back on
+  the slide only returns focus.
+- **The PDF gets the label.** Paper runs nothing, so the export puts the alt text
+  in the same box a clip that cannot play gets.
+
+`.html` and `.htm` are the two extensions that mean this. A URL is not inlined —
+`![demo](https://host/widget.html)` is a frame fetched when the slide is shown,
+warned about like any other remote reference.
+
+A widget is a document of its own, which is the part worth remembering when you
+write one: it inherits none of the deck's type, colour or theme, and it does not
+follow the `D` key. Paint it yourself, or follow the reader's own
+`prefers-color-scheme`. An iframe's background is transparent until something
+paints it, so a widget that paints nothing sits on the deck's surface colour —
+which is a fine place to start, as long as its text is legible on light and dark
+alike.
+
 ## When a slide has too much on it
 
 By default a pane **clips** what does not fit. That keeps the layout you drew

@@ -13,7 +13,7 @@ const test = require("node:test");
 const assert = require("node:assert");
 const fs = require("fs");
 const path = require("path");
-const { references } = require("../src/references");
+const { references, htmlReferences, isWidget } = require("../src/references");
 
 const EXAMPLES = path.join(__dirname, "..", "..", "..", "examples");
 const read = (deck) => fs.readFileSync(path.join(EXAMPLES, deck), "utf8");
@@ -168,4 +168,29 @@ test("every path collected from a sample deck exists on disk", () => {
       assert.ok(fs.existsSync(abs), `${deck} references ${rel}, which does not exist`);
     }
   }
+});
+
+test("a widget is a file the host must read", () => {
+  assert.deepStrictEqual(references("![Damped oscillation](media/sandbox.html)\n"), [
+    "media/sandbox.html",
+  ]);
+  assert.ok(isWidget("media/sandbox.html"));
+  assert.ok(isWidget("w.HTM"));
+  assert.ok(!isWidget("chart.png"));
+});
+
+test("a widget's own script, stylesheet and pictures come with it", () => {
+  // The core walks an inlined document and asks the host for what it finds
+  // there. A form missing from this list previews as a widget with no styling
+  // and a script that never ran, while the CLI builds the same deck whole.
+  const html =
+    '<link rel="stylesheet" href="style.css"><img src="chart.png">' +
+    '<img srcset="wide.png 2x"><script src="../lib/plot.js"></script>' +
+    '<a href="https://example.com">out</a>';
+  assert.deepStrictEqual(htmlReferences(html).sort(), [
+    "../lib/plot.js",
+    "chart.png",
+    "style.css",
+    "wide.png",
+  ]);
 });

@@ -152,6 +152,16 @@ const MARKS: &[Mark] = &[
         shown_as: "?t=33",
     },
     Mark {
+        // A widget is an image reference like every other kind of media - what
+        // it becomes follows from what it points at - and the same rule that
+        // caught the hosted video applies: a form no deck shows is a form
+        // nobody has ever laid out.
+        source: "![Damped oscillation](media/sandbox.html)",
+        html: r#"class="mz-embed mz-html""#,
+        documented_as: "becomes a frame the reader can operate",
+        shown_as: "](media/sandbox.html)",
+    },
+    Mark {
         // A recording was the third thing in this file's own list of failures:
         // it rendered, it was documented, and no deck had one.
         source: "![Interview](media/talk.mp3)",

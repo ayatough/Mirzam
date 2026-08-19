@@ -778,6 +778,48 @@ video { background: #000; /* theme-independent: letterbox behind the frame */ bo
 }
 .mz-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 
+/* A widget: an HTML document the reader operates without leaving the slide. It
+   borrows the hosted video's box, because the problem is the same one - a frame
+   has no intrinsic size, so something has to give it one - and adds the control
+   a frame cannot offer from the inside.
+
+   A widget drawn at a third of the slide is enough to glance at and not enough
+   to use, and the deck's own `F` is no answer: it takes the whole page, widget
+   and slide and all, and a slide may hold two widgets. So the control rides on
+   the frame it expands, the way a video player's does, and a key names none of
+   them. */
+.mz-html > .mz-expand {
+  /* Top right, where a page's own controls are least likely to be: the
+     bottom of a widget is where its sliders and its readouts live, and the
+     button sat over them on the first thing anybody embedded. */
+  position: absolute; right: 8px; top: 8px; z-index: 1;
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; padding: 0; line-height: 1;
+  font: inherit; font-size: 16px; cursor: pointer;
+  color: var(--mz-ui-fg); background: var(--mz-ui-chip);
+  border: 1px solid var(--mz-ui-line); border-radius: 8px;
+  /* Present but quiet: a presenter has to be able to find it without moving the
+     mouse first, and it sits over somebody else's page the rest of the time. */
+  opacity: .5; transition: opacity .2s ease;
+}
+.mz-html:hover > .mz-expand, .mz-html > .mz-expand:hover,
+.mz-html > .mz-expand:focus-visible { opacity: 1; }
+/* Expanded, the wrapper is in the top layer: out from under the deck's own
+   scaling transform and measured against the screen instead of the slide. The
+   16:9 box it wears on the slide would letterbox itself inside a screen that is
+   already 16:9, so the ratio goes and the widget takes the glass. */
+.mz-embed.mz-html:fullscreen {
+  width: 100vw; height: 100vh; aspect-ratio: auto;
+  border: 0; border-radius: 0; background: var(--mz-slide-bg);
+}
+/* Same rule for Safari before 16.4, which fullscreens under its own name. A
+   selector a browser does not know invalidates the whole rule it is in, so
+   this one cannot join the block above. */
+.mz-embed.mz-html:-webkit-full-screen {
+  width: 100vw; height: 100vh; aspect-ratio: auto;
+  border: 0; border-radius: 0; background: var(--mz-slide-bg);
+}
+
 /* Video placeholder in PDF output, when no poster is given */
 .mz-video-still {
   display: flex; align-items: center; justify-content: center; gap: .6em;

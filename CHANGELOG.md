@@ -7,7 +7,19 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- **`![Damped oscillation](sandbox.html)` puts a working page on a slide.** An
+  HTML file becomes a frame the room can operate mid-talk: a simulator to drag,
+  a form to fill in, a demo to run, in the slide rather than in a browser
+  window somebody has to alt-tab to. The document is inlined like every other
+  asset, and so is everything it loads — a script, a stylesheet, an image,
+  three levels deep — so the deck is still one file and every file the widget
+  uses is watched. The frame is sandboxed: it runs, and it cannot reach the
+  slide around it. The button in its top-right corner expands it to the whole
+  screen and `Esc` gives the slide back; there is no key for it, because a
+  slide may hold two widgets. Clicking inside one never turns the page, and the
+  PDF gets the alt text, because paper runs nothing. The gallery deck has one
+  to drag.
 
 ## [0.8.0] - 2026-08-18
 
