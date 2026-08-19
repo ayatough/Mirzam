@@ -290,11 +290,11 @@ text  at(84%, 78%) "300 K" .small
 :::
 
 ::: pane fig {valign=middle}
-![Fig. 3 of the reference paper](media/paper-fig3.png){fit=contain}
+![Fig. 3 of the reference paper](media/paper-fig3.png){fit=contain credit="出典: [@readout2026] Fig. 3"}
 :::
 
 ::: pane read {valign=middle fit=shrink}
-論文[^ref1] では τ ≈ 5 µs で忠実度が[頭打ちになる]{#t-peak .u}と報告されている。
+元論文[@readout2026] では τ ≈ 5 µs で忠実度が[頭打ちになる]{#t-peak .u}と報告されている。
 本測定でも同じ位置に極大が出ており、以降の低下は $T_1$ 緩和で説明できる。
 
 $$
@@ -303,7 +303,6 @@ $$
 
 第2項が緩和による損失で、係数 $\alpha$ は $T_1$ から独立に決まる[^ref2]。
 
-[^ref1]: A. Researcher et al., *Dispersive readout with a parametric amplifier*, Phys. Rev. Applied **21**, 034001 (2026). https://doi.org/10.1103/PhysRevApplied.21.034001
 [^ref2]: B. Coauthor and C. Third, *Relaxation-limited readout*, arXiv:2601.00042.
 :::
 
@@ -316,7 +315,7 @@ circle 52,14 22x16 : id=peak label="τ ≈ 5 µs" step=1
 #t-peak -> #peak : color=@accent2
 ```
 
-<!-- note: 図は引用。出典は脚注に置き、スライド内で完結させる -->
+<!-- note: 図は引用。出典は図そのものの credit に置くので、薄字で図の下に出て、そのまま参考文献にも載る。脚注はこのスライド限りの補足([^ref2])だけに残した -->
 
 ---
 
@@ -340,7 +339,7 @@ circle 52,14 22x16 : id=peak label="τ ≈ 5 µs" step=1
 ```
 :::
 
-<!-- note: 前スライドの脚注とは別の道具。図の出典のようにそのスライドで完結するものは脚注、本文で何度も引く文献はここ。JPA の文献は 4 枚目と 5 枚目の両方から引いているので ↩ が二つ並ぶ -->
+<!-- note: 前スライドの脚注とは別の道具。そのスライドで完結する補足は脚注、本文や図の credit から引く文献はここ。JPA の文献は 4 枚目と 5 枚目の両方から引いているので ↩ が二つ並ぶ -->
 
 ---
 

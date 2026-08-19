@@ -40,6 +40,30 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   slide may hold two widgets. Clicking inside one never turns the page, and the
   PDF gets the alt text, because paper runs nothing. The gallery deck has one
   to drag.
+- **A picture says where it came from.** `caption=` and `credit=` on an image,
+  a video or an embed make it a figure with two lines under it: the caption in
+  the deck's own text, the credit a step smaller and in the muted colour — the
+  line an audience never reads out loud and a slide showing someone else's
+  figure has to carry anyway. A `[@key]` in a credit is an ordinary citation:
+  it numbers with the rest of the deck's, links to the `bibliography` block,
+  and the entry lists that slide among the ones that cited it — so quoting a
+  figure from a paper puts that paper in the references with nothing else to
+  write. Free text is a credit too (`credit="Photo: NASA/JPL"`), and without
+  `bibliography:` a key stays visible as written, the way it does in prose.
+  New dials `--mz-caption-size` (`.82em`) and `--mz-credit-size` (`.72em`);
+  the gallery deck shows it under "A picture says where it came from", and
+  `examples/seminar.md` now credits its quoted figure this way — the source
+  under the picture and in the list at the back, with the slide's footnote
+  kept for the remark that belongs to that slide alone.
+
+### Changed
+- **An attribute value may hold spaces if it is quoted**: `{caption="what it
+  shows"}`. The value used to stop at the first space, and the rest of the
+  sentence became attributes nobody wrote.
+- **`fit=contain` under a caption keeps the picture's own shape** rather than
+  filling the pane and letterboxing inside it, so the caption sits against the
+  picture's bottom edge instead of an inch below it. Without a caption nothing
+  changes.
 
 ## [0.8.0] - 2026-08-18
 
