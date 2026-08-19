@@ -47,6 +47,10 @@ jobs:
     # A fork has neither the write token nor a reason to push a GIF anywhere.
     if: github.repository == 'ayatough/Mirzam'
     runs-on: ubuntu-latest
+    # Recording is the slowest thing this repository asks a runner to do - a
+    # WASM build, a browser and ffmpeg - so the limit is looser than the rest,
+    # and still two hundredths of what a hang would otherwise cost.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -60,7 +64,24 @@ jobs:
       # `playwright-core` is not a repository dependency - see AGENTS.md - so
       # it is installed for the job and left out of the tree.
       - name: install the browser
-        run: npm i playwright-core && npx playwright install --with-deps chromium
+        # Bounded, and retried, because this step is where the runner hangs.
+        # A Pages build sat twenty minutes inside `--with-deps` on 2026-08-19
+        # while the identical step in CI finished in seventy-five seconds, and
+        # with no limit anywhere it would have held the deploy for the six
+        # hours GitHub allows a job by default. A hang is not a failure the
+        # shell can see, so each attempt is given five minutes of its own and
+        # the retry is what turns an infrastructure stall into a slow build
+        # rather than a lost one. Both commands are idempotent, so an attempt
+        # that got half way costs the next one nothing.
+        run: |
+          for attempt in 1 2 3; do
+            if timeout -k 30s 5m bash -c 'npm i playwright-core && npx playwright install --with-deps chromium'; then
+              exit 0
+            fi
+            echo "attempt $attempt did not finish inside five minutes; retrying"
+          done
+          echo "the browser would not install in three attempts"
+          exit 1
 
       # The one Playwright keeps beside its browsers is a stripped build with
       # neither `palettegen` nor `paletteuse`; the recorder detects that and

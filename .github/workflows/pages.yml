@@ -54,6 +54,10 @@ jobs:
     # could be tagged.
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    # A healthy deploy takes two to four minutes. Without a limit a stalled one
+    # holds the `pages` concurrency group - and with it every later deploy -
+    # until GitHub's six-hour default gives up.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -84,7 +88,24 @@ jobs:
       # `playwright-core` is not a repository dependency (see AGENTS.md); it is
       # installed for the job.
       - name: install the browser
-        run: npm i playwright-core && npx playwright install --with-deps chromium
+        # Bounded, and retried, because this step is where the runner hangs.
+        # A Pages build sat twenty minutes inside `--with-deps` on 2026-08-19
+        # while the identical step in CI finished in seventy-five seconds, and
+        # with no limit anywhere it would have held the deploy for the six
+        # hours GitHub allows a job by default. A hang is not a failure the
+        # shell can see, so each attempt is given five minutes of its own and
+        # the retry is what turns an infrastructure stall into a slow build
+        # rather than a lost one. Both commands are idempotent, so an attempt
+        # that got half way costs the next one nothing.
+        run: |
+          for attempt in 1 2 3; do
+            if timeout -k 30s 5m bash -c 'npm i playwright-core && npx playwright install --with-deps chromium'; then
+              exit 0
+            fi
+            echo "attempt $attempt did not finish inside five minutes; retrying"
+          done
+          echo "the browser would not install in three attempts"
+          exit 1
 
       - name: resolve version
         id: v
@@ -141,6 +162,8 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    # Handing an artifact to Pages, and nothing else.
+    timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}

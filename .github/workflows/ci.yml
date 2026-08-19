@@ -13,6 +13,11 @@ jobs:
   test:
     name: test & lint
     runs-on: ubuntu-latest
+    # The backstop against a runner that stops making progress. Every job here
+    # finishes in about two minutes warm, and the slowest cold build is nowhere
+    # near this; what the number is for is the case where a step hangs, which
+    # GitHub otherwise lets sit for six hours.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -42,6 +47,11 @@ jobs:
   versions:
     name: version consistency
     runs-on: ubuntu-latest
+    # The backstop against a runner that stops making progress. Every job here
+    # finishes in about two minutes warm, and the slowest cold build is nowhere
+    # near this; what the number is for is the case where a step hangs, which
+    # GitHub otherwise lets sit for six hours.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       # The version is written in five files. Nothing but somebody's memory
@@ -53,6 +63,11 @@ jobs:
   extension:
     name: editor host
     runs-on: ubuntu-latest
+    # The backstop against a runner that stops making progress. Every job here
+    # finishes in about two minutes warm, and the slowest cold build is nowhere
+    # near this; what the number is for is the case where a step hangs, which
+    # GitHub otherwise lets sit for six hours.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -68,6 +83,11 @@ jobs:
   msrv:
     name: minimum supported Rust
     runs-on: ubuntu-latest
+    # The backstop against a runner that stops making progress. Every job here
+    # finishes in about two minutes warm, and the slowest cold build is nowhere
+    # near this; what the number is for is the case where a step hangs, which
+    # GitHub otherwise lets sit for six hours.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       # `rust-version` in the root manifest is a promise to anyone building
@@ -84,6 +104,11 @@ jobs:
   layout:
     name: layout check
     runs-on: ubuntu-latest
+    # The backstop against a runner that stops making progress. Every job here
+    # finishes in about two minutes warm, and the slowest cold build is nowhere
+    # near this; what the number is for is the case where a step hangs, which
+    # GitHub otherwise lets sit for six hours.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -94,7 +119,24 @@ jobs:
       # Renders each deck in a browser and fails on clipped or overlapping
       # content - the class of bug HTML snapshots cannot see.
       - name: install browser
-        run: npm i playwright-core && npx playwright install --with-deps chromium
+        # Bounded, and retried, because this step is where the runner hangs.
+        # A Pages build sat twenty minutes inside `--with-deps` on 2026-08-19
+        # while the identical step in CI finished in seventy-five seconds, and
+        # with no limit anywhere it would have held the deploy for the six
+        # hours GitHub allows a job by default. A hang is not a failure the
+        # shell can see, so each attempt is given five minutes of its own and
+        # the retry is what turns an infrastructure stall into a slow build
+        # rather than a lost one. Both commands are idempotent, so an attempt
+        # that got half way costs the next one nothing.
+        run: |
+          for attempt in 1 2 3; do
+            if timeout -k 30s 5m bash -c 'npm i playwright-core && npx playwright install --with-deps chromium'; then
+              exit 0
+            fi
+            echo "attempt $attempt did not finish inside five minutes; retrying"
+          done
+          echo "the browser would not install in three attempts"
+          exit 1
       - name: check layout
         run: |
           node scripts/check-layout.mjs --build \
@@ -105,6 +147,11 @@ jobs:
   bench:
     name: benchmark
     runs-on: ubuntu-latest
+    # The backstop against a runner that stops making progress. Every job here
+    # finishes in about two minutes warm, and the slowest cold build is nowhere
+    # near this; what the number is for is the case where a step hangs, which
+    # GitHub otherwise lets sit for six hours.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -117,6 +164,11 @@ jobs:
   wasm:
     name: wasm build
     runs-on: ubuntu-latest
+    # The backstop against a runner that stops making progress. Every job here
+    # finishes in about two minutes warm, and the slowest cold build is nowhere
+    # near this; what the number is for is the case where a step hangs, which
+    # GitHub otherwise lets sit for six hours.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
