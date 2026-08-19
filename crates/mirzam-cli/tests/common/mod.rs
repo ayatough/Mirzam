@@ -34,7 +34,37 @@ pub const EXAMPLE_DECKS: &[&str] = &[
 
 /// Normalizes output for snapshot comparison.
 /// Data URIs (fonts, images, video) are reduced to their length to keep diffs readable.
+/// A Mermaid diagram is reduced to a marker: see [`without_diagrams`].
 pub fn normalize(html: &str) -> String {
+    without_diagrams(&without_data_uris(html))
+}
+
+/// Replaces each `mermaid` fence's output with a fixed marker.
+///
+/// The gallery deck holds one, and what it renders to depends on the machine:
+/// the SVG `mmdc` drew where mermaid-cli is installed, the fence as a code
+/// block where it is not. Neither belongs in a snapshot - the first is a
+/// picture this project did not draw and that changes with every mermaid
+/// release, the second is the absence of it - so both collapse to the same
+/// marker and the snapshot describes the deck instead of the machine.
+pub fn without_diagrams(html: &str) -> String {
+    const FORMS: [(&str, &str); 2] = [
+        ("<div class=\"mz-mermaid\">", "</svg></div>"),
+        ("<pre><code class=\"language-mermaid\">", "</code></pre>"),
+    ];
+    let mut out = html.to_string();
+    for (open, close) in FORMS {
+        while let Some(start) = out.find(open) {
+            let Some(end) = out[start..].find(close).map(|i| start + i + close.len()) else {
+                break;
+            };
+            out.replace_range(start..end, "<mermaid-diagram>");
+        }
+    }
+    out
+}
+
+fn without_data_uris(html: &str) -> String {
     let re = regex_lite(r"data:[a-z/+.-]+;base64,[A-Za-z0-9+/=]+");
     let mut out = String::with_capacity(html.len());
     let mut rest = html;

@@ -237,6 +237,15 @@ does not.
   ```
   The script is still the right tool for a screenshot or a recording, where the
   tab has to stay open — that is what `scripts/record-demo.mjs` uses.
+- **The gallery warns about its diagram unless you have mermaid-cli.**
+  `examples/04-components.md` holds a `mermaid` fence, so `build` and `check`
+  say `no diagram renderer found` on a machine without `mmdc` and show the
+  fence as a code block. That is the documented degradation and it fails
+  nothing: the golden snapshot normalizes the diagram away, so `cargo test`
+  passes either way. CI installs mermaid-cli in the layout job and holds that
+  one deck to `--strict`, which is what stops the site publishing the code
+  block. Install it (`npm install -g @mermaid-js/mermaid-cli`) only if you are
+  changing what the diagram looks like.
 - **An attribute span has to be on one line.** `[text]{.small}` split across a
   line break is not recognised and renders as literal `[text]{.small}` on the
   slide. The layout checker measures boxes, so it passes this happily — only

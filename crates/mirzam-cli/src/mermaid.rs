@@ -18,6 +18,12 @@ use mirzam_render::DiagramRenderer;
 use std::path::PathBuf;
 use std::process::Command;
 
+/// What `mmdc` is told about the browser it launches.
+///
+/// Only the sandbox flag, for the reason given where it is written out: a
+/// build running as root gets no browser at all without it.
+const PUPPETEER_CONFIG: &str = "{\"args\":[\"--no-sandbox\"]}";
+
 /// The environment variable naming an `mmdc` binary, for a machine where it is
 /// installed somewhere `PATH` does not reach — the same escape hatch
 /// `MIRZAM_CHROMIUM` is for the PDF exporter.
@@ -81,11 +87,24 @@ impl DiagramRenderer for Mmdc {
         let output = dir.path.join("diagram.svg");
         std::fs::write(&input, source).map_err(|e| format!("cannot write {input:?}: {e}"))?;
 
+        // `mmdc` draws the diagram in a headless Chromium of its own, and
+        // Chromium refuses to start as root without `--no-sandbox`. That is
+        // every container that runs its build as root - CI images, devcontainers
+        // - so without this a `mermaid` fence renders on a laptop and warns in
+        // Docker, which is the worst way for a feature to differ. The exporter
+        // and the checker already pass the same flag to the browser they drive;
+        // this is the only channel `mmdc` offers for it.
+        let puppeteer = dir.path.join("puppeteer.json");
+        std::fs::write(&puppeteer, PUPPETEER_CONFIG)
+            .map_err(|e| format!("cannot write {puppeteer:?}: {e}"))?;
+
         let out = Command::new(&self.program)
             .arg("--input")
             .arg(&input)
             .arg("--output")
             .arg(&output)
+            .arg("--puppeteerConfigFile")
+            .arg(&puppeteer)
             // Transparent, because the pane behind the diagram is the deck's
             // background and the diagram must not paint its own over it.
             .arg("--backgroundColor")
@@ -187,6 +206,42 @@ mod tests {
         assert_eq!(
             first_line("\nError: Parse error on line 2\n    at Object.parse\n"),
             ": Error: Parse error on line 2"
+        );
+    }
+
+    /// The browser flag is not advice: a `mermaid` fence in a root container
+    /// draws nothing without it, so the config file has to reach `mmdc` on
+    /// every render. A stub renderer copies whatever config it was handed into
+    /// the SVG it is asked for, which is how this reads the flag back out.
+    #[cfg(unix)]
+    #[test]
+    fn the_renderer_is_told_not_to_sandbox_the_browser() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = TempDir::new().expect("a directory");
+        let stub = dir.path.join("mmdc-stub.sh");
+        std::fs::write(
+            &stub,
+            "#!/bin/sh\n\
+             while [ $# -gt 0 ]; do\n\
+               case \"$1\" in\n\
+                 --output) out=\"$2\"; shift 2;;\n\
+                 --puppeteerConfigFile) cfg=\"$2\"; shift 2;;\n\
+                 *) shift;;\n\
+               esac\n\
+             done\n\
+             cat \"$cfg\" > \"$out\"\n",
+        )
+        .expect("the stub is written");
+        std::fs::set_permissions(&stub, std::fs::Permissions::from_mode(0o755))
+            .expect("the stub is executable");
+
+        let drawn = Mmdc { program: stub }
+            .render("flowchart LR\n  a --> b\n")
+            .expect("the stub renders");
+        assert!(
+            drawn.contains("--no-sandbox"),
+            "the puppeteer config never reached mmdc: {drawn}"
         );
     }
 

@@ -195,13 +195,11 @@ without a renderer gets a code block *and* a `build.mermaid` warning — while
 GitHub draws the same fence as a diagram natively. D2 arrives through the
 same `DiagramRenderer` trait once wanted; nothing else has to move.
 
-What has not happened is a sample deck that *shows* one: no `mermaid` fence
-appears in `examples/`, so the component gallery and the published site have
-nothing to point at, and the syntax reference is the only place a reader sees
-the feature at all. The reason is the renderer — no workflow installs `mmdc`,
-so a fence in a gallery deck would publish as a code block with a
-`build.mermaid` warning beside it. Showing it means installing mermaid-cli in
-the site and CI builds first; the gap is in the gallery, not in the feature.
+The gallery shows one as of the next release — "A diagram you did not draw" in
+`examples/04-components.md` — which took installing mermaid-cli in the CI and
+site builds, since a fence nothing draws publishes as a code block. The deck is
+held to `--strict` there, so that downgrade fails the build rather than the
+gallery quietly shipping source where a picture belongs.
 
 **More themes.** The contract for writing one landed: `theme:` takes a `.css`
 path as readily as a built-in name, a theme of your own registers under its
