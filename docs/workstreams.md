@@ -1539,7 +1539,12 @@ itself from the moment it opens.
 
 ## W25 — A language server: the editor understands the deck
 
-**Difficulty B · Sonnet · not started**
+**Difficulty B · Sonnet · stage 1 landed** — `mirzam lsp` publishes diagnostics
+and answers `documentSymbol`, over stdio, with no dependency and no browser.
+Ranges are placed by the quoted-token rule below. Stages 2 and 3 — completion,
+hover, definition, and the layout pass on request — are not started, and
+neither is the VS Code client: the extension previews as it always did and does
+not start the server yet.
 
 The VS Code extension previews a deck and understands nothing about it. Type
 `::: pane fig` when the grid drew `figure`, cite `[@wilson2021]` when the

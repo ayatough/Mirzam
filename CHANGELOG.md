@@ -41,6 +41,28 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   like the slide it pictures. CI runs it beside the layout check.
 
 ### Added
+- **`mirzam lsp` is a language server: the editor understands the deck.** An
+  editor starts it, sends the buffer as it is typed, and gets back the problems
+  the build would have reported — an unknown theme, a pane that is not in the
+  grid, a `<!-- layout: -->` naming no master — underlined where the mistake is,
+  plus an outline of the deck's slides for the outline pane and "go to symbol".
+  Every diagnostic carries the same stable kind `check --format json` gives it
+  (`build.layout`, `build.theme`, …), so an editor and an agent read one
+  vocabulary. It is a subcommand of the binary the release already ships, not a
+  second thing to install, and it adds no dependency: the protocol is JSON-RPC
+  over stdio, which is a header and a loop.
+
+  It never opens a browser, so the layout findings — content clipped by its
+  pane, panes overlapping — are still `check`'s and not reported as you type.
+  The underline is placed by looking for the word the message quotes, which is
+  exact when the message names something and falls back to the slide's first
+  line when it does not; the reference says so rather than implying more.
+
+  `node scripts/lsp-probe.mjs --outline deck.md` runs a whole session and
+  prints what the server said, so "does it work" is answerable before any
+  editor is configured — and CI runs the same probe over the sample decks.
+  Setup for Helix and Neovim is in the [quick start](docs/quickstart.md); the
+  VS Code extension does not start it yet.
 - **The gallery draws a Mermaid diagram.** `mermaid` fences have rendered since
   `v0.7.0` and no sample deck had one, so the feature existed in the syntax
   reference and nowhere a reader could look at it. `04-components` now carries

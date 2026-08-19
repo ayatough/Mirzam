@@ -79,6 +79,26 @@ jobs:
       # from the CLI. No dependencies - it is node's own test runner.
       - name: extension host tests
         run: node --test editors/vscode/test/*.test.js
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      # The other half of the editor's story: a language server has no output
+      # of its own, so the only way to know it still speaks is to speak to it.
+      # The probe runs a whole session against every sample deck and fails if
+      # any of them draws a diagnostic - which also makes it the check that a
+      # sample deck is clean by more than the golden test's reckoning. No
+      # browser: the layout findings are not this server's to report.
+      #
+      # `04-components` is the one deck left out: it holds a `mermaid` fence,
+      # and this job has no renderer, so it would report the documented
+      # degradation as a problem. The layout job installs mermaid-cli and
+      # holds that deck to `--strict` instead.
+      - name: the language server answers, and the samples are clean
+        run: |
+          node scripts/lsp-probe.mjs --expect-clean \
+            examples/01-start.md examples/02-writing.md examples/03-layout.md \
+            examples/05-motion.md examples/06-theming.md \
+            examples/pitch.md examples/research.md examples/seminar.md \
+            examples/slideshow.md
 
   msrv:
     name: minimum supported Rust

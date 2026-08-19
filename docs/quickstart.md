@@ -7,6 +7,7 @@ Five ways in, depending on what you have. Pick the first row that describes you.
 | A browser | **[the browser editor](https://ayatough.github.io/Mirzam/try/)** | A finished `.html` deck, no install, works on a phone |
 | A terminal | **the `mirzam` CLI** | Everything: live preview, PDF export, includes, local images |
 | VS Code | **the preview extension** | The deck beside the Markdown, re-rendering as you type |
+| Helix, Neovim, anything | **`mirzam lsp`** | Diagnostics as you type, and an outline of the slides |
 | Obsidian | **your vault** | Write there, build with the CLI or the browser editor |
 | A coding agent | **`mirzam skill install`** | Claude Code writes the deck and checks its own layout |
 
@@ -113,7 +114,68 @@ only the slide you touched, and moving the cursor scrolls the preview to match.
 The extension bundles the WebAssembly core, so it does not shell out to the CLI
 — but the CLI is still what exports PDFs.
 
-## 4. In Obsidian
+## 4. In any editor — diagnostics as you type
+
+`mirzam lsp` is a language server: an editor starts it, sends it the buffer as
+you type, and gets back the problems the build would have reported — an unknown
+theme, a pane that is not in the grid, a `<!-- layout: -->` naming no master, a
+citation key nothing defines — each underlined where the mistake is, plus an
+outline of the deck's slides. It reads; it never writes to your files, and it
+never opens a browser, so the layout checks (content clipped by its pane, panes
+overlapping) are still `mirzam check`.
+
+**See it work without configuring anything.** A language server prints nothing
+on its own — started by hand it just sits there — so there is a probe that runs
+one whole session and shows you the answer:
+
+```bash
+node scripts/lsp-probe.mjs --outline deck.md
+```
+
+```
+deck.md
+  deck.md:3:8    build.theme   unknown theme `nosuchtheme`; using `mirzam`. …
+  deck.md:19:10  build.layout  slide 1: pane `figure` is not in the layout
+  outline:
+    7: Opening
+    25: Second slide
+```
+
+If that prints your deck's problems, the server works and anything left is
+editor configuration.
+
+**Helix** — in `~/.config/helix/languages.toml`:
+
+```toml
+[[language]]
+name = "markdown"
+language-servers = ["mirzam"]
+
+[language-server.mirzam]
+command = "mirzam"
+args = ["lsp"]
+```
+
+**Neovim** (0.11 or newer), in your config:
+
+```lua
+vim.lsp.config.mirzam = { cmd = { "mirzam", "lsp" }, filetypes = { "markdown" } }
+vim.lsp.enable("mirzam")
+```
+
+**Zed** — it takes a language server through an extension, so for now use the
+probe or one of the editors above.
+
+**VS Code** — the preview extension does not start it yet; that is the next
+piece of this work. Until then the probe and `mirzam check` are the way.
+
+Two things to know about what it reports. Diagnostics are **warnings, never
+errors**: a deck with a problem still renders, and that is deliberate
+everywhere in this tool. And the underline is placed by looking for the word
+the message quotes, so it is exact when the message names something (`` `fig`
+``, `` `nord2` ``) and falls back to the slide's first line when it does not.
+
+## 5. In Obsidian
 
 Mirzam has no Obsidian plugin. It does not need one to *write* in: every
 extension degrades to something harmless in a plain Markdown editor, and the
@@ -130,7 +192,7 @@ So: keep the deck in your vault, write it there, and build it with the CLI
 pointed at the vault path — or paste it into the browser editor when you are
 away from your machine.
 
-## 5. On a phone
+## 6. On a phone
 
 - **Writing:** the browser editor, above. It is the whole toolchain. **New**
   starts an empty deck, which is how you begin one on a phone.
@@ -139,7 +201,7 @@ away from your machine.
 - **Presenting from it:** the deck is one file, so AirDrop or a cloud folder is
   the entire deployment step.
 
-## 6. With a coding agent
+## 7. With a coding agent
 
 If Claude Code writes your decks, give it the markup and the checker in one
 command, from the repository the decks live in:
