@@ -1259,7 +1259,8 @@ Attention replaced recurrence[^vas], and the same block pretrains[^dev].
 A bare DOI or arXiv URL becomes a link on its own. See
 [`examples/seminar.md`](../examples/seminar.md) for the shape of a reading-group
 talk: a figure quoted from the paper, annotated and pointed at from the prose,
-with its citation at the foot of the same slide.
+credited under the picture, with a remark that belongs to that slide alone at
+the foot of it.
 
 For a source cited on several slides — where the note would have to be repeated
 on each of them, or written once and unreachable from the others — use
@@ -1343,10 +1344,10 @@ the picture rather than in prose: `credit="Fig. 3 of [@key]"` — see [a caption
 and where the picture came from](#a-caption-and-where-the-picture-came-from).
 
 [`examples/seminar.md`](../examples/seminar.md) shows both halves of the
-question in one talk: the quoted figure's source stays in a footnote on the
-slide that shows the figure, and the papers the argument leans on are cited
-with `[@key]` from three different slides and listed at the back. Its `.bib`
-carries a Japanese-authored entry, which is where `[山田+24]` comes from.
+question in one talk: the quoted figure names its source in a `credit=` under
+the picture and the paper lands in the list at the back like any other, while
+the footnote on that slide is kept for the remark that belongs to it alone. Its
+`.bib` carries a Japanese-authored entry, which is where `[山田+24]` comes from.
 
 ### What the mark says
 

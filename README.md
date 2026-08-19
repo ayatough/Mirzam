@@ -230,7 +230,7 @@ source beside the slides is the example.
 |---|---|
 | [`examples/pitch.md`](examples/pitch.md) | A sales pitch: metric tiles, charts from CSV, the project's own theme in dark |
 | [`examples/research.md`](examples/research.md) | A research report: maths, a chart, and a bibliography cited from four slides |
-| [`examples/seminar.md`](examples/seminar.md) | The same shape in Japanese: maths, a quoted figure, footnotes beside a cited bibliography, CJK typography |
+| [`examples/seminar.md`](examples/seminar.md) | The same shape in Japanese: maths, a quoted figure credited under the picture, a footnote beside a cited bibliography, CJK typography |
 
 ```bash
 cargo run --bin mirzam -- build examples/01-start.md -o out && open out/index.html

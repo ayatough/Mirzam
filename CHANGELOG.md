@@ -19,7 +19,10 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   write. Free text is a credit too (`credit="Photo: NASA/JPL"`), and without
   `bibliography:` a key stays visible as written, the way it does in prose.
   New dials `--mz-caption-size` (`.82em`) and `--mz-credit-size` (`.72em`);
-  the gallery deck shows it under "A picture says where it came from".
+  the gallery deck shows it under "A picture says where it came from", and
+  `examples/seminar.md` now credits its quoted figure this way — the source
+  under the picture and in the list at the back, with the slide's footnote
+  kept for the remark that belongs to that slide alone.
 
 ### Changed
 - **An attribute value may hold spaces if it is quoted**: `{caption="what it
