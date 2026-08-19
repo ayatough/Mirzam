@@ -81,6 +81,7 @@ there is. The model column follows from that:
 | W22 | One door to a deck's look: `theme:` absorbs `css:` | B | Opus | — | ✅ |
 | W23 | Mermaid diagrams, rendered at build time | B | Opus | — | ✅ |
 | W24 | Autoplay: the deck turns its own pages | C | Fable | — | ✅ |
+| W25 | A language server: the editor understands the deck | B | Sonnet | W7, W21 | |
 
 ### What is deferred, and why
 
@@ -1535,6 +1536,118 @@ the clock:
 snapshots: `05-motion.html` (the syntax slide) and `slideshow.html` — the use
 case as a whole deck, full-bleed photos with captions animating in, playing
 itself from the moment it opens.
+
+## W25 — A language server: the editor understands the deck
+
+**Difficulty B · Sonnet · not started**
+
+The VS Code extension previews a deck and understands nothing about it. Type
+`::: pane fig` when the grid drew `figure`, cite `[@wilson2021]` when the
+bibliography spells it `wilson2022`, name a master that does not exist — and
+the way you find out is by looking at what rendered. That is a build telling
+you what an editor should have told you as you typed it.
+
+**Most of this is already computed.** The stream is smaller than it sounds,
+because the analysis exists and only the channel is missing:
+
+- **The diagnostics exist.** `mirzam check --format json` already emits
+  `{kind, severity, message, slide, pane, file, line}` for every build warning
+  and every layout finding, in one array, under the stable kind vocabulary W21
+  wrote down in [agents.md](agents.md) — `build.layout`, `build.bibliography`,
+  `build.master`, `build.theme`, and the rest. An unknown citation key, a pane
+  an `anim` block names that the grid does not, a `<!-- layout: -->` naming no
+  master: each is a warning today.
+- **The positions exist.** W7's source map answers in byte offsets;
+  `BuildOutput::slide_origin` and `pane_origin` turn a slide or a pane into a
+  file and an offset through transclusion, and `check.rs`'s `LineIndex` turns
+  that into a line.
+- **The deck structure exists.** `mirzam-wasm`'s `slide_at_offset` maps a
+  cursor back to the slide it is in, and `outline()` returns each slide's pane
+  names — written, as its doc comment says, "for outlines and diagnostics".
+- **No browser is involved.** Only the layout half of `check` drives Chromium,
+  and that half is not on-keystroke work. Everything above is a parse: 500
+  slides build in 76 ms and a single-slide edit in 3.2 ms, so a whole-deck
+  reanalysis on a keystroke is affordable at any deck size anyone has.
+
+### Where it lives, and what it costs
+
+**`mirzam lsp`, a subcommand — not a second binary.** The release matrix
+already builds and ships `mirzam` for every platform, and `install.sh` already
+puts it on a machine; a separate `mirzam-lsp` artifact would double that matrix
+for one feature. The extension spawns the binary it finds and offers language
+features when it can. When it cannot, the preview keeps working exactly as it
+does today: that runs the WASM core in a webview and needs nothing installed,
+and this stream must not change that.
+
+**No new dependency.** LSP is JSON-RPC over stdio with `Content-Length`
+framing; `serde_json` is already a dependency of `mirzam-cli`, and the framing
+is a header parser and a loop. `tower-lsp` brings tokio to a server whose whole
+job is a parse measured in microseconds, and `lsp-server` is a dependency for a
+protocol that can be read off its specification. Same reasoning that left
+`serve` on `tiny_http` and gave `mermaid.rs` its own six-line `TempDir`.
+
+**The range problem, and the answer that is affordable.** A build warning knows
+its slide, not its token: `WarningSite` carries the file and the offset of the
+slide's *first character*. Published as-is, every diagnostic would underline
+forty lines, which is worse than none. Threading a span through every warning
+means changing the `Vec<String>` that every crate produces warnings into —
+that is the honest fix, it is a stream of its own, and it is not this one.
+
+What is affordable is that **the message already quotes what is wrong**:
+"`[@nosuchkey2099]` is in no bibliography entry", "pane `fig` is not in the
+layout", "unknown theme `nord2`". Take the first backticked token in the
+message, find it in that slide's source, and that is the range; where nothing
+is quoted, fall back to the slide's first line. First occurrence wins, and the
+reference documents it as approximate rather than selling it as exact. It costs
+nothing and it does not block the real fix later.
+
+### Stages
+
+**1. Diagnostics and the outline.** `initialize`, `didOpen`/`didChange`/
+`didClose`, `publishDiagnostics` from the build warnings with the ranges above,
+and `documentSymbol` from the slides and their headings — which also gives the
+editor's outline pane and "go to symbol" for free. Debounced; one whole-deck
+analysis per settled keystroke, not per character.
+
+**2. Completion, hover, definition.** Completion for the names a deck refers to
+by name and mistypes silently: pane names from the nearest `pane` block, anchor
+ids, BibTeX keys, master names, theme names and the `.css` paths beside them,
+effect keys. Hover for what a name stands for: a variable's evaluated value, a
+`[@key]`'s full entry, a chart column's shape. Definition for `![[file.md]]`, a
+master, a theme file, and an id from the mark that points at it.
+
+**3. The layout pass, on request.** Clipped and overlapping content needs the
+browser, so it is a command — `Mirzam: Check layout` — that runs the same
+`check` and publishes its findings as diagnostics beside the others. Never on a
+keystroke, and never a reason for the server to hold a browser open.
+
+**Stops at:** reading. No formatting (the source is prose; reflowing it is a
+change nobody asked for), no rename, no code actions that rewrite a file —
+writing to an author's files is W8's territory and its rules apply there, not
+here.
+
+**Testing.** Every request is a pure function from source text to JSON, so the
+suite is ordinary Rust tests with no editor in the loop; the client side stays
+in `node --test editors/vscode/test/*.test.js`.
+
+**A later cleanup this makes possible.** `editors/vscode/src/references.js`
+re-implements "which files does this deck name" in JavaScript, and its own
+comment says the list has to be changed in step with what the core resolves. A
+custom request could retire that duplication — but the webview asks the
+question before a server is guaranteed to be there, so it is a cleanup after
+the fact, not a goal of this stream.
+
+**Why it is worth doing at all**, given that the [market survey](reports/2026-08-market-survey.md)
+never lists it: the one competitor with a real editor story rather than a
+preview pane is Typst, through its language server, and it is a named reason
+people stay with it. Marp and Slidev ship VS Code extensions that render.
+Nobody in the Markdown-slide field ships a server, which also means every
+Neovim, Helix and Zed user in the developer-talk audience this tool courts is
+currently unserved by everyone.
+
+**Owns:** `crates/mirzam-cli/src/lsp.rs`, `crates/mirzam-cli/src/main.rs` (the
+subcommand), `editors/vscode/src/extension.js` (the client). Touches no
+rendered output, so it conflicts with no snapshot.
 
 ## W5 — Typst-flavoured math ✅
 
