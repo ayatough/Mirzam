@@ -189,7 +189,8 @@ section.slide { background: var(--mz-slide-bg); border-radius: inherit; }
   display: flex; flex-direction: column; justify-content: center;
 }
 /* The title slide dims its subtitle, which is the wrong contrast over a photo. */
-section.slide:has(.title-slide) .bg-text-light p { color: rgba(255,255,255,.82); } /* theme-independent: over a photo */
+section.slide:has(.title-slide) .bg-text-light p,
+.mz-ov-slide:has(.title-slide) .bg-text-light p { color: rgba(255,255,255,.82); } /* theme-independent: over a photo */
 
 /* The type ladder. Every step is a dial, and every dial carries as its
    fallback exactly what this file declared before it was one — so a deck whose
@@ -478,14 +479,24 @@ dl > dd:last-child::after { content: none; }
 .metric-up { color: var(--mz-chart3); }
 .metric-label { font-size: 1em; color: var(--mz-muted); margin-top: .3em; }
 
-/* Title slide */
-section.slide:has(.title-slide) .grid {
+/* Title slide.
+   Every one of these is written twice, because the overview draws a *copy* of
+   a slide rather than the slide, and the copy is not a `section.slide` — the
+   grid strips that class so nothing else treats a picture of a slide as one.
+   A rule spelled only the first way is a rule the thumbnail quietly loses, and
+   that is exactly what happened here: the title slide was centred and huge on
+   screen and top-left and ordinary in the grid, on every deck. Anything that
+   describes what a slide *looks like* therefore names both. */
+section.slide:has(.title-slide) .grid,
+.mz-ov-slide:has(.title-slide) .grid {
   place-items: center; text-align: center;
   grid-template: 1fr / 1fr;
 }
-section.slide:has(.title-slide) .pane { overflow: visible; }
+section.slide:has(.title-slide) .pane,
+.mz-ov-slide:has(.title-slide) .pane { overflow: visible; }
 /* except a background pane, which has to clip its photo */
-section.slide:has(.title-slide) .pane.has-bg { overflow: hidden; }
+section.slide:has(.title-slide) .pane.has-bg,
+.mz-ov-slide:has(.title-slide) .pane.has-bg { overflow: hidden; }
 /* The deck's one oversized heading. Weight and tracking fall through to the
    `h1` dials when a theme sets nothing here, so a theme that has one answer
    for display type does not have to give it twice. */
@@ -495,7 +506,8 @@ section.slide:has(.title-slide) .pane.has-bg { overflow: hidden; }
   letter-spacing: var(--mz-title-tracking, var(--mz-h1-tracking, .01em));
   border: none;
 }
-section.slide:has(.title-slide) p { color: var(--mz-muted); font-size: 1.5em; }
+section.slide:has(.title-slide) p,
+.mz-ov-slide:has(.title-slide) p { color: var(--mz-muted); font-size: 1.5em; }
 
 /* Deck chrome: the footer and slide number `footer:` and `slide-number:` ask
    for, on every slide and in the PDF. It sits inside the band the grid already
@@ -1110,6 +1122,10 @@ html.mz-no-chrome #chrome { display: none; }
 .mz-ov-item[aria-current] .mz-ov-frame { border-color: var(--mz-accent1); border-width: 2px; }
 .mz-ov-stage { position: absolute; top: 0; left: 0; transform-origin: top left; }
 .mz-ov-slide { position: absolute; inset: 0; display: block; color: var(--mz-fg); background: var(--mz-slide-bg); }
+/* A thumbnail is a picture, and a picture answers nothing. A frame inside one
+   still takes the mouse, so the widget on a slide swallowed the click meant for
+   the cell it sits in and that part of the contents page did nothing at all. */
+.mz-ov-slide iframe { pointer-events: none; }
 .mz-ov-cap {
   display: block; margin-top: 6px; font-size: 13px; line-height: 1.4;
   color: var(--mz-ui-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;

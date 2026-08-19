@@ -7,6 +7,26 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+### Fixed
+- **`O` opens the grid on every deck again.** A cell in the overview is a
+  button, and a slide may hold a button of its own — a widget's expand control,
+  or one an author wrote in raw HTML. The parser ends the enclosing button the
+  moment it meets a nested one, so the caption span landed outside the item it
+  captioned, captioning threw, and the whole grid stayed shut: `O` did nothing
+  at all on the component gallery. Each thumbnail is now filled after its cell
+  exists rather than as part of the markup the cell is parsed from.
+- **A title slide is pictured the way it is drawn.** The rules that centre it
+  name `section.slide`, which a thumbnail deliberately is not, so on every deck
+  the opening slide was centred and huge on screen and top-left and ordinary in
+  the grid. Anything that describes what a slide *looks like* now names both.
+- **A thumbnail answers the click anywhere on it.** A frame inside one — a
+  widget, a hosted video — took the mouse for itself, leaving a hole in the
+  contents page where clicking did nothing.
+- `scripts/check-viewer.mjs` is why these three will not come back: it opens
+  every sample deck in a browser, presses the key, and checks that the grid
+  opened, that it has one thumbnail per slide, and that each one is laid out
+  like the slide it pictures. CI runs it beside the layout check.
+
 ### Added
 - **`![Damped oscillation](sandbox.html)` puts a working page on a slide.** An
   HTML file becomes a frame the room can operate mid-talk: a simulator to drag,

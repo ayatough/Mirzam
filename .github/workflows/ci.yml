@@ -143,6 +143,16 @@ jobs:
             examples/01-start.md examples/02-writing.md examples/03-layout.md \
             examples/04-components.md examples/05-motion.md examples/06-theming.md \
             examples/pitch.md examples/research.md examples/seminar.md
+      # And the viewer's own behaviour, which the layout check cannot see: it
+      # measures the slide, not what happens when somebody presses a key. `O`
+      # threw on the gallery deck and did nothing at all, with correct markup
+      # and every slide fitting.
+      - name: check the viewer
+        run: |
+          node scripts/check-viewer.mjs --build \
+            examples/01-start.md examples/02-writing.md examples/03-layout.md \
+            examples/04-components.md examples/05-motion.md examples/06-theming.md \
+            examples/pitch.md examples/research.md examples/seminar.md
 
   bench:
     name: benchmark

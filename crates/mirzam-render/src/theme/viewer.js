@@ -745,10 +745,10 @@
     const ss = slides();
     const cells = ss
       .map(
-        (s, i) =>
+        (_, i) =>
           `<button class="mz-ov-item" type="button" data-go="${i}">` +
           `<span class="mz-ov-frame" style="aspect-ratio:${W} / ${H}">` +
-          `<span class="mz-ov-stage" style="width:${W}px;height:${H}px">${pristine[i] || s.outerHTML}</span>` +
+          `<span class="mz-ov-stage" style="width:${W}px;height:${H}px"></span>` +
           '</span><span class="mz-ov-cap"></span></button>',
       )
       .join('');
@@ -757,6 +757,19 @@
       `<input id="mz-ov-go" type="number" min="1" max="${ss.length}" placeholder="Go to…" aria-label="Go to slide number">` +
       '<button type="button" data-ov-close>Close</button></div>' +
       `<div class="mz-ov-grid">${cells}</div>`;
+
+    // The slide goes in *after* the cell exists, and never as part of the
+    // markup the cell is parsed from. A cell is a button, a slide may hold a
+    // button of its own - a widget's expand control, or one an author wrote in
+    // raw HTML - and the parser ends the enclosing button the moment it meets a
+    // nested one. The caption span then landed *outside* the item it captioned,
+    // captioning threw on the first slide that had one, and the whole grid
+    // stayed shut: `O` did nothing at all on the component gallery. Assigning
+    // each stage separately parses the slide against the stage, where no button
+    // is open, and the DOM keeps what the parser would have taken apart.
+    overview.querySelectorAll('.mz-ov-stage').forEach((stage, i) => {
+      stage.innerHTML = pristine[i] || (ss[i] ? ss[i].outerHTML : '');
+    });
 
     // A clone is a picture of a slide, not a slide: strip what would make
     // anything else treat it as one, and stop it playing to itself.
@@ -774,6 +787,9 @@
     // An embed would fetch itself once per thumbnail, on a network the venue
     // may not have.
     for (const f of overview.querySelectorAll('iframe')) f.removeAttribute('src');
+    // A control in a picture is not a control: a widget's expand button belongs
+    // to the frame it expands, and here that frame is a thumbnail of one.
+    for (const x of overview.querySelectorAll('.mz-expand')) x.remove();
 
     // The caption is the slide's own heading, which is what makes this list a
     // contents page rather than a wall of numbers.
