@@ -18,7 +18,8 @@ pub struct Attrs {
 
 pub fn parse_attrs(src: &str) -> Attrs {
     let mut a = Attrs::default();
-    for token in src.split_whitespace() {
+    for token in attr_tokens(src) {
+        let token = token.as_str();
         if let Some(id) = token.strip_prefix('#') {
             a.id = Some(id.to_string());
         } else if let Some(cls) = token.strip_prefix('.') {
@@ -28,6 +29,37 @@ pub fn parse_attrs(src: &str) -> Attrs {
         }
     }
     a
+}
+
+/// Splits an attribute list on whitespace, except inside `"..."`.
+///
+/// A value that is a phrase — `caption="Fig. 3, redrawn"` — has to survive as
+/// one token, and until this existed it did not: the value stopped at the first
+/// space and the rest of the sentence became attributes nobody wrote. A quote
+/// that never closes runs to the end of the list, which is the reading that
+/// keeps the author's text rather than scattering it.
+fn attr_tokens(src: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut cur = String::new();
+    let mut quoted = false;
+    for c in src.chars() {
+        match c {
+            '"' => {
+                quoted = !quoted;
+                cur.push(c);
+            }
+            c if c.is_whitespace() && !quoted => {
+                if !cur.is_empty() {
+                    out.push(std::mem::take(&mut cur));
+                }
+            }
+            c => cur.push(c),
+        }
+    }
+    if !cur.is_empty() {
+        out.push(cur);
+    }
+    out
 }
 
 impl Attrs {
@@ -266,6 +298,13 @@ fn image_attrs(line: &str) -> String {
         let attrs = parse_attrs(braces.map(|m| m.as_str()).unwrap_or(""));
         let mut style = String::new();
         match attrs.kv.get("fit").map(String::as_str) {
+            // `contain` under a caption is the one that changes shape: filling
+            // the pane and letterboxing inside it leaves the caption stranded
+            // an inch below the picture it belongs to. The figure is already a
+            // box of the right size, so the picture takes its own aspect
+            // inside it (`max-*` comes from `base.css`) and its caption sits
+            // against its bottom edge, which is where a caption goes.
+            Some("contain") if is_figure(&attrs) => style.push_str("object-fit:contain;"),
             Some("contain") => style.push_str("object-fit:contain;width:100%;height:100%;"),
             Some("cover") => style.push_str("object-fit:cover;width:100%;height:100%;"),
             _ => {}
@@ -284,21 +323,62 @@ fn image_attrs(line: &str) -> String {
         } else {
             format!(" style=\"{style}\"")
         };
-        if is_video(src) {
-            return video_html(src, &alt, &attrs, &style_attr);
-        }
-        if is_audio(src) {
-            return audio_html(src, &alt, &attrs);
-        }
-        if let Some(hosted) = embed_url(src) {
-            return embed_html(&hosted, src, &alt, &attrs);
-        }
-        format!(
-            "<img src=\"{src}\" alt=\"{alt}\"{}{style_attr}>",
-            attrs.html_id_class()
-        )
+        let media = if is_video(src) {
+            video_html(src, &alt, &attrs, &style_attr)
+        } else if is_audio(src) {
+            audio_html(src, &alt, &attrs)
+        } else if let Some(hosted) = embed_url(src) {
+            embed_html(&hosted, src, &alt, &attrs)
+        } else {
+            format!(
+                "<img src=\"{src}\" alt=\"{alt}\"{}{style_attr}>",
+                attrs.html_id_class()
+            )
+        };
+        figure(media, &attrs)
     })
     .into_owned()
+}
+
+/// Whether this media reference asked for a caption or a credit.
+fn is_figure(attrs: &Attrs) -> bool {
+    ["caption", "credit"]
+        .iter()
+        .any(|k| attrs.kv.get(*k).is_some_and(|v| !v.is_empty()))
+}
+
+/// `caption=` and `credit=` turn a picture into a figure.
+///
+/// Two lines under the media, because they answer two questions and an
+/// audience reads them differently: the caption says what is being shown and is
+/// the author's own sentence, the credit says where it came from and is set
+/// small and quiet — an attribution nobody should have to read out loud, but
+/// which has to be *there*, on the slide the picture is on.
+///
+/// A `[@key]` inside either is an ordinary citation by then: the citation pass
+/// runs over the slide's Markdown before this one, so the credit already
+/// carries the mark it will resolve to, and the entry lands in the deck's
+/// bibliography with this slide among its backlinks. Without a `bibliography:`
+/// the key stays visible as written, which is what the mark does anywhere else.
+///
+/// Media with neither attribute is handed back untouched, so nothing about a
+/// picture without a credit changes.
+fn figure(media: String, attrs: &Attrs) -> String {
+    if !is_figure(attrs) {
+        return media;
+    }
+    let line = |class: &str, text: &Option<&String>| match text {
+        Some(t) if !t.is_empty() => {
+            format!("<span class=\"{class}\">{}</span>", render_inline(t))
+        }
+        _ => String::new(),
+    };
+    let caption = line("mz-fig-caption", &attrs.kv.get("caption"));
+    let credit = line("mz-fig-credit", &attrs.kv.get("credit"));
+    format!(
+        "<figure class=\"mz-figure\">{media}\
+         <figcaption class=\"mz-figcaption\">{caption}{credit}</figcaption></figure>"
+    )
 }
 
 fn extension_of(src: &str) -> Option<String> {
@@ -1320,6 +1400,68 @@ mod tests {
         let out = preprocess("![alt](img/a.png){fit=contain}\n");
         assert!(out.contains("<img src=\"img/a.png\""));
         assert!(out.contains("object-fit:contain"));
+    }
+
+    #[test]
+    fn caption_and_credit_make_a_figure() {
+        let out =
+            preprocess("![alt](img/a.png){caption=\"What it shows\" credit=\"Photo: NASA/JPL\"}\n");
+        assert!(out.contains("<figure class=\"mz-figure\">"));
+        assert!(out.contains("<span class=\"mz-fig-caption\">What it shows</span>"));
+        assert!(out.contains("<span class=\"mz-fig-credit\">Photo: NASA/JPL</span>"));
+    }
+
+    #[test]
+    fn a_credit_alone_is_a_figure_with_one_line() {
+        let out = preprocess("![alt](img/a.png){credit=\"Photo: NASA\"}\n");
+        assert!(out.contains("mz-fig-credit"));
+        assert!(!out.contains("mz-fig-caption"));
+    }
+
+    #[test]
+    fn a_picture_with_neither_is_not_a_figure() {
+        let out = preprocess("![alt](img/a.png){w=60%}\n");
+        assert!(!out.contains("<figure"));
+    }
+
+    /// The mark is already a marker by the time this pass runs — the citation
+    /// pass goes first — so a credit carries whatever the deck resolves it to.
+    #[test]
+    fn a_citation_in_a_credit_survives_into_the_caption() {
+        let out = preprocess("![alt](img/a.png){credit=\"Fig. 3 of <!--mz-cite:doe-->\"}\n");
+        assert!(out.contains("Fig. 3 of <!--mz-cite:doe-->"));
+    }
+
+    /// Without this the value stopped at the first space and `it` and `shows`
+    /// became attributes of their own.
+    #[test]
+    fn an_attribute_value_may_hold_spaces() {
+        let a = parse_attrs("#fig .wide caption=\"what it shows\" w=60%");
+        assert_eq!(
+            a.kv.get("caption").map(String::as_str),
+            Some("what it shows")
+        );
+        assert_eq!(a.kv.get("w").map(String::as_str), Some("60%"));
+        assert_eq!(a.id.as_deref(), Some("fig"));
+        assert_eq!(a.classes, vec!["wide"]);
+    }
+
+    /// `contain` under a caption keeps the picture's own shape, so the caption
+    /// sits against its bottom edge rather than below a letterboxed box.
+    #[test]
+    fn fit_contain_under_a_caption_does_not_fill_the_pane() {
+        let plain = preprocess("![alt](img/a.png){fit=contain}\n");
+        assert!(plain.contains("height:100%"));
+        let captioned = preprocess("![alt](img/a.png){fit=contain caption=\"x\"}\n");
+        assert!(captioned.contains("object-fit:contain"));
+        assert!(!captioned.contains("height:100%"));
+    }
+
+    #[test]
+    fn a_video_takes_a_credit_too() {
+        let out = preprocess("![clip](media/a.webm){credit=\"Blender Foundation\"}\n");
+        assert!(out.contains("<figure class=\"mz-figure\">"));
+        assert!(out.contains("<video"));
     }
 
     #[test]

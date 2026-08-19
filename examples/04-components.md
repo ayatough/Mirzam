@@ -801,9 +801,48 @@ and the same block pretrains[@devlin2019].
 
 Both are read the way Tufte would draw them[@tufte2001].
 
-*Each mark jumps to the list on the next slide, and each entry jumps back to
+*Each mark jumps to the list two slides on, and each entry jumps back to
 every slide that cited it.*
 :::
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
+|  desc            |  fig            |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[References]{.eyebrow}
+## A picture says where it came from
+:::
+
+::: pane desc {valign=middle}
+```markdown
+![Fig. 3](fig3.png){caption="What it shows"}
+![Fig. 3](fig3.png){credit="[@vaswani2017]"}
+```
+
+- `caption=` is the author's sentence about the picture; `credit=` is where it
+  came from, set small and quiet under it. Either, or both on one reference
+- A `[@key]` in a credit is a citation like any other: it numbers with the
+  rest, and the entry lists this slide among the ones that cited it
+- Free text works too — `credit="Photo: NASA/JPL"`
+:::
+
+::: pane fig {valign=middle}
+![Figure quoted from the paper](media/paper-fig3.png){fit=contain caption="Readout fidelity against integration time" credit="Fig. 3 of [@vaswani2017], redrawn"}
+:::
+
+<!-- note: The credit is the line an audience never reads out loud and a slide has to carry anyway. It is why the entry on the next slide has two backlinks and not one. -->
 
 ---
 
@@ -828,7 +867,7 @@ every slide that cited it.*
 ```
 :::
 
-<!-- note: Numbered in the order they were first cited. The ↩ after each entry is the slide it was cited on; on this deck they all point back one slide. -->
+<!-- note: Numbered in the order they were first cited. The ↩ after each entry is the slide it was cited on; the first entry points at two of them, because the figure's credit cites it too. -->
 
 ---
 

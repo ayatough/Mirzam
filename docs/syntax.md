@@ -785,6 +785,43 @@ video is replaced by its poster, or a placeholder if none was given.
 Prefer `webm` for distribution: Chromium builds without proprietary codecs cannot
 play H.264.
 
+#### A caption, and where the picture came from
+
+```markdown
+![Fig. 3](img/fig3.png){fit=contain caption="Readout fidelity against integration time" credit="Fig. 3 of [@vaswani2017], redrawn"}
+```
+
+Either attribute makes the reference a `<figure>` with the two lines under it:
+
+| Attribute | Is | Set |
+|---|---|---|
+| `caption=` | the author's sentence about the picture | in the deck's text colour |
+| `credit=` | where the picture came from | a step smaller, in the muted colour |
+
+They are two lines because they answer two questions, and an audience reads
+them differently. The caption is part of the talk. The credit is the line
+nobody reads out loud and every slide showing someone else's picture has to
+carry anyway — so it is there, under the picture, and quiet.
+
+**A `[@key]` inside either is an ordinary citation.** It takes the next number,
+links to the [`bibliography` block](#the-list), and the entry lists this slide
+among the ones that cited it — a figure quoted from a paper puts that paper in
+the deck's references by being credited, with nothing else to write. Without
+`bibliography:` in the frontmatter the key stays visible as written, the same
+way a `[@key]` in prose does. Free text is a credit too:
+`credit="Photo: NASA/JPL-Caltech"`.
+
+**A value with a space in it goes in `"quotes"`**, and the whole reference has
+to fit on one source line, like every other attribute list.
+
+With `fit=contain` the picture takes its own shape inside the pane rather than
+filling it, so the caption sits against the picture's own bottom edge instead
+of an inch below a letterboxed one. Both lines are centred under the picture
+when they fit on one line, and read from their own left edge when they wrap.
+
+**`--mz-caption-size`** (default `.82em`) and **`--mz-credit-size`** (default
+`.72em`) set how large the two lines are, on the pane, the deck or a theme.
+
 #### A `<picture>` that picks art by colour scheme
 
 The markup a README uses so its logo survives GitHub's dark theme is rewritten
@@ -1300,6 +1337,10 @@ backlink. In the PDF the backlink is still the slide number, so it says
 something on paper where there is nothing to click.
 
 A block with nothing to list renders as nothing, the way an empty `toc` does.
+
+A figure's source is the third place a citation belongs, and it is written on
+the picture rather than in prose: `credit="Fig. 3 of [@key]"` — see [a caption,
+and where the picture came from](#a-caption-and-where-the-picture-came-from).
 
 [`examples/seminar.md`](../examples/seminar.md) shows both halves of the
 question in one talk: the quoted figure's source stays in a footnote on the

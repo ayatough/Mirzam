@@ -172,6 +172,7 @@ All of CommonMark, plus GFM tables, strikethrough and task lists. Beyond that:
 | `$E = mc^2$`, `$$…$$` | math, converted to MathML at build time |
 | `[^k]` … `[^k]: …` | a footnote landing on **that slide** |
 | `[@key]` | a reference from `bibliography:`, listed by a `bibliography` block |
+| `{credit="[@key]"}` | where a picture came from, under it in small muted type |
 | `![[file.md]]` | transclusion |
 | `***` | a horizontal rule |
 | ` ```rust ` | a code block, syntax highlighted at build time |
@@ -190,6 +191,7 @@ not write a palette into the deck.
 [a phrase]{#anchor .u}
 ![Figure](img/a.png){#fig1 fit=contain w=80%}
 ![Demo](media/demo.webm){.autoplay .loop .controls poster=media/first.png}
+![Fig. 3](img/a.png){caption="What it shows" credit="Fig. 3 of [@vaswani2017]"}
 ```
 
 `#id` names an element so `connect`, `anim` and `annotate` can target it. One
@@ -207,6 +209,12 @@ colours are theme tokens, so they survive dark mode.
 `mp4`, `webm`, `ogv`, `mov` become `<video>`; everything else stays an image.
 An audio file becomes a player; a YouTube or Vimeo page URL becomes an embed
 (the one thing in a deck that is not self-contained). Prefer `webm`.
+
+`caption=` and `credit=` make the reference a `<figure>`: the caption is the
+sentence about the picture, the credit is where it came from, set small and
+muted under it. A `[@key]` in either is an ordinary citation — it numbers with
+the rest and the entry lists that slide among its backlinks. A value with
+spaces goes in `"quotes"`.
 
 ## `chart` — inside a pane
 

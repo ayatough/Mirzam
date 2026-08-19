@@ -103,6 +103,7 @@ email.
 | **Video, audio and embeds** | Files inlined; YouTube and Vimeo embedded, with a link in the PDF |
 | **Citations** | `[^key]` footnotes land at the foot of the slide that cites them |
 | **References** | `[@key]` against a BibTeX file; the `bibliography` block lists what was cited, links each mark to it and each entry back to the slides that cited it |
+| **A picture's source** | `caption=` and `credit=` under a figure — the credit small and quiet, and a `[@key]` in it joins the deck's references like any other citation |
 | **A contents page that writes itself** | `toc` collects the deck's headings, links each to its slide, and marks the section you are in |
 | **Nothing silently lost** | `fit: shrink` scales an overfull pane down instead of clipping it |
 | **Your break, not the box's** | `<!-- next -->` carries one pane on to the next slide while the rest hold still |

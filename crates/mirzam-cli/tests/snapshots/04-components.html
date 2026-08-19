@@ -414,26 +414,48 @@ draw them<span class="tok-string">[@tufte2001]</span>.
 the frontmatter. <code>[^key]</code> is still there for
 a remark that belongs to one slide.</p>
 </div>
-<div class="pane pane-out" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><p>Attention replaced recurrence<span class="mz-cite">[<a href="#20">1</a>]</span>,
-and the same block pretrains<span class="mz-cite">[<a href="#20">2</a>]</span>.</p>
-<p>Both are read the way Tufte would draw them<span class="mz-cite">[<a href="#20">3</a>]</span>.</p>
-<p><em>Each mark jumps to the list on the next slide, and each entry jumps back to
+<div class="pane pane-out" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><p>Attention replaced recurrence<span class="mz-cite">[<a href="#21">1</a>]</span>,
+and the same block pretrains<span class="mz-cite">[<a href="#21">2</a>]</span>.</p>
+<p>Both are read the way Tufte would draw them<span class="mz-cite">[<a href="#21">3</a>]</span>.</p>
+<p><em>Each mark jumps to the list two slides on, and each entry jumps back to
 every slide that cited it.</em></p>
 </div>
 </div>
 </section>
 <section class="slide" data-index="19">
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "desc fig"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">References</span></p>
+<h2>A picture says where it came from</h2>
+</div>
+<div class="pane pane-desc" data-pane="desc" style="grid-area:desc;display:flex;flex-direction:column;justify-content:center"><pre><code class="language-markdown"><span class="tok-string">![Fig. 3]</span>(fig3.png){caption=&quot;What it shows&quot;}
+<span class="tok-string">![Fig. 3]</span>(fig3.png){credit=&quot;<span class="tok-string">[@vaswani2017]</span>&quot;}
+</code></pre>
+<ul>
+<li><code>caption=</code> is the author's sentence about the picture; <code>credit=</code> is where it
+came from, set small and quiet under it. Either, or both on one reference</li>
+<li>A <code>[@key]</code> in a credit is a citation like any other: it numbers with the
+rest, and the entry lists this slide among the ones that cited it</li>
+<li>Free text works too — <code>credit=&quot;Photo: NASA/JPL&quot;</code></li>
+</ul>
+</div>
+<div class="pane pane-fig" data-pane="fig" style="grid-area:fig;display:flex;flex-direction:column;justify-content:center"><figure class="mz-figure"><img src="<data-uri len=78378>" alt="Figure quoted from the paper" style="object-fit:contain;"><figcaption class="mz-figcaption"><span class="mz-fig-caption">Readout fidelity against integration time</span><span class="mz-fig-credit">Fig. 3 of <span class="mz-cite">[<a href="#21">1</a>]</span>, redrawn</span></figcaption></figure>
+</div>
+</div>
+<aside class="notes"><p>The credit is the line an audience never reads out loud and a slide has to carry anyway. It is why the entry on the next slide has two backlinks and not one.</p>
+</aside>
+</section>
+<section class="slide" data-index="20">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:2fr 3fr;grid-template-areas:"head" "refs"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">References</span></p>
 <h2>The list writes itself</h2>
 </div>
-<div class="pane pane-refs" data-pane="refs" style="grid-area:refs"><ul class="mz-bib"><li id="mz-bib-vaswani2017"><span class="mz-bib-mark">[1]</span><span class="mz-bib-entry">Vaswani, Shazeer, Parmar et al. <em>Attention Is All You Need</em>. NeurIPS, 2017. <a href="https://arxiv.org/abs/1706.03762">arXiv:1706.03762</a></span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#19">19</a></span></li><li id="mz-bib-devlin2019"><span class="mz-bib-mark">[2]</span><span class="mz-bib-entry">Devlin, Chang, Lee et al. <em>BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding</em>. NAACL, 2019. <a href="https://arxiv.org/abs/1810.04805">arXiv:1810.04805</a></span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#19">19</a></span></li><li id="mz-bib-tufte2001"><span class="mz-bib-mark">[3]</span><span class="mz-bib-entry">Tufte. <em>The Visual Display of Quantitative Information</em>. Graphics Press, 2001.</span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#19">19</a></span></li></ul>
+<div class="pane pane-refs" data-pane="refs" style="grid-area:refs"><ul class="mz-bib"><li id="mz-bib-vaswani2017"><span class="mz-bib-mark">[1]</span><span class="mz-bib-entry">Vaswani, Shazeer, Parmar et al. <em>Attention Is All You Need</em>. NeurIPS, 2017. <a href="https://arxiv.org/abs/1706.03762">arXiv:1706.03762</a></span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#19">19</a>, <a href="#20">20</a></span></li><li id="mz-bib-devlin2019"><span class="mz-bib-mark">[2]</span><span class="mz-bib-entry">Devlin, Chang, Lee et al. <em>BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding</em>. NAACL, 2019. <a href="https://arxiv.org/abs/1810.04805">arXiv:1810.04805</a></span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#19">19</a></span></li><li id="mz-bib-tufte2001"><span class="mz-bib-mark">[3]</span><span class="mz-bib-entry">Tufte. <em>The Visual Display of Quantitative Information</em>. Graphics Press, 2001.</span><span class="mz-bib-back" aria-label="cited on">↩ <a href="#19">19</a></span></li></ul>
 </div>
 </div>
-<aside class="notes"><p>Numbered in the order they were first cited. The ↩ after each entry is the slide it was cited on; on this deck they all point back one slide.</p>
+<aside class="notes"><p>Numbered in the order they were first cited. The ↩ after each entry is the slide it was cited on; the first entry points at two of them, because the figure's credit cites it too.</p>
 </aside>
 </section>
-<section class="slide" data-index="20">
+<section class="slide" data-index="21">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:3fr 1fr;grid-template-areas:"main" "foot"'>
 <div class="pane pane-main" data-pane="main" style="grid-area:main;text-align:center;display:flex;flex-direction:column;justify-content:center"><h2>That is the whole vocabulary</h2>
 <p><code>pane</code> · <code>::: pane</code> · <code>chart</code> · <code>shape</code> · <code>connect</code> · <code>annotate</code> · <code>bibliography</code> · attributes · variables</p>

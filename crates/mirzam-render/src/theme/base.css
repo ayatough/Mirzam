@@ -695,6 +695,45 @@ ul.mz-bib .mz-bib-back a {
 }
 
 img, video { max-width: 100%; max-height: 100%; }
+/* A picture with `caption=` or `credit=` on it. Two lines under the media,
+   because a slide has two different things to say about a picture and only one
+   of them is the author's own sentence: the caption names what is being shown,
+   the credit says where it came from. The credit is set small and muted for the
+   same reason the citation mark is - it has to be on the slide the picture is
+   on, and it must not compete with it.
+
+   The figure is a flex column so the media keeps whatever height the caption
+   does not take. The shrink is what makes that true: a picture taller than the
+   box - a tall photograph, or `fit=cover`, which does still ask for the whole
+   of it - would otherwise take the full height and push its own caption off
+   the bottom edge. */
+figure.mz-figure {
+  display: flex; flex-direction: column; gap: .4em;
+  margin: 0; min-width: 0; min-height: 0; max-width: 100%;
+}
+figure.mz-figure > img, figure.mz-figure > video,
+figure.mz-figure > .mz-embed, figure.mz-figure > .mz-video-still {
+  min-height: 0; flex-shrink: 1; margin-inline: auto;
+}
+/* A figure alone in a pane is the pane's content, so it takes the pane's
+   height and hands what it does not need to the picture. Anywhere else it is
+   as tall as what is in it, exactly like the bare image it wraps. */
+.pane > figure.mz-figure:only-child,
+.mz-bg-content > figure.mz-figure:only-child { height: 100%; }
+/* Centred as a box, not as text: a caption short enough to sit under a centred
+   picture centres with it, and one long enough to wrap fills the width and
+   reads from its own left edge like any other sentence. */
+figcaption.mz-figcaption {
+  display: flex; flex-direction: column; align-items: center; gap: .15em;
+  line-height: 1.4; flex: none; max-width: 100%;
+}
+figcaption.mz-figcaption > span { max-width: 100%; }
+.mz-fig-caption { font-size: var(--mz-caption-size, .82em); color: var(--mz-fg); }
+/* The credit, quieter than the caption by a step in both size and colour. A
+   `[@key]` in it resolves to the deck's own citation mark, which brings its own
+   accent colour with it - so this sets what is around the mark, not the mark. */
+.mz-fig-credit { font-size: var(--mz-credit-size, .72em); color: var(--mz-muted); }
+.mz-fig-credit a { color: inherit; overflow-wrap: anywhere; }
 /* An image alone in a paragraph is a figure, not a word. Laying it out as a
    block drops the baseline gap that otherwise pushes it past the pane. */
 p > img:only-child, p > video:only-child,

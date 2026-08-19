@@ -60,8 +60,10 @@ function references(source) {
 
   // Attribute values that name a file: a pane's background photograph, one per
   // colour mode, and a video's poster frame. Read from inside an attribute
-  // block, because `poster=` is also a thing prose says; the block is one line
-  // and the core splits it on whitespace, so a value never contains a space.
+  // block, because `poster=` is also a thing prose says; the block is one line,
+  // and while a quoted value may hold spaces now (`caption="what it shows"`),
+  // none of the ones read here name a file, so an unquoted run is still what a
+  // path looks like.
   const block = /\{[^{}\n]*\}/g;
   const attribute = /\b(?:bg|bg-light|bg-dark|poster)=([^\s}]+)/g;
   let brace;
