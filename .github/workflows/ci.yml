@@ -137,6 +137,26 @@ jobs:
           done
           echo "the browser would not install in three attempts"
           exit 1
+      # The component gallery holds a `mermaid` fence, and a fence nothing draws
+      # is a code block: the layout check would otherwise measure a deck no
+      # reader gets. `mmdc` brings its own Chromium through puppeteer rather
+      # than reusing the one above - twenty-odd seconds and half a gigabyte of
+      # runner disk, against a version pairing that has to keep agreeing for
+      # nothing in return.
+      #
+      # `@mermaid-js/mermaid-cli` is not a repository dependency either (see
+      # AGENTS.md); it is installed for the job.
+      - name: install the diagram renderer
+        run: |
+          npm i @mermaid-js/mermaid-cli
+          echo "MIRZAM_MMDC=$PWD/node_modules/.bin/mmdc" >> "$GITHUB_ENV"
+      # A renderer that did not run is a silent downgrade: the deck still
+      # builds, the fence stays a code block, and every check below passes on a
+      # deck nobody publishes. `--strict` is the flag that exists for exactly
+      # this - it fails a build that produced any warning at all - and the
+      # gallery is the deck held to it, because it is the one with a fence.
+      - name: the gallery's diagram is drawn, not quoted
+        run: cargo run -q --bin mirzam -- build examples/04-components.md -o "$(mktemp -d)" --strict
       - name: check layout
         run: |
           node scripts/check-layout.mjs --build \

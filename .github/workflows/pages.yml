@@ -107,6 +107,16 @@ jobs:
           echo "the browser would not install in three attempts"
           exit 1
 
+      # The component gallery holds a `mermaid` fence, and the site is where the
+      # drawn form is supposed to be shown: without `mmdc` here the published
+      # gallery carries a code block instead. It brings its own Chromium, for
+      # the reason CI's layout job gives. A tag built from before the fence
+      # existed simply never asks for the renderer.
+      - name: install the diagram renderer
+        run: |
+          npm i @mermaid-js/mermaid-cli
+          echo "MIRZAM_MMDC=$PWD/node_modules/.bin/mmdc" >> "$GITHUB_ENV"
+
       - name: resolve version
         id: v
         run: |

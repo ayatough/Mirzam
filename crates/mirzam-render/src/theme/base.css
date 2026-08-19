@@ -906,6 +906,17 @@ svg.mz-chart { width: 100%; height: 100%; max-height: 100%; }
 .mz-mermaid { width: 100%; display: flex; align-items: center; justify-content: center; min-height: 0; }
 svg.mz-mermaid-svg { width: 100%; height: auto; max-width: 100%; max-height: 100%; }
 svg.mz-mermaid-svg foreignObject div { color: var(--mz-fg); }
+/* A label in the diagram is HTML inside a `foreignObject`, which means every
+   rule the deck writes for a paragraph reaches it - and the box drawn around
+   that label was measured by the renderer, in the renderer's own type. `p, li`
+   alone makes the text a third larger than the box it has to sit in, so the
+   label is clipped mid-word. The deck gives a diagram its colours; the
+   renderer keeps its metrics. */
+svg.mz-mermaid-svg foreignObject p,
+svg.mz-mermaid-svg foreignObject li,
+svg.mz-mermaid-svg foreignObject span {
+  font-size: 1em; line-height: inherit; letter-spacing: normal; margin: 0;
+}
 
 /* Shape layer (build-time SVG) and connector layer (drawn at runtime).
    The default shape fill is a theme token: see theme/themes/*.css. */

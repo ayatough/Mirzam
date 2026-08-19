@@ -8,6 +8,19 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Fixed
+- **A diagram label is no longer clipped by the box around it.** Mermaid draws
+  its labels as HTML inside a `foreignObject`, which means the deck's own rules
+  for a paragraph reached them — and `p, li { font-size: 1.35em }` made every
+  label a third larger than the box the renderer had measured for it, so
+  `deck.md` read `deck.n` and every node in the diagram lost its last letters.
+  The deck gives a diagram its colours; its metrics are the renderer's, and are
+  now left alone.
+- **A `mermaid` fence draws in a container that runs as root.** `mmdc` starts a
+  Chromium of its own, and Chromium refuses to run as root without
+  `--no-sandbox` — so every CI image and devcontainer got the code-block
+  fallback and a warning, where the same deck drew a diagram on a laptop. The
+  flag now goes to `mmdc` the way it already went to the browser the exporter
+  and the checker drive.
 - **`O` opens the grid on every deck again.** A cell in the overview is a
   button, and a slide may hold a button of its own — a widget's expand control,
   or one an author wrote in raw HTML. The parser ends the enclosing button the
@@ -28,6 +41,16 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   like the slide it pictures. CI runs it beside the layout check.
 
 ### Added
+- **The gallery draws a Mermaid diagram.** `mermaid` fences have rendered since
+  `v0.7.0` and no sample deck had one, so the feature existed in the syntax
+  reference and nowhere a reader could look at it. `04-components` now carries
+  "A diagram you did not draw": a five-node flowchart in the deck's own colours,
+  following `D` into dark mode beside the shapes it is contrasted with. The
+  layout check and the site build install mermaid-cli, and that one deck is
+  built with `--strict`, so a renderer that did not run fails CI instead of
+  publishing the fence as a code block. Nothing changes for a machine without
+  `mmdc`: the deck degrades as documented, and the golden snapshot normalizes
+  the diagram away so `cargo test` needs no Node program.
 - **`![Damped oscillation](sandbox.html)` puts a working page on a slide.** An
   HTML file becomes a frame the room can operate mid-talk: a simulator to drag,
   a form to fill in, a demo to run, in the slide rather than in a browser

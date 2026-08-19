@@ -23,10 +23,19 @@ fn examples_match_snapshots() {
         let out = mirzam_cli::pipeline::build_deck(&example(deck), &mut cache)
             .unwrap_or_else(|e| panic!("failed to build {deck}: {e}"));
 
+        // One exception to warning-free: the gallery's `mermaid` fence tells a
+        // machine with no mermaid-cli that it stayed a code block. That is a
+        // fact about the machine, not about the deck - and the snapshot
+        // normalizes the diagram away for the same reason - so a laptop
+        // without the renderer still runs this suite.
+        let warnings: Vec<&String> = out
+            .warnings
+            .iter()
+            .filter(|w| !w.contains("no diagram renderer found"))
+            .collect();
         assert!(
-            out.warnings.is_empty(),
-            "{deck} produced warnings; samples are expected to be warning-free: {:?}",
-            out.warnings
+            warnings.is_empty(),
+            "{deck} produced warnings; samples are expected to be warning-free: {warnings:?}"
         );
 
         let actual = normalize(&out.sections.concat());
@@ -70,7 +79,7 @@ fn example_slide_counts() {
         ("01-start.md", 6),
         ("02-writing.md", 11),
         ("03-layout.md", 14),
-        ("04-components.md", 23),
+        ("04-components.md", 24),
         ("05-motion.md", 11),
         ("06-theming.md", 16),
         ("pitch.md", 9),

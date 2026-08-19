@@ -872,7 +872,8 @@ its value label, so animating a mark moves the number with the bar.
 ## Mermaid diagrams
 
 A ```mermaid fence is drawn at build time and inlined as SVG, so the deck stays
-one self-contained file and no diagram library ships to the browser.
+one self-contained file and no diagram library ships to the browser. The
+component gallery has one under "A diagram you did not draw".
 
 ````markdown
 ```mermaid

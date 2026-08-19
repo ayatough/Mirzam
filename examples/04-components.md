@@ -235,6 +235,47 @@ text at(50%, 88%) "percentages of the pane, not the page" .small
 +------------------+-----------------+
 |                  |                 |
 |                  |                 |
+|  text            |  fig            |
+|                  |                 |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Diagrams]{.eyebrow}
+## A diagram you did not draw
+:::
+
+::: pane text {valign=middle}
+The two before this one were placed by hand, which is what you want when the arrows mean something. This one is a `mermaid` fence: the graph says what connects to what, and the layout is somebody else's problem.
+
+It is drawn **at build time** by [mermaid-cli], inlined as SVG in the deck's own colours - so it follows `D` into dark mode like everything else, and the deck is still one file. Without `mmdc` installed the fence stays a code block and the build says so; GitHub draws that same fence as a diagram anyway.
+
+[mermaid-cli]: https://github.com/mermaid-js/mermaid-cli
+:::
+
+::: pane fig {valign=middle}
+```mermaid
+flowchart LR
+  MD["deck.md"] --> P["parse"]
+  P --> L["layout"]
+  L --> R["render"]
+  R --> H["deck.html"]
+  R --> PDF["deck.pdf"]
+```
+:::
+
+<!-- note: The renderer is a Node program the CLI shells out to, which is why it is not in the browser build. -->
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------+-----------------+
+|                  |                 |
+|                  |                 |
 |  type            |  math           |
 |                  |                 |
 |                  |                 |
