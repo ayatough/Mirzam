@@ -68,7 +68,11 @@ def measure(cmd, cwd=None, env=None):
 
 # --------------------------------------------------------------------------
 # Deck generators. The three sources must say the same thing; a difference in
-# content is a difference in the measurement.
+# content is a difference in the measurement. The math slide carries five
+# formulas rather than the eight `mirzam-bench` uses, because Touying spills a
+# slide that does not fit onto a second page - eight formulas made every Typst
+# run render twice the deck the other two rendered, and lose the comparison for
+# a reason that had nothing to do with speed.
 # --------------------------------------------------------------------------
 
 def mirzam_deck(slides: int, profile: str) -> str:
@@ -93,9 +97,9 @@ def mirzam_deck(slides: int, profile: str) -> str:
                 "",
             ]
         else:
-            for j in range(1, 6):
-                out += [f"Paragraph {j}: $\\alpha_{{{i}}}^{{{j}}} + \\frac{{x}}{{y}}$", ""]
             for j in range(1, 4):
+                out += [f"Paragraph {j}: $\\alpha_{{{i}}}^{{{j}}} + \\frac{{x}}{{y}}$", ""]
+            for j in range(1, 3):
                 out += [f"$$\\int_0^{{{j}}} e^{{-x^2}} dx$$", ""]
     return "\n".join(out) + "\n"
 
@@ -122,9 +126,9 @@ def marp_deck(slides: int, profile: str) -> str:
                 "",
             ]
         else:
-            for j in range(1, 6):
-                out += [f"Paragraph {j}: $\\alpha_{{{i}}}^{{{j}}} + \\frac{{x}}{{y}}$", ""]
             for j in range(1, 4):
+                out += [f"Paragraph {j}: $\\alpha_{{{i}}}^{{{j}}} + \\frac{{x}}{{y}}$", ""]
+            for j in range(1, 3):
                 out += [f"$$\\int_0^{{{j}}} e^{{-x^2}} dx$$", ""]
     return "\n".join(out) + "\n"
 
@@ -157,9 +161,9 @@ def typst_deck(slides: int, profile: str) -> str:
                 "",
             ]
         else:
-            for j in range(1, 6):
-                out += [f"Paragraph {j}: $alpha_({i})^({j}) + x/y$", ""]
             for j in range(1, 4):
+                out += [f"Paragraph {j}: $alpha_({i})^({j}) + x/y$", ""]
+            for j in range(1, 3):
                 out += [f"$ integral_0^{j} e^(-x^2) dif x $", ""]
     return "\n".join(out) + "\n"
 
