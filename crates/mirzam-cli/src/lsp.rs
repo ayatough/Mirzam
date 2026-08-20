@@ -20,7 +20,7 @@
 use crate::pipeline::{self, warning_kind, BuildOutput, RenderCache};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
-use std::io::{BufRead, Write};
+use std::io::{BufRead, Read, Write};
 use std::path::{Path, PathBuf};
 
 /// Speaks the protocol on stdin and stdout until the client says `exit`.
@@ -451,6 +451,13 @@ fn publish(file: &Path, diagnostics: Vec<Value>) -> Value {
 
 // ---- transport ----
 
+/// How long a header line may be before the stream stops looking like a
+/// client's. Real ones are `Content-Length: 1234`.
+const MAX_HEADER_BYTES: u64 = 8 * 1024;
+/// And how large a message body may claim to be. A deck is text; sixty-four
+/// megabytes of it is already far past anything anyone edits.
+const MAX_BODY_BYTES: u64 = 64 * 1024 * 1024;
+
 /// Reads one message, or `None` once the client has closed its end.
 ///
 /// The framing is the whole of it: headers, a blank line, then exactly
@@ -460,10 +467,21 @@ fn read_message(input: &mut impl BufRead) -> Result<Option<Value>, String> {
     let mut length = None;
     loop {
         let mut line = String::new();
-        match input.read_line(&mut line) {
+        // Bounded, because `read_line` on a stream that never sends a newline
+        // buffers the whole stream: `mirzam lsp < /dev/zero` reached half a
+        // gigabyte in three seconds at 99% of a core. No editor does that, but
+        // a wrong pipe is not an editor, and the answer to one is an error
+        // rather than a machine slowing down.
+        match (&mut *input).take(MAX_HEADER_BYTES).read_line(&mut line) {
             Ok(0) => return Ok(None),
             Ok(_) => {}
             Err(e) => return Err(format!("cannot read from the client: {e}")),
+        }
+        if line.len() as u64 == MAX_HEADER_BYTES && !line.ends_with('\n') {
+            return Err(format!(
+                "a header line ran past {MAX_HEADER_BYTES} bytes with no end - \
+                 this is not a language client's stream"
+            ));
         }
         let line = line.trim_end_matches(['\r', '\n']);
         if line.is_empty() {
@@ -476,6 +494,13 @@ fn read_message(input: &mut impl BufRead) -> Result<Option<Value>, String> {
     let Some(length) = length else {
         return Err("a message arrived with no Content-Length".into());
     };
+    // A length is a promise about a buffer this process is about to allocate,
+    // and a garbled one promises whatever the digits happen to say.
+    if length as u64 > MAX_BODY_BYTES {
+        return Err(format!(
+            "a message claimed {length} bytes, past the {MAX_BODY_BYTES}-byte limit"
+        ));
+    }
     let mut body = vec![0u8; length];
     input
         .read_exact(&mut body)
@@ -735,6 +760,27 @@ mod tests {
         assert_eq!(back["hello"], "デッキ");
         // And the end of the stream is an end, not an error.
         assert_eq!(read_message(&mut reader).expect("read"), None);
+    }
+
+    /// The failure this guard is for is not hypothetical: before it,
+    /// `mirzam lsp < /dev/zero` grew half a gigabyte in three seconds,
+    /// because a line with no end is a line `read_line` keeps buffering.
+    #[test]
+    fn a_stream_that_never_ends_a_line_is_an_error_not_a_swelling_buffer() {
+        let endless = std::io::repeat(b'x');
+        let mut reader = std::io::BufReader::new(endless);
+        let answer = read_message(&mut reader);
+        assert!(
+            answer.is_err_and(|e| e.contains("not a language client's stream")),
+            "an endless header line should be refused"
+        );
+    }
+
+    #[test]
+    fn a_body_larger_than_the_limit_is_refused_before_it_is_allocated() {
+        let framed = format!("Content-Length: {}\r\n\r\n", MAX_BODY_BYTES + 1);
+        let mut reader = std::io::BufReader::new(framed.as_bytes());
+        assert!(read_message(&mut reader).is_err_and(|e| e.contains("past the")));
     }
 
     #[test]
