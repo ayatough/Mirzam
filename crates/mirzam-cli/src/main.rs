@@ -207,6 +207,12 @@ fn main() -> ExitCode {
             };
             run(check::check(&input, &opts))
         }
+        Some("lsp") => {
+            if args.len() > 1 {
+                return usage("lsp takes no arguments - the editor starts it and speaks to it");
+            }
+            run(mirzam_cli::lsp::serve_stdio())
+        }
         Some("skill") => {
             if args.get(1).map(String::as_str) != Some("install") {
                 return usage("install is currently the only skill subcommand");
@@ -254,7 +260,7 @@ fn main() -> ExitCode {
 /// `mirzam server` instead of `mirzam serve` should not read as "your file is
 /// wrong"; it should name the mistake.
 fn unknown_command(given: &str) -> String {
-    const COMMANDS: [&str; 6] = ["new", "build", "serve", "export", "check", "skill"];
+    const COMMANDS: [&str; 7] = ["new", "build", "serve", "export", "check", "lsp", "skill"];
     let close = COMMANDS
         .iter()
         .map(|c| (edit_distance(given, c), *c))
@@ -321,6 +327,7 @@ Usage:
                [--fit shrink] [--mode light|dark] [--base-url <url>]
                [--debug-layout] [--chromium <bin>] [--min-slack <px>]
                [--format text|json]
+  mirzam lsp
   mirzam skill install [--user] [--zip [<path>]] [--force]
 
   new     write a deck to start from - frontmatter, a title slide and a
@@ -347,6 +354,12 @@ Usage:
           left, because a deck embeds no text font and a clean run is
           therefore a statement about one machine
 
+  lsp     a language server on stdin and stdout, for an editor to start -
+          diagnostics as you type and an outline of the deck's slides. Every
+          problem it reports is a build warning, under the same kind `check
+          --format json` gives it, so the editor and an agent read the same
+          vocabulary. It never opens a browser, which means the layout checks
+          are not among them: run `check` for those
   skill   install the Claude Code skill for writing decks - SKILL.md and the
           syntax card, both embedded in this binary, into
           .claude/skills/mirzam/ in this repository (or ~/.claude/skills/ with

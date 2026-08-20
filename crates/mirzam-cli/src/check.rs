@@ -23,6 +23,7 @@
 //! every example deck, and a deliberately broken one, before this landed.
 
 use crate::{apply_deck_overrides, find_chromium, DeckArgs};
+use mirzam_cli::pipeline::warning_kind;
 use mirzam_cli::pipeline::BuildOutput;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -192,7 +193,7 @@ fn json_report(
     let mut diagnostics: Vec<serde_json::Value> = Vec::new();
 
     for (message, site) in out.warnings.iter().zip(&out.warning_sites) {
-        let mut d = record(build_kind(message), "warning", message);
+        let mut d = record(warning_kind(message), "warning", message);
         if let Some(n) = site.slide {
             d.insert("slide".into(), n.into());
         }
@@ -294,78 +295,6 @@ impl LineIndex {
         let upto = &text.as_bytes()[..offset.min(text.len())];
         Some(upto.iter().filter(|b| **b == b'\n').count() + 1)
     }
-}
-
-/// A stable name for what a build warning is about.
-///
-/// The messages themselves are prose written for a person and are free to be
-/// reworded; this is the part a program may branch on, so it is matched on the
-/// one distinctive token each family of warnings carries. Order matters - the
-/// first match wins - and anything unrecognised is `build.other` rather than a
-/// guess, which is also what a warning added after this table gets until it is
-/// added here.
-fn build_kind(message: &str) -> &'static str {
-    const TABLE: &[(&str, &str)] = &[
-        // First, because this is the one message that quotes another program:
-        // `mmdc` says "flowchart", which contains `chart`, and it is free to
-        // say anything else on this list too. Classifying it before the table
-        // can misread it is cheaper than teaching every other needle about a
-        // tool Mirzam does not control.
-        ("mermaid:", "build.mermaid"),
-        // Then, and matched on two words: the message carries a filesystem
-        // path, and a deck living under `charts/` must not be classified by
-        // somebody's directory name.
-        ("skill card", "build.skill"),
-        ("shape line ", "build.shape"),
-        ("shape:", "build.shape"),
-        ("grid-pad", "build.layout"),
-        ("grid-gap", "build.layout"),
-        ("anim ", "build.anim"),
-        ("cannot split", "build.anim"),
-        ("a target is split", "build.anim"),
-        ("annotate ", "build.annotate"),
-        ("effects line ", "build.effects"),
-        ("connect ", "build.connect"),
-        ("chart", "build.chart"),
-        ("footnote reference", "build.footnote"),
-        ("toc:", "build.toc"),
-        ("bibliography", "build.bibliography"),
-        ("citations:", "build.bibliography"),
-        ("masters:", "build.master"),
-        ("master ", "build.master"),
-        ("is not in the layout", "build.layout"),
-        ("pane block", "build.layout"),
-        ("merged region", "build.layout"),
-        ("bg-light", "build.layout"),
-        ("bg-dark", "build.layout"),
-        ("is still on the slide as text", "build.span"),
-        ("the brace over", "build.math"),
-        ("math:", "build.math"),
-        ("unknown theme", "build.theme"),
-        // `theme: default` is an unknown name that gets its own wording, so it
-        // needs its own needle or it would classify as `build.other`.
-        ("no longer a theme name", "build.theme"),
-        ("unknown mode", "build.theme"),
-        // The stem rule, reported against the slide or pane that named a
-        // theme file which cannot answer to a name.
-        ("file theme is usable", "build.theme"),
-        // A stylesheet the deck named and the host could not read.
-        ("theme: cannot read", "build.css"),
-        // Everything else a theme file has to say about itself: a stem that
-        // collides with a built-in, one palette where two are needed, text
-        // that cannot be read on its own background.
-        ("theme: `", "build.theme"),
-        ("transition:", "build.transition"),
-        ("autoplay:", "build.autoplay"),
-        ("no slides:", "build.deck"),
-        ("<!-- next -->", "build.continuation"),
-        ("file not found", "build.asset"),
-        ("not inlined", "build.asset"),
-    ];
-    TABLE
-        .iter()
-        .find(|(needle, _)| message.contains(needle))
-        .map_or("build.other", |(_, kind)| *kind)
 }
 
 /// The check page: `check.js` verbatim, then an invocation that runs it,
@@ -628,14 +557,14 @@ mod tests {
             ("no slides: deck.md is empty", "build.deck"),
             ("nope.png: file not found", "build.asset"),
         ] {
-            assert_eq!(build_kind(message), kind, "for: {message}");
+            assert_eq!(warning_kind(message), kind, "for: {message}");
         }
     }
 
     #[test]
     fn an_unfamiliar_warning_is_named_rather_than_guessed() {
         assert_eq!(
-            build_kind("something nobody has classified yet"),
+            warning_kind("something nobody has classified yet"),
             "build.other"
         );
     }
