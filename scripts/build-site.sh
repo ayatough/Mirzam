@@ -83,6 +83,17 @@ done
   --theme mirzam --fit shrink --mode dark \
   --base-url "$REPO_BLOB/" --embed-source ${EDITOR_ARGS[@]+"${EDITOR_ARGS[@]}"}
 
+# The performance report, the same way. It is a document first - a table-heavy
+# thing somebody reads on GitHub - and it is published here as a deck because
+# the site renders no Markdown: every section is written to fit a slide, which
+# is the claim the report is about being lived up to. `mirzam check` holds it
+# to that, so a section that grows past a slide fails the layout job rather
+# than reaching the site clipped.
+./target/release/mirzam build docs/reports/2026-08-performance.md \
+  -o "$OUT/decks/performance" --split h2 \
+  --theme mirzam --fit shrink --mode dark \
+  --base-url "$REPO_BLOB/docs/reports/" --embed-source ${EDITOR_ARGS[@]+"${EDITOR_ARGS[@]}"}
+
 # The themes gallery: one specimen slide put through every theme in both modes,
 # photographed. Generated here rather than committed, for the same reason the
 # decks are - a picture of a stylesheet checked into the repository is true on
@@ -399,6 +410,7 @@ try {
   <div class="cards">
     <a class="card" href="decks/01-start/"><b>Your first deck</b><span>The smallest file that works, where a page breaks, the three commands</span></a>
     <a class="card" href="decks/readme/"><b>A README, unedited</b><span>What <code>--split h2</code> does to a document nobody wrote for slides</span></a>
+    <a class="card" href="decks/performance/"><b>How fast, measured</b><span>Eight releases and two rival tools on one machine — 500 slides in 82 ms, in 10 MiB</span></a>
   </div>
 
   <h2>The markup, deck by deck</h2>

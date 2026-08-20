@@ -41,6 +41,24 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   like the slide it pictures. CI runs it beside the layout check.
 
 ### Added
+- **How fast Mirzam is, measured instead of remembered.**
+  [`docs/reports/2026-08-performance.md`](docs/reports/2026-08-performance.md)
+  rebuilds every release from `v0.1.0` on one machine and runs Marp and Typst
+  with Touying beside it on the same decks. Eight releases cost 1 to 3 ms on a
+  full build and 0.3 ms on an edit — the same amount whether the deck is 20
+  slides or 500, so what grew is the fixed cost of a build and not the cost of
+  a slide, and the design goal holds. Against the field: a 500-slide deck is
+  82 ms and 10 MiB against Marp's 702 ms and 155 MiB, and Typst wins the short
+  deck outright while wanting 2.1 GB of memory for the long one. The report
+  also says what a deck *weighs* — the smallest one has gone from 55 KB to
+  144 KB, and the three places those bytes are is the first honest list of what
+  would reclaim them. `scripts/bench-history.sh` and `scripts/bench-compare.py`
+  are the two commands that produce it; the comparison counts the slides in
+  every output it times, which is how it caught Touying rendering twice the
+  pages of the deck it was being compared against.
+  The report is published on the site as
+  [a deck](https://ayatough.github.io/Mirzam/decks/performance/), built by the
+  thing it measures, and CI holds every section of it to a slide.
 - **The gallery draws a Mermaid diagram.** `mermaid` fences have rendered since
   `v0.7.0` and no sample deck had one, so the feature existed in the syntax
   reference and nowhere a reader could look at it. `04-components` now carries

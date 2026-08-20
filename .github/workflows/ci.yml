@@ -157,6 +157,17 @@ jobs:
       # gallery is the deck held to it, because it is the one with a fence.
       - name: the gallery's diagram is drawn, not quoted
         run: cargo run -q --bin mirzam -- build examples/04-components.md -o "$(mktemp -d)" --strict
+      # The performance report is published on the site as a deck, so every one
+      # of its sections has to keep fitting a slide. It is checked with the
+      # flags `scripts/build-site.sh` builds it with, and given eight pixels of
+      # slack, because a runner's fonts are not a reader's and a section that
+      # only just fits here would clip there.
+      - name: the performance report still fits its slides
+        run: |
+          chromium="$(node -e "console.log(require('playwright-core').chromium.executablePath())")"
+          cargo run -q --bin mirzam -- check docs/reports/2026-08-performance.md \
+            --split h2 --fit shrink --theme mirzam --mode dark \
+            --min-slack 8 --chromium "$chromium"
       - name: check layout
         run: |
           node scripts/check-layout.mjs --build \
