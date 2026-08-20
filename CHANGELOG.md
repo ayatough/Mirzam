@@ -41,21 +41,22 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   like the slide it pictures. CI runs it beside the layout check.
 
 ### Added
-- **Every deck is 55 KB lighter, and nothing about it changed.** A deck ships
+- **Every deck is 66 KB lighter, and nothing about it changed.** A deck ships
   `base.css` and `viewer.js` whole, and both are written the way this
   repository writes everything: the reasoning sits next to the line it
-  explains. That prose was 52% of the stylesheet and 41% of the viewer, and
+  explains. That prose was 52% of the stylesheet and 43% of the viewer, and
   every reader of every deck downloaded all of it. It is now stripped at
   compile time — `build.rs` does it, the sources are untouched, and the
   comments still live where an author reads them. The smallest deck there is
-  went from 144 KB to 90 KB, `01-start` from 151 KB to 98 KB, and a deck heavy
-  with maths or photographs saves the same absolute 55 KB on top of what its
-  own content costs. There is no runtime cost, because there is no runtime
-  work: the binary embeds the stripped copy. Only comments go — the stripper
-  tracks strings, template literals and regular expressions so that a `//`
-  inside a URL or a `/*` inside `content:` survives exactly as written, and it
-  keeps the line numbering, so line 412 of the `viewer.js` a browser shows is
-  still line 412 of `viewer.js` in the repository.
+  went from 144 KB to 78 KB, `01-start` from 151 KB to 85 KB, `pitch` from
+  233 KB to 156 KB, and a deck heavy with maths or photographs saves the same
+  absolute 66 KB on top of what its own content costs. There is no runtime
+  cost, because there is no runtime work: the binary embeds the stripped copy.
+  Only comments go — the stripper tracks strings, template literals with their
+  `${}` nesting, and regular expressions, so a `//` inside a URL or a `/*`
+  inside `content:` survives exactly as written, and it keeps the line
+  numbering, so line 412 of the `viewer.js` a browser shows is still line 412
+  of `viewer.js` in the repository.
 - **How fast Mirzam is, measured instead of remembered.**
   [`docs/reports/2026-08-performance.md`](docs/reports/2026-08-performance.md)
   rebuilds every release from `v0.1.0` on one machine and runs Marp and Typst
