@@ -103,10 +103,18 @@ every deck size**, so what grew is the fixed cost of a build and not the cost of
 a slide. The per-slide figure is if anything lower than it was, and the design
 goal holds: 25× the slides costs 5× the edit.
 
-The number that did move is what a deck weighs. The smallest deck there is has
+The number that did move is what a deck weighs: the smallest deck there is had
 gone from 55 KB at `v0.1.0` to 144 KB, because the viewer and the base
-stylesheet ship whole and unminified inside every deck. The report says where
-those bytes are and what would reclaim them.
+stylesheet shipped whole — half of them prose explaining the code — inside every
+deck. Those comments are now stripped at compile time and the same deck is
+78 KB. What is left is the maths font, embedded entire the moment a deck holds
+one formula; the report says why subsetting it is not the afternoon's work it
+looks like.
+
+Build time, by feature: a code fence costs 0.40 ms, a chart 0.09 ms, a formula
+0.03 ms, a shape nothing worth measuring. Syntax highlighting is the only thing
+in the renderer priced an order of magnitude above the rest, and it is where to
+look first if a build ever feels slow.
 
 ## Still open
 

@@ -72,6 +72,15 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   are the two commands that produce it; the comparison counts the slides in
   every output it times, which is how it caught Touying rendering twice the
   pages of the deck it was being compared against.
+  It also prices the renderer feature by feature, which settles a question by
+  measurement rather than intuition: **a code fence costs 0.40 ms and a formula
+  0.03 ms**, so syntax highlighting is the expensive thing and maths is not —
+  and highlighting's 3 ms first-use cost is exactly the step the release history
+  shows at `v0.5.0`, the release that added it. Maths is expensive the other
+  way: one formula anywhere in a deck embeds the whole font, so a 100-slide deck
+  with a single `$x$` in it weighs 628 KB. Subsetting that font was tried and is
+  written up as declined — it silently loses the radical, the italic letterforms
+  and the stretchy delimiters, and the layout checker passes all three.
   The report is published on the site as
   [a deck](https://ayatough.github.io/Mirzam/decks/performance/), built by the
   thing it measures, and CI holds every section of it to a slide.

@@ -105,13 +105,17 @@ start included:
 | v0.8.0 | 9.7 ms | 134 KB |
 | working tree | 10.0 ms | 144 KB |
 
-The time column is the fixed cost above seen from outside. The other column is
-the finding: **a deck that says almost nothing has gone from 55 KB to 144 KB**,
-and every release added to it. That is the viewer and the shared stylesheet —
-`theme/viewer.js` is 56 KB and `theme/base.css` is 68 KB, both shipped whole and
-unminified inside every deck built. Not slow, not wrong; but "self-contained" is
-a size budget, and each feature that reaches the viewer is paid for by every
-deck, including the ones that never use it.
+The time column is the fixed cost above seen from outside. The other column was
+the finding: **a deck that said almost nothing had gone from 55 KB to 144 KB**,
+and every release had added to it. That was the viewer and the shared stylesheet
+— `theme/viewer.js` at 56 KB and `theme/base.css` at 68 KB, shipped whole and
+commented, inside every deck built.
+
+Half of that is prose explaining the code to whoever maintains it, and every
+reader of every deck was downloading it. It is now stripped at compile time, so
+**the same deck is 78 KB**: the sources keep their comments, the shipped copies
+keep their line numbering, and nothing else about a deck changes. Every table
+below that mentions a size is measured after that change.
 
 ## Where the bytes are
 
@@ -119,28 +123,76 @@ The sample decks, by what is inside the HTML:
 
 | Deck | Total | CSS | Viewer JS | `data:` URIs |
 |---|---:|---:|---:|---|
-| 01-start | 147 KB | 77 KB | 62 KB | — |
-| 03-layout | 390 KB | 77 KB | 78 KB | 207 KB JPEG |
-| research | 682 KB | 602 KB | 62 KB | **525 KB woff2** |
-| seminar | 783 KB | 602 KB | 81 KB | 525 KB woff2, 77 KB PNG |
-| 04-components | 1,326 KB | 602 KB | 102 KB | 525 KB woff2, 176 KB JPEG, 114 KB PNG |
+| 01-start | 82 KB | 37 KB | 36 KB | — |
+| 03-layout | 320 KB | 37 KB | 47 KB | 206 KB JPEG |
+| research | 617 KB | 563 KB | 36 KB | **525 KB woff2** |
+| seminar | 711 KB | 563 KB | 48 KB | 525 KB woff2, 76 KB PNG |
+| 04-components | 1,246 KB | 563 KB | 61 KB | 525 KB woff2, 175 KB JPEG, 113 KB PNG |
 
-## Three levers, in the order their size argues for
+## The three levers, and what happened to them
 
-1. **The maths font is embedded whole.** `stix-two-math.woff2` is 403 KB on
-   disk and 525 KB once base64 encoded — 77% of `research.md`. A deck uses a
-   few dozen glyphs of it. Subsetting to the codepoints the rendered MathML
-   names is the largest saving available, and the subsetters that would do it
-   are pure Rust, so `wasm32` keeps building.
-2. **The viewer and the base stylesheet ship unminified.** 124 KB in every
-   deck, comments and all — the floor the previous table measures. Stripping
-   comments and whitespace at build time is the only saving that also helps a
-   deck using no features at all.
-3. **Images are embedded at source resolution.** A 207 KB photograph on a
-   1920-px slide is bytes a reader downloads and never sees.
+**The comments went, and that was the big one.** 52% of `base.css` and 43% of
+`viewer.js` was prose. Stripping it at compile time takes **66 KB off every
+deck** — the smallest goes 144 KB → 78 KB, `01-start` 151 → 85, `pitch` 233 →
+156 — with no runtime cost and no change to the sources.
 
-None of these is a regression. They are where the number in the previous table
-comes from, measured rather than guessed at.
+**The maths font stays whole, and the reason is worth writing down.** It is
+525 KB of base64 and 77% of `research.md`, and the sample decks use 40
+codepoints of its 4,605. Subsetting to those 40 breaks the maths, silently:
+
+- the radical vanishes, because `<msqrt>` draws U+221A and no source text
+  contains it;
+- letters change face, because `<mi>a</mi>` is drawn from the mathematical
+  italic block (U+1D44E), not from the `a` in the markup;
+- delimiters stop stretching unless the subsetter closes over the MATH table's
+  variant glyphs — `fontcull`/klippa does not, and Chromium rejected its output
+  outright, falling back for everything.
+
+The layout checker passes all three; only looking at the pixels catches them.
+Doing this properly means computing the implied codepoints, closing over the
+MATH variants, and gating it on a rendering comparison — and, because no pure
+Rust path re-compresses WOFF2, carrying the font decompressed: 403 KB → 1.06 MB
+in the binary and the WebAssembly bundle. Worth doing deliberately; not worth
+doing quickly.
+
+**Images are still embedded at source resolution.** A 206 KB photograph on a
+1920-px slide is untouched.
+
+## Where the time goes
+
+One deck per feature, 100 slides each, fastest of seven. The empty deck is the
+floor everything else is measured against:
+
+| 100 slides of | Build | Over empty | HTML |
+|---|---:|---:|---:|
+| nothing | 20 ms | — | 100 KB |
+| prose and a list | 27 ms | +7 ms | 115 KB |
+| a table | 25 ms | +5 ms | 124 KB |
+| 300 formulas | 32 ms | +12 ms | 678 KB |
+| one formula, in the whole deck | 23 ms | +3 ms | **628 KB** |
+| 100 code fences | **66 ms** | **+46 ms** | 170 KB |
+| one code fence, in the whole deck | 26 ms | +6 ms | 103 KB |
+| 100 charts | 29 ms | +9 ms | 308 KB |
+| 300 shapes | 23 ms | +3 ms | 180 KB |
+
+## What costs what
+
+**Syntax highlighting is the expensive thing, and maths is not.** A code fence
+costs about **0.40 ms**; a formula costs **0.03 ms**, a thirteenth of it. A
+chart is 0.09 ms and a shape is free. Highlighting also charges about 3 ms the
+first time a deck uses it — which is exactly the step the release history shows
+between `v0.4.0` and `v0.5.0`, the release that added it. A correlation named
+earlier in this report, measured here.
+
+**Maths is the expensive thing by weight, and one formula costs as much as
+three hundred.** The deck with a single formula in it builds in the time prose
+does and weighs 628 KB, because the font goes in whole the moment anything on
+any slide is maths. That is the same 525 KB the levers section declines to
+subset today, seen from the other side.
+
+So: if a build ever feels slow, the place to look is the highlighter. If a deck
+is ever too heavy to send, the place to look is the font — and after that, the
+photographs.
 
 ## Against Marp and Touying
 
@@ -231,16 +283,16 @@ The working-tree binary, `mirzam build`, fastest of four runs each:
 
 | Deck | Slides | Build | Source | HTML |
 |---|---:|---:|---:|---:|
-| 01-start | 6 | 13 ms | 5.4 KB | 151 KB |
-| 02-writing | 11 | 17 ms | 10.0 KB | 701 KB |
-| 03-layout | 11 | 16 ms | 11.1 KB | 399 KB |
-| 04-components | 24 | 22 ms | 25.8 KB | 1.4 MB |
-| 05-motion | 11 | 14 ms | 12.2 KB | 475 KB |
-| 06-theming | 16 | 24 ms | 19.3 KB | 747 KB |
-| pitch | 9 | 10 ms | 8.2 KB | 233 KB |
-| research | 9 | 11 ms | 7.8 KB | 698 KB |
-| seminar | 12 | 12 ms | 10.7 KB | 805 KB |
-| slideshow | 5 | 10 ms | 3.8 KB | 424 KB |
+| 01-start | 6 | 13 ms | 5.4 KB | 85 KB |
+| 02-writing | 11 | 17 ms | 10.0 KB | 633 KB |
+| 03-layout | 11 | 16 ms | 11.1 KB | 328 KB |
+| 04-components | 24 | 22 ms | 25.8 KB | 1.3 MB |
+| 05-motion | 11 | 14 ms | 12.2 KB | 396 KB |
+| 06-theming | 16 | 24 ms | 19.3 KB | 674 KB |
+| pitch | 9 | 10 ms | 8.2 KB | 156 KB |
+| research | 9 | 11 ms | 7.8 KB | 632 KB |
+| seminar | 12 | 12 ms | 10.7 KB | 731 KB |
+| slideshow | 5 | 10 ms | 3.8 KB | 348 KB |
 
 A real deck is 10 to 24 ms end to end, process start included — against Marp's
 half-second floor.
