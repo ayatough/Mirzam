@@ -111,10 +111,11 @@ deck. Those comments are now stripped at compile time and the same deck is
 one formula; the report says why subsetting it is not the afternoon's work it
 looks like.
 
-Build time, by feature: a code fence costs 0.40 ms, a chart 0.09 ms, a formula
-0.03 ms, a shape nothing worth measuring. Syntax highlighting is the only thing
-in the renderer priced an order of magnitude above the rest, and it is where to
-look first if a build ever feels slow.
+Build time, by feature: a code fence costs 0.11 ms, a chart 0.04 ms, a formula
+0.023 ms, a shape nothing worth measuring. A fence was 0.40 ms until the
+highlighters stopped being rebuilt one per fence — a hundred-fence deck went
+from 52 ms to 28 ms — and it is still the most expensive item in the renderer,
+so it stays where to look first if a build ever feels slow.
 
 ## Still open
 

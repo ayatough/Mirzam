@@ -41,6 +41,16 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   like the slide it pictures. CI runs it beside the layout check.
 
 ### Added
+- **A deck full of code builds in half the time.** Highlighting a fence cost
+  0.35 ms, and 0.29 ms of that was not highlighting: a highlighter was built
+  for every fence, and each fresh copy of a grammar pays to warm the
+  regular-expression engine's cache again. They are now kept, one per language,
+  for the life of the process — a hundred-fence deck builds in 28 ms against
+  52 ms, while a deck with no fences and a deck of nothing but maths are
+  unchanged to the millisecond. A code fence now costs 0.11 ms against a
+  formula's 0.023 ms, which is the first time the two have been in the same
+  range. Reuse is exact, and a test holds it there: unlike fences run through
+  one cache, twice, each compared against a highlighter built fresh for it.
 - **Every deck is 66 KB lighter, and nothing about it changed.** A deck ships
   `base.css` and `viewer.js` whole, and both are written the way this
   repository writes everything: the reasoning sits next to the line it

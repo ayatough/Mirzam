@@ -160,39 +160,65 @@ doing quickly.
 
 ## Where the time goes
 
-One deck per feature, 100 slides each, fastest of seven. The empty deck is the
-floor everything else is measured against:
+One deck per feature, 100 slides each, fastest of nine, all in one sitting. The
+empty deck is the floor everything else is measured against:
 
 | 100 slides of | Build | Over empty | HTML |
 |---|---:|---:|---:|
-| nothing | 20 ms | — | 100 KB |
-| prose and a list | 27 ms | +7 ms | 115 KB |
-| a table | 25 ms | +5 ms | 124 KB |
-| 300 formulas | 32 ms | +12 ms | 678 KB |
-| one formula, in the whole deck | 23 ms | +3 ms | **628 KB** |
-| 100 code fences | **66 ms** | **+46 ms** | 170 KB |
-| one code fence, in the whole deck | 26 ms | +6 ms | 103 KB |
-| 100 charts | 29 ms | +9 ms | 308 KB |
-| 300 shapes | 23 ms | +3 ms | 180 KB |
+| nothing | 16 ms | — | 100 KB |
+| prose and a list | 18 ms | +2 ms | 115 KB |
+| a table | 18 ms | +2 ms | 124 KB |
+| 300 formulas | 23 ms | +7 ms | 678 KB |
+| one formula, in the whole deck | 17 ms | +1 ms | **628 KB** |
+| 100 code fences | **27 ms** | **+11 ms** | 170 KB |
+| one code fence, in the whole deck | 18 ms | +2 ms | 103 KB |
+| 100 charts | 20 ms | +4 ms | 308 KB |
+| 300 shapes | 18 ms | +2 ms | 180 KB |
+
+The code row was +46 ms when this table was first measured. What happened to it
+is two sections down.
 
 ## What costs what
 
-**Syntax highlighting is the expensive thing, and maths is not.** A code fence
-costs about **0.40 ms**; a formula costs **0.03 ms**, a thirteenth of it. A
-chart is 0.09 ms and a shape is free. Highlighting also charges about 3 ms the
-first time a deck uses it — which is exactly the step the release history shows
-between `v0.4.0` and `v0.5.0`, the release that added it. A correlation named
-earlier in this report, measured here.
+**Syntax highlighting is still the most expensive thing per item, and maths is
+not.** A code fence costs about **0.11 ms**; a formula costs **0.023 ms**, a
+fifth of it. A chart is 0.04 ms, a shape 0.007 ms, and prose and tables round to
+nothing. Highlighting also charges a few milliseconds the first time a deck uses
+it — which is the step the release history shows between `v0.4.0` and `v0.5.0`,
+the release that added it. A correlation named earlier in this report, measured
+here.
 
-**Maths is the expensive thing by weight, and one formula costs as much as
-three hundred.** The deck with a single formula in it builds in the time prose
-does and weighs 628 KB, because the font goes in whole the moment anything on
-any slide is maths. That is the same 525 KB the levers section declines to
-subset today, seen from the other side.
+**Maths is the expensive thing by weight, and one formula costs as much as three
+hundred.** The deck with a single formula builds in the time prose does and
+weighs 628 KB, because the font goes in whole the moment anything on any slide
+is maths. That is the same 525 KB the levers section declines to subset today,
+seen from the other side.
 
 So: if a build ever feels slow, the place to look is the highlighter. If a deck
 is ever too heavy to send, the place to look is the font — and after that, the
 photographs.
+
+## Highlighting, three times cheaper
+
+The +46 ms was not highlighting. Mirzam asked `synoptic::from_extension` for a
+highlighter **per fence**, and while the clone it hands back costs 0.015 ms, the
+first run through any fresh copy pays to warm the regular-expression engine's
+cache again. Measured on its own: a fresh highlighter and one run over six lines
+is 0.35 ms, the same run through one that has already been used is 0.059 ms.
+
+The highlighters are now kept, one per language, for the life of the process.
+The same hundred-fence deck builds in **28 ms against 52 ms** — alternating the
+two binaries, so the container's mood hits both — while a deck with no fences
+and a deck of nothing but maths come out identical to the millisecond, which is
+the other half of the claim.
+
+It is the one change here that lets a deck's output depend on what was rendered
+before it: in `serve` or the browser editor a highlighter now lives for hours.
+Today it cannot matter — `run` rebuilds the atom table and the tokenizer resets
+everything it reads — so the test that pins it runs a sequence of unlike fences
+through one cache, twice, each compared against a highlighter built fresh for
+it. A future version that stops resetting something fails there, rather than as
+colours that drift while somebody types.
 
 ## Against Marp and Touying
 
@@ -267,8 +293,8 @@ Mirzam's 4.1.
 
 | Deck | Mirzam | Marp | Typst |
 |---|---:|---:|---:|
-| 500 slides, plain, HTML | 441 KB | 390 KB | — |
-| 500 slides, maths, HTML | 1.2 MB | 6.3 MB | — |
+| 500 slides, plain, HTML | 376 KB | 390 KB | — |
+| 500 slides, maths, HTML | 1.1 MB | 6.3 MB | — |
 | 500 slides, plain, PDF | 3.6 MB | 1.5 MB | 2.2 MB |
 | 500 slides, maths, PDF | 6.1 MB | 537 KB | 1.6 MB |
 
@@ -279,22 +305,23 @@ differs per renderer, and a smaller PDF here is not a better one.
 
 ## The sample decks, for scale
 
-The working-tree binary, `mirzam build`, fastest of four runs each:
+The working-tree binary, `mirzam build`, fastest of five runs each, with both
+changes above in place:
 
 | Deck | Slides | Build | Source | HTML |
 |---|---:|---:|---:|---:|
-| 01-start | 6 | 13 ms | 5.4 KB | 85 KB |
-| 02-writing | 11 | 17 ms | 10.0 KB | 633 KB |
-| 03-layout | 11 | 16 ms | 11.1 KB | 328 KB |
-| 04-components | 24 | 22 ms | 25.8 KB | 1.3 MB |
-| 05-motion | 11 | 14 ms | 12.2 KB | 396 KB |
-| 06-theming | 16 | 24 ms | 19.3 KB | 674 KB |
-| pitch | 9 | 10 ms | 8.2 KB | 156 KB |
-| research | 9 | 11 ms | 7.8 KB | 632 KB |
-| seminar | 12 | 12 ms | 10.7 KB | 731 KB |
-| slideshow | 5 | 10 ms | 3.8 KB | 348 KB |
+| 01-start | 6 | 8 ms | 5.3 KB | 83 KB |
+| 02-writing | 11 | 14 ms | 9.8 KB | 618 KB |
+| 03-layout | 14 | 12 ms | 10.8 KB | 320 KB |
+| 04-components | 24 | 19 ms | 25.2 KB | 1.2 MB |
+| 05-motion | 11 | 10 ms | 11.9 KB | 387 KB |
+| 06-theming | 16 | 17 ms | 18.9 KB | 659 KB |
+| pitch | 9 | 6 ms | 8.1 KB | 153 KB |
+| research | 9 | 7 ms | 7.7 KB | 617 KB |
+| seminar | 12 | 9 ms | 10.5 KB | 714 KB |
+| slideshow | 5 | 7 ms | 3.7 KB | 340 KB |
 
-A real deck is 10 to 24 ms end to end, process start included — against Marp's
+A real deck is 6 to 19 ms end to end, process start included — against Marp's
 half-second floor.
 
 ## What these numbers do not say
