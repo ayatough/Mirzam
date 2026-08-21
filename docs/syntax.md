@@ -1041,6 +1041,10 @@ that particular job.
   self-contained:** the frame is fetched when the slide is shown, so it needs
   the network and it cannot be printed. The PDF gets a placeholder carrying
   the link instead, and audio gets its label without the transport.
+  It also needs an *origin*: YouTube's player refuses to load from a page
+  opened as `file://` ("Error 153"), and a laptop being online does not change
+  that. Present a deck with a hosted video through `mirzam serve`, not by
+  opening the built file from disk.
 - The frame is **16:9 and inside its pane**, both at once: its height comes from
   whichever of the pane's two axes runs out first, and from the room a heading
   beside it leaves, so it fits a narrow column and a full-bleed pane without

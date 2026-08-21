@@ -83,6 +83,28 @@ function inspect() {
     }
   }
 
+  // A frame the viewer will hand an autoplay URL must also hold the autoplay
+  // *permission*: Permissions Policy defaults the feature to `self`, so
+  // `autoplay=1` in a cross-origin player URL is a request the player is not
+  // allowed to honour unless the page grants it in `allow=`. That is how a
+  // hosted video sat on its poster with markup every other test called right —
+  // and only the browser's own answer can say whether the grant is there.
+  for (const wrap of document.querySelectorAll(".mz-embed[data-mz-play]")) {
+    const f = wrap.querySelector("iframe");
+    const policy = f && (f.featurePolicy || f.permissionsPolicy);
+    if (!policy) continue;
+    let origin;
+    try {
+      origin = new URL(f.src).origin;
+    } catch {
+      continue;
+    }
+    if (!policy.allowsFeature("autoplay", origin)) {
+      problems.push("a frame asked to autoplay is not permitted to - its `allow=` lacks `autoplay`");
+      break;
+    }
+  }
+
   // The look of a slide, on the slide and on its picture. Only the title slide
   // has ever differed, but the comparison is written against any slide that
   // carries a `.grid`, because the next rule to be spelled `section.slide`

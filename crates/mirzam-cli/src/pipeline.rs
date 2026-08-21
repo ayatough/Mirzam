@@ -132,6 +132,8 @@ pub fn warning_kind(message: &str) -> &'static str {
         ("file theme is usable", "build.theme"),
         // A stylesheet the deck named and the host could not read.
         ("theme: cannot read", "build.css"),
+        // The `css:` key, removed in v0.7.0 and kept only to say so.
+        ("`css:` was removed", "build.css"),
         // Everything else a theme file has to say about itself: a stem that
         // collides with a built-in, one palette where two are needed, text
         // that cannot be read on its own background.

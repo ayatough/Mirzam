@@ -8,6 +8,51 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Fixed
+- **A deck still carrying `css:` is told its stylesheet was not loaded.** The
+  key was retired in v0.6.0 with a warning that printed the exact `theme:`
+  line to write, and removing it in v0.7.0 made it fall through as an unknown
+  key — so the stylesheet simply did not load and nothing was said. A deck
+  pulled forward across the release built "successfully" with its whole theme
+  missing, and `check` passed, because a deck with no custom CSS is a valid
+  layout. The key is recognised again, as a removed key whose only behaviour
+  is to warn, quoting the file that was not loaded and the `theme:` line —
+  the same shape the retired `default` theme name already gets.
+- **`columns=N` no longer splits a table across the fold.** The multicol rule
+  protected list items and nothing else, so a table in a two-column pane was
+  torn in half: the header row at the bottom of column one, the body opening
+  column two as a second, headerless table — and `check` was happy, because
+  every box was the right size. Tables, code blocks, quotes, figures, boxes,
+  cards and display maths now hold together like list items always did: the
+  columns balance *between* blocks, never through one.
+- **`{.autoplay}` on a hosted video actually autoplays.** The play URL carried
+  `autoplay=1` and `mute=1`, and the frame sat on its poster anyway:
+  Permissions Policy defaults the `autoplay` feature to `self`, so a
+  cross-origin frame drops the request unless the page grants it with
+  `allow="autoplay"`. The grant now rides on every frame the slide asks to
+  start — on arrival or on the advancing click — and stays off a `{.manual}`
+  frame, which plays from its own button and needs no permission.
+  `scripts/check-viewer.mjs` now asks the browser whether the permission is
+  really there, because every layer of markup looked right while the feature
+  did nothing.
+- **Markup inside an HTML comment is no longer warned about.** A commented-out
+  line holding a `[^ref]` drew "footnote reference has no definition", and a
+  commented-out span drew "still on the slide as text" — on slides whose only
+  fault was a line put aside. The warning scans already skipped `<pre>` and
+  `<code>`, where a deck quotes syntax as an example; comments, which pass
+  through rendering intact but reach no reader, are now skipped the same way.
+- **The `underbrace` width warning measures the brace's own base.** Every
+  accent in MathML opens with the same tag — `dot(v)` and `hat(q)` are
+  `<mover accent="true">` too — so the check matched forward from the first
+  accent in the formula and swallowed everything up to the brace as the
+  "base": any formula with an accent before an `underbrace` warned, however
+  small the brace, quoting the whole equation and giving advice impossible to
+  follow. The check now finds the brace glyph and walks *back* to the element
+  that owns it, so a two-glyph base is measured as two glyphs and a genuinely
+  wide base still warns.
+- **`docs/syntax.md` now says a hosted video needs an origin, not just the
+  network.** Opened from disk as `file://`, YouTube's player refuses with
+  "Error 153" on a laptop that is perfectly online; `mirzam serve` is the
+  answer, and now the docs say so.
 - **A diagram label is no longer clipped by the box around it.** Mermaid draws
   its labels as HTML inside a `foreignObject`, which means the deck's own rules
   for a paragraph reached them — and `p, li { font-size: 1.35em }` made every

@@ -1235,9 +1235,10 @@ fn chrome_html(
 /// same source it rendered, so a definition elsewhere - another slide, or (in
 /// a grid layout) another pane - leaves the bracket text sitting on the page.
 /// Skips `<pre>`/`<code>`, which is how a deck shows the syntax itself as an
-/// example without it being mistaken for a real, broken reference.
+/// example without it being mistaken for a real, broken reference — and HTML
+/// comments, which is how an author puts a line aside.
 fn warn_unresolved_footnotes(index: usize, body: &str, warnings: &mut Vec<String>) {
-    let text = strip_code_regions(body);
+    let text = strip_code_and_comments(body);
     let mut seen = std::collections::BTreeSet::new();
     for cap in footnote_ref_regex().captures_iter(&text) {
         let key = &cap[1];
@@ -1270,8 +1271,11 @@ fn warn_wide_braces(index: usize, body: &str, warnings: &mut Vec<String>) {
     /// twelve, fourteen and eighteen characters of base.
     const CAP_EM: f32 = 8.0;
     let mut seen = std::collections::BTreeSet::new();
-    for cap in brace_regex().captures_iter(body) {
-        let base = strip_tags(&cap[2]);
+    for glyph in brace_glyph_regex().find_iter(body) {
+        let Some(base) = brace_base(&body[..glyph.start()]) else {
+            continue;
+        };
+        let base = strip_tags(base);
         let em: f32 = base
             .chars()
             .filter(|c| !c.is_whitespace())
@@ -1291,14 +1295,63 @@ fn warn_wide_braces(index: usize, body: &str, warnings: &mut Vec<String>) {
     }
 }
 
-fn brace_regex() -> &'static Regex {
+/// The brace's base: the span between the nearest accent start tag that
+/// leaves it tag-balanced and the brace glyph itself.
+///
+/// Matching *forward* from an accent start tag is the mistake this replaces:
+/// every accent in MathML opens with the same tag — `dot(v)` and `hat(q)` are
+/// `<mover accent="true">` too — so a formula with any accent before the
+/// brace matched from that accent, and a lazy `.*?` then swallowed everything
+/// up to the brace as the "base". Walking back and demanding balance rejects
+/// those: an earlier stray accent leaves its unmatched `</mover>` inside the
+/// span, while an accent genuinely *inside* the base has its own close inside
+/// the span, so the walk correctly stops at the brace's element and the base
+/// still counts the accent's characters.
+fn brace_base(prefix: &str) -> Option<&str> {
+    let opens: Vec<_> = accent_open_regex().find_iter(prefix).collect();
+    opens
+        .into_iter()
+        .rev()
+        .map(|open| &prefix[open.end()..])
+        .find(|span| tags_balanced(span))
+}
+
+/// Whether every tag opened in `html` is closed in it, and nothing closes a
+/// tag opened outside it. This is what tells the brace's own element from a
+/// span that runs back past an earlier accent's close tag.
+fn tags_balanced(html: &str) -> bool {
+    let mut stack: Vec<&str> = Vec::new();
+    for cap in tag_regex().captures_iter(html) {
+        if cap.get(3).is_some_and(|m| !m.as_str().is_empty()) {
+            continue; // self-closing
+        }
+        let name = cap.get(2).map_or("", |m| m.as_str());
+        if cap.get(1).is_some_and(|m| !m.as_str().is_empty()) {
+            if stack.pop() != Some(name) {
+                return false;
+            }
+        } else {
+            stack.push(name);
+        }
+    }
+    stack.is_empty()
+}
+
+fn brace_glyph_regex() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| Regex::new(r"<mo[^>]*>[⏟⏞]</mo>").expect("static regex"))
+}
+
+fn accent_open_regex() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
     RE.get_or_init(|| {
-        Regex::new(
-            r#"(?s)<m(?:under|over) accent(?:under)?="true">(<mrow>)?(.*?)(</mrow>)?<mo>[⏟⏞]</mo>"#,
-        )
-        .expect("static regex")
+        Regex::new(r#"<m(?:under|over) accent(?:under)?="true">"#).expect("static regex")
     })
+}
+
+fn tag_regex() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| Regex::new(r"<(/?)([A-Za-z][A-Za-z0-9]*)[^>]*?(/?)>").expect("static regex"))
 }
 
 /// The text of an HTML fragment, tags removed.
@@ -1316,7 +1369,7 @@ fn strip_tags(html: &str) -> String {
 /// and the layout checker cannot see it either: the box is the right size, it
 /// just has punctuation in it.
 fn warn_unrendered_spans(index: usize, body: &str, warnings: &mut Vec<String>) {
-    let text = strip_code_regions(body);
+    let text = strip_code_and_comments(body);
     let mut seen = std::collections::BTreeSet::new();
     for cap in unrendered_span_regex().captures_iter(&text) {
         let whole = cap[0].split_whitespace().collect::<Vec<_>>().join(" ");
@@ -1339,9 +1392,21 @@ fn unrendered_span_regex() -> &'static Regex {
     })
 }
 
-fn strip_code_regions(html: &str) -> String {
-    let no_pre = pre_regex().replace_all(html, "");
+/// Removes the regions of rendered HTML no reader ever sees literal markup
+/// in: `<pre>` and `<code>`, where a deck quotes the syntax as an example,
+/// and `<!-- -->`, where an author put a line aside. Both warnings above ask
+/// "is this markup sitting on the slide where a reader will see it", and a
+/// comment passes through rendering intact, so scanning it finds text nobody
+/// can read.
+fn strip_code_and_comments(html: &str) -> String {
+    let no_comments = comment_regex().replace_all(html, "");
+    let no_pre = pre_regex().replace_all(&no_comments, "");
     code_regex().replace_all(&no_pre, "").into_owned()
+}
+
+fn comment_regex() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| Regex::new(r"(?s)<!--.*?-->").expect("static regex"))
 }
 
 fn pre_regex() -> &'static Regex {
@@ -2775,11 +2840,26 @@ mod tests {
             "{:?}",
             out.warnings
         );
+        // An accent *inside* the base is part of it, not a place to stop
+        // measuring: the base is what the brace has to span.
+        let accented = parse_slide("$$underbrace(hat(m) m m m m m m m m m m m m m, \"label\")$$\n");
+        let out = render_deck(&meta, &[accented], Path::new("."));
+        assert!(
+            out.warnings.iter().any(|w| w.contains("stop short")),
+            "{:?}",
+            out.warnings
+        );
         // A base the browser can draw, and the same words moved into the
         // label where they belong, both stay quiet.
         for src in [
             "$$underbrace(a + b, \"total\")$$\n",
             "$$underbrace(P, \"a rather long label indeed, many characters\")$$\n",
+            // Accents *before* the brace open with the brace's own tag —
+            // `dot(v)` and `hat(q)` are `<mover accent="true">` too — and
+            // measuring forward from the first of them swallowed the whole
+            // formula as the "base". The brace here is two glyphs wide.
+            "$$\"\"^G dot(v) = C(\"\"^I_G hat(q))^top hat(a) + \
+             underbrace(\"\"^G g, \"label\")$$\n",
         ] {
             let out = render_deck(&meta, &[parse_slide(src)], Path::new("."));
             assert!(
@@ -2821,6 +2901,31 @@ mod tests {
         let slide = parse_slide("```markdown\nSee[^x].\n```\n");
         let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
         assert!(!out.warnings.iter().any(|w| w.contains("footnote")));
+    }
+
+    #[test]
+    fn a_commented_out_line_takes_its_footnote_reference_with_it() {
+        // A comment passes through rendering intact, so the scan used to find
+        // markup nobody can read — and with the reference commented out the
+        // definition renders nothing, so the warning even named the wrong half.
+        let slide =
+            parse_slide("- one\n<!-- - two [^a] commented out -->\n- three\n\n[^a]: the note\n");
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(
+            !out.warnings.iter().any(|w| w.contains("footnote")),
+            "{:?}",
+            out.warnings
+        );
+        // Same rule for an attribute span put aside the same way.
+        let slide = parse_slide("text\n\n<!-- [x]{.small} -->\n");
+        let out = render_deck(&DeckMeta::default(), &[slide], Path::new("."));
+        assert!(
+            !out.warnings
+                .iter()
+                .any(|w| w.contains("still on the slide")),
+            "{:?}",
+            out.warnings
+        );
     }
 
     #[test]

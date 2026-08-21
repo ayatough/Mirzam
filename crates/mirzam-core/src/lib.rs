@@ -73,6 +73,11 @@ pub struct DeckMeta {
     /// The gutter between panes — `--mz-grid-gap`.
     #[serde(rename = "grid-gap", alias = "grid_gap")]
     pub grid_gap: Option<PxLength>,
+    /// The retired `css:` key. Recognised only so [`Self::removed_css_warning`]
+    /// can say the stylesheet was not loaded — it has no other behaviour. Left
+    /// as an unknown key it would be indistinguishable from a typo, and a deck
+    /// written before v0.7.0 would lose its whole theme with nothing said.
+    pub css: Option<serde_yaml::Value>,
     pub vars: BTreeMap<String, serde_yaml::Value>,
 }
 
@@ -451,6 +456,38 @@ impl DeckMeta {
         }
     }
 
+    /// The warning for a deck still carrying `css:`, removed in v0.7.0.
+    ///
+    /// The key was retired in v0.6.0 with a deprecation that printed the exact
+    /// `theme:` line to write, and removing it made it fall through as an
+    /// unknown key — so the stylesheet simply did not load and nothing was
+    /// said. A removed *value* (`theme: default`) is caught and explained;
+    /// a removed key that was a documented part of the format one release ago
+    /// deserves the same, because every deck written before v0.7.0 that used
+    /// `css:` hits this, and the more carefully it was themed the more it loses.
+    pub fn removed_css_warning(&self) -> Option<String> {
+        let value = self.css.as_ref()?;
+        let path = match value {
+            serde_yaml::Value::String(s) => s.trim().to_string(),
+            other => serde_yaml::to_string(other)
+                .unwrap_or_default()
+                .trim()
+                .to_string(),
+        };
+        // The replacement line keeps whatever `theme:` already says, so the
+        // author can paste it rather than working out the merge themselves.
+        let mut entries: Vec<&str> = self.theme_entries();
+        entries.push(&path);
+        let write = match entries.len() {
+            1 => format!("theme: {path}"),
+            _ => format!("theme: [{}]", entries.join(", ")),
+        };
+        Some(format!(
+            "`css:` was removed in v0.7.0 and `{path}` was not loaded. \
+             Write `{write}` instead."
+        ))
+    }
+
     /// Variable table used by the expression evaluator.
     pub fn var_table(&self) -> BTreeMap<String, Value> {
         self.vars
@@ -621,13 +658,32 @@ mod tests {
     }
 
     /// The `css:` key was retired in `v0.6.0` (a warning carried the exact
-    /// `theme:` replacement line for one release) and removed after it. It is
-    /// an unknown key now, ignored like any other.
+    /// `theme:` replacement line for one release) and removed in `v0.7.0`.
+    /// Removed, not unknown: the stylesheet still does not load, but the deck
+    /// is told so, with the `theme:` line to write — an unknown key would be
+    /// indistinguishable from a typo, and the failure is silent theme loss.
     #[test]
-    fn the_removed_css_key_is_an_unknown_key() {
+    fn the_removed_css_key_warns_instead_of_loading() {
         let old = parse_meta("theme: mirzam\ncss: themes/acme.css\n").unwrap();
         assert_eq!(old.theme_entries(), ["mirzam"]);
         assert!(old.theme_sheets().is_empty());
+        let warning = old.removed_css_warning().expect("css: warns");
+        assert!(
+            warning.contains("`themes/acme.css` was not loaded"),
+            "{warning}"
+        );
+        assert!(
+            warning.contains("`theme: [mirzam, themes/acme.css]`"),
+            "{warning}"
+        );
+
+        // With no `theme:` of its own, the replacement is the scalar form.
+        let bare = parse_meta("css: t.css\n").unwrap();
+        let warning = bare.removed_css_warning().expect("css: warns");
+        assert!(warning.contains("`theme: t.css`"), "{warning}");
+
+        // A deck that never wrote the key hears nothing about it.
+        assert_eq!(DeckMeta::default().removed_css_warning(), None);
     }
 
     #[test]

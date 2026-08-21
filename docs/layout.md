@@ -139,8 +139,12 @@ columns, so the words use the room the drawing gave them:
 - **The split follows the amount.** The browser balances the columns, so ten
   items become five and five, and adding an item redistributes the rest — you
   never assign items to a side.
-- **An item never breaks across the fold.** A bullet that wrapped onto the
-  other column would read as two bullets.
+- **A block never breaks across the fold.** A bullet that wrapped onto the
+  other column would read as two bullets — and a table torn there is worse:
+  the header at the bottom of one column, the body opening the next as a
+  second, headerless table. Lists, tables, code blocks, quotes, figures,
+  boxes, cards and display maths all hold together; the balance happens
+  *between* blocks.
 - The gutter between columns is the grid gap, so the fold reads as the same
   kind of seam as the one between panes; `--mz-columns-gap` moves it alone —
   see [the token table](syntax.md#margins-padding-and-borders).

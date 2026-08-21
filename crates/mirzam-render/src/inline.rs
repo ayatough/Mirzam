@@ -737,11 +737,23 @@ fn embed_html(hosted: &Hosted, page: &str, alt: &str, attrs: &Attrs) -> String {
         .classes
         .retain(|c| !matches!(c.as_str(), "autoplay" | "loop" | "muted" | "manual"));
 
+    // Permissions Policy defaults `autoplay` to `self`, so a cross-origin
+    // frame is not allowed to honour the `autoplay=1` its play URL carries
+    // unless this page hands the permission over — the parameter alone is a
+    // request the player silently drops. Granted exactly when a play URL
+    // exists: a `{.manual}` frame plays from its own button, which is a user
+    // gesture and needs no permission.
+    let allow = if wants_play {
+        "accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture"
+    } else {
+        "accelerometer; clipboard-write; encrypted-media; picture-in-picture"
+    };
+
     format!(
         "<div class=\"mz-embed\"{} data-href=\"{href}\" data-title=\"{alt}\"{play_attr} \
          data-mz-play-on=\"{when}\">\
          <iframe src=\"{resting}\" title=\"{alt}\" loading=\"lazy\" allowfullscreen \
-         allow=\"accelerometer; clipboard-write; encrypted-media; picture-in-picture\"></iframe></div>",
+         allow=\"{allow}\"></iframe></div>",
         carried.html_id_class(),
         href = html_escape(&hosted.page(page, start)),
     )
@@ -1351,6 +1363,31 @@ mod tests {
         assert!(play.contains("autoplay=1"), "{play}");
         // Audible autoplay is blocked everywhere, so asking for it implies mute.
         assert!(play.contains("mute=1"), "{play}");
+    }
+
+    #[test]
+    fn a_frame_asked_to_play_is_allowed_to() {
+        // `autoplay=1` in the play URL is only a request: Permissions Policy
+        // defaults the `autoplay` feature to `self`, so a cross-origin frame
+        // sits on its poster unless the embedding page grants it in `allow=`.
+        for src in [
+            "![Talk](https://youtu.be/abc){.autoplay}\n",
+            // The default start-on-advance loads a fresh autoplay document
+            // from a click that is not the frame's own gesture, so it needs
+            // the permission just the same.
+            "![Talk](https://youtu.be/abc)\n",
+        ] {
+            let out = preprocess(src);
+            assert!(out.contains("allow=\"accelerometer; autoplay;"), "{out}");
+        }
+        // `{.manual}` plays from its own button — a user gesture — and a
+        // permission you do not need is noise.
+        let out = preprocess("![Talk](https://youtu.be/abc){.manual}\n");
+        assert!(!out.contains(" autoplay;"), "{out}");
+        assert!(
+            out.contains("allow=\"accelerometer; clipboard-write;"),
+            "{out}"
+        );
     }
 
     #[test]

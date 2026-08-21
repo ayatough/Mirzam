@@ -375,15 +375,20 @@ pub fn scope_warnings(
 }
 
 /// What frontmatter's `theme:` has to say for itself: an unknown built-in
-/// name.
+/// name, or the retired `css:` key still asking for a stylesheet that no
+/// longer loads. Both are the deck's look going missing with a fix one line
+/// away, so they are reported together, by every host that renders.
 ///
 /// The stylesheets themselves are read by the host, so what a file theme has
 /// to say arrives separately through [`file_theme_warnings`].
 pub fn theme_warnings(meta: &mirzam_core::DeckMeta) -> Vec<String> {
-    meta.theme_names()
+    let mut out: Vec<String> = meta
+        .theme_names()
         .into_iter()
         .filter_map(|name| theme_warning(Some(name)))
-        .collect()
+        .collect();
+    out.extend(meta.removed_css_warning());
+    out
 }
 
 /// `None` when there is nothing to report (no theme requested, or a known

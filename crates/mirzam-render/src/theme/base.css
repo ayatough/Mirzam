@@ -114,8 +114,18 @@ section.slide { background: var(--mz-slide-bg); border-radius: inherit; }
 .mz-columns {
   column-gap: var(--mz-columns-gap, var(--mz-grid-gap, 20px));
 }
-/* An item split across the fold reads as two items. */
-.mz-columns li { break-inside: avoid; }
+/* An item split across the fold reads as two items — and a table split there
+   is worse: the header lands at the bottom of one column and the body opens
+   the next as a second, headerless table. Multicol balances *between* blocks,
+   never through one, so everything that reads as one object holds together. */
+.mz-columns li,
+.mz-columns table,
+.mz-columns pre,
+.mz-columns blockquote,
+.mz-columns figure,
+.mz-columns .box,
+.mz-columns .card,
+.mz-columns math[display="block"] { break-inside: avoid; }
 .mz-columns > :first-child { margin-top: 0; }
 .mz-columns > :last-child { margin-bottom: 0; }
 
