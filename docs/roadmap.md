@@ -54,6 +54,8 @@ changing.
 | Overview grid (`O`), go-to-slide by number, bare chrome (`H`) | Done |
 | A working page on a slide (`![alt](page.html)`), sandboxed and inlined | Done · unreleased |
 | Figure captions and credits (`caption=`, `credit=`), a credit that cites | Done · unreleased |
+| A language server (`mirzam lsp`): diagnostics and an outline | Done · unreleased |
+| The same server's completion, hover and definitions | Next |
 | Plugins, PPTX export | Later |
 
 Each of those has a brief — what it is for, what is not free about it, and where
@@ -119,7 +121,10 @@ so it stays where to look first if a build ever feels slow.
 
 ## Still open
 
-Two things below `1.0` that are not features so much as unfinished thinking.
+Two things below `1.0` that were not features so much as unfinished thinking.
+One of them, the language server, now has a brief and a place in the table
+above; it is kept here because the reasoning that got it there belongs beside
+the other one.
 
 **Connector routing.** Today a connector is a single curve between two points: it
 leaves and arrives along the edge normals, but it does not know what is in the
@@ -154,6 +159,21 @@ answer for text-to-figure — and it crosses nothing, so it needs no route.
 **Language server.** Completion for pane names and anchor ids, diagnostics for
 references that point at nothing, hover for chart data — surfaced in the VS Code
 extension, which today previews but does not understand.
+
+This one stopped being unfinished thinking, and then stopped being unbuilt:
+`mirzam lsp` publishes diagnostics and an outline as of the next release. The
+brief is [W25](workstreams.md#w25--a-language-server-the-editor-understands-the-deck),
+and writing it turned up how much was already there. Every diagnostic it would
+publish is a warning `check --format json` emits today, under the kind
+vocabulary the agent contract fixed; the source map turns a slide or a pane
+back into a file and an offset; none of it needs the browser, since only the
+layout pass does. So it is a channel and a range, not an analysis — it ships as
+a `mirzam lsp` subcommand rather than a second binary to build for every
+platform, and it adds no dependency, because JSON-RPC over stdio is a header
+and a loop and `serde_json` is already here. What it is *not* is exact ranges:
+a warning knows its slide, not its token, and until spans are threaded through
+every warning the server finds the range by looking for the token the message
+already quotes.
 
 ## Later
 
