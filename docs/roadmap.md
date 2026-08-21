@@ -85,24 +85,39 @@ to today.
 
 ### Measured performance
 
-Release build, from the standing benchmark:
+Release build, from the standing benchmark, on the machine
+[the August 2026 report](reports/2026-08-performance.md) describes:
 
 | Deck | Full build | Single-slide edit |
 |---|---:|---:|
-| 20 slides | 4.5 ms | 0.4 ms |
-| 120 slides | 18.8 ms | 0.9 ms |
-| 500 slides | 75.6 ms | 3.2 ms |
-| 100 slides, 800 formulas | 24.5 ms | 1.3 ms |
+| 20 slides | 7.4 ms | 0.7 ms |
+| 120 slides | 20.3 ms | 1.3 ms |
+| 500 slides | 79.9 ms | 3.5 ms |
+| 100 slides, 800 formulas | 28.4 ms | 1.5 ms |
 
 Exactly one slide re-renders per edit. The residual growth is the linear cost of
 re-reading and hashing the source, not rendering.
 
-Measured again at `v0.1.0`, after the deck gained per-pane continuation, a
-contents page and annotations. Edit latency at 500 slides went from 2.3 ms to
-3.2 ms: a build now expands `<!-- next -->`, resolves the contents page against
-the finished deck, and only then hashes — so the whole-document pass got a
-little longer while the per-slide render did not. The shape is what matters and
-it is unchanged: 25× the slides costs about 8× the edit.
+Every release from `v0.1.0` was rebuilt and measured again on that one machine,
+which is the only way to tell a slower release from a faster laptop. Eight of
+them cost 1 to 3 ms on a full build and 0.3 ms on an edit — **the same amount at
+every deck size**, so what grew is the fixed cost of a build and not the cost of
+a slide. The per-slide figure is if anything lower than it was, and the design
+goal holds: 25× the slides costs 5× the edit.
+
+The number that did move is what a deck weighs: the smallest deck there is had
+gone from 55 KB at `v0.1.0` to 144 KB, because the viewer and the base
+stylesheet shipped whole — half of them prose explaining the code — inside every
+deck. Those comments are now stripped at compile time and the same deck is
+78 KB. What is left is the maths font, embedded entire the moment a deck holds
+one formula; the report says why subsetting it is not the afternoon's work it
+looks like.
+
+Build time, by feature: a code fence costs 0.11 ms, a chart 0.04 ms, a formula
+0.023 ms, a shape nothing worth measuring. A fence was 0.40 ms until the
+highlighters stopped being rebuilt one per fence — a hundred-fence deck went
+from 52 ms to 28 ms — and it is still the most expensive item in the renderer,
+so it stays where to look first if a build ever feels slow.
 
 ## Still open
 

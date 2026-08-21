@@ -41,6 +41,59 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   like the slide it pictures. CI runs it beside the layout check.
 
 ### Added
+- **A deck full of code builds in half the time.** Highlighting a fence cost
+  0.35 ms, and 0.29 ms of that was not highlighting: a highlighter was built
+  for every fence, and each fresh copy of a grammar pays to warm the
+  regular-expression engine's cache again. They are now kept, one per language,
+  for the life of the process — a hundred-fence deck builds in 28 ms against
+  52 ms, while a deck with no fences and a deck of nothing but maths are
+  unchanged to the millisecond. A code fence now costs 0.11 ms against a
+  formula's 0.023 ms, which is the first time the two have been in the same
+  range. Reuse is exact, and a test holds it there: unlike fences run through
+  one cache, twice, each compared against a highlighter built fresh for it.
+- **Every deck is 66 KB lighter, and nothing about it changed.** A deck ships
+  `base.css` and `viewer.js` whole, and both are written the way this
+  repository writes everything: the reasoning sits next to the line it
+  explains. That prose was 52% of the stylesheet and 43% of the viewer, and
+  every reader of every deck downloaded all of it. It is now stripped at
+  compile time — `build.rs` does it, the sources are untouched, and the
+  comments still live where an author reads them. The smallest deck there is
+  went from 144 KB to 78 KB, `01-start` from 151 KB to 85 KB, `pitch` from
+  233 KB to 156 KB, and a deck heavy with maths or photographs saves the same
+  absolute 66 KB on top of what its own content costs. There is no runtime
+  cost, because there is no runtime work: the binary embeds the stripped copy.
+  Only comments go — the stripper tracks strings, template literals with their
+  `${}` nesting, and regular expressions, so a `//` inside a URL or a `/*`
+  inside `content:` survives exactly as written, and it keeps the line
+  numbering, so line 412 of the `viewer.js` a browser shows is still line 412
+  of `viewer.js` in the repository.
+- **How fast Mirzam is, measured instead of remembered.**
+  [`docs/reports/2026-08-performance.md`](docs/reports/2026-08-performance.md)
+  rebuilds every release from `v0.1.0` on one machine and runs Marp and Typst
+  with Touying beside it on the same decks. Eight releases cost 1 to 3 ms on a
+  full build and 0.3 ms on an edit — the same amount whether the deck is 20
+  slides or 500, so what grew is the fixed cost of a build and not the cost of
+  a slide, and the design goal holds. Against the field: a 500-slide deck is
+  82 ms and 10 MiB against Marp's 702 ms and 155 MiB, and Typst wins the short
+  deck outright while wanting 2.1 GB of memory for the long one. The report
+  also says what a deck *weighs* — the smallest one has gone from 55 KB to
+  144 KB, and the three places those bytes are is the first honest list of what
+  would reclaim them. `scripts/bench-history.sh` and `scripts/bench-compare.py`
+  are the two commands that produce it; the comparison counts the slides in
+  every output it times, which is how it caught Touying rendering twice the
+  pages of the deck it was being compared against.
+  It also prices the renderer feature by feature, which settles a question by
+  measurement rather than intuition: **a code fence costs 0.40 ms and a formula
+  0.03 ms**, so syntax highlighting is the expensive thing and maths is not —
+  and highlighting's 3 ms first-use cost is exactly the step the release history
+  shows at `v0.5.0`, the release that added it. Maths is expensive the other
+  way: one formula anywhere in a deck embeds the whole font, so a 100-slide deck
+  with a single `$x$` in it weighs 628 KB. Subsetting that font was tried and is
+  written up as declined — it silently loses the radical, the italic letterforms
+  and the stretchy delimiters, and the layout checker passes all three.
+  The report is published on the site as
+  [a deck](https://ayatough.github.io/Mirzam/decks/performance/), built by the
+  thing it measures, and CI holds every section of it to a slide.
 - **`mirzam lsp` is a language server: the editor understands the deck.** An
   editor starts it, sends the buffer as it is typed, and gets back the problems
   the build would have reported — an unknown theme, a pane that is not in the

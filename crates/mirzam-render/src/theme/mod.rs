@@ -28,39 +28,58 @@
 //! [C3]: ../../../docs/workstreams.md#c3-theme-tokens
 
 pub mod file_theme;
+/// Comment stripping, run by `build.rs` over everything below before the crate
+/// embeds it. See the file for what it promises and why the promises matter.
+///
+/// `#[cfg(test)]` because the crate itself never strips anything: by the time
+/// this code is running, the build script has already done it. The module is
+/// compiled here so its promises are held by the crate's own test suite rather
+/// than by nothing at all.
+#[cfg(test)]
+mod strip;
 
 pub use file_theme::{file_theme_warnings, FileTheme};
 
-pub const BASE_CSS: &str = include_str!("base.css");
-pub const VIEWER_JS: &str = concat!("\n", include_str!("viewer.js"));
+/// Where the shipped copy of a theme asset comes from: `build.rs` writes each
+/// one into `OUT_DIR` with its comments removed and its line numbering intact.
+/// The sources themselves are in this directory, unchanged, and are what the
+/// tests below read when what they are checking is how the *source* is written.
+macro_rules! shipped {
+    ($name:literal) => {
+        include_str!(concat!(env!("OUT_DIR"), "/", $name))
+    };
+}
+
+pub const BASE_CSS: &str = shipped!("base.css");
+pub const VIEWER_JS: &str = concat!("\n", shipped!("viewer.js"));
 
 /// The animation runtime. Inlined before `VIEWER_JS`, and only into decks that
 /// actually animate something, so an unanimated deck carries none of it.
-pub const ANIM_JS: &str = concat!("\n", include_str!("anim.js"));
+pub const ANIM_JS: &str = concat!("\n", shipped!("anim.js"));
 
 /// Presentation effects. Inlined only into decks that bind a key to one, and
 /// never into the print page: an effect is part of the performance rather than
 /// the document.
-pub const EFFECTS_JS: &str = concat!("\n", include_str!("effects.js"));
+pub const EFFECTS_JS: &str = concat!("\n", shipped!("effects.js"));
 
 /// The annotation overlay. Inlined only into decks that annotate something —
 /// and, unlike every other script here, into the print page as well: an
 /// annotation is additive, so drawing it cannot hide content, and the PDF
 /// would otherwise lose the marks the deck exists to point at.
-pub const ANNOT_JS: &str = concat!("\n", include_str!("annot.js"));
+pub const ANNOT_JS: &str = concat!("\n", shipped!("annot.js"));
 
 /// Shrink-to-fit for panes that ask for it. Inlined into the print page too:
 /// it only ever makes content smaller than a box it is already overflowing, so
 /// a page that runs it shows strictly more than one that does not.
-pub const FIT_JS: &str = concat!("\n", include_str!("fit.js"));
+pub const FIT_JS: &str = concat!("\n", shipped!("fit.js"));
 
 /// The presenter window and the link between two windows. Viewer-only: the
 /// print page has no second window and no keys to press.
-pub const PRESENTER_JS: &str = concat!("\n", include_str!("presenter.js"));
+pub const PRESENTER_JS: &str = concat!("\n", shipped!("presenter.js"));
 
 /// Print overrides applied after a theme's CSS.
 /// Slide dimensions and the `@page` size are appended by `assemble_print_page`.
-pub const PRINT_CSS: &str = concat!("\n", include_str!("print.css"));
+pub const PRINT_CSS: &str = concat!("\n", shipped!("print.css"));
 
 /// The theme a deck renders in when it names none, and what an unrecognized
 /// name falls back to. There is no separate `default` theme: a deck that
@@ -73,20 +92,40 @@ pub const FALLBACK_THEME: &str = "mirzam";
 /// [`theme_tokens`] always has something to return without searching for
 /// itself. Dropping the fallback out of `THEMES` would then be a theme
 /// nobody can name, not a function that never returns.
-const FALLBACK_TOKENS: &str = include_str!("themes/mirzam.css");
+const FALLBACK_TOKENS: &str = shipped!("themes/mirzam.css");
 
 /// Built-in themes, the fallback first. Each file defines the complete token
 /// set for both modes; see `themes/CREDITS.md` for where each palette comes
 /// from.
 const THEMES: &[(&str, &str)] = &[
     (FALLBACK_THEME, FALLBACK_TOKENS),
+    ("nord", shipped!("themes/nord.css")),
+    ("solarized", shipped!("themes/solarized.css")),
+    ("vscode", shipped!("themes/vscode.css")),
+    ("wuwei", shipped!("themes/wuwei.css")),
+];
+
+pub const THEME_NAMES: &[&str] = &["mirzam", "nord", "solarized", "vscode", "wuwei"];
+
+/// The stylesheets and scripts as they are *written*, comments and all. Only
+/// the tests read these, and only the ones whose subject is the source: that a
+/// comment is closed, that a line number in a diagnostic points where an author
+/// would look. Nothing here reaches a deck, and `#[cfg(test)]` keeps it out of
+/// the binary and the WebAssembly bundle.
+#[cfg(test)]
+pub(crate) const BASE_CSS_SOURCE: &str = include_str!("base.css");
+#[cfg(test)]
+pub(crate) const VIEWER_JS_SOURCE: &str = include_str!("viewer.js");
+#[cfg(test)]
+const PRINT_CSS_SOURCE: &str = include_str!("print.css");
+#[cfg(test)]
+const THEME_SOURCES: &[(&str, &str)] = &[
+    ("mirzam", include_str!("themes/mirzam.css")),
     ("nord", include_str!("themes/nord.css")),
     ("solarized", include_str!("themes/solarized.css")),
     ("vscode", include_str!("themes/vscode.css")),
     ("wuwei", include_str!("themes/wuwei.css")),
 ];
-
-pub const THEME_NAMES: &[&str] = &["mirzam", "nord", "solarized", "vscode", "wuwei"];
 
 /// The name as a built-in theme, or `None`. The one place a theme name is
 /// checked, so a name reaching the markup is always one there are tokens for.
@@ -714,13 +753,15 @@ mod tests {
     fn every_dial_base_css_reads_has_a_fallback() {
         // What base.css declares for itself - the viewer chrome's palette, the
         // effect colours - is always there to be read.
-        let declared: Vec<&str> = BASE_CSS
+        // Read from the source, so `base.css:214` in the message below is the
+        // line an author opens rather than the line the shipped copy holds.
+        let declared: Vec<&str> = BASE_CSS_SOURCE
             .lines()
             .filter_map(|l| l.trim().strip_prefix("--mz-"))
             .filter_map(|d| d.split(':').next())
             .collect();
         let mut offenders = Vec::new();
-        for (i, line) in BASE_CSS.lines().enumerate() {
+        for (i, line) in BASE_CSS_SOURCE.lines().enumerate() {
             for use_ in line.split("var(--mz-").skip(1) {
                 let name = use_
                     .split([',', ')', ' '])
@@ -881,14 +922,19 @@ mod tests {
     fn stylesheets_have_no_stray_comment_markers() {
         // Built from THEMES rather than listed by hand, so a theme added later
         // is covered without anyone remembering to add it here.
-        let sheets = [("base.css", BASE_CSS), ("print.css", PRINT_CSS)]
-            .into_iter()
-            .map(|(n, css)| (n.to_string(), css))
-            .chain(
-                THEMES
-                    .iter()
-                    .map(|(n, css)| (format!("themes/{n}.css"), *css)),
-            );
+        // The sources, not the shipped copies: `build.rs` removes the comments
+        // on the way out, so a stray marker is only ever visible here.
+        let sheets = [
+            ("base.css", BASE_CSS_SOURCE),
+            ("print.css", PRINT_CSS_SOURCE),
+        ]
+        .into_iter()
+        .map(|(n, css)| (n.to_string(), css))
+        .chain(
+            THEME_SOURCES
+                .iter()
+                .map(|(n, css)| (format!("themes/{n}.css"), *css)),
+        );
         for (name, css) in sheets {
             // CSS comments do not nest: `/*` inside one is ordinary text, and
             // the first `*/` ends it. So the scan alternates strictly between
@@ -1511,7 +1557,9 @@ mod contrast_tests {
                 || line.contains("rgb(")
                 || line.split('#').skip(1).any(is_hex_color)
         };
-        let lines: Vec<&str> = super::BASE_CSS.lines().collect();
+        // The source: the excuse this test looks for is written as a comment,
+        // and the shipped copy has none.
+        let lines: Vec<&str> = super::BASE_CSS_SOURCE.lines().collect();
         let mut offenders = Vec::new();
         for (i, line) in lines.iter().enumerate() {
             // A selector such as `#deck {` is not a color.

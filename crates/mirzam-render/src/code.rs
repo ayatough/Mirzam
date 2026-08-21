@@ -19,6 +19,8 @@
 //! [W20]: ../../../docs/workstreams.md#w20--syntax-highlighting-at-build-time
 
 use std::borrow::Cow;
+use std::cell::RefCell;
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -181,13 +183,48 @@ pub fn highlight(lang: &str, code: &str) -> Option<String> {
         .iter()
         .find(|(n, _)| *n == name)
         .map(|(_, ext)| *ext)?;
-    let mut hl = synoptic::from_extension(ext, TAB_WIDTH)?;
-
     // `split('\n')` and a `'\n'` between the pieces is an exact round trip,
     // including the empty last piece a trailing newline leaves behind.
     let lines: Vec<String> = code.split('\n').map(str::to_string).collect();
-    hl.run(&lines);
+    HIGHLIGHTERS.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        let hl = match cache.entry(ext) {
+            Entry::Occupied(e) => e.into_mut(),
+            Entry::Vacant(e) => e.insert(synoptic::from_extension(ext, TAB_WIDTH)?),
+        };
+        hl.run(&lines);
+        Some(render(hl, &lines, code))
+    })?
+}
 
+thread_local! {
+    /// One highlighter per language, kept for the life of the process.
+    ///
+    /// Building one per fence is what the obvious code does, and it costs about
+    /// **0.29 ms every time** — six times what the highlighting itself costs. The
+    /// clone `from_extension` hands back is cheap; what is not is the first
+    /// `run` through it, because each fresh copy of a grammar's regular
+    /// expressions starts with a cold engine cache and pays to warm it again. A
+    /// hundred fences paid it a hundred times.
+    ///
+    /// Reuse is exact rather than nearly exact: `run` rebuilds the atom table from
+    /// the lines it is given, and the tokenizer resets the token list, the line
+    /// index and its own state before it starts. `highlighting_is_the_same_cached_or_not`
+    /// holds that to a sequence of unlike fences through one highlighter, because
+    /// this is the change that turns a pure function into one carrying state for
+    /// as long as `mirzam serve` or the browser editor is open — where a reset
+    /// somebody stopped doing would show up as colours that drift while you type,
+    /// and never in a one-shot build.
+    ///
+    /// Thread-local rather than shared: a highlighter has to be `&mut` to run, and
+    /// a lock around it would serialise every fence in a deck for no gain.
+    static HIGHLIGHTERS: RefCell<HashMap<&'static str, synoptic::Highlighter>> =
+        RefCell::new(HashMap::new());
+}
+
+/// The HTML for `lines`, from a highlighter that has just run over them, or
+/// `None`-worthy plain text if what it says the code was is not what it is.
+fn render(hl: &synoptic::Highlighter, lines: &[String], code: &str) -> Option<String> {
     let mut out = String::with_capacity(code.len() * 2);
     // What the highlighter says the text was. Synoptic replaces a tab with
     // spaces before it hands a line back, and a grammar with a greedy regex
@@ -270,6 +307,61 @@ impl comrak::adapters::SyntaxHighlighterAdapter for Highlighter {
 mod tests {
     use super::*;
     use crate::render_markdown;
+
+    /// A fence highlighted the way it was before the highlighters were kept:
+    /// a new one, used once, dropped. The reference the cache is held to.
+    fn highlight_uncached(lang: &str, code: &str) -> Option<String> {
+        let name = lang.trim().to_ascii_lowercase();
+        let ext = LANGUAGES
+            .iter()
+            .find(|(n, _)| *n == name)
+            .map(|(_, ext)| *ext)?;
+        let mut hl = synoptic::from_extension(ext, TAB_WIDTH)?;
+        let lines: Vec<String> = code.split('\n').map(str::to_string).collect();
+        hl.run(&lines);
+        render(&hl, &lines, code)
+    }
+
+    /// The test that pays for the highlighter cache.
+    ///
+    /// Keeping one highlighter per language for the life of the process is
+    /// worth 0.29 ms a fence, and it is the one change here that lets a deck's
+    /// output depend on what was rendered before it. Today it cannot: `run`
+    /// rebuilds the atom table and the tokenizer resets everything it reads.
+    /// This holds that to a run of unlike fences through one cache -
+    /// interleaved languages, a comment-only fence, an empty one, a string
+    /// carrying comment markers - against a highlighter built fresh for each.
+    /// If a future synoptic stops resetting something, it fails here rather
+    /// than as colours that drift while somebody types.
+    #[test]
+    fn highlighting_is_the_same_cached_or_not() {
+        let fences = [
+            ("rust", "fn main() {\n    let s = \"a // b /* c */\";\n}\n"),
+            ("python", "def f(n):\n    return n * 2  # doubled\n"),
+            ("rust", "// just a comment\n"),
+            ("javascript", "const t = `x ${ y } z`;\n"),
+            ("rust", ""),
+            ("python", "s = 'text with a # inside'\nt = \"another\"\n"),
+            ("rust", "fn main() {\n    let s = \"a // b /* c */\";\n}\n"),
+            ("javascript", "// gone\nfoo(/re[/]gex/);\n"),
+            (
+                "rust",
+                "struct S { a: u32 }\n\nimpl S {\n    fn a(&self) -> u32 { self.a }\n}\n",
+            ),
+        ];
+        // Twice through, so every fence is also seen by a cache that has
+        // already been used for something longer and something shorter.
+        for round in 0..2 {
+            for (lang, code) in fences {
+                assert_eq!(
+                    highlight(lang, code),
+                    highlight_uncached(lang, code),
+                    "round {round}: `{lang}` highlighted differently from a \
+                     highlighter kept than from a fresh one"
+                );
+            }
+        }
+    }
 
     #[test]
     fn a_known_language_is_coloured() {
