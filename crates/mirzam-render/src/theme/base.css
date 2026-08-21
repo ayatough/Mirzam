@@ -896,6 +896,29 @@ video { background: #000; /* theme-independent: letterbox behind the frame */ bo
 .mz-video-still span { font-size: 2em; color: var(--mz-accent1); }
 .mz-video-still em { font-style: normal; font-size: 1.1em; }
 
+/* A hosted video where its player cannot go: the PDF, and a page with no
+   origin (a built file opened from disk), where YouTube's player refuses to
+   load ("Error 153"). The frame becomes the video's own thumbnail, linked to
+   the page it came from. The overlay colours are theme-independent: they sit
+   on a photograph, not on the deck's palette — and if the thumbnail itself
+   cannot load, the `.mz-embed` surface behind it still looks deliberate. */
+.mz-embed-still { position: absolute; inset: 0; display: block; text-decoration: none; }
+.mz-embed-still img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.mz-play-badge {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  display: flex; align-items: center; justify-content: center;
+  width: 72px; height: 50px; border-radius: 14px;
+  background: rgb(0 0 0 / .72); color: #fff; font-size: 22px; /* theme-independent: an overlay on a photograph */
+}
+.mz-still-caption {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  display: flex; flex-direction: column; gap: .15em;
+  padding: .5em .8em;
+  background: rgb(0 0 0 / .62); color: #fff; /* theme-independent: an overlay on a photograph */
+}
+.mz-still-caption em { font-style: normal; font-weight: 600; font-size: .95em; }
+.mz-still-url { font-size: .7em; opacity: .85; word-break: break-all; }
+
 /* Charts (build-time SVG from data). Series colors are theme tokens: see
    theme/themes/*.css. */
 .mz-chart-wrap { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }

@@ -217,6 +217,45 @@
   // so its autoplay URL waits in `data-mz-play` and is swapped in on arrival,
   // which is also what keeps the frame off the network until then.
   const restingSrc = new WeakMap();
+
+  // A page with no origin cannot show a YouTube frame at all: the player
+  // refuses to load from `file://` and from sandboxed frames ("Error 153"),
+  // so a built deck opened from disk showed a grey box where the video was,
+  // however online the machine happened to be. The frame becomes the video's
+  // thumbnail, linked to the page it came from - the same card the PDF
+  // prints - and stops counting as a click step, because there is nothing
+  // left on the slide for a click to start.
+  if (location.protocol === 'file:' || window.origin === 'null') {
+    for (const box of document.querySelectorAll('.mz-embed[data-thumb]')) {
+      const f = box.querySelector('iframe');
+      if (!f) continue;
+      const a = document.createElement('a');
+      a.className = 'mz-embed-still';
+      a.href = box.dataset.href;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      const img = document.createElement('img');
+      // No network is still a possibility here - that is why the deck is
+      // self-contained - and a broken-image icon looks like a mistake where
+      // the card without it still looks deliberate: surface, badge, title.
+      img.addEventListener('error', () => img.remove());
+      img.src = box.dataset.thumb;
+      img.alt = '';
+      const badge = document.createElement('span');
+      badge.className = 'mz-play-badge';
+      badge.textContent = '▶';
+      const cap = document.createElement('span');
+      cap.className = 'mz-still-caption';
+      const em = document.createElement('em');
+      em.textContent = box.dataset.title || '';
+      cap.append(em);
+      a.append(img, badge, cap);
+      f.replaceWith(a);
+      box.removeAttribute('data-mz-play');
+      box.removeAttribute('data-mz-play-on');
+    }
+  }
+
   // Start or stop one thing, whichever of the three kinds it is. A hosted video
   // is the odd one: another origin, so all this side has is which URL the frame
   // is pointed at.

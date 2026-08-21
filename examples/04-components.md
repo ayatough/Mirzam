@@ -414,7 +414,7 @@ A page URL becomes a player, from where the link says:
   is not self-contained**
 - The next click starts it, `{start=1m30s}` overrides the link,
   and `{.autoplay}` moves it to arrival
-- The PDF gets the link, timestamp and all
+- The PDF gets the thumbnail, linked — timestamp and all
 :::
 
 ::: pane clip {valign=middle}

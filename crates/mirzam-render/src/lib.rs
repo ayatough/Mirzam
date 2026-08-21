@@ -788,8 +788,9 @@ fn split_origin(base: &str) -> (&str, &str) {
 
 /// Replaces the things a page cannot play with something a page can show.
 ///
-/// A `<video>` becomes its poster, or a placeholder; a hosted embed becomes a
-/// placeholder carrying the link it came from; a widget and an `<audio>` keep
+/// A `<video>` becomes its poster, or a placeholder; a hosted embed becomes
+/// its thumbnail linked to the page it came from, or a placeholder carrying
+/// that link when the host serves no thumbnail; a widget and an `<audio>` keep
 /// their labels and lose the controls paper cannot offer. PDF output is static, and silently printing an
 /// empty box would be worse than saying what is missing.
 fn videos_to_stills(html: &str) -> String {
@@ -815,21 +816,35 @@ fn videos_to_stills(html: &str) -> String {
     .into_owned();
 
     // A hosted video cannot be printed either, and unlike a local file it has
-    // somewhere to send the reader: the page it came from.
+    // somewhere to send the reader: the page it came from. When the host
+    // serves a thumbnail (`data-thumb`, YouTube), the page shows *that*,
+    // linked, with the URL spelled out for paper — the exporting machine
+    // fetches it while Chromium prints, which asks for the network a hosted
+    // video already needs. Without one (Vimeo), the dashed box and the link
+    // are all there is.
     static EMBED: OnceLock<Regex> = OnceLock::new();
     let embed = EMBED.get_or_init(|| {
         Regex::new(
-            r#"<div class="mz-embed"[^>]*data-href="([^"]*)" data-title="([^"]*)"[^>]*>.*?</div>"#,
+            r#"<div class="mz-embed"[^>]*data-href="([^"]*)" data-title="([^"]*)"(?: data-thumb="([^"]*)")?[^>]*>.*?</div>"#,
         )
         .expect("static regex")
     });
     let out = embed
-        .replace_all(&out, |c: &regex::Captures| {
-            format!(
+        .replace_all(&out, |c: &regex::Captures| match c.get(3) {
+            Some(thumb) => format!(
+                "<div class=\"mz-embed\"><a class=\"mz-embed-still\" href=\"{href}\">\
+                 <img src=\"{thumb}\" alt=\"\"><span class=\"mz-play-badge\">▶</span>\
+                 <span class=\"mz-still-caption\"><em>{title}</em>\
+                 <span class=\"mz-still-url\">{href}</span></span></a></div>",
+                href = &c[1],
+                title = &c[2],
+                thumb = thumb.as_str(),
+            ),
+            None => format!(
                 "<div class=\"mz-video-still\"><span>▶</span><em>{}</em>\
                  <a href=\"{}\">{}</a></div>",
                 &c[2], &c[1], &c[1]
-            )
+            ),
         })
         .into_owned();
 
@@ -888,6 +903,19 @@ pub fn assemble_print_page(
     } else {
         String::new()
     };
+    // A hosted video's thumbnail is the one remote reference on this page, and
+    // the exporting machine may be offline. A broken-image glyph would print
+    // where the card without it still says the right thing — surface, badge,
+    // title, link — so what never loaded is swept once the images have
+    // resolved. Removing it hides nothing a scriptless read would have seen,
+    // which is the same guarantee the annotation script runs under.
+    let still_js = if sections.iter().any(|s| s.contains("mz-embed-still")) {
+        "<script>addEventListener('load',()=>{\
+         for(const i of document.querySelectorAll('.mz-embed-still img'))\
+         if(!i.naturalWidth)i.remove()});</script>\n"
+    } else {
+        ""
+    };
     let (theme_name, mode_attr) = theme_attrs(meta);
     format!(
         r#"<!doctype html>
@@ -908,7 +936,7 @@ section.slide {{ width: {w}px; height: {h}px; }}
 <body{body_theme}>
 <div id="deck"{fit}>
 {sections}</div>
-{fit_js}{annot_js}</body>
+{fit_js}{still_js}{annot_js}</body>
 </html>
 "#,
         title = inline::html_escape(title),
@@ -3035,6 +3063,46 @@ mod tests {
         let out = videos_to_stills("<video src=\"a.mp4\" title=\"Demo clip\"></video>");
         assert!(out.contains("mz-video-still"));
         assert!(out.contains("Demo clip"));
+    }
+
+    /// A hosted video that serves a thumbnail prints as that thumbnail, linked
+    /// to the page it came from — a picture of the video where the video was,
+    /// rather than a dashed box saying one is missing. The URL is spelled out
+    /// too, because paper cannot be clicked.
+    #[test]
+    fn print_replaces_a_hosted_video_with_its_linked_thumbnail() {
+        let embed = "<div class=\"mz-embed\" data-href=\"https://youtu.be/abc\" \
+                     data-title=\"Talk\" data-thumb=\"https://i.ytimg.com/vi/abc/hqdefault.jpg\" \
+                     data-mz-play-on=\"advance\">\
+                     <iframe src=\"https://www.youtube-nocookie.com/embed/abc\"></iframe></div>";
+        let out = videos_to_stills(embed);
+        assert!(
+            out.contains("<a class=\"mz-embed-still\" href=\"https://youtu.be/abc\""),
+            "{out}"
+        );
+        assert!(
+            out.contains("<img src=\"https://i.ytimg.com/vi/abc/hqdefault.jpg\""),
+            "{out}"
+        );
+        assert!(out.contains("Talk"), "{out}");
+        // The URL as text, for a reader holding the printout.
+        assert!(out.contains(">https://youtu.be/abc</span>"), "{out}");
+        assert!(!out.contains("<iframe"), "{out}");
+    }
+
+    /// A host with no thumbnail keeps the labelled placeholder and the link.
+    #[test]
+    fn print_replaces_a_hosted_video_without_thumbnail_with_a_link() {
+        let embed = "<div class=\"mz-embed\" data-href=\"https://vimeo.com/76979871\" \
+                     data-title=\"V\" data-mz-play-on=\"advance\">\
+                     <iframe src=\"https://player.vimeo.com/video/76979871\"></iframe></div>";
+        let out = videos_to_stills(embed);
+        assert!(out.contains("mz-video-still"), "{out}");
+        assert!(
+            out.contains("<a href=\"https://vimeo.com/76979871\">https://vimeo.com/76979871</a>"),
+            "{out}"
+        );
+        assert!(!out.contains("<iframe"), "{out}");
     }
 
     /// A printed recording keeps everything a page can carry — the sleeve and

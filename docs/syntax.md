@@ -1039,12 +1039,15 @@ that particular job.
 - A YouTube or Vimeo page URL becomes an embed, served from
   `youtube-nocookie.com`. **This is the one thing in a deck that is not
   self-contained:** the frame is fetched when the slide is shown, so it needs
-  the network and it cannot be printed. The PDF gets a placeholder carrying
-  the link instead, and audio gets its label without the transport.
+  the network and it cannot be printed. The PDF gets the video's thumbnail,
+  linked to the page it came from with the URL spelled out for paper (Vimeo
+  serves no thumbnail without an API call, so it keeps a labelled link), and
+  audio gets its label without the transport.
   It also needs an *origin*: YouTube's player refuses to load from a page
   opened as `file://` ("Error 153"), and a laptop being online does not change
-  that. Present a deck with a hosted video through `mirzam serve`, not by
-  opening the built file from disk.
+  that. A built file opened from disk shows the same linked thumbnail the PDF
+  prints, so the slide holds a picture of the video and a click opens it on
+  YouTube — but to *play* it on the slide, present through `mirzam serve`.
 - The frame is **16:9 and inside its pane**, both at once: its height comes from
   whichever of the pane's two axes runs out first, and from the room a heading
   beside it leaves, so it fits a narrow column and a full-bleed pane without

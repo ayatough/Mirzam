@@ -596,6 +596,19 @@ impl Hosted {
             }
         }
     }
+
+    /// The video's own thumbnail, for the two places the player cannot go: the
+    /// PDF, and a page with no origin — a built file opened from disk — where
+    /// YouTube's player refuses to load at all ("Error 153"). YouTube serves
+    /// one at a stable URL per id; Vimeo's takes an API call this crate cannot
+    /// make, so a Vimeo frame has no thumbnail and those places fall back to a
+    /// labelled link.
+    fn thumbnail(&self) -> Option<String> {
+        match self.host {
+            Host::YouTube => Some(format!("https://i.ytimg.com/vi/{}/hqdefault.jpg", self.id)),
+            Host::Vimeo => None,
+        }
+    }
 }
 
 /// The hosted video a page URL names, or `None` when this is not one.
@@ -737,6 +750,15 @@ fn embed_html(hosted: &Hosted, page: &str, alt: &str, attrs: &Attrs) -> String {
         .classes
         .retain(|c| !matches!(c.as_str(), "autoplay" | "loop" | "muted" | "manual"));
 
+    // Carried for the places the player cannot go: the print pass bakes it into
+    // the PDF, and the viewer swaps it in on a page whose origin the player
+    // refuses to serve. Attribute data, not an `<img>`: nothing is fetched
+    // unless one of those places actually needs it.
+    let thumb_attr = hosted
+        .thumbnail()
+        .map(|t| format!(" data-thumb=\"{}\"", html_escape(&t)))
+        .unwrap_or_default();
+
     // Permissions Policy defaults `autoplay` to `self`, so a cross-origin
     // frame is not allowed to honour the `autoplay=1` its play URL carries
     // unless this page hands the permission over — the parameter alone is a
@@ -750,7 +772,7 @@ fn embed_html(hosted: &Hosted, page: &str, alt: &str, attrs: &Attrs) -> String {
     };
 
     format!(
-        "<div class=\"mz-embed\"{} data-href=\"{href}\" data-title=\"{alt}\"{play_attr} \
+        "<div class=\"mz-embed\"{} data-href=\"{href}\" data-title=\"{alt}\"{thumb_attr}{play_attr} \
          data-mz-play-on=\"{when}\">\
          <iframe src=\"{resting}\" title=\"{alt}\" loading=\"lazy\" allowfullscreen \
          allow=\"{allow}\"></iframe></div>",
@@ -1283,12 +1305,21 @@ mod tests {
             );
             // The page URL is carried so the print path can link to it.
             assert!(out.contains(&format!("data-href=\"{url}\"")), "{out}");
+            // And the thumbnail, for the print path and for a page whose
+            // origin the player refuses to serve.
+            assert!(
+                out.contains("data-thumb=\"https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg\""),
+                "{out}"
+            );
         }
         let out = preprocess("![V](https://vimeo.com/76979871)\n");
         assert!(
             out.contains("https://player.vimeo.com/video/76979871"),
             "{out}"
         );
+        // Vimeo serves no thumbnail at a stable URL, so the frame carries none
+        // and the fallbacks use the labelled link instead.
+        assert!(!out.contains("data-thumb"), "{out}");
     }
 
     #[test]

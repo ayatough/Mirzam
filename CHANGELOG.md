@@ -8,6 +8,16 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Fixed
+- **A hosted video is no longer a dead grey box where its player cannot go.**
+  YouTube's player refuses to load on a page opened from disk ("Error 153"),
+  so a built deck showed an error frame however online the machine was; the
+  PDF showed a dashed placeholder saying the video could not play. Both now
+  show the video's own thumbnail with a play badge, linked to the page on
+  YouTube — the PDF spells the URL out under the title for a reader holding
+  the printout. Vimeo serves no thumbnail at a stable URL, so its PDF
+  placeholder keeps the labelled link it had. Playing on the slide itself
+  still needs `mirzam serve`, and a served or hosted deck — `/next/`
+  included — is unchanged: the card only appears where the player refuses.
 - **A deck still carrying `css:` is told its stylesheet was not loaded.** The
   key was retired in v0.6.0 with a warning that printed the exact `theme:`
   line to write, and removing it in v0.7.0 made it fall through as an unknown
