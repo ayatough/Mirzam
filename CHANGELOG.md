@@ -8,6 +8,21 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Fixed
+- **The PDF keeps the links the deck writes between its own slides.** A `[@key]`
+  mark, an entry's `↩` backlink and a `toc` entry all address a slide by number
+  — `#3`, which the viewer reads off the URL hash — and nothing on the page
+  carried that number as an id. On screen a script answers; in a PDF nothing
+  does, and Chromium writes a link annotation only where the fragment names an
+  element it can find, so every cross-reference came out as dead text in the
+  one format where a reader has no other way back. The print page now gives
+  each slide the anchor its links already name. A citation goes one better
+  there than on screen and lands on the entry itself, the way a reference in a
+  paper does, rather than on the top of the slide the list is on.
+- **A reference's DOI or URL looks like a link in the PDF.** The print
+  stylesheet took the underline off every link in a bibliography entry, which
+  is right for the citation numbers it was written for and wrong for the one
+  address in the entry a reader can act on: it was still clickable, and looked
+  exactly like the text around it.
 - **A deck still carrying `css:` is told its stylesheet was not loaded.** The
   key was retired in v0.6.0 with a warning that printed the exact `theme:`
   line to write, and removing it in v0.7.0 made it fall through as an unknown

@@ -859,6 +859,46 @@ fn videos_to_stills(html: &str) -> String {
         .into_owned()
 }
 
+/// The id a slide answers to on the print page: `slide-3` is the third one.
+///
+/// One-based, because that is the number the deck already speaks in — the
+/// viewer's `#3`, a `toc` entry's page, a backlink's `↩ 3`. Held here because
+/// [`print_links`] both writes the id and rewrites the links that name it, and
+/// the two have to agree.
+const SLIDE_ID_PREFIX: &str = "slide-";
+
+/// Makes the deck's own cross-references work on paper.
+///
+/// A slide is addressed by number: the viewer reads `#3` off the URL hash and
+/// turns to slide 3, which is why a citation mark, a backlink and a `toc`
+/// entry all point at `#3` and no element carries that as an id. On screen
+/// there is a script to answer; in a PDF there is not, and Chromium writes a
+/// link annotation only where the fragment names an element it can find — so
+/// every one of those links used to come out as dead text, in the one format
+/// where a reader has no other way back to the slide that made the claim.
+///
+/// So the print page gives each slide the id its links already name, and
+/// rewrites the links to match. Print-only on both counts: the viewer
+/// navigates by parsing the hash as a number, and an element it could scroll
+/// to instead is a page turn that jumps.
+fn print_links(section: &str, index: usize) -> String {
+    static HREF: OnceLock<Regex> = OnceLock::new();
+    let href = HREF.get_or_init(|| Regex::new(r##"href="#(\d+)""##).expect("static regex"));
+    // A `[@key]` mark aims at its own entry rather than at the slide the list
+    // is on, and stops being a numeric link on the way, so this runs first.
+    let out = cite::retarget_for_print(section);
+    let numbered = format!("href=\"#{SLIDE_ID_PREFIX}$1\"");
+    let out = href.replace_all(&out, numbered.as_str());
+    out.replacen(
+        "<section class=\"slide\"",
+        &format!(
+            "<section class=\"slide\" id=\"{SLIDE_ID_PREFIX}{}\"",
+            index + 1
+        ),
+        1,
+    )
+}
+
 /// Print page for PDF export: fixed-size slides stacked one per page.
 pub fn assemble_print_page(
     meta: &DeckMeta,
@@ -872,7 +912,11 @@ pub fn assemble_print_page(
     } else {
         ""
     };
-    let sections: Vec<String> = sections.iter().map(|s| videos_to_stills(s)).collect();
+    let sections: Vec<String> = sections
+        .iter()
+        .enumerate()
+        .map(|(i, s)| print_links(&videos_to_stills(s), i))
+        .collect();
     let sections = &sections;
     // The one script the print page carries. An annotation is drawn *over*
     // the deck and hides nothing, so running it cannot break the guarantee
@@ -2571,6 +2615,56 @@ mod tests {
             !assemble_page(&DeckMeta::default(), &[], &PageOptions::default())
                 .contains("data-autoplay")
         );
+    }
+
+    /// Every link the deck writes to a slide - a `[@key]` mark, a backlink, a
+    /// `toc` entry - names a slide number that nothing on the viewer page
+    /// carries as an id. The print page has to supply it, or Chromium writes
+    /// no link annotation and the PDF loses every cross-reference in it.
+    #[test]
+    fn the_print_page_gives_slide_links_something_to_land_on() {
+        let sections = vec![
+            "<section class=\"slide\" data-index=\"0\"><span class=\"mz-cite\">\
+             [<a href=\"#2\" data-mz-bib=\"mz-bib-vaswani2017\">1</a>]</span></section>"
+                .to_string(),
+            "<section class=\"slide\" data-index=\"1\"><ul class=\"mz-bib\">\
+             <li id=\"mz-bib-vaswani2017\"><span class=\"mz-bib-back\">↩ \
+             <a href=\"#1\">1</a></span></li></ul></section>"
+                .to_string(),
+        ];
+        let html = assemble_print_page(&DeckMeta::default(), &sections, &[]);
+        assert!(
+            html.contains("<section class=\"slide\" id=\"slide-1\""),
+            "{html}"
+        );
+        assert!(
+            html.contains("<section class=\"slide\" id=\"slide-2\""),
+            "{html}"
+        );
+        // The mark goes to the entry it names, not to the top of the page the
+        // list is on; the backlink goes to the slide that made the claim.
+        assert!(
+            html.contains("<a href=\"#mz-bib-vaswani2017\">1</a>"),
+            "{html}"
+        );
+        assert!(html.contains("<a href=\"#slide-1\">1</a>"), "{html}");
+        assert!(!html.contains("data-mz-bib"), "{html}");
+    }
+
+    /// Print-only: the viewer navigates by reading the hash as a number, and
+    /// an element the browser could scroll to instead is a page turn that
+    /// jumps.
+    #[test]
+    fn the_viewer_page_keeps_its_numbered_links() {
+        let sections = vec!["<section class=\"slide\" data-index=\"0\"><a href=\"#2\" \
+             data-mz-bib=\"mz-bib-vaswani2017\">1</a></section>"
+            .to_string()];
+        let html = assemble_page(&DeckMeta::default(), &sections, &PageOptions::default());
+        assert!(
+            html.contains("<a href=\"#2\" data-mz-bib=\"mz-bib-vaswani2017\">"),
+            "{html}"
+        );
+        assert!(!html.contains("id=\"slide-1\""), "{html}");
     }
 
     #[test]

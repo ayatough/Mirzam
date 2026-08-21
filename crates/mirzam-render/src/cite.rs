@@ -419,9 +419,13 @@ fn substitute_cites(
                 // warning above says which slide it is on.
                 None => format!("@{}", crate::inline::html_escape(key)),
                 Some(label) => match target {
+                    // Two addresses for one mark: the slide number the viewer
+                    // navigates by, and the entry the print page turns it into
+                    // once the ids exist. See `retarget_for_print`.
                     Some(slide) => format!(
-                        "<a href=\"#{}\">{}</a>",
+                        "<a href=\"#{}\" data-mz-bib=\"mz-bib-{}\">{}</a>",
                         slide + 1,
+                        anchor(key),
                         crate::inline::html_escape(label)
                     ),
                     None => crate::inline::html_escape(label),
@@ -502,6 +506,24 @@ fn render_list(
     }
     out.push_str("</ul>");
     out
+}
+
+/// Points every `[@key]` mark at the entry it names, rather than at the slide
+/// the list is on.
+///
+/// On screen a mark can only address a slide: the viewer turns pages, and
+/// scrolling to an entry would mean scrolling a stage that does not scroll.
+/// Paper has the opposite shape — the whole deck is one document, and a reader
+/// who taps `[12]` in a list of thirty expects to land on the twelfth entry,
+/// not on the top of the page it happens to be on. The `<li>` already carries
+/// that id, so this is a matter of preferring the address the mark was written
+/// with.
+pub fn retarget_for_print(section: &str) -> String {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| {
+        Regex::new(r##"<a href="#\d+" data-mz-bib="([\w-]+)">"##).expect("static regex")
+    });
+    re.replace_all(section, r##"<a href="#$1">"##).into_owned()
 }
 
 /// A citation key is nearly an HTML id already, but `:` and `/` are legal in
@@ -640,6 +662,38 @@ mod tests {
             CiteStyle::Numeric,
         );
         assert!(out[0].contains("href=\"#3\""), "{}", out[0]);
+    }
+
+    /// The mark carries both addresses: the slide the viewer turns to, and the
+    /// entry the print page sends a reader to instead.
+    #[test]
+    fn a_mark_also_names_the_entry_it_stands_for() {
+        let (out, _) = deck(
+            &["a[@vaswani2017]\n", "```bibliography\n```\n"],
+            CiteStyle::Numeric,
+        );
+        assert!(
+            out[0].contains("data-mz-bib=\"mz-bib-vaswani2017\""),
+            "{}",
+            out[0]
+        );
+        let printed = retarget_for_print(&out[0]);
+        assert!(
+            printed.contains("<a href=\"#mz-bib-vaswani2017\">1</a>"),
+            "{printed}"
+        );
+        assert!(!printed.contains("data-mz-bib"), "{printed}");
+    }
+
+    /// A key nothing defines has no entry to land on, so there is nothing to
+    /// retarget and the mark stays as written.
+    #[test]
+    fn print_leaves_a_mark_that_points_nowhere_alone() {
+        let (out, _) = deck(
+            &["a[@nosuchkey]\n", "```bibliography\n```\n"],
+            CiteStyle::Numeric,
+        );
+        assert_eq!(retarget_for_print(&out[0]), out[0]);
     }
 
     #[test]

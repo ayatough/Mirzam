@@ -25,15 +25,20 @@ html.mz-debug .grid { background: none; }
 html.mz-debug .pane { outline: none; background: none; }
 html.mz-debug .pane::before { display: none; }
 
-/* A link to slide 7 means nothing on paper, so the printed table of contents
-   shows the page number the entry is on instead. */
+/* The printed table of contents shows the page number the entry is on: the
+   link still works — `assemble_print_page` gives every slide an id to land on
+   — but a page number is what a reader scanning a printout is looking for, and
+   the only half of it that survives being read on paper. */
 nav.mz-toc .mz-toc-page { display: inline; }
 nav.mz-toc a { text-decoration: none; }
 
-/* A citation and its backlink are already numbers on paper — the mark says
-   which entry, the backlink says which page — so both keep their text and
-   only lose the underline a printer would render as a smudge. */
-span.mz-cite a, ul.mz-bib a { text-decoration: none; }
+/* A citation and its backlink are already numbers — the mark says which entry,
+   the backlink says which page — so both keep their text and only lose the
+   underline a printer would render as a smudge. The link inside the entry is
+   the exception, and keeps its underline: a DOI or a URL is the one thing on
+   the page that leads somewhere the deck cannot take you, and a reader who
+   cannot see that it is a link will never try it. */
+span.mz-cite a, ul.mz-bib .mz-bib-back a { text-decoration: none; }
 
 /* The expand button belongs to the frame it expands, and paper has neither.
    The export replaces the whole widget with a still, so this is the belt to

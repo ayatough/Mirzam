@@ -448,7 +448,7 @@ and both strikethrough and task lists shipped working and undocumented.
 | `- [ ]` / `- [x]` | task lists (GFM) |
 | `> ` | a quotation |
 | `***` or `___` | a horizontal rule — **not** `---`, which breaks the slide |
-| `[text](url)`, bare URLs | links, kept clickable, printed beside the words in the PDF |
+| `[text](url)`, bare URLs | links, clickable in the deck and in the exported PDF |
 | `| a | b |` | tables; `---` left, `---:` right, `:---:` centred |
 | ` ``` ` fences and indents | code blocks, [syntax highlighted](#syntax-highlighting) when the fence names a language |
 | `[^key]` | footnotes, landing on the slide that cites them |
@@ -1280,8 +1280,10 @@ JavaScript switched off.
 - Headings written inside speaker notes stay out: a note is what you say, not
   part of the structure.
 - The slide carrying the list is not in it.
-- **In the PDF** each entry shows its page number instead of a link, since a
-  link to slide 7 means nothing on paper.
+- **In the PDF** each entry also shows the page number it points at — the
+  number is what a reader scanning a printout is looking for, and the only half
+  of an entry that still says something on paper — and the entry itself jumps
+  to that page in a PDF reader.
 
 This is the first block that needs to know about slides other than its own. It
 resolves in a second pass once the whole deck has rendered, which is why a
@@ -1379,8 +1381,16 @@ back: true       # show which slides cited each entry
 
 Every `[@key]` links to the slide the list is on, and every entry links back to
 each slide that cited it — a slide citing one reference three times is one
-backlink. In the PDF the backlink is still the slide number, so it says
-something on paper where there is nothing to click.
+backlink.
+
+**The PDF keeps all of it.** The export gives every slide an anchor of its own,
+so a mark, a backlink and a `toc` entry are live links in a PDF reader rather
+than numbers to leaf for. A mark aims one step finer there than it does on
+screen: `[12]` lands on the twelfth entry rather than on the top of the slide
+the list is on, which is what a reader of a thirty-entry list is asking for.
+The entry's own DOI or URL is a link in both, and is the only one of the four
+drawn underlined on paper — the rest are numbers a reader can already see, and
+it is the one that leads somewhere the deck cannot take you.
 
 A block with nothing to list renders as nothing, the way an empty `toc` does.
 
