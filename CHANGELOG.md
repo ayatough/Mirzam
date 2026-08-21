@@ -7,6 +7,10 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.9.0] - 2026-08-21
+
 ### Fixed
 - **The PDF keeps the links the deck writes between its own slides.** A `[@key]`
   mark, an entry's `↩` backlink and a `toc` entry all address a slide by number
