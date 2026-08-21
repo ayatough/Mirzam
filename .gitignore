@@ -11,3 +11,7 @@ pkg/
 # a megabyte and a half in every clone.
 media/*.webm
 media/*.mp4
+
+# Python leaves these behind when a script here is imported rather than run.
+__pycache__/
+*.pyc
