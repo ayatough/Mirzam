@@ -72,7 +72,7 @@ there is. The model column follows from that:
 | W9 | Release hardening and `v0.1.0` | A | Opus | all | ✅ |
 | W16 | Showing the thing working: demo recording, themes gallery | C | — | — | ✅ |
 | W17 | A theme per slide | B | — | — | ✅ |
-| W18 | Carrying an element from one slide to the next | S | — | W2 | |
+| W18 | Carrying an element from one slide to the next | S | — | W2 | ✅ |
 | W5 | Typst-flavoured math | A | Sonnet | — | ✅ |
 | W19 | Structural math editing: tap and place, not type | S | Fable | W5 | withdrawn |
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
@@ -918,7 +918,15 @@ invites the second thing.
 
 ## W18 — Carrying an element from one slide to the next
 
-**Difficulty S · not started**
+**Difficulty S · landed** — `.carry` plus a shared `#id` on two consecutive
+slides; a lifted clone flies between the two measured boxes in a layer inside
+`#deck`, both originals hidden for exactly that long, backwards as good as
+forwards. Boxes are measured relative to each element's own slide in the
+deck's unscaled coordinates, which is what makes a slide mid-transition
+measure the same as one at rest. The clone's root carries its computed
+metrics, because it no longer sits in the pane whose rules sized it. The
+opt-in keyword the brief guessed would be kinder was right: `.carry` is the
+declaration, and a shared id without it does nothing.
 
 The case: a slide presents three components, and the next three slides take one
 each. Today that is four page turns, and the audience re-finds the component

@@ -44,7 +44,7 @@ changing.
 | Footers and slide numbers | Done |
 | A theme per slide, and per pane | Done |
 | A theme sets type, not only colour; `theme:` takes a path | Done |
-| Carrying an element from one slide to the next | Next |
+| Carrying an element from one slide to the next (`.carry`) | Done · unreleased |
 | Demo recording (the edit loop, typed live) and a generated themes gallery | Done |
 | Dragging an annotation back into the Markdown | Next |
 | Syntax highlighting in code blocks (36 languages, theme-token colours) | Done |
@@ -81,16 +81,13 @@ a formula into shape on the phone it was built for. The effort went into the
 math grammar instead, which is why `v0.4.0` says more about what `$...$` can
 hold than about how it is edited.
 
-The one worth naming here is **carrying an element from one slide to the next**:
-a slide presents three components and the next three take one each, and the
-component *moves* into its own slide rather than the deck turning the page under
-it. It is the one animation a deck tool gets asked for that Mirzam has no answer
-to today — and since Marp shipped a `view-transition-name` morph in its bespoke
-template, it is a parity item too. The differentiation is the resting-state
-rule: theirs exists only on screen, while Mirzam's two slides would stay two
-complete slides, PDF intact. The reasoning behind this and the rest of the
-current queue is in the
-[post-v0.9 plan](reports/2026-08-v0.10-plan.md).
+The one long named here — **carrying an element from one slide to the next** —
+landed: the same `#id` marked `.carry` on two consecutive slides flies between
+its two boxes on the page turn, forwards and backwards, as a lifted copy in a
+layer above both slides. Marp's `view-transition-name` morph exists only on
+screen; this one keeps the resting-state rule, so the PDF and a scriptless
+reader see two complete, ordinary slides. The reasoning behind the rest of
+the current queue is in the [post-v0.9 plan](reports/2026-08-v0.10-plan.md).
 
 ### Measured performance
 
