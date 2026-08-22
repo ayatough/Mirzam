@@ -117,6 +117,11 @@ pub struct AnimDoc {
 /// Mirzam's own vocabulary is `Dialect::default()`; a tool with a different
 /// time base (beats, frames) supplies its own `duration`/`bare_duration`
 /// and converts to milliseconds before handing tokens back.
+///
+/// Deliberately *not* `#[non_exhaustive]`: a dialect is written as a struct
+/// literal by the consumer, which non-exhaustive would forbid. The cost is
+/// that a new field is a breaking change — accepted while 0.x minor bumps
+/// are breaking anyway; post-1.0 this becomes a builder.
 pub struct Dialect<'a> {
     pub effects: &'a [&'a str],
     pub directional: &'a [&'a str],
@@ -125,6 +130,10 @@ pub struct Dialect<'a> {
     pub duration: &'a dyn Fn(&str) -> Result<u32, String>,
     /// Whether a bare token (no `key=`) should be read as a duration.
     pub bare_duration: &'a dyn Fn(&str) -> bool,
+    /// The example shown when a track has no duration at all — `400ms` here,
+    /// `1b` in a beat dialect — so the hint never recommends a token the
+    /// dialect's own `duration` would reject.
+    pub duration_hint: &'a str,
 }
 
 impl Default for Dialect<'static> {
@@ -135,11 +144,15 @@ impl Default for Dialect<'static> {
             directional: DIRECTIONAL,
             duration: &parse_ms,
             bare_duration: &is_ms_token,
+            duration_hint: "400ms",
         }
     }
 }
 
-fn is_ms_token(tok: &str) -> bool {
+/// Whether a token reads as a `ms` duration — the default dialect's
+/// `bare_duration`, public so a dialect that accepts `ms` *plus* its own
+/// units composes it instead of re-implementing the suffix check.
+pub fn is_ms_token(tok: &str) -> bool {
     tok.ends_with("ms")
 }
 
@@ -640,7 +653,10 @@ pub fn parse_target(s: &str) -> Result<Target, String> {
 }
 
 /// A parsed effect clause: everything after the `:` on a track line.
+/// Non-exhaustive: this is an output type, and a later field (say, a v2
+/// attribute) must not break a consumer that only reads the current ones.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct ParsedEffect {
     pub effect: String,
     pub dir: Option<Direction>,
@@ -695,7 +711,8 @@ pub fn parse_effect_in(dialect: &Dialect, s: &str) -> Result<ParsedEffect, Strin
         }
     }
 
-    let dur_ms = dur_ms.ok_or("missing duration, e.g. `400ms`")?;
+    let dur_ms =
+        dur_ms.ok_or_else(|| format!("missing duration, e.g. `{}`", dialect.duration_hint))?;
     let directional = dialect.directional.contains(&effect.as_str());
     if directional && dir.is_none() {
         return Err(format!(
@@ -1045,13 +1062,14 @@ mod tests {
             parse_ms(t)
         }
         fn bare(t: &str) -> bool {
-            t.ends_with('b') || t.ends_with("ms")
+            t.ends_with('b') || is_ms_token(t)
         }
         let d = Dialect {
             effects: &["pop", "strobe-slide"],
             directional: &["strobe-slide"],
             duration: &beats,
             bare_duration: &bare,
+            duration_hint: "1b",
         };
         let eff = parse_effect_in(&d, "chars pop 1b stagger=250ms ease=out-back").unwrap();
         assert_eq!(eff.effect, "pop");
@@ -1064,6 +1082,10 @@ mod tests {
         assert!(e.contains("needs a direction"), "{e}");
         let e = parse_effect_in(&d, "pop 1b dir=left").unwrap_err();
         assert!(e.contains("only applies to strobe-slide"), "{e}");
+
+        // The missing-duration hint speaks the dialect's units, not `ms`.
+        let e = parse_effect_in(&d, "pop").unwrap_err();
+        assert!(e.contains("e.g. `1b`"), "{e}");
     }
 
     /// The default dialect is exactly the slide grammar: `ms` only.
