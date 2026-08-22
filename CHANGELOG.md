@@ -7,7 +7,22 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- **`mirzam-anim` exposes the effect grammar as a dialect.** A consumer with
+  its own time base (Barnard's beats and loops) can now parse the same
+  `target : effect key=value` clause with its own effect names and duration
+  grammar: `Dialect` (effects, directional set, duration parsers),
+  `parse_effect_in(&Dialect, …)` — which now also owns the `dir=` rules, so
+  they hold identically in every dialect — and `split_line`, which hands the
+  `[trigger]` back uninterpreted for the caller to define. `ParsedEffect`,
+  `parse_target`, `parse_split`, `parse_ms`, `parse_dir` and `parse_ease` are
+  public, and `ease_json` is published as `ease_css`. `Dialect::default()` is
+  the slide grammar unchanged; `parse` and its output are byte-identical.
+- **`mirzam-shape` can hand the parsed model across a boundary.** An
+  off-by-default `serde` feature derives `Serialize`/`Deserialize` on
+  `ShapeKind`, `Edge`, `EndRef`, `Shape` and `ShapeDoc` (enums in
+  kebab-case), for consumers that draw the shapes themselves — a canvas, not
+  this crate's SVG. `ShapeDoc` also derives `Debug`, `Clone`, `Default`.
 
 ## [0.9.0] - 2026-08-21
 

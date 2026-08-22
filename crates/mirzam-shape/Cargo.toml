@@ -6,4 +6,13 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+# Serialize/Deserialize on the parsed model, for consumers that render the
+# `ShapeDoc` themselves instead of taking the SVG.
+serde = ["dep:serde"]
+
 [dependencies]
+serde = { workspace = true, optional = true }
+
+[dev-dependencies]
+serde_json = "1"
