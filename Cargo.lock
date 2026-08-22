@@ -291,6 +291,10 @@ dependencies = [
 [[package]]
 name = "mirzam-shape"
 version = "0.9.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "mirzam-syntax"

@@ -108,6 +108,41 @@ pub struct AnimDoc {
     pub errors: Vec<String>,
 }
 
+/// The parts of the effect grammar a consumer may swap out: which effect
+/// names exist, which of those travel (and so require `dir=`), and how a
+/// duration token reads. Everything else — the line shape, `key=value`
+/// attributes, splits, eases — is the grammar itself and stays fixed, so a
+/// hand that knows one dialect is never retrained by another.
+///
+/// Mirzam's own vocabulary is `Dialect::default()`; a tool with a different
+/// time base (beats, frames) supplies its own `duration`/`bare_duration`
+/// and converts to milliseconds before handing tokens back.
+pub struct Dialect<'a> {
+    pub effects: &'a [&'a str],
+    pub directional: &'a [&'a str],
+    /// Parses a duration token (from `dur=`, `delay=`, `stagger=`, or a bare
+    /// token accepted by `bare_duration`) into milliseconds.
+    pub duration: &'a dyn Fn(&str) -> Result<u32, String>,
+    /// Whether a bare token (no `key=`) should be read as a duration.
+    pub bare_duration: &'a dyn Fn(&str) -> bool,
+}
+
+impl Default for Dialect<'static> {
+    /// The slide grammar: the v1 effect set and `ms`-only durations.
+    fn default() -> Self {
+        Dialect {
+            effects: EFFECTS,
+            directional: DIRECTIONAL,
+            duration: &parse_ms,
+            bare_duration: &is_ms_token,
+        }
+    }
+}
+
+fn is_ms_token(tok: &str) -> bool {
+    tok.ends_with("ms")
+}
+
 /// Effect set for v1. The directional ones additionally require `dir=`.
 const EFFECTS: &[&str] = &[
     "fade-in",
@@ -394,7 +429,7 @@ pub fn transition_json(t: &Transition) -> String {
         "in": t.in_effect,
         "out": t.out_effect,
         "dur": t.dur_ms,
-        "ease": ease_json(&t.ease, t.dur_ms),
+        "ease": ease_css(&t.ease, t.dur_ms),
     });
     if let Some(d) = t.dir {
         v["dir"] = serde_json::Value::String(d.as_str().into());
@@ -421,7 +456,7 @@ fn track_json(t: &Track) -> serde_json::Value {
         "dur": t.dur_ms,
         "delay": t.delay_ms,
         "stagger": t.stagger_ms,
-        "ease": ease_json(&t.ease, t.dur_ms),
+        "ease": ease_css(&t.ease, t.dur_ms),
     });
     if let Some(d) = t.dir {
         v["dir"] = serde_json::Value::String(d.as_str().into());
@@ -429,7 +464,9 @@ fn track_json(t: &Track) -> serde_json::Value {
     v
 }
 
-fn ease_json(ease: &Ease, dur_ms: u32) -> String {
+/// Lowers an ease to the CSS easing function the runtime plays — a named
+/// curve to its `cubic-bezier(...)`, a spring to a sampled `linear(...)`.
+pub fn ease_css(ease: &Ease, dur_ms: u32) -> String {
     match ease {
         // Already validated by `parse_ease`; an unknown name here would be a
         // bug, and `linear` is the honest thing to fall back to.
@@ -479,7 +516,10 @@ fn sample_spring(mass: f64, stiffness: f64, damping: f64, dur_ms: u32) -> String
     out
 }
 
-fn parse_line(line: &str) -> Result<Track, String> {
+/// Splits a track line into its three fields — `[trigger]`, target, effect —
+/// without interpreting the trigger, which is the half of the grammar a
+/// consumer with its own time model replaces wholesale.
+pub fn split_line(line: &str) -> Result<(&str, &str, &str), String> {
     let after_bracket = line
         .strip_prefix('[')
         .ok_or("expected a `[trigger]` at the start of the line")?;
@@ -496,26 +536,16 @@ fn parse_line(line: &str) -> Result<Track, String> {
     if effect_src.is_empty() {
         return Err("missing effect after `:`".into());
     }
+    Ok((trigger_src.trim(), target_src, effect_src))
+}
 
-    let trigger = parse_trigger(trigger_src.trim())?;
+fn parse_line(line: &str) -> Result<Track, String> {
+    let (trigger_src, target_src, effect_src) = split_line(line)?;
+    let trigger = parse_trigger(trigger_src)?;
     let mut target = parse_target(target_src)?;
-    let parsed = parse_effect(effect_src)?;
+    let parsed = parse_effect_in(&Dialect::default(), effect_src)?;
     if let Some(split) = parsed.split {
         target.split = Some(split);
-    }
-    let directional = DIRECTIONAL.contains(&parsed.effect.as_str());
-    if directional && parsed.dir.is_none() {
-        return Err(format!(
-            "`{}` needs a direction: add `dir=left|right|up|down`",
-            parsed.effect
-        ));
-    }
-    if parsed.dir.is_some() && !directional {
-        return Err(format!(
-            "`dir=` only applies to {}, not `{}`",
-            DIRECTIONAL.join("/"),
-            parsed.effect
-        ));
     }
 
     Ok(Track {
@@ -595,7 +625,7 @@ fn parse_signed_ms(tok: &str) -> Result<i64, String> {
     Ok(sign * ms)
 }
 
-fn parse_target(s: &str) -> Result<Target, String> {
+pub fn parse_target(s: &str) -> Result<Target, String> {
     if s.chars().any(char::is_whitespace) {
         return Err(format!(
             "target must be a single token with no spaces: `{s}`"
@@ -609,17 +639,23 @@ fn parse_target(s: &str) -> Result<Target, String> {
     Ok(Target { sel, split: None })
 }
 
-struct ParsedEffect {
-    effect: String,
-    dir: Option<Direction>,
-    dur_ms: u32,
-    delay_ms: u32,
-    stagger_ms: u32,
-    ease: Ease,
-    split: Option<Split>,
+/// A parsed effect clause: everything after the `:` on a track line.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParsedEffect {
+    pub effect: String,
+    pub dir: Option<Direction>,
+    pub dur_ms: u32,
+    pub delay_ms: u32,
+    pub stagger_ms: u32,
+    pub ease: Ease,
+    pub split: Option<Split>,
 }
 
-fn parse_effect(s: &str) -> Result<ParsedEffect, String> {
+/// Parses an effect clause in a consumer's [`Dialect`]. The `dir=` rules are
+/// enforced here rather than in `parse_line` so they hold identically in
+/// every dialect: a travelling effect needs a direction, a stationary one
+/// refuses it.
+pub fn parse_effect_in(dialect: &Dialect, s: &str) -> Result<ParsedEffect, String> {
     let mut tokens = s.split_whitespace();
     let mut first = tokens.next().ok_or("empty effect")?;
     let split = parse_split(first);
@@ -628,10 +664,10 @@ fn parse_effect(s: &str) -> Result<ParsedEffect, String> {
             .next()
             .ok_or("missing effect name after the split keyword")?;
     }
-    if !EFFECTS.contains(&first) {
+    if !dialect.effects.contains(&first) {
         return Err(format!(
             "unknown effect `{first}`; expected one of {}",
-            EFFECTS.join(", ")
+            dialect.effects.join(", ")
         ));
     }
     let effect = first.to_string();
@@ -645,21 +681,33 @@ fn parse_effect(s: &str) -> Result<ParsedEffect, String> {
     for tok in tokens {
         if let Some((k, v)) = tok.split_once('=') {
             match k {
-                "dur" => dur_ms = Some(parse_ms(v)?),
-                "delay" => delay_ms = parse_ms(v)?,
-                "stagger" => stagger_ms = parse_ms(v)?,
+                "dur" => dur_ms = Some((dialect.duration)(v)?),
+                "delay" => delay_ms = (dialect.duration)(v)?,
+                "stagger" => stagger_ms = (dialect.duration)(v)?,
                 "ease" => ease = parse_ease(v)?,
                 "dir" => dir = Some(parse_dir(v)?),
                 other => return Err(format!("unknown attribute `{other}=`")),
             }
-        } else if dur_ms.is_none() && tok.ends_with("ms") {
-            dur_ms = Some(parse_ms(tok)?);
+        } else if dur_ms.is_none() && (dialect.bare_duration)(tok) {
+            dur_ms = Some((dialect.duration)(tok)?);
         } else {
             return Err(format!("unexpected token `{tok}`"));
         }
     }
 
     let dur_ms = dur_ms.ok_or("missing duration, e.g. `400ms`")?;
+    let directional = dialect.directional.contains(&effect.as_str());
+    if directional && dir.is_none() {
+        return Err(format!(
+            "`{effect}` needs a direction: add `dir=left|right|up|down`"
+        ));
+    }
+    if dir.is_some() && !directional {
+        return Err(format!(
+            "`dir=` only applies to {}, not `{effect}`",
+            dialect.directional.join("/")
+        ));
+    }
     Ok(ParsedEffect {
         effect,
         dir,
@@ -671,7 +719,7 @@ fn parse_effect(s: &str) -> Result<ParsedEffect, String> {
     })
 }
 
-fn parse_split(tok: &str) -> Option<Split> {
+pub fn parse_split(tok: &str) -> Option<Split> {
     match tok {
         "chars" => Some(Split::Chars),
         "words" => Some(Split::Words),
@@ -680,13 +728,13 @@ fn parse_split(tok: &str) -> Option<Split> {
     }
 }
 
-fn parse_ms(tok: &str) -> Result<u32, String> {
+pub fn parse_ms(tok: &str) -> Result<u32, String> {
     tok.strip_suffix("ms")
         .and_then(|d| d.parse().ok())
         .ok_or_else(|| format!("expected a duration in ms, e.g. `400ms`, got `{tok}`"))
 }
 
-fn parse_dir(v: &str) -> Result<Direction, String> {
+pub fn parse_dir(v: &str) -> Result<Direction, String> {
     match v {
         "left" => Ok(Direction::Left),
         "right" => Ok(Direction::Right),
@@ -698,7 +746,7 @@ fn parse_dir(v: &str) -> Result<Direction, String> {
     }
 }
 
-fn parse_ease(v: &str) -> Result<Ease, String> {
+pub fn parse_ease(v: &str) -> Result<Ease, String> {
     if let Some(inner) = v.strip_prefix("spring(").and_then(|s| s.strip_suffix(')')) {
         let parts: Vec<&str> = inner.split(',').map(str::trim).collect();
         let [m, k, c] = parts.as_slice() else {
@@ -983,6 +1031,59 @@ mod tests {
     fn target_with_a_space_errors() {
         let doc = parse("[enter] .a .b : fade-in 100ms\n");
         assert_eq!(doc.errors.len(), 1);
+    }
+
+    /// A consumer's dialect can rename the effect set and re-base durations
+    /// (here: beats at 120 bpm) — and the shared rules still hold.
+    #[test]
+    fn a_dialect_supplies_its_own_effects_and_durations() {
+        fn beats(t: &str) -> Result<u32, String> {
+            if let Some(n) = t.strip_suffix('b') {
+                let v: f64 = n.parse().map_err(|_| format!("bad beats `{t}`"))?;
+                return Ok((v * 500.0).round() as u32); // 120 bpm
+            }
+            parse_ms(t)
+        }
+        fn bare(t: &str) -> bool {
+            t.ends_with('b') || t.ends_with("ms")
+        }
+        let d = Dialect {
+            effects: &["pop", "strobe-slide"],
+            directional: &["strobe-slide"],
+            duration: &beats,
+            bare_duration: &bare,
+        };
+        let eff = parse_effect_in(&d, "chars pop 1b stagger=250ms ease=out-back").unwrap();
+        assert_eq!(eff.effect, "pop");
+        assert_eq!(eff.dur_ms, 500);
+        assert_eq!(eff.stagger_ms, 250);
+        assert_eq!(eff.split, Some(Split::Chars));
+
+        // `dir=` rules are the grammar's, not the dialect's.
+        let e = parse_effect_in(&d, "strobe-slide 1b").unwrap_err();
+        assert!(e.contains("needs a direction"), "{e}");
+        let e = parse_effect_in(&d, "pop 1b dir=left").unwrap_err();
+        assert!(e.contains("only applies to strobe-slide"), "{e}");
+    }
+
+    /// The default dialect is exactly the slide grammar: `ms` only.
+    #[test]
+    fn the_default_dialect_rejects_beat_durations() {
+        let e = parse_effect_in(&Dialect::default(), "fade-in 1b").unwrap_err();
+        assert!(e.contains("unexpected token `1b`"), "{e}");
+        let eff = parse_effect_in(&Dialect::default(), "fade-in 400ms").unwrap();
+        assert_eq!(eff.dur_ms, 400);
+    }
+
+    /// `split_line` hands the trigger back verbatim for the caller to parse.
+    #[test]
+    fn split_line_does_not_interpret_the_trigger() {
+        let (trig, target, effect) = split_line("[beat 3] #x : pop 1b").unwrap();
+        assert_eq!(trig, "beat 3");
+        assert_eq!(target, "#x");
+        assert_eq!(effect, "pop 1b");
+        assert!(split_line("no brackets").is_err());
+        assert!(split_line("[enter] no colon").is_err());
     }
 
     #[test]
