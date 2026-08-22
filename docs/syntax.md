@@ -115,6 +115,15 @@ Sections written by different people usually want the same slide shapes; see
 
 Press `N` in the viewer to show them.
 
+The notes also make a handout: `mirzam export pdf deck.md --handout` prints
+one page per slide with the slide at reading size on the left and its notes
+beside it — the page a speaker rehearses from, and the printout an audience
+takes away. A slide with no notes hands the column to the reader as ruled
+lines to write on. The notes column prints as ink on paper whatever mode the
+slides are baked in, and everything else about the export — `--split`,
+`--theme`, `--mode`, the links between slides — works exactly as it does
+without the flag.
+
 ## Layout
 
 For how space is allocated and what to do when content does not fit, see the

@@ -107,6 +107,7 @@ fn main() -> ExitCode {
             let mut input: Option<PathBuf> = None;
             let mut out_path: Option<PathBuf> = None;
             let mut chromium: Option<String> = None;
+            let mut handout = false;
             let mut deck = DeckArgs::default();
             let mut i = 2;
             while i < args.len() {
@@ -118,6 +119,7 @@ fn main() -> ExitCode {
                             None => return usage("-o requires an output path"),
                         }
                     }
+                    "--handout" => handout = true,
                     "--chromium" => {
                         i += 1;
                         match args.get(i) {
@@ -155,7 +157,13 @@ fn main() -> ExitCode {
                     .map(PathBuf::from)
                     .unwrap_or_else(|| PathBuf::from("deck.pdf"))
             });
-            run(export_pdf(&input, &out_path, chromium.as_deref(), &deck))
+            run(export_pdf(
+                &input,
+                &out_path,
+                chromium.as_deref(),
+                &deck,
+                handout,
+            ))
         }
         Some("check") => {
             let mut input: Option<PathBuf> = None;
@@ -320,7 +328,7 @@ Usage:
                [--base-url <url>] [--embed-source] [--editor-url <url>]
                [--debug-layout] [--strict]
   mirzam serve <input.md> [-p <port>]
-  mirzam export pdf <input.md> [-o <out.pdf>] [--split h1|h2|h3]
+  mirzam export pdf <input.md> [-o <out.pdf>] [--handout] [--split h1|h2|h3]
                [--theme <name|file.css>]... [--fit shrink]
                [--mode light|dark] [--chromium <bin>]
   mirzam check <input.md> [--split h1|h2|h3] [--theme <name|file.css>]...
@@ -341,7 +349,9 @@ Usage:
   serve   development server with hot reload (default port 4321)
   export  render a PDF with headless Chromium (also honors MIRZAM_CHROMIUM).
           Takes a Markdown source, not a built `out/index.html` - re-parsing
-          already-rendered HTML as Markdown would silently lose the deck
+          already-rendered HTML as Markdown would silently lose the deck.
+          --handout prints one page per slide with the speaker notes beside
+          it, and ruled lines to write on where a slide has none
   check   build the deck, then render it with headless Chromium (also honors
           MIRZAM_CHROMIUM) and report every slide with content clipped by its
           pane, panes overflowing into a neighbour, a nested list sized wrong,
@@ -873,12 +883,17 @@ fn export_pdf(
     out_path: &Path,
     chromium: Option<&str>,
     deck: &DeckArgs,
+    handout: bool,
 ) -> Result<(), String> {
     let t0 = Instant::now();
     let mut cache = HashMap::new();
     let mut out = pipeline::build_deck_with(input, &mut cache, deck.split, None)?;
     apply_deck_overrides(&mut out, deck)?;
-    let html = mirzam_render::assemble_print_page(&out.meta, &out.sections, &out.file_themes);
+    let html = if handout {
+        mirzam_render::assemble_handout_page(&out.meta, &out.sections, &out.file_themes)
+    } else {
+        mirzam_render::assemble_print_page(&out.meta, &out.sections, &out.file_themes)
+    };
     for w in &out.warnings {
         println!("  ⚠ {w}");
     }

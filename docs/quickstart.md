@@ -82,7 +82,8 @@ mirzam check deck.md                 # clipped panes, unresolved connectors, and
 as `build`, so a deck assembled with one of those flags exports to PDF with
 the same slides in one command — there is no need to `build` first. It always
 reads the Markdown source, never a built `out/index.html`: pass it the `.md`
-file.
+file. Add `--handout` for one page per slide with the speaker notes printed
+beside it, and ruled lines to write on where a slide has none.
 
 `check` builds the deck and renders it with headless Chromium to catch what a
 build's own warnings cannot: content clipped by its pane, an unresolved

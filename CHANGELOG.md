@@ -8,6 +8,16 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- **`mirzam export pdf --handout`: the deck as a printout, notes beside each
+  slide.** One page per slide, the slide at reading size on the left and its
+  speaker notes beside it — the page a speaker rehearses from, and the handout
+  an audience takes away. A slide with no notes hands the column to the reader
+  as ruled lines to write on. The notes print as ink on paper whatever mode
+  the slides are baked in; the slide itself is scaled, never reflowed, so
+  panes, shapes and annotations land exactly where the screen puts them, and
+  the links a deck writes between its own slides keep working because each
+  handout page carries the same anchor the plain export gives it. This is the
+  most-reacted open request on Marp's CLI, unmet there since 2019.
 - **A slide can hold the loop longer than the rest of the deck.**
   `<!-- autoplay: 20s -->` on a slide is the deck's autoplay interval, for that
   slide — the notice with three sentences in a loop of photographs paced for

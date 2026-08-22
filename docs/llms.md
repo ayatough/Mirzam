@@ -74,6 +74,9 @@ vars:
 `wipe-left|right|up|down`, `zoom`, `iris`, each optionally with a duration and
 `ease=`.
 
+`mirzam export pdf deck.md --handout` prints one page per slide with the
+speaker notes beside it; slides without notes get ruled lines.
+
 `autoplay:` takes an interval — seconds by default (`8s`, `1.5s`, bare `8`),
 `ms` accepted — and optionally `loop`. One advance is one click step, then the
 next slide. In the viewer, `?autoplay=8s+loop` plays any deck and

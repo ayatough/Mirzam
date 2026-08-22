@@ -968,6 +968,123 @@ section.slide {{ width: {w}px; height: {h}px; }}
     )
 }
 
+/// Splits a rendered section into the slide without its speaker notes and the
+/// notes themselves. The notes travel *inside* the section — one
+/// `<aside class="notes">` holding every note the slide wrote — so the handout
+/// can lift them out and set them beside the slide instead of scaled down
+/// within it.
+fn split_notes(section: &str) -> (String, Option<String>) {
+    const OPEN: &str = "<aside class=\"notes\">";
+    const CLOSE: &str = "</aside>";
+    let Some(start) = section.find(OPEN) else {
+        return (section.to_string(), None);
+    };
+    let Some(end_rel) = section[start..].find(CLOSE) else {
+        return (section.to_string(), None);
+    };
+    let inner = section[start + OPEN.len()..start + end_rel].to_string();
+    let mut stripped = String::with_capacity(section.len());
+    stripped.push_str(&section[..start]);
+    stripped.push_str(&section[start + end_rel + CLOSE.len()..]);
+    (stripped, Some(inner))
+}
+
+/// Handout page for PDF export: one page per slide, the slide at reading size
+/// on the left and its speaker notes beside it — the page a speaker rehearses
+/// from, and the printout the audience takes away. A slide with no notes hands
+/// the column to the reader as ruled lines.
+///
+/// The page keeps the slide's own aspect, so a deck of 16:9 slides prints
+/// 16:9 handout pages: what is lost to the notes column is exactly what the
+/// scale gives up, and nothing about the slide reflows.
+pub fn assemble_handout_page(
+    meta: &DeckMeta,
+    sections: &[String],
+    file_themes: &[FileTheme],
+) -> String {
+    let (w, h) = meta.slide_size();
+    let title = meta.title.as_deref().unwrap_or("Mirzam Deck");
+    let math_css = if sections_have_math(sections) {
+        theme::math_font_css()
+    } else {
+        ""
+    };
+    // The same per-section rewrites the plain print page applies: a video
+    // becomes its poster, and every slide carries the anchor its links name.
+    let total = sections.len();
+    let pages: Vec<String> = sections
+        .iter()
+        .enumerate()
+        .map(|(i, s)| {
+            let (slide, notes) = split_notes(&print_links(&videos_to_stills(s), i));
+            let column = match notes {
+                Some(n) => format!("<div class=\"ho-body\">{n}</div>"),
+                None => "<div class=\"ho-lines\"></div>".to_string(),
+            };
+            format!(
+                "<div class=\"ho-page\"><div class=\"ho-slide\">{slide}</div>\
+                 <aside class=\"ho-notes\"><div class=\"ho-head\">Slide {n} / {total}</div>\
+                 {column}</aside></div>\n",
+                n = i + 1,
+            )
+        })
+        .collect();
+    let pages = &pages;
+    let annot_js = if deck_has_annot(pages) {
+        format!("<script>{}</script>\n", theme::ANNOT_JS)
+    } else {
+        String::new()
+    };
+    let fit_js = if deck_has_fit(meta, pages) {
+        format!("<script>{}</script>\n", theme::FIT_JS)
+    } else {
+        String::new()
+    };
+    // The arithmetic the stylesheet cannot do: the slide takes 62% of the page
+    // width, the notes take the rest, and the paddings scale with the page so
+    // a 4:3 deck's handout keeps the same proportions as a 16:9 one.
+    let scale = 0.62f64;
+    let pad = (f64::from(w) * 0.025).round() as u32;
+    let gap = pad;
+    let sw = (f64::from(w) * scale).round() as u32;
+    let sh = (f64::from(h) * scale).round() as u32;
+    let (theme_name, mode_attr) = theme_attrs(meta);
+    format!(
+        r#"<!doctype html>
+<html lang="en" data-theme="{theme_name}"{mode_attr}>
+<head>
+<meta charset="utf-8">
+<meta name="generator" content="mirzam 0.0.1">
+<title>{title}</title>
+<style>{css}</style>
+<style>{math_css}</style>
+<style>{print_css}{handout_css}
+@page {{ size: {w}px {h}px; margin: 0; }}
+section.slide {{ width: {w}px; height: {h}px; transform: scale({scale}); }}
+.ho-page {{ width: {w}px; height: {h}px; padding: {pad}px; gap: {gap}px; }}
+.ho-slide {{ width: {sw}px; height: {sh}px; }}
+</style>
+<style>{theme_files_css}</style>
+<style>{grid_css}</style>
+</head>
+<body{body_theme}>
+<div id="deck"{fit}>
+{pages}</div>
+{fit_js}{annot_js}</body>
+</html>
+"#,
+        title = inline::html_escape(title),
+        css = theme::theme_css_for(&themes_used(meta, pages, false)),
+        print_css = theme::PRINT_CSS,
+        handout_css = theme::HANDOUT_CSS,
+        fit = deck_fit_attr(meta),
+        theme_files_css = file_themes_css(file_themes),
+        body_theme = body_theme_attr(meta, file_themes),
+        grid_css = meta.grid_metrics_css(),
+        pages = pages.concat(),
+    )
+}
+
 /// Renders a whole deck to a single HTML file.
 /// `asset_dir` is the base directory for relative asset paths.
 ///
@@ -3431,6 +3548,59 @@ mod tests {
         let page = assemble_print_page(&meta, &[section.html], &[]);
         assert!(page.contains("<div class=\"mz-slide-chrome\">"));
         assert!(!page.contains(".mz-slide-chrome { display: none"));
+    }
+
+    /// The handout lifts a slide's notes out of the section and sets them
+    /// beside it — a note scaled down with the slide would be the one part of
+    /// the page printed too small to read. A slide with no notes gets ruled
+    /// lines instead, and the slide itself is scaled, not reflowed.
+    #[test]
+    fn the_handout_sets_notes_beside_the_slide() {
+        let meta = DeckMeta::default();
+        let ctx = DeckContext::new(&meta, 2);
+        let with_notes = render_slide_html(
+            &parse_slide("# One\n\n<!-- note: say hello -->\n"),
+            0,
+            Path::new("."),
+            None,
+            &ctx,
+        );
+        let without = render_slide_html(&parse_slide("# Two\n"), 1, Path::new("."), None, &ctx);
+        let page = assemble_handout_page(&meta, &[with_notes.html, without.html], &[]);
+
+        assert_eq!(page.matches("<div class=\"ho-page\">").count(), 2);
+        // The notes left the section and arrived in the column, once.
+        assert!(!page.contains("<aside class=\"notes\">"), "{page}");
+        assert!(page.contains("say hello"));
+        assert!(page.contains("<div class=\"ho-body\">"));
+        // The slide without notes hands the reader ruled lines.
+        assert_eq!(page.matches("<div class=\"ho-lines\">").count(), 1);
+        // Each column names its page, and the slide is scaled rather than
+        // resized: its own width and height ride beside the transform.
+        assert!(page.contains("Slide 1 / 2"));
+        assert!(page.contains("transform: scale(0.62)"));
+        assert!(page.contains("section.slide { width: 1280px; height: 720px;"));
+    }
+
+    /// Notes are the handout's reason to exist, but a `[^1]` or a `[@key]` in
+    /// one is markup like any other: the split has to carry the rendered HTML
+    /// across, not re-render or drop it.
+    #[test]
+    fn split_notes_keeps_markup_and_leaves_noteless_sections_alone() {
+        let (slide, notes) = split_notes(
+            "<section class=\"slide\">\n<p>body</p>\
+             <aside class=\"notes\"><p>a <strong>bold</strong> note</p></aside>\n</section>\n",
+        );
+        assert_eq!(
+            notes.as_deref(),
+            Some("<p>a <strong>bold</strong> note</p>")
+        );
+        assert!(!slide.contains("aside"));
+        assert!(slide.contains("<p>body</p>"));
+
+        let (slide, notes) = split_notes("<section class=\"slide\">\n<p>b</p></section>\n");
+        assert_eq!(notes, None);
+        assert!(slide.contains("<p>b</p>"));
     }
 
     /// A deck that asks for neither carries neither: the element is not in the
