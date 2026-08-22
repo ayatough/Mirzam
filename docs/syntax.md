@@ -683,6 +683,13 @@ Values come from frontmatter `vars`. Arithmetic, parentheses, and `round`, `ceil
 `floor` are supported. Anything that fails to evaluate is left as written, so a
 typo never silently deletes text.
 
+A `{{ }}` also works inside the blocks that put words and data on the slide —
+a `shape` label, a `chart` title or its data, a `connect` label, a `danmaku`
+line — because those are markup, not code being quoted. Ordinary code fences,
+quoted examples (a four-backtick fence) and `mermaid` blocks are left exactly
+as typed: Mermaid's own hexagon-node syntax is `{{ }}`, and a code sample is
+a sample.
+
 ### Math
 
 ```markdown

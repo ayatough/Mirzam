@@ -443,15 +443,28 @@ fn parse_table(json: &str) -> Result<BTreeMap<String, String>, JsError> {
         .collect())
 }
 
-/// Substitutes variables outside code fences, matching the CLI's rule.
+/// Substitutes variables outside code fences, matching the CLI's rule: a
+/// `{{ }}` also reaches inside the fenced blocks that are markup rather than
+/// code (`shape`, `chart`, `connect`, `annotate`, `effects`), while a quoted
+/// example — a longer fence — and an ordinary code block stay as typed.
 fn substitute_outside_fences(body: &str, vars: &BTreeMap<String, mirzam_core::Value>) -> String {
     let mut out = String::with_capacity(body.len());
-    let mut in_code = false;
+    // The open fence's backtick count, and whether `{{ }}` applies inside it.
+    let mut fence: Option<(usize, bool)> = None;
     for line in body.lines() {
-        if line.trim_start().starts_with("```") {
-            in_code = !in_code;
+        let t = line.trim_start();
+        let ticks = t.len() - t.trim_start_matches('`').len();
+        if ticks >= 3 {
+            match fence {
+                Some((open, _)) if ticks >= open && t[ticks..].trim().is_empty() => fence = None,
+                None => {
+                    let info = t[ticks..].trim();
+                    fence = Some((ticks, ticks == 3 && mirzam_core::substitutable_block(info)));
+                }
+                _ => {}
+            }
             out.push_str(line);
-        } else if in_code {
+        } else if let Some((_, false)) = fence {
             out.push_str(line);
         } else {
             out.push_str(&mirzam_core::substitute_vars(line, vars));

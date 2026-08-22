@@ -7,6 +7,18 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+### Fixed
+- **`{{ }}` reaches the blocks that put words on the slide.** A variable in a
+  `shape` label, a `chart` title or its data, a `connect` label or a `danmaku`
+  line was left on the slide as literal braces — `examples/research.md` has
+  said "`{{sensors}}` gratings, one fibre" under its figure since the slide
+  was written, while the same variable two slides later rendered as 16. Those
+  blocks are markup, so substitution now treats them like prose. Code fences
+  and quoted examples stay exactly as typed, and so does `mermaid`, whose own
+  hexagon-node syntax is `{{ }}`. Matching fences by length on the way past
+  also stops a four-backtick fence *quoting* a Mirzam block from being read as
+  one — a substitution could previously rewrite the inside of an example.
+
 ### Added
 - **`mirzam export pdf --handout`: the deck as a printout, notes beside each
   slide.** One page per slide, the slide at reading size on the left and its

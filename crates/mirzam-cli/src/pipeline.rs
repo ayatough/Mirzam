@@ -675,10 +675,15 @@ fn str_hash(s: &str) -> u64 {
     h.finish()
 }
 
-/// Substitutes variables only on lines outside code fences, carrying the
-/// source map through: a line the substitution left alone still points at the
-/// file it came from, and a line it rewrote points at nothing, because the
-/// value on screen is not text anyone typed there.
+/// Substitutes variables on lines outside code fences — and inside the fenced
+/// blocks that are markup rather than code: a shape label or a chart title
+/// takes a `{{ }}` the way a paragraph does, while a quoted example (a longer
+/// fence) and an ordinary code block stay exactly as typed. Fences are matched
+/// by length, the way the slide parser matches them, so a ```` fence quoting a
+/// ```shape block quotes it whole. The source map is carried through: a line
+/// the substitution left alone still points at the file it came from, and a
+/// line it rewrote points at nothing, because the value on screen is not text
+/// anyone typed there.
 fn substitute_outside_fences(
     body: &str,
     vars: &std::collections::BTreeMap<String, mirzam_core::Value>,
@@ -686,17 +691,28 @@ fn substitute_outside_fences(
 ) -> (String, mirzam_syntax::SourceMap) {
     let mut out = String::with_capacity(body.len());
     let mut derived = mirzam_syntax::SourceMap::default();
-    let mut in_code = false;
+    // The open fence's backtick count, and whether `{{ }}` applies inside it.
+    let mut fence: Option<(usize, bool)> = None;
     let mut pos = 0usize;
     for raw in body.split_inclusive('\n') {
         let line = raw.strip_suffix('\n').unwrap_or(raw);
         let from = pos..pos + raw.len();
         pos += raw.len();
         let start = out.len();
-        if line.trim_start().starts_with("```") {
-            in_code = !in_code;
+        let t = line.trim_start();
+        let ticks = t.len() - t.trim_start_matches('`').len();
+        if ticks >= 3 {
+            match fence {
+                Some((open, _)) if ticks >= open && t[ticks..].trim().is_empty() => fence = None,
+                None => {
+                    let info = t[ticks..].trim();
+                    // A longer fence quotes Mirzam syntax rather than using it.
+                    fence = Some((ticks, ticks == 3 && mirzam_core::substitutable_block(info)));
+                }
+                _ => {}
+            }
             out.push_str(line);
-        } else if in_code {
+        } else if let Some((_, false)) = fence {
             out.push_str(line);
         } else {
             out.push_str(&mirzam_core::substitute_vars(line, vars));
@@ -722,5 +738,30 @@ mod tests {
         );
         assert_eq!(pane_block_offset(slide, "figure"), Some(8));
         assert_eq!(pane_block_offset(slide, "main"), None);
+    }
+
+    /// A `{{ }}` reaches the blocks that put words on the slide — a shape
+    /// label reading `{{sensors}} gratings` rendered as sixteen — and stays
+    /// out of code, out of a quoted example, and out of Mermaid, whose own
+    /// hexagon-node syntax is `{{ }}`.
+    #[test]
+    fn variables_reach_markup_blocks_and_not_code() {
+        let mut vars = std::collections::BTreeMap::new();
+        vars.insert("n".to_string(), mirzam_core::Value::Num(16.0));
+        let map = mirzam_syntax::SourceMap::default();
+        let body = "\
+{{n}} in prose\n\
+```shape\ntext at(50%, 50%) \"{{n}} gratings\"\n```\n\
+```chart\ntitle: {{n}} channels\n```\n\
+```python\nprint('{{n}}')\n```\n\
+```mermaid\nflowchart\n  a{{hexagon}}\n```\n\
+````markdown\n```shape\ntext at(0%, 0%) \"{{n}} quoted\"\n```\n````\n";
+        let (out, _) = substitute_outside_fences(body, &vars, &map);
+        assert!(out.contains("16 in prose"));
+        assert!(out.contains("\"16 gratings\""));
+        assert!(out.contains("title: 16 channels"));
+        assert!(out.contains("print('{{n}}')"), "{out}");
+        assert!(out.contains("a{{hexagon}}"), "{out}");
+        assert!(out.contains("\"{{n}} quoted\""), "{out}");
     }
 }
