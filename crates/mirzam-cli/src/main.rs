@@ -101,12 +101,15 @@ fn main() -> ExitCode {
             run(serve::serve(&input, port))
         }
         Some("export") => {
-            if args.get(1).map(String::as_str) != Some("pdf") {
-                return usage("pdf is currently the only supported export format");
+            let format = args.get(1).map(String::as_str);
+            if !matches!(format, Some("pdf") | Some("pptx")) {
+                return usage("export takes a format: pdf or pptx");
             }
+            let as_pptx = format == Some("pptx");
             let mut input: Option<PathBuf> = None;
             let mut out_path: Option<PathBuf> = None;
             let mut chromium: Option<String> = None;
+            let mut handout = false;
             let mut deck = DeckArgs::default();
             let mut i = 2;
             while i < args.len() {
@@ -118,6 +121,7 @@ fn main() -> ExitCode {
                             None => return usage("-o requires an output path"),
                         }
                     }
+                    "--handout" => handout = true,
                     "--chromium" => {
                         i += 1;
                         match args.get(i) {
@@ -143,19 +147,33 @@ fn main() -> ExitCode {
             // right command, instead of a PDF nobody would think to check.
             if !is_markdown_path(&input) {
                 return usage(&format!(
-                    "export pdf expects a Markdown source, not {} - point it at the deck itself: \
+                    "export expects a Markdown source, not {} - point it at the deck itself: \
                      `mirzam export pdf deck.md --split h2 --theme <name> ...`",
                     input.display()
                 ));
             }
+            if as_pptx && handout {
+                return usage("--handout is a PDF layout; export pptx carries the notes already");
+            }
+            let ext = if as_pptx { "pptx" } else { "pdf" };
             let out_path = out_path.unwrap_or_else(|| {
                 input
-                    .with_extension("pdf")
+                    .with_extension(ext)
                     .file_name()
                     .map(PathBuf::from)
-                    .unwrap_or_else(|| PathBuf::from("deck.pdf"))
+                    .unwrap_or_else(|| PathBuf::from(format!("deck.{ext}")))
             });
-            run(export_pdf(&input, &out_path, chromium.as_deref(), &deck))
+            if as_pptx {
+                run(export_pptx(&input, &out_path, chromium.as_deref(), &deck))
+            } else {
+                run(export_pdf(
+                    &input,
+                    &out_path,
+                    chromium.as_deref(),
+                    &deck,
+                    handout,
+                ))
+            }
         }
         Some("check") => {
             let mut input: Option<PathBuf> = None;
@@ -320,9 +338,10 @@ Usage:
                [--base-url <url>] [--embed-source] [--editor-url <url>]
                [--debug-layout] [--strict]
   mirzam serve <input.md> [-p <port>]
-  mirzam export pdf <input.md> [-o <out.pdf>] [--split h1|h2|h3]
+  mirzam export pdf <input.md> [-o <out.pdf>] [--handout] [--split h1|h2|h3]
                [--theme <name|file.css>]... [--fit shrink]
                [--mode light|dark] [--chromium <bin>]
+  mirzam export pptx <input.md> [-o <out.pptx>] [same flags, minus --handout]
   mirzam check <input.md> [--split h1|h2|h3] [--theme <name|file.css>]...
                [--fit shrink] [--mode light|dark] [--base-url <url>]
                [--debug-layout] [--chromium <bin>] [--min-slack <px>]
@@ -339,9 +358,15 @@ Usage:
           one the fence stays a code block and the build says so; no browser
           is ever required for an ordinary build
   serve   development server with hot reload (default port 4321)
-  export  render a PDF with headless Chromium (also honors MIRZAM_CHROMIUM).
-          Takes a Markdown source, not a built `out/index.html` - re-parsing
-          already-rendered HTML as Markdown would silently lose the deck
+  export  render a PDF or a PowerPoint file with headless Chromium (also
+          honors MIRZAM_CHROMIUM). Takes a Markdown source, not a built
+          `out/index.html` - re-parsing already-rendered HTML as Markdown
+          would silently lose the deck.
+          --handout prints one page per slide with the speaker notes beside
+          it, and ruled lines to write on where a slide has none.
+          `pptx` writes one picture per slide - where every Markdown slide
+          tool's PowerPoint export stops today - with the speaker notes in
+          the notes pane, where presenter view reads them
   check   build the deck, then render it with headless Chromium (also honors
           MIRZAM_CHROMIUM) and report every slide with content clipped by its
           pane, panes overflowing into a neighbour, a nested list sized wrong,
@@ -873,12 +898,17 @@ fn export_pdf(
     out_path: &Path,
     chromium: Option<&str>,
     deck: &DeckArgs,
+    handout: bool,
 ) -> Result<(), String> {
     let t0 = Instant::now();
     let mut cache = HashMap::new();
     let mut out = pipeline::build_deck_with(input, &mut cache, deck.split, None)?;
     apply_deck_overrides(&mut out, deck)?;
-    let html = mirzam_render::assemble_print_page(&out.meta, &out.sections, &out.file_themes);
+    let html = if handout {
+        mirzam_render::assemble_handout_page(&out.meta, &out.sections, &out.file_themes)
+    } else {
+        mirzam_render::assemble_print_page(&out.meta, &out.sections, &out.file_themes)
+    };
     for w in &out.warnings {
         println!("  ⚠ {w}");
     }
@@ -914,6 +944,90 @@ fn export_pdf(
         out_path.display(),
         t0.elapsed().as_millis(),
         size / 1024,
+    );
+    Ok(())
+}
+
+/// `mirzam export pptx`: one picture per slide, photographed by Chromium at
+/// twice the deck's pixel size, with the speaker notes in PowerPoint's own
+/// notes pane. The slides are images — stage one, the same place every
+/// Markdown slide tool stops — but the notes are real, which is the half an
+/// image-only export usually throws away.
+fn export_pptx(
+    input: &Path,
+    out_path: &Path,
+    chromium: Option<&str>,
+    deck: &DeckArgs,
+) -> Result<(), String> {
+    let t0 = Instant::now();
+    let mut cache = HashMap::new();
+    let mut out = pipeline::build_deck_with(input, &mut cache, deck.split, None)?;
+    apply_deck_overrides(&mut out, deck)?;
+    for w in &out.warnings {
+        println!("  ⚠ {w}");
+    }
+    let bin = find_chromium(chromium)?;
+    let (w, h) = out.meta.slide_size();
+    let tmp = std::env::temp_dir();
+    let pid = std::process::id();
+
+    let mut slides: Vec<(Vec<u8>, Option<String>)> = Vec::with_capacity(out.sections.len());
+    for (i, section) in out.sections.iter().enumerate() {
+        let (slide, notes) = mirzam_render::split_notes(section);
+        let page = mirzam_render::assemble_shot_page(&out.meta, &slide, &out.file_themes);
+        let html_path = tmp.join(format!("mirzam-shot-{pid}-{i}.html"));
+        let png_path = tmp.join(format!("mirzam-shot-{pid}-{i}.png"));
+        std::fs::write(&html_path, &page)
+            .map_err(|e| format!("cannot write a temporary page: {e}"))?;
+        let status = std::process::Command::new(&bin)
+            .args([
+                "--headless",
+                "--disable-gpu",
+                "--no-sandbox",
+                "--hide-scrollbars",
+                "--force-device-scale-factor=2",
+                // The window, not the viewport: current headless builds keep
+                // browser chrome's height in the window arithmetic even
+                // though nothing draws it, so a window this exact size shows
+                // a viewport ~90px short and the shot loses the slide's
+                // bottom. Oversizing guarantees the whole slide is on
+                // screen; the package crops the blank strip below it by the
+                // slide's own aspect (`bottom_crop`).
+                &format!("--window-size={w},{}", h + 300),
+                // Fast-forwards timers and rAF so annotations and
+                // shrink-to-fit have run before the picture is taken.
+                "--virtual-time-budget=4000",
+                &format!("--screenshot={}", png_path.display()),
+                &format!("file://{}", html_path.display()),
+            ])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .map_err(|e| format!("cannot run {bin}: {e}"))?;
+        let png = std::fs::read(&png_path);
+        let _ = std::fs::remove_file(&html_path);
+        let _ = std::fs::remove_file(&png_path);
+        if !status.success() {
+            return Err(format!(
+                "Chromium failed to photograph slide {} ({status})",
+                i + 1
+            ));
+        }
+        let png = png.map_err(|e| format!("Chromium wrote no picture for slide {}: {e}", i + 1))?;
+        let notes = notes
+            .map(|n| mirzam_cli::pptx::notes_text(&n))
+            .filter(|t| !t.is_empty());
+        slides.push((png, notes));
+    }
+
+    let bytes = mirzam_cli::pptx::package(w, h, &slides);
+    std::fs::write(out_path, &bytes).map_err(|e| format!("cannot write the pptx: {e}"))?;
+    println!(
+        "✓ wrote {} slides to {} ({} ms, {} KB)",
+        slides.len(),
+        out_path.display(),
+        t0.elapsed().as_millis(),
+        bytes.len() / 1024,
     );
     Ok(())
 }

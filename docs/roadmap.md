@@ -55,8 +55,13 @@ changing.
 | A working page on a slide (`![alt](page.html)`), sandboxed and inlined | Done · unreleased |
 | Figure captions and credits (`caption=`, `credit=`), a credit that cites | Done · unreleased |
 | A language server (`mirzam lsp`): diagnostics and an outline | Done · unreleased |
-| The same server's completion, hover and definitions | Next |
-| Plugins, PPTX export | Later |
+| The same server's completion, hover and definitions | Done · unreleased |
+| Handout PDF: notes beside each slide (`export pdf --handout`) | Done · unreleased |
+| Data-driven slides: one slide per CSV row (```` ```each ````) | Done · unreleased |
+| A slide's own autoplay dwell; autoplay that waits for a clip | Done · unreleased |
+| Code line highlighting and line numbers (```` ```js {2,4-5 lines} ````) | Done · unreleased |
+| PPTX export, stage one: slide pictures and real speaker notes | Done · unreleased |
+| Plugins, PPTX with native text boxes | Later |
 
 Each of those has a brief — what it is for, what is not free about it, and where
 it stops — in [workstreams.md](workstreams.md). "Next" means the reasoning is
@@ -77,11 +82,20 @@ a formula into shape on the phone it was built for. The effort went into the
 math grammar instead, which is why `v0.4.0` says more about what `$...$` can
 hold than about how it is edited.
 
-The one worth naming here is **carrying an element from one slide to the next**:
-a slide presents three components and the next three take one each, and the
-component *moves* into its own slide rather than the deck turning the page under
-it. It is the one animation a deck tool gets asked for that Mirzam has no answer
-to today.
+The one worth naming here is **carrying an element from one slide to the
+next** — and it joins structural math editing as a thing that was **built and
+then withdrawn**. A `.carry` runtime landed on a branch after `v0.9.0`: the
+same `#id` on two consecutive slides, a lifted clone flown between its two
+boxes, backwards as good as forwards, with the PDF and a scriptless reader
+seeing two complete ordinary slides. It worked exactly as specified — and
+watching it in a real deck, the author judged the motion unnatural, so it was
+pulled before it merged. The mechanism is written up in
+[W18's brief](workstreams.md#w18--carrying-an-element-from-one-slide-to-the-next)
+along with what the withdrawal teaches: the invariants were never the hard
+part, the *feel* is — a straight-line flight with linear scaling, over the top
+of the page turn, does not read as the component travelling. It stays Next,
+with that as the bar. The reasoning behind the rest of the current queue is in
+the [post-v0.9 plan](reports/2026-08-v0.10-plan.md).
 
 ### Measured performance
 
@@ -181,11 +195,12 @@ already quotes.
 before rendering, and JavaScript modules that register runtime effects. Themes stay
 plain CSS plus a manifest, since that already works.
 
-**Export beyond HTML and PDF.** PowerPoint via OOXML, staged: slides as images
-plus real speaker notes first, which is where Marp, Slidev and Touying all
-stop — then native text boxes, which none of them ships and the market survey
-found to be the loudest unmet ask across every Markdown slide tool. Elements
-with no OOXML equivalent are rasterized rather than dropped; Google Slides
+**Export beyond HTML and PDF.** The first stage landed: `mirzam export pptx`
+writes PowerPoint via hand-written OOXML — slides as pictures plus real
+speaker notes, which is where Marp, Slidev and Touying all stop. What remains
+is the stage none of them ships and the market survey found to be the loudest
+unmet ask across every Markdown slide tool: native text boxes, with elements
+that have no OOXML equivalent rasterized rather than dropped. Google Slides
 comes through the same path. Direct PDF generation without Chromium is a
 separate, larger question that depends on adopting a text layout engine.
 
@@ -196,15 +211,11 @@ same core.
 **The unattended screen, beyond autoplay.** `autoplay: 8s loop` landed as
 pacing: one deck-wide interval driving the same advance the arrow key does,
 which already covers the exhibition loop and the captioned photo slideshow.
-What it deliberately does not do yet, in rough order of pull:
+The first two follow-ups landed next — `<!-- autoplay: 20s -->` holds the
+slide that needs reading time, and a slide whose clip is still playing turns
+when the clip ends rather than mid-sentence. What is deliberately left, in
+rough order of pull:
 
-- **A per-slide dwell** — `<!-- autoplay: 20s -->` on the slide that needs
-  reading time — the natural next syntax, since slide-level overrides of
-  deck-wide dials are already the house pattern (`<!-- theme: -->`,
-  `<!-- layout: -->`, `<!-- chrome: -->`).
-- **Waiting for media**: a slide holding a video should turn when the video
-  ends, not cut it off mid-sentence. The viewer knows the video is there; it
-  just does not listen for `ended` yet.
 - **Pan and zoom on background images** (the Ken Burns effect), which is what
   separates "slides on a loop" from a screensaver made of photographs. It
   belongs to the `bg` attribute grammar, not to `anim`: the drift is a
@@ -219,9 +230,11 @@ What it deliberately does not do yet, in rough order of pull:
   is a loop and where it is in it, in the chrome that `?controls=none`
   removes — so a display can choose between perfectly bare and legible.
 
-**Richer data.** Column aggregation in tables, more chart types, and data-driven
-slides — a run of slides generated from the rows of a CSV, the one structural
-advantage Typst's scripting has over every Markdown tool.
+**Richer data.** Column aggregation in tables and more chart types.
+Data-driven slides left this list: ```` ```each ```` renders one slide per
+CSV row as of the next release — the one structural advantage Typst's
+scripting had over every Markdown tool, answered as a table where the table
+would be rather than a loop.
 
 **D2, through Mermaid's door.** Mermaid landed in `v0.7.0` exactly in the
 shape planned here: the CLI shells out to a local `mmdc` at build time,
@@ -264,17 +277,18 @@ screenshot of the slide it renders — generated by the per-slide screenshot
 pass so the pictures cannot drift from the code that made them, the way the
 themes gallery already cannot.
 
-**Handouts.** A PDF export that carries the speaker notes beside each slide —
+**Handouts** landed: `mirzam export pdf --handout` prints one page per slide
+with the speaker notes beside it, and ruled lines where a slide has none —
 the most-reacted request on Marp's CLI, still unmet there. The other half of
 this entry, the overview grid that shows the deck at a glance and jumps on
 click, landed in `v0.8.0` as `O`, in the presenter window and on the phone
 too.
 
-**A `[span]{...}` cannot cross a source line.** The inline-attribute transform
-runs line by line, so a span whose text is wrapped leaves its brackets and
-braces on the slide as literal characters. Documented in the reference as a
-constraint; the fix is to run the transform over paragraphs rather than lines,
-which has to keep the existing rule that nothing inside a fence is touched.
+**A `[span]{...}` may cross a source line now** — the fix this entry called
+for (run the inline-attribute transform over paragraphs rather than lines,
+fences untouched) landed. What remains true is the paragraph rule: a blank
+line between the brackets is a wall, so a `[` left open in one paragraph
+never swallows the next.
 
 ## Non-goals
 

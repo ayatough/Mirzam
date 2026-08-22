@@ -943,7 +943,33 @@
   // picks itself back up on the next interval. `A` is the deliberate stop.
   let autoOn = !!auto;
   let autoTimer = null;
+  // A clip mid-sentence holds its page: the tick waits for `ended` rather
+  // than cutting it off. A `{.loop}` clip never ends, so it never holds, and
+  // a hosted frame cannot be listened to, so it cannot either.
+  function playingMedia() {
+    const sec = slides()[cur];
+    if (!sec) return null;
+    for (const m of sec.querySelectorAll('video, audio')) {
+      if (!m.paused && !m.ended && !m.loop) return m;
+    }
+    return null;
+  }
   function autoTick() {
+    const m = playingMedia();
+    if (m) {
+      const done = () => {
+        m.removeEventListener('ended', done);
+        m.removeEventListener('pause', done);
+        if (!autoOn) return;
+        // Ended is the cue to turn; a pause by hand restarts the countdown,
+        // and a hidden tab waits for visibilitychange to re-arm.
+        if (m.ended && !document.hidden) autoTick();
+        else armAuto();
+      };
+      m.addEventListener('ended', done);
+      m.addEventListener('pause', done);
+      return;
+    }
     const ss = slides();
     if (cur >= ss.length - 1 && step >= stepsOn(ss[cur])) {
       // Played through: wrap forwards, or rest until `A` starts it again.
@@ -957,7 +983,13 @@
     if (!auto) return;
     clearTimeout(autoTimer);
     // A hidden tab turns no pages; coming back re-arms via the listener.
-    if (autoOn && !document.hidden) autoTimer = setTimeout(autoTick, auto.ms);
+    // `<!-- autoplay: 20s -->` on the slide holds it longer than the deck's
+    // own beat — the one that needs reading time, in a loop paced for the rest.
+    if (autoOn && !document.hidden) {
+      const sec = slides()[cur];
+      const dwell = (sec && +sec.dataset.dwell) || auto.ms;
+      autoTimer = setTimeout(autoTick, dwell);
+    }
   }
   // Every navigation — the tick's own included — lands in updateHud, so the
   // countdown restarts from whatever just happened.

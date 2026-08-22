@@ -127,6 +127,15 @@ const MARKS: &[Mark] = &[
         shown_as: "```python",
     },
     Mark {
+        // Line emphasis is how a talk walks a room through a listing without
+        // a laser pointer; the fence-info spelling is the one Marp, Slidev
+        // and GitHub share, which is the point of adopting it.
+        source: "```rust {2 lines}\nfn main() {\n    go()\n}\n```\n",
+        html: r#"<span class="mz-cl mz-hl">"#,
+        documented_as: "```js {2,4-5 lines}",
+        shown_as: "{2 lines}",
+    },
+    Mark {
         source: "a claim[@vaswani2017]",
         html: r#"<span class="mz-cite">[1]</span>"#,
         documented_as: "`[@key]`",

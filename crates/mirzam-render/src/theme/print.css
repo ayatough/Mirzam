@@ -11,7 +11,7 @@ section.slide {
 /* Chromium drops background colours when printing, which would remove the
    scrims and leave text on an undimmed photo — and would leave an annotation
    label unreadable over whatever it sits on. */
-.mz-scrim, .mz-annot-label { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.mz-scrim, .mz-annot-label, .mz-hl { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 /* An effect is part of the performance, not the document. The export never
    inlines `effects.js`, so nothing should ever draw one here — this is the
    belt to that braces, and it keeps the shake out of a printed page. */

@@ -15,9 +15,9 @@ mirzam check deck.md --format json # every problem, as records — run this afte
 Each of these fails **silently or as literal text**, and each has cost a real
 author a slide.
 
-1. **An attribute span must fit on one source line.** `[a phrase]{.small}`
-   wrapped across a line break is left alone and the brackets reach the slide.
-   Rewrap the sentence.
+1. **An attribute span must stay in one paragraph.** `[a phrase]{.small}`
+   may wrap onto the next source line, but a blank line between the brackets
+   leaves them on the slide as literal text.
 2. **`shape`, `pane`, `connect`, `annotate`, `effects`, `anim` only parse at
    slide top level** — never inside `::: pane`. Inside a pane the fence is
    ordinary Markdown and renders as a code block. Only `chart`, `mermaid`,
@@ -74,10 +74,18 @@ vars:
 `wipe-left|right|up|down`, `zoom`, `iris`, each optionally with a duration and
 `ease=`.
 
+`mirzam export pdf deck.md --handout` prints one page per slide with the
+speaker notes beside it; slides without notes get ruled lines.
+`mirzam export pptx deck.md` writes PowerPoint: one picture per slide plus
+the notes in the notes pane. Edit the Markdown and re-export, not the pptx.
+
 `autoplay:` takes an interval — seconds by default (`8s`, `1.5s`, bare `8`),
 `ms` accepted — and optionally `loop`. One advance is one click step, then the
 next slide. In the viewer, `?autoplay=8s+loop` plays any deck and
-`?autoplay=off` stills one; `A` pauses and resumes.
+`?autoplay=off` stills one; `A` pauses and resumes. `<!-- autoplay: 20s -->`
+on a slide holds that one slide longer than the deck's beat (interval only,
+no `loop`), and a slide whose video is still playing when the interval ends
+turns when the video does.
 
 ## Slides
 
@@ -91,6 +99,7 @@ invisible in a plain Markdown reader:
 | `<!-- layout: two-up -->` | Draw this slide on that master; `none` opts out of the deck default |
 | `<!-- theme: nord -->` `<!-- mode: dark -->` | A theme for this slide only — tokens inherit, so its type comes too |
 | `<!-- chrome: none -->` | Drop the footer and slide number here (title slides, `.bleed` slides) |
+| `<!-- autoplay: 20s -->` | Under autoplay, hold this one slide longer; interval only, no `loop` |
 | `<!-- next -->` | Split this slide in two, changing one pane. `<!-- more -->` is the same marker |
 
 Transclusion pastes a file in where the line was, so put a `---` on each side
@@ -182,7 +191,9 @@ Fenced code is coloured for 36 languages (`rust`, `python`, `js`, `ts`, `go`,
 `diff`, … and the usual aliases). Name the language or the block stays plain —
 which is also what `chart`, `shape` and the rest stay when they land somewhere
 that leaves them as code. Colours are the theme's `--mz-code-*` tokens, so do
-not write a palette into the deck.
+not write a palette into the deck. ` ```js {2,4-5 lines} ` washes lines 2, 4
+and 5 across the block's width and numbers every line; either half works
+alone, on any fence, coloured or not.
 
 ### Attributes
 
@@ -383,6 +394,28 @@ back: true     # print the slides each entry was cited on
 both resolve after the whole deck has rendered, so either shows nothing when
 previewed alone. `bibliography` needs `bibliography:` in frontmatter — without
 it `[@key]` is ordinary text.
+
+## `each` — one slide per data row
+
+The slide holding the block is a template, rendered once per row; the rest of
+the slide fills its `{{field}}` marks from that row. Numeric values do
+arithmetic (`{{ms * 2}}`).
+
+````markdown
+```each
+name, ms
+parse, 4
+render, 11
+```
+
+## {{name}}: {{ms}} ms
+````
+
+Or `data: rows.csv` as the block's only line — the file resolves relative to
+the deck and is watched by `serve`. One `each` block per slide. Header row
+names the fields; quotes hold commas. A column named like a frontmatter var
+loses to it — rename the column. On any failure the build warns and the slide
+renders once, placeholders visible.
 
 ## Slide masters
 

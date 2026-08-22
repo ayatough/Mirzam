@@ -15,6 +15,7 @@ use std::path::Path;
 const ASSETS: &[(&str, Lang)] = &[
     ("base.css", Lang::Css),
     ("print.css", Lang::Css),
+    ("handout.css", Lang::Css),
     ("viewer.js", Lang::Js),
     ("anim.js", Lang::Js),
     ("annot.js", Lang::Js),

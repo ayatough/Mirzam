@@ -225,7 +225,7 @@ counts as a step; <code>.manual</code> waits for its own button</li>
 </aside>
 </section>
 <section class="slide" data-index="10">
-<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 5fr;grid-template-areas:"head head" "src note"'>
+<div class="grid" style='grid-template-columns:18fr 17fr;grid-template-rows:2fr 7fr;grid-template-areas:"head head" "src note"'>
 <div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Autoplay</span></p>
 <h2>A deck that turns its own pages</h2>
 </div>
@@ -233,8 +233,12 @@ counts as a step; <code>.manual</code> waits for its own button</li>
 <span class="tok-function">autoplay:</span> <span class="tok-number">8</span>s loop
 ---
 </code></pre>
-<p>One advance every eight seconds — a click step while the slide has any
-left, then the next slide — and <code>loop</code> wraps back to the start.</p>
+<p>One advance every eight seconds — a click step while the slide has
+any left, then the page — and <code>loop</code> wraps back to the start.</p>
+<pre><code class="language-markdown"><span class="tok-comment">&lt;!-- autoplay: 20s --&gt;</span>
+</code></pre>
+<p>The slide that needs reading time holds longer; one whose clip is
+still playing turns when the clip ends.</p>
 </div>
 <div class="pane pane-note" data-pane="note" style="grid-area:note;display:flex;flex-direction:column;justify-content:center"><p><span class="m-auto1">An exhibition loop, a screensaver, a photo slideshow whose captions animate in: every slide above plays through at the same pace as the pages turn.</span></p>
 <p><span class="m-auto2 small">This deck does not ask for it — reopen with <code>?autoplay=4s+loop</code> in the address and watch it drive itself. <code>A</code> pauses; anything else just restarts the countdown.</span></p>

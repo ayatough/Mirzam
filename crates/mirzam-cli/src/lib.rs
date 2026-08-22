@@ -4,6 +4,7 @@
 pub mod lsp;
 pub mod mermaid;
 pub mod pipeline;
+pub mod pptx;
 pub mod scaffold;
 pub mod serve;
 pub mod skill;

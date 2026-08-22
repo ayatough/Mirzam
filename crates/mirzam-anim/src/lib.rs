@@ -408,6 +408,21 @@ pub fn autoplay_json(a: &Autoplay) -> String {
     serde_json::json!({ "ms": a.interval_ms, "loop": a.looped }).to_string()
 }
 
+/// Parses a slide's `<!-- autoplay: 20s -->`: an interval and nothing else.
+/// `loop` is a property of the whole deck — one slide cannot wrap — so the
+/// token the deck-level parser accepts is an error here.
+pub fn parse_dwell(src: &str) -> Result<u32, String> {
+    let a = parse_autoplay(src)?;
+    if a.looped {
+        return Err(
+            "`loop` belongs to the deck's own `autoplay:`; a slide sets only how long \
+             it stays up, e.g. `<!-- autoplay: 20s -->`"
+                .into(),
+        );
+    }
+    Ok(a.interval_ms)
+}
+
 /// Serializes a transition for the `data-transition` attribute on `#deck`.
 pub fn transition_json(t: &Transition) -> String {
     let mut v = serde_json::json!({
@@ -1152,5 +1167,17 @@ mod tests {
         assert!(parse_autoplay("0s").is_err());
         assert!(parse_autoplay("-5s").is_err());
         assert!(parse_autoplay("50ms").is_err());
+    }
+
+    /// A slide's `<!-- autoplay: 20s -->` is an interval and nothing else:
+    /// `loop` is the deck's word, and here it is the error that says so.
+    #[test]
+    fn dwell_is_an_interval_only() {
+        assert_eq!(parse_dwell("20s").unwrap(), 20_000);
+        assert_eq!(parse_dwell("750ms").unwrap(), 750);
+        assert_eq!(parse_dwell("4").unwrap(), 4000);
+        assert!(parse_dwell("20s loop").unwrap_err().contains("loop"));
+        assert!(parse_dwell("whenever").is_err());
+        assert!(parse_dwell("50ms").is_err());
     }
 }

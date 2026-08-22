@@ -642,6 +642,30 @@ code { font-family: var(--mz-font-mono, 'SF Mono', Consolas, Menlo, monospace); 
 .tok-function { color: var(--mz-code-function, var(--mz-accent2)); }
 .tok-number { color: var(--mz-code-number, var(--mz-chart5)); }
 .tok-operator { color: var(--mz-code-operator, var(--mz-fg)); }
+
+/* Fence meta: ```js {2,4-5 lines}. Each line is a block-level span so an
+   emphasized line's wash reaches the pane's width rather than hugging the
+   text; `1lh` keeps an empty line one line tall, since an empty block would
+   collapse. The wash is mixed from the ink so it holds in both modes with no
+   new token to define — `--mz-code-hl` overrides it where a theme wants to. */
+.mz-cl { display: block; min-height: 1lh; }
+.mz-hl {
+  background: var(--mz-code-hl, color-mix(in srgb, var(--mz-fg) 9%, transparent));
+  border-radius: 3px;
+}
+.mz-code-nums { display: block; counter-reset: mz-line; }
+.mz-code-nums .mz-cl::before {
+  counter-increment: mz-line;
+  content: counter(mz-line);
+  display: inline-block;
+  width: var(--mz-ln-w, 2ch);
+  margin-right: 1.2ch;
+  text-align: right;
+  color: var(--mz-muted);
+  /* The numbers are furniture: copying the code must not copy them. */
+  user-select: none;
+  -webkit-user-select: none;
+}
 p code, li code {
   background: var(--mz-code-bg, var(--mz-surface)); color: var(--mz-code-fg, inherit);
   border-radius: 4px; padding: .1em .35em; font-size: .9em;

@@ -540,24 +540,32 @@ pub const BLOCK_KINDS: &[&str] = &[
     "mermaid",
     "toc",
     "bibliography",
+    "each",
 ];
 
-/// Fenced blocks reserved for a later phase.
+/// Fenced blocks the slide parser records without rendering itself.
+///
+/// `Anim` is compiled by `mirzam-anim` at render time. `Each` should never
+/// reach a renderer at all — the build pipeline expands it into slides first —
+/// so a renderer that meets one reports it instead of showing data as content.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlockKind {
     Anim,
+    Each,
 }
 
 impl BlockKind {
     pub fn as_str(&self) -> &'static str {
         match self {
             BlockKind::Anim => "anim",
+            BlockKind::Each => "each",
         }
     }
 
     fn from_info(info: &str) -> Option<Self> {
         match info {
             "anim" => Some(BlockKind::Anim),
+            "each" => Some(BlockKind::Each),
             _ => None,
         }
     }
@@ -596,6 +604,10 @@ pub struct SlideSource {
     /// `<!-- mode: dark -->`: light or dark for this one slide, independent of
     /// the deck and of the reader's `D` key.
     pub mode: Option<String>,
+    /// `<!-- autoplay: 20s -->`: under the deck's autoplay, how long this one
+    /// slide stays up — the slide that needs reading time, in a loop paced for
+    /// the rest. `None` means the deck's interval.
+    pub autoplay: Option<String>,
     /// ```shape blocks; multiple blocks are concatenated.
     pub shapes: Vec<String>,
     /// ```connect blocks.
@@ -758,6 +770,198 @@ pub fn expand_continuations(slide: &str) -> Result<Vec<String>, String> {
     Ok(out)
 }
 
+/// Where an ```each block's rows come from: written in the block, or in the
+/// file its `data:` names — the same two homes a `chart`'s data has.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EachSource {
+    Inline(String),
+    File(String),
+}
+
+/// The rows behind an ```each block, parsed and named.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EachTable {
+    /// Column names, from the header row.
+    pub fields: Vec<String>,
+    /// One entry per data row, each as long as `fields`.
+    pub rows: Vec<Vec<String>>,
+}
+
+/// Finds the ```each block in a slide: the declaration that this slide is a
+/// template, rendered once per data row. Returns the block's body and the
+/// slide with the block removed — the template — or `None` when the slide has
+/// no block. `Err` when it has two: rendering the cross product of two tables
+/// is a slide count nobody can predict, so the caller reports it and renders
+/// the slide once, as written.
+pub fn extract_each(slide: &str) -> Result<Option<(String, String)>, String> {
+    let lines = line_offsets(slide);
+    let mut blocks: Vec<(std::ops::Range<usize>, String)> = Vec::new();
+    let mut fence: Option<usize> = None;
+    let mut open_at = 0usize;
+    let mut body = String::new();
+    let mut in_each = false;
+    for (i, (_, line)) in lines.iter().enumerate() {
+        let t = line.trim();
+        match fence {
+            Some(open) if closes_fence(t, open) => {
+                if in_each {
+                    blocks.push((open_at..i + 1, std::mem::take(&mut body)));
+                    in_each = false;
+                }
+                fence = None;
+            }
+            Some(_) => {
+                if in_each {
+                    body.push_str(line);
+                    body.push('\n');
+                }
+            }
+            None => {
+                if let Some(n) = fence_len(t) {
+                    fence = Some(n);
+                    // A longer fence quotes the syntax rather than using it.
+                    in_each = n == 3 && t[n..].trim() == "each";
+                    open_at = i;
+                }
+            }
+        }
+    }
+    match blocks.len() {
+        0 => Ok(None),
+        1 => {
+            let (range, body) = blocks.into_iter().next().expect("one block");
+            let template: String = lines
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| !range.contains(i))
+                .map(|(_, (_, line))| format!("{line}\n"))
+                .collect();
+            Ok(Some((body, template)))
+        }
+        _ => Err("each: a slide takes one `each` block; \
+                  the slide is rendered once, as written"
+            .into()),
+    }
+}
+
+/// Reads an ```each block's body: either rows written in place, or a
+/// `data:` line naming the file that holds them.
+pub fn parse_each_spec(block: &str) -> Result<EachSource, String> {
+    let mut data: Option<String> = None;
+    let mut inline = String::new();
+    for line in block.lines() {
+        let t = line.trim();
+        if inline.is_empty() {
+            if t.is_empty() {
+                continue;
+            }
+            if data.is_none() {
+                if let Some(rest) = t.strip_prefix("data:") {
+                    data = Some(rest.trim().to_string());
+                    continue;
+                }
+            }
+        }
+        inline.push_str(line);
+        inline.push('\n');
+    }
+    match (data, inline.trim().is_empty()) {
+        (Some(_), false) => {
+            Err("each: write the rows in the block or name a file with `data:`, not both".into())
+        }
+        (Some(p), true) if p.is_empty() => Err("each: `data:` names no file".into()),
+        (Some(p), true) => Ok(EachSource::File(p)),
+        (None, true) => {
+            Err("each: empty block; write a header row and data rows, or `data: rows.csv`".into())
+        }
+        (None, false) => Ok(EachSource::Inline(inline)),
+    }
+}
+
+/// Parses CSV text into an [`EachTable`]: the first row names the fields, the
+/// rest are data. Quoted values may hold commas, doubled quotes and newlines;
+/// every field is trimmed. A row with the wrong width is padded or cut to the
+/// header and reported, because a shifted column fills every later field with
+/// the wrong words and nothing else would say so.
+pub fn parse_each_table(csv: &str) -> Result<(EachTable, Vec<String>), String> {
+    let mut records = parse_csv(csv);
+    if records.is_empty() {
+        return Err("each: no rows; the first row names the fields".into());
+    }
+    let fields: Vec<String> = records.remove(0);
+    if fields.iter().any(String::is_empty) {
+        return Err("each: every column in the header row needs a name".into());
+    }
+    if records.is_empty() {
+        return Err("each: a header and no rows; nothing to render".into());
+    }
+    let mut warnings = Vec::new();
+    let rows = records
+        .into_iter()
+        .enumerate()
+        .map(|(i, mut row)| {
+            if row.len() != fields.len() {
+                warnings.push(format!(
+                    "each: row {} has {} field(s) where the header names {}",
+                    i + 1,
+                    row.len(),
+                    fields.len()
+                ));
+                row.resize(fields.len(), String::new());
+            }
+            row
+        })
+        .collect();
+    Ok((EachTable { fields, rows }, warnings))
+}
+
+/// Minimal CSV: commas separate, `"` quotes (doubled to escape), rows end at
+/// an unquoted newline, blank lines are skipped, fields are trimmed.
+fn parse_csv(text: &str) -> Vec<Vec<String>> {
+    let mut rows: Vec<Vec<String>> = Vec::new();
+    let mut row: Vec<String> = Vec::new();
+    let mut field = String::new();
+    let mut quoted = false;
+    let mut chars = text.chars().peekable();
+    let mut end_row = |row: &mut Vec<String>, field: &mut String| {
+        row.push(std::mem::take(field).trim().to_string());
+        if !(row.len() == 1 && row[0].is_empty()) {
+            rows.push(std::mem::take(row));
+        } else {
+            row.clear();
+        }
+    };
+    while let Some(c) = chars.next() {
+        if quoted {
+            if c == '"' {
+                if chars.peek() == Some(&'"') {
+                    chars.next();
+                    field.push('"');
+                } else {
+                    quoted = false;
+                }
+            } else {
+                field.push(c);
+            }
+        } else {
+            match c {
+                '"' if field.trim().is_empty() => {
+                    field.clear();
+                    quoted = true;
+                }
+                ',' => row.push(std::mem::take(&mut field).trim().to_string()),
+                '\r' => {}
+                '\n' => end_row(&mut row, &mut field),
+                _ => field.push(c),
+            }
+        }
+    }
+    if !field.trim().is_empty() || !row.is_empty() {
+        end_row(&mut row, &mut field);
+    }
+    rows
+}
+
 /// Decomposes a slide's source into its parts.
 pub fn parse_slide(src: &str) -> SlideSource {
     let mut slide = SlideSource::default();
@@ -880,6 +1084,7 @@ pub fn parse_slide(src: &str) -> SlideSource {
                     "mode" => slide.mode = Some(value.to_string()),
                     "layout" => slide.layout_name = Some(value.to_string()),
                     "chrome" => slide.chrome = Some(value.to_string()),
+                    "autoplay" => slide.autoplay = Some(value.to_string()),
                     _ => unreachable!("parse_setting_comment only returns known keys"),
                 }
                 continue;
@@ -1054,7 +1259,7 @@ fn parse_setting_comment(comment: &str) -> Option<(&'static str, String)> {
     let inner = inner.strip_suffix("-->").unwrap_or(inner).trim();
     let (key, value) = inner.split_once(':')?;
     let key = key.trim().to_ascii_lowercase();
-    let key = ["theme", "mode", "layout", "chrome"]
+    let key = ["theme", "mode", "layout", "chrome", "autoplay"]
         .into_iter()
         .find(|k| *k == key)?;
     let value = value.trim();
@@ -1535,6 +1740,16 @@ loose text
         assert!(s.loose.contains("# Quiet"));
     }
 
+    /// `<!-- autoplay: 20s -->` is a setting like the others: recorded, and
+    /// kept off the slide. The value is not judged here — the renderer parses
+    /// it, so the warning can name the slide it is on.
+    #[test]
+    fn a_slide_can_ask_for_its_own_dwell() {
+        let s = parse_slide("<!-- autoplay: 20s -->\n\n# Long table\n");
+        assert_eq!(s.autoplay.as_deref(), Some("20s"));
+        assert!(!s.loose.contains("autoplay"));
+    }
+
     /// A slide that draws its own grid keeps it: the master is what a slide
     /// falls back to, never something that overrides what it drew.
     #[test]
@@ -1681,6 +1896,65 @@ loose text
         assert!(!is_continue_marker("<!-- next slide -->"));
         assert!(!is_continue_marker("next"));
     }
+    #[test]
+    fn extract_each_returns_the_block_and_the_template() {
+        let src = "## {{name}}\n\n```each\nname, role\nAda, Engineer\n```\n\n{{role}}\n";
+        let (block, template) = extract_each(src).unwrap().expect("has a block");
+        assert_eq!(block, "name, role\nAda, Engineer\n");
+        assert!(!template.contains("each"));
+        assert!(template.contains("## {{name}}"));
+        assert!(template.contains("{{role}}"));
+
+        assert_eq!(extract_each("## Plain\n"), Ok(None));
+        // A longer fence quotes the syntax rather than using it.
+        assert_eq!(
+            extract_each("````markdown\n```each\na\n1\n```\n````\n"),
+            Ok(None)
+        );
+        assert!(extract_each("```each\na\n1\n```\n\n```each\nb\n2\n```\n").is_err());
+    }
+
+    #[test]
+    fn each_spec_is_rows_or_a_file() {
+        assert_eq!(
+            parse_each_spec("name\nAda\n").unwrap(),
+            EachSource::Inline("name\nAda\n".into())
+        );
+        assert_eq!(
+            parse_each_spec("\ndata: rows.csv\n").unwrap(),
+            EachSource::File("rows.csv".into())
+        );
+        assert!(parse_each_spec("data: rows.csv\nname\nAda\n").is_err());
+        assert!(parse_each_spec("data:\n").is_err());
+        assert!(parse_each_spec("\n\n").is_err());
+    }
+
+    #[test]
+    fn each_table_names_fields_and_reports_ragged_rows() {
+        let (t, w) = parse_each_table("name, role\nAda, Engineer\n\"Grace, H.\", Admiral\n")
+            .expect("parses");
+        assert_eq!(t.fields, vec!["name", "role"]);
+        assert_eq!(t.rows[1], vec!["Grace, H.", "Admiral"]);
+        assert!(w.is_empty());
+
+        let (t, w) = parse_each_table("a, b\n1\n1, 2, 3\n").expect("parses");
+        assert_eq!(t.rows[0], vec!["1", ""]);
+        assert_eq!(t.rows[1], vec!["1", "2"]);
+        assert_eq!(w.len(), 2);
+
+        assert!(parse_each_table("").is_err());
+        assert!(parse_each_table("a, b\n").is_err());
+        assert!(parse_each_table(", b\n1, 2\n").is_err());
+    }
+
+    #[test]
+    fn csv_quotes_hold_commas_newlines_and_doubled_quotes() {
+        let rows = parse_csv("a, \"b, c\"\n\"two\nlines\", \"say \"\"hi\"\"\"\n\n");
+        assert_eq!(rows[0], vec!["a", "b, c"]);
+        assert_eq!(rows[1], vec!["two\nlines", "say \"hi\""]);
+        assert_eq!(rows.len(), 2);
+    }
+
     /// [`BLOCK_KINDS`] is only worth walking if every name on it is live. A
     /// block form that no longer exists would make the compatibility test pass
     /// for a promise nobody is asking about any more.

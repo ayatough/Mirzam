@@ -1,0 +1,66 @@
+/* The handout: one page per slide, the slide at reading size on the left and
+   its speaker notes beside it — the page a speaker rehearses from and a
+   student annotates. Applied after print.css, whose one-slide-per-page break
+   it has to undo: here the page is `.ho-page`, and the slide is one element
+   inside it. The dimensions — page size, the scaled slide's box, the scale
+   itself — are appended by `assemble_handout_page`, because they are
+   arithmetic over the deck's own slide size. */
+section.slide { break-after: auto; page-break-after: auto; }
+
+.ho-page {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  break-after: page;
+  page-break-after: always;
+  overflow: hidden;
+}
+
+/* The slide keeps its own size and is scaled into this box, so everything
+   measured in slide pixels — panes, shapes, annotations — lands exactly where
+   the screen puts it. The box is the scaled footprint, because a transform
+   moves paint and not layout. */
+.ho-slide {
+  flex: none;
+  /* A hairline so a slide the colour of the paper still has an edge. */
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+.ho-slide section.slide { transform-origin: top left; }
+
+.ho-notes {
+  flex: 1 1 auto;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  /* The notes are read on paper, whatever mode the slides were baked in, so
+     the column is ink on the page's own white rather than the deck's theme. */
+  color: #222;
+  font-family: var(--mz-font, system-ui, sans-serif);
+}
+.ho-notes .ho-head {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #888;
+  margin-bottom: 0.6em;
+}
+.ho-notes .ho-body { font-size: 15px; line-height: 1.55; }
+.ho-notes .ho-body > *:first-child { margin-top: 0; }
+.ho-notes .ho-body p { margin: 0 0 0.6em; }
+
+/* A slide with no notes hands the column to the reader: ruled lines to write
+   on, which is what a handout margin is for. Chromium drops backgrounds when
+   printing unless told not to. */
+.ho-lines {
+  flex: 1;
+  background: repeating-linear-gradient(
+    transparent,
+    transparent 31px,
+    rgba(0, 0, 0, 0.18) 31px,
+    rgba(0, 0, 0, 0.18) 32px
+  );
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
