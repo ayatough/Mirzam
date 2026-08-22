@@ -20,6 +20,22 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   one — a substitution could previously rewrite the inside of an example.
 
 ### Added
+- **An element can take the page turn with you.** The same `#id` marked
+  `.carry` on two consecutive slides is the whole declaration: on the turn
+  the element *moves* — from the box it had on one slide into the box it gets
+  on the next, growing or shrinking on the way, backwards on `←` exactly as
+  well — instead of leaving with one slide and arriving with the other. A
+  slide presents three components and the next takes one; the room's eyes
+  follow it. This is what Keynote calls Magic Move, what PowerPoint calls
+  Morph, and the one animation a deck tool gets asked for that Mirzam had no
+  answer to. What flies is a lifted copy in a layer above both slides, so the
+  two slides stay two complete, ordinary slides — the PDF, a reader without
+  JavaScript and `prefers-reduced-motion` all see exactly that — and the
+  deck's own transition still turns the page around the moving element. Marp
+  grew a morph this year inside the View Transition API, screen-only and
+  gone in export; this one keeps the resting-state rule the rest of Mirzam's
+  motion lives by. Slides 8 and 9 of `examples/05-motion.md` are the
+  demonstration.
 - **A code block can light its lines, and number them.** ```` ```js {2,4-5
   lines} ```` washes lines 2, 4 and 5 across the block's full width — how a
   talk walks a room through a listing without a laser pointer — and `lines`

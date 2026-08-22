@@ -166,6 +166,13 @@
     const group = (s) => (s && s.dataset.cont) || null;
     const cut = changed && group(from) !== null && group(from) === group(ss[idx]);
     const turn = play && !cut;
+    // Lifted before the departing slide loses the screen — the source boxes
+    // exist only while it has one — and flown after the arriving slide is
+    // laid out, at the end of this function. Any navigation lands whatever
+    // was still in flight.
+    let lifts = null;
+    if (changed && turn) lifts = liftCarry(from, ss[idx]);
+    else if (changed) settleCarry();
     if (changed && turn) leave(from, backwards);
     else if (changed && anim) anim.settle(from);
     cur = idx;
@@ -188,6 +195,7 @@
     // page position is optional, so a failure must not abort the rest of the update.
     try { history.replaceState(null, '', '#' + (cur + 1)); } catch (e) {}
     renderNotes();
+    if (lifts) landCarry(lifts);
     // Connectors resolve their endpoints once layout has settled.
     requestAnimationFrame(() => drawConnectors(sec));
   }
@@ -291,6 +299,128 @@
       // Only on a change: assigning the same URL reloads the frame, which on
       // this slide would restart the video the reader is watching.
       if (f.getAttribute('src') !== want) f.setAttribute('src', want);
+    }
+  }
+
+  // ---- Carrying an element from one slide to the next ----
+  // The same `#id` marked `.carry` on two slides is the declaration: on the
+  // page turn the element *moves* between its two boxes instead of leaving
+  // with one slide and arriving with the other. Slide N presents three
+  // components; slide N+1 takes one, and the room's eyes follow it.
+  //
+  // The mechanism is FLIP with a lifted clone: the element is copied into a
+  // layer that outlives both slides, flown from the box it had to the box it
+  // gets, and both originals hide for exactly that long — so the two slides
+  // stay two complete, ordinary slides, which is what the PDF and a reader
+  // without JavaScript see. Backwards is the same code with `from` and `to`
+  // swapped by the navigation itself.
+  //
+  // Boxes are measured relative to each element's own slide, in the deck's
+  // unscaled coordinates: every slide is the same W×H box in the same place,
+  // so a slide mid-transition (translated by its own entrance) measures the
+  // same as one at rest, and the layer — inside the scaled #deck — needs no
+  // viewport arithmetic.
+  let carryLayerEl = null;
+  function carryLayer() {
+    if (!carryLayerEl) {
+      carryLayerEl = document.createElement('div');
+      carryLayerEl.className = 'mz-carry-layer';
+      deck.appendChild(carryLayerEl);
+    }
+    return carryLayerEl;
+  }
+  let carryRuns = [];
+  function settleCarry() {
+    for (const r of carryRuns) r.settle();
+    carryRuns = [];
+  }
+  function localBox(el) {
+    const s = deck.getBoundingClientRect().width / W || 1;
+    const sr = el.closest('section.slide').getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    return {
+      x: (r.left - sr.left) / s,
+      y: (r.top - sr.top) / s,
+      w: r.width / s,
+      h: r.height / s,
+    };
+  }
+  // Measured and cloned while the departing slide is still on screen; the
+  // flight itself waits for the arriving slide to be laid out (landCarry).
+  function liftCarry(from, to) {
+    settleCarry();
+    if (!from || !to || from === to) return null;
+    // The reveals still happen and stepping still works; only movement is
+    // dropped, and a jump cut is exactly no movement.
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return null;
+    const esc = (id) => (window.CSS && CSS.escape ? CSS.escape(id) : id);
+    const lifts = [];
+    for (const target of to.querySelectorAll('.carry[id]')) {
+      const src = from.querySelector('#' + esc(target.id));
+      if (!src || !src.classList.contains('carry')) continue;
+      const box = localBox(src);
+      const clone = src.cloneNode(true);
+      clone.removeAttribute('id');
+      // The clone lives outside the pane whose rules sized it, so its root
+      // carries the metrics it was drawn with; descendants keep their ems.
+      const cs = getComputedStyle(src);
+      for (const p of [
+        'font-size', 'font-family', 'font-weight', 'line-height', 'color', 'text-align',
+      ]) {
+        clone.style.setProperty(p, cs.getPropertyValue(p));
+      }
+      clone.style.margin = '0';
+      clone.style.boxSizing = 'border-box';
+      clone.style.position = 'absolute';
+      clone.style.left = box.x + 'px';
+      clone.style.top = box.y + 'px';
+      clone.style.width = box.w + 'px';
+      clone.style.height = box.h + 'px';
+      clone.style.transformOrigin = 'top left';
+      // The flying copy never plays anything.
+      clone.querySelectorAll('video, audio, iframe').forEach((m) => {
+        m.removeAttribute('autoplay');
+        m.removeAttribute('src');
+      });
+      lifts.push({ src, target, box, clone });
+    }
+    return lifts.length ? lifts : null;
+  }
+  function landCarry(lifts) {
+    const layer = carryLayer();
+    for (const l of lifts) {
+      const to = localBox(l.target);
+      l.src.style.visibility = 'hidden';
+      l.target.style.visibility = 'hidden';
+      layer.appendChild(l.clone);
+      const run = {
+        settle() {
+          l.src.style.visibility = '';
+          l.target.style.visibility = '';
+          l.clone.remove();
+        },
+      };
+      carryRuns.push(run);
+      const dx = to.x - l.box.x;
+      const dy = to.y - l.box.y;
+      const kx = l.box.w ? to.w / l.box.w : 1;
+      const ky = l.box.h ? to.h / l.box.h : 1;
+      if (!l.clone.animate) {
+        run.settle();
+        carryRuns = carryRuns.filter((r) => r !== run);
+        continue;
+      }
+      const a = l.clone.animate(
+        [
+          { transform: 'none' },
+          { transform: `translate(${dx}px, ${dy}px) scale(${kx}, ${ky})` },
+        ],
+        { duration: 380, easing: 'cubic-bezier(.33,1,.68,1)', fill: 'forwards' }
+      );
+      a.onfinish = () => {
+        run.settle();
+        carryRuns = carryRuns.filter((r) => r !== run);
+      };
     }
   }
 

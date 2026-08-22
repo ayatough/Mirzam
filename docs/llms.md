@@ -356,6 +356,15 @@ One line is one track: `[trigger] target : effect duration attributes…`
 Elements are laid out in their **final** state, so a deck read without
 JavaScript, and the PDF, show every slide fully revealed.
 
+## Carrying an element across a page turn
+
+The same `#id` marked `.carry` on two consecutive slides makes the element
+*move* on the turn — from its box on one slide to its box on the next,
+growing or shrinking, backwards too. `[render]{#comp .metric .carry}` in a
+row on one slide, `## [render]{#comp .metric .carry}` as the next slide's
+heading. No block, no timing. One side only = nothing happens; print and
+no-JS readers see two ordinary slides.
+
 ## `effects` — slide top level only
 
 ````markdown
