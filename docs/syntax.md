@@ -690,6 +690,51 @@ quoted examples (a four-backtick fence) and `mermaid` blocks are left exactly
 as typed: Mermaid's own hexagon-node syntax is `{{ }}`, and a code sample is
 a sample.
 
+### Slides from data
+
+A slide holding an ```` ```each ```` block is a template, rendered once per
+data row — the run of slides Typst generates with a loop, written as one
+slide:
+
+`````markdown
+---
+
+```each
+name, role
+Ada, Engineer
+"Grace, H.", Admiral
+```
+
+## {{name}}
+
+{{name}} is our {{role}}.
+
+---
+`````
+
+Two rows, two slides. The first row names the fields; each later row fills
+the template's `{{ }}` marks, and a value that reads as a number does
+arithmetic like any other variable (`{{ms * 2}}`). Values are trimmed,
+quotes hold commas (`"Grace, H."`), and a doubled quote is a literal one.
+
+The rows can live in a file instead — `data: rows.csv` as the block's only
+line — which is the shape a generated report wants: the numbers change, the
+deck follows. The file resolves relative to the deck, `mirzam serve`
+watches it, and appending a row adds a slide.
+
+Everything else on the slide works unchanged: a generated slide can carry
+its pane on with `<!-- next -->`, animate, cite. What to know:
+
+- One `each` block per slide. A second one warns, and the slide renders
+  once, as written.
+- A column that shares a name with a frontmatter `var` warns: the deck's
+  value wins, because deck variables are filled in before templates are
+  found. Rename the column.
+- On any failure — an unreadable file, a header with no rows — the build
+  says why and the slide renders once with its `{{ }}` marks left visible,
+  which is also how the template reads anywhere plain Markdown renders it:
+  the block degrades to a small table of the data.
+
 ### Math
 
 ```markdown

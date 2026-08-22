@@ -97,6 +97,7 @@ pub fn warning_kind(message: &str) -> &'static str {
         // path, and a deck living under `charts/` must not be classified by
         // somebody's directory name.
         ("skill card", "build.skill"),
+        ("each:", "build.each"),
         ("shape line ", "build.shape"),
         ("shape:", "build.shape"),
         ("grid-pad", "build.layout"),
@@ -418,16 +419,100 @@ pub fn build_source(
         }
     };
 
-    // 4a. Expand `<!-- next -->`. A slide that breaks one pane becomes several
+    // 4a. Expand ```each. A slide holding a data table is a template, rendered
+    //     once per row with the row's fields substituted the way variables
+    //     are — the run of slides Typst generates with a loop, written as a
+    //     slide. On any failure the deck keeps its shape: the warning says
+    //     why, and the slide renders once with its placeholders left visible,
+    //     which is also what the template looks like anywhere plain Markdown
+    //     renders it.
+    let mut grown: Vec<(String, usize)> = Vec::with_capacity(slides.len());
+    for (si, slide) in slides.iter().enumerate() {
+        let extracted = match mirzam_syntax::extract_each(&slide.text) {
+            Ok(found) => found,
+            Err(e) => {
+                sites.insert(warnings.len(), site(si, grown.len() + 1));
+                warnings.push(format!("{e}{}", origin(si)));
+                grown.push((slide.text.clone(), si));
+                continue;
+            }
+        };
+        let Some((block, template)) = extracted else {
+            grown.push((slide.text.clone(), si));
+            continue;
+        };
+        let table = mirzam_syntax::parse_each_spec(&block).and_then(|spec| {
+            let csv = match spec {
+                mirzam_syntax::EachSource::Inline(csv) => csv,
+                mirzam_syntax::EachSource::File(rel) => {
+                    // Watched even when the read fails, like a theme file: rows
+                    // appearing later bring the slides with them under `serve`.
+                    let path = base_dir.join(&rel);
+                    files.insert(path.clone());
+                    std::fs::read_to_string(&path)
+                        .map_err(|e| format!("each: cannot read {rel}: {e}"))?
+                }
+            };
+            mirzam_syntax::parse_each_table(&csv)
+        });
+        match table {
+            Ok((table, table_warnings)) => {
+                for w in table_warnings {
+                    sites.insert(warnings.len(), site(si, grown.len() + 1));
+                    warnings.push(format!("{w}{}", origin(si)));
+                }
+                // The deck's own `vars` were substituted before the deck was
+                // split, so a column sharing a name never sees its rows.
+                for f in table.fields.iter().filter(|f| vars.contains_key(*f)) {
+                    sites.insert(warnings.len(), site(si, grown.len() + 1));
+                    warnings.push(format!(
+                        "each: column `{f}` shares its name with a frontmatter \
+                         var, whose value wins; rename the column{}",
+                        origin(si)
+                    ));
+                }
+                for row in &table.rows {
+                    let row_vars: std::collections::BTreeMap<_, _> = table
+                        .fields
+                        .iter()
+                        .zip(row)
+                        .map(|(f, v)| {
+                            let val = v
+                                .parse::<f64>()
+                                .map(mirzam_core::Value::Num)
+                                .unwrap_or_else(|_| mirzam_core::Value::Str(v.clone()));
+                            (f.clone(), val)
+                        })
+                        .collect();
+                    let (text, _) = substitute_outside_fences(
+                        &template,
+                        &row_vars,
+                        &mirzam_syntax::SourceMap::default(),
+                    );
+                    grown.push((text, si));
+                }
+            }
+            Err(e) => {
+                sites.insert(warnings.len(), site(si, grown.len() + 1));
+                warnings.push(format!("{e}{}", origin(si)));
+                grown.push((template, si));
+            }
+        }
+    }
+
+    // 4b. Expand `<!-- next -->`. A slide that breaks one pane becomes several
     //     slides, identical but for that pane. Doing it on the text, before
     //     anything is parsed, keeps the rest of the pipeline - anim, annotate,
     //     connectors, notes, the render cache - free of the idea.
-    let mut parts: Vec<Part> = Vec::with_capacity(slides.len());
-    for (si, slide) in slides.iter().enumerate() {
-        match mirzam_syntax::expand_continuations(&slide.text) {
+    let mut parts: Vec<Part> = Vec::with_capacity(grown.len());
+    for (gi, (slide_text, si)) in grown.iter().enumerate() {
+        let si = *si;
+        match mirzam_syntax::expand_continuations(slide_text) {
             Ok(texts) if texts.len() > 1 => {
-                // The group only has to be unique within the deck.
-                let group = Some(si);
+                // The group only has to be unique within the deck — and it is
+                // `gi`, not `si`, because two slides grown from the same
+                // template are two groups, not one long cut.
+                let group = Some(gi);
                 for text in texts {
                     parts.push(Part {
                         text,
@@ -437,7 +522,7 @@ pub fn build_source(
                 }
             }
             Ok(_) => parts.push(Part {
-                text: slide.text.clone(),
+                text: slide_text.clone(),
                 from: si,
                 group: None,
             }),
@@ -448,7 +533,7 @@ pub fn build_source(
                 sites.insert(warnings.len(), site(si, parts.len() + 1));
                 warnings.push(format!("{e}{}", origin(si)));
                 parts.push(Part {
-                    text: slide.text.clone(),
+                    text: slide_text.clone(),
                     from: si,
                     group: None,
                 });

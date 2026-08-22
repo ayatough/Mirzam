@@ -491,9 +491,41 @@ rest, and the entry lists this slide among the ones that cited it</li>
 </aside>
 </section>
 <section class="slide" data-index="23">
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:2fr 3fr;grid-template-areas:"head" "body"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Slides from data</span></p>
+<h2>A code fence costs 0.11 ms</h2>
+</div>
+<div class="pane pane-body" data-pane="body" style="grid-area:body;display:flex;flex-direction:column;justify-content:center"><p>Highlighting is the most expensive thing the renderer does, and it is a tenth of a millisecond.</p>
+<p>This page is <strong>one row of a table</strong>: the slide is written once, with an
+<code>each</code> block holding two rows above it, and the deck rendered it once per
+row — the heading's name and number came from this page's row.</p>
+<p><code>data: rows.csv</code> reads the table from a file instead, and the deck follows
+the file: append a row, gain a slide.</p>
+</div>
+</div>
+<aside class="notes"><p>The block can also read a CSV file with <code>data:</code>, which is the shape a generated report wants - the numbers change, the deck follows.</p>
+</aside>
+</section>
+<section class="slide" data-index="24">
+<div class="grid" style='grid-template-columns:36fr;grid-template-rows:2fr 3fr;grid-template-areas:"head" "body"'>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Slides from data</span></p>
+<h2>A formula costs 0.023 ms</h2>
+</div>
+<div class="pane pane-body" data-pane="body" style="grid-area:body;display:flex;flex-direction:column;justify-content:center"><p>The maths font rides in once, however many formulas follow it.</p>
+<p>This page is <strong>one row of a table</strong>: the slide is written once, with an
+<code>each</code> block holding two rows above it, and the deck rendered it once per
+row — the heading's name and number came from this page's row.</p>
+<p><code>data: rows.csv</code> reads the table from a file instead, and the deck follows
+the file: append a row, gain a slide.</p>
+</div>
+</div>
+<aside class="notes"><p>The block can also read a CSV file with <code>data:</code>, which is the shape a generated report wants - the numbers change, the deck follows.</p>
+</aside>
+</section>
+<section class="slide" data-index="25">
 <div class="grid" style='grid-template-columns:36fr;grid-template-rows:3fr 1fr;grid-template-areas:"main" "foot"'>
 <div class="pane pane-main" data-pane="main" style="grid-area:main;text-align:center;display:flex;flex-direction:column;justify-content:center"><h2>That is the whole vocabulary</h2>
-<p><code>pane</code> · <code>::: pane</code> · <code>chart</code> · <code>shape</code> · <code>connect</code> · <code>annotate</code> · <code>bibliography</code> · attributes · variables</p>
+<p><code>pane</code> · <code>::: pane</code> · <code>chart</code> · <code>shape</code> · <code>connect</code> · <code>annotate</code> · <code>bibliography</code> · <code>each</code> · attributes · variables</p>
 <p>Motion is next door, in <code>05-motion.md</code>.</p>
 </div>
 <div class="pane pane-foot" data-pane="foot" style="grid-area:foot;text-align:right"><p><span class="small">examples/04-components.md</span></p>

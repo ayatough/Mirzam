@@ -97,6 +97,7 @@ invisible in a plain Markdown reader:
 | `<!-- layout: two-up -->` | Draw this slide on that master; `none` opts out of the deck default |
 | `<!-- theme: nord -->` `<!-- mode: dark -->` | A theme for this slide only — tokens inherit, so its type comes too |
 | `<!-- chrome: none -->` | Drop the footer and slide number here (title slides, `.bleed` slides) |
+| `<!-- autoplay: 20s -->` | Under autoplay, hold this one slide longer; interval only, no `loop` |
 | `<!-- next -->` | Split this slide in two, changing one pane. `<!-- more -->` is the same marker |
 
 Transclusion pastes a file in where the line was, so put a `---` on each side
@@ -389,6 +390,28 @@ back: true     # print the slides each entry was cited on
 both resolve after the whole deck has rendered, so either shows nothing when
 previewed alone. `bibliography` needs `bibliography:` in frontmatter — without
 it `[@key]` is ordinary text.
+
+## `each` — one slide per data row
+
+The slide holding the block is a template, rendered once per row; the rest of
+the slide fills its `{{field}}` marks from that row. Numeric values do
+arithmetic (`{{ms * 2}}`).
+
+````markdown
+```each
+name, ms
+parse, 4
+render, 11
+```
+
+## {{name}}: {{ms}} ms
+````
+
+Or `data: rows.csv` as the block's only line — the file resolves relative to
+the deck and is watched by `serve`. One `each` block per slide. Header row
+names the fields; quotes hold commas. A column named like a frontmatter var
+loses to it — rename the column. On any failure the build warns and the slide
+renders once, placeholders visible.
 
 ## Slide masters
 

@@ -1270,6 +1270,21 @@ fn render_slide(
     // block only records what the presenter may fire while it is on screen.
     let effects_html = effects::extract(index, &slide.effects, warnings);
 
+    // An ```each block is expanded into slides before rendering — by the CLI
+    // pipeline and the browser build both. Meeting one here means this host
+    // has no expansion pass, and saying so beats showing rows as content.
+    if slide
+        .reserved
+        .iter()
+        .any(|(k, _)| matches!(k, mirzam_syntax::BlockKind::Each))
+    {
+        warnings.push(format!(
+            "slide {}: each: this renderer does not expand data-driven slides; \
+             the block is ignored",
+            index + 1
+        ));
+    }
+
     // annotate blocks compile to the C2 model, drawn over the target once the
     // browser has laid the slide out. Same warning rule as anim.
     let annot_html = annot::extract(

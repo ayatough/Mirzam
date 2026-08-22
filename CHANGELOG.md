@@ -20,6 +20,23 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   one — a substitution could previously rewrite the inside of an example.
 
 ### Added
+- **A run of slides from a table: ```each renders a slide per data row.** The
+  slide holding the block is a template — heading, panes, chart and all — and
+  each row of the block's CSV fills its `{{field}}` marks the way frontmatter
+  variables always have, arithmetic included. The rows can live in a file
+  instead (`data: rows.csv`), which is the shape a generated report wants:
+  `serve` watches the file, the numbers change, the deck follows, and
+  appending a row adds a slide. This was the one structural advantage Typst's
+  scripting held over every Markdown slide tool, and it lands in Mirzam's own
+  grammar: no loop, no scripting language, a table where the table would be.
+  Everything downstream — `<!-- next -->`, animation, citations, the cache —
+  sees ordinary slides, because the expansion happens on the text before
+  anything parses it. On any failure the build says why and the slide renders
+  once with its placeholders visible, which is also how the template degrades
+  anywhere plain Markdown renders it: the block is a small, readable table of
+  the data. The browser editor expands it identically, so the preview shows
+  the slides a build will produce. `examples/04-components.md` ends by
+  rendering its own cost table this way.
 - **`mirzam export pdf --handout`: the deck as a printout, notes beside each
   slide.** One page per slide, the slide at reading size on the left and its
   speaker notes beside it — the page a speaker rehearses from, and the handout

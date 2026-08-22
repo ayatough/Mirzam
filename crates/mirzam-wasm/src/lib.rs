@@ -334,7 +334,63 @@ impl Renderer {
         let body = substitute_outside_fences(&expanded.text, &vars);
 
         let assets = MapAssets(&self.assets);
-        let slide_srcs = mirzam_syntax::split_slides_at(&body, meta.split_level());
+        // ```each expands here as it does in the CLI pipeline: the preview has
+        // to show the slides a build will produce, not the template. Rows in a
+        // file come out of the host's table, like everything a deck reads.
+        let mut slide_srcs: Vec<String> = Vec::new();
+        for src in mirzam_syntax::split_slides_at(&body, meta.split_level()) {
+            let extracted = match mirzam_syntax::extract_each(&src) {
+                Ok(found) => found,
+                Err(e) => {
+                    warnings.push(e);
+                    slide_srcs.push(src);
+                    continue;
+                }
+            };
+            let Some((block, template)) = extracted else {
+                slide_srcs.push(src);
+                continue;
+            };
+            let table = mirzam_syntax::parse_each_spec(&block).and_then(|spec| {
+                let csv = match spec {
+                    mirzam_syntax::EachSource::Inline(csv) => csv,
+                    mirzam_syntax::EachSource::File(rel) => MapFiles(&self.files)
+                        .read(Path::new(&rel))
+                        .map_err(|e| format!("each: cannot read {rel}: {e}"))?,
+                };
+                mirzam_syntax::parse_each_table(&csv)
+            });
+            match table {
+                Ok((table, table_warnings)) => {
+                    warnings.extend(table_warnings);
+                    for f in table.fields.iter().filter(|f| vars.contains_key(*f)) {
+                        warnings.push(format!(
+                            "each: column `{f}` shares its name with a frontmatter \
+                             var, whose value wins; rename the column"
+                        ));
+                    }
+                    for row in &table.rows {
+                        let row_vars: BTreeMap<_, _> = table
+                            .fields
+                            .iter()
+                            .zip(row)
+                            .map(|(f, v)| {
+                                let val = v
+                                    .parse::<f64>()
+                                    .map(mirzam_core::Value::Num)
+                                    .unwrap_or_else(|_| mirzam_core::Value::Str(v.clone()));
+                                (f.clone(), val)
+                            })
+                            .collect();
+                        slide_srcs.push(substitute_outside_fences(&template, &row_vars));
+                    }
+                }
+                Err(e) => {
+                    warnings.push(e);
+                    slide_srcs.push(template);
+                }
+            }
+        }
         // The deck settings a slide cannot see from its own text: the math
         // dialect, the masters it can be drawn on, the footer it carries.
         let mut ctx = mirzam_render::DeckContext::new(&meta, slide_srcs.len());

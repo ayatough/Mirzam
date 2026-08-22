@@ -951,6 +951,43 @@ every slide that cited it.*
 
 ---
 
+```each
+component, cost, note
+A code fence, 0.11 ms, "Highlighting is the most expensive thing the renderer does, and it is a tenth of a millisecond"
+A formula, 0.023 ms, "The maths font rides in once, however many formulas follow it"
+```
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
++------------------------------------+
+|                                    |
+|  body                              |
+|                                    |
++------------------------------------+
+```
+
+::: pane head
+[Slides from data]{.eyebrow}
+## {{component}} costs {{cost}}
+:::
+
+::: pane body {valign=middle}
+{{note}}.
+
+This page is **one row of a table**: the slide is written once, with an
+`each` block holding two rows above it, and the deck rendered it once per
+row — the heading's name and number came from this page's row.
+
+`data: rows.csv` reads the table from a file instead, and the deck follows
+the file: append a row, gain a slide.
+:::
+
+<!-- note: The block can also read a CSV file with `data:`, which is the shape a generated report wants - the numbers change, the deck follows. -->
+
+---
+
 ```pane
 +------------------------------------+
 |                                    |
@@ -964,7 +1001,7 @@ every slide that cited it.*
 ::: pane main {align=center valign=middle}
 ## That is the whole vocabulary
 
-`pane` · `::: pane` · `chart` · `shape` · `connect` · `annotate` · `bibliography` · attributes · variables
+`pane` · `::: pane` · `chart` · `shape` · `connect` · `annotate` · `bibliography` · `each` · attributes · variables
 
 Motion is next door, in `05-motion.md`.
 :::
