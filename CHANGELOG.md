@@ -8,6 +8,14 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Fixed
+- **A `[span]{...}` may wrap onto the next source line.** The inline-attribute
+  transform ran line by line, so an editor rewrapping prose broke the mark and
+  left literal brackets on the slide — the syntax reference's longest-standing
+  "known constraint", now removed from it. The transform runs per paragraph:
+  a blank line between the brackets is still a wall, which is also what stops
+  a `[` left open in one paragraph from swallowing the next, and nothing
+  inside a fence is touched, as ever. An *image* reference and its attributes
+  still sit on one line.
 - **`{{ }}` reaches the blocks that put words on the slide.** A variable in a
   `shape` label, a `chart` title or its data, a `connect` label or a `danmaku`
   line was left on the slide as literal braces — `examples/research.md` has

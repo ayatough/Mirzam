@@ -277,11 +277,11 @@ this entry, the overview grid that shows the deck at a glance and jumps on
 click, landed in `v0.8.0` as `O`, in the presenter window and on the phone
 too.
 
-**A `[span]{...}` cannot cross a source line.** The inline-attribute transform
-runs line by line, so a span whose text is wrapped leaves its brackets and
-braces on the slide as literal characters. Documented in the reference as a
-constraint; the fix is to run the transform over paragraphs rather than lines,
-which has to keep the existing rule that nothing inside a fence is touched.
+**A `[span]{...}` may cross a source line now** — the fix this entry called
+for (run the inline-attribute transform over paragraphs rather than lines,
+fences untouched) landed. What remains true is the paragraph rule: a blank
+line between the brackets is a wall, so a `[` left open in one paragraph
+never swallows the next.
 
 ## Non-goals
 

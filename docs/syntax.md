@@ -567,10 +567,12 @@ Every colour here is a theme token, so it moves with the palette and survives
 value picked against a white slide is the one thing that cannot follow the
 deck into dark mode.
 
-**A `[span]{...}` has to fit on one source line.** The transform runs line by
-line, so a span whose text is wrapped across two lines is left alone and the
-brackets and braces reach the slide as literal characters. Rewrap the sentence,
-or split it into two spans.
+**A `[span]{...}` may wrap onto the next source line** — the transform runs
+per paragraph, so an editor rewrapping prose never breaks a mark. What it
+cannot cross is a blank line: a paragraph break between the brackets leaves
+them on the slide as literal characters, which is also what stops a `[` left
+open in one paragraph from swallowing the next. An *image* reference and its
+attributes still sit on one line.
 
 ### Marks beyond CommonMark
 

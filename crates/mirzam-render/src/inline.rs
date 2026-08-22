@@ -168,7 +168,33 @@ pub fn preprocess_math(src: &str, math: MathDialect) -> String {
     let src = map_outside_fences(&src, emphasis_guard);
     let src = map_outside_fences(&src, heading_attrs);
     let src = map_outside_fences(&src, image_attrs);
-    map_outside_fences(&src, span_attrs)
+    // Per paragraph, not per line: a span whose text wraps onto the next
+    // source line is still one span, while a `[` left open in one paragraph
+    // never reaches into the next.
+    map_fence_segments(&src, |seg| map_blocks(seg, span_attrs))
+}
+
+/// Applies `f` to each blank-line-separated block of a fence-free segment.
+fn map_blocks(segment: &str, f: impl Fn(&str) -> String) -> String {
+    let mut out = String::with_capacity(segment.len());
+    let mut block = String::new();
+    for line in segment.lines() {
+        if line.trim().is_empty() {
+            if !block.is_empty() {
+                out.push_str(&f(&block));
+                block.clear();
+            }
+            out.push_str(line);
+            out.push('\n');
+        } else {
+            block.push_str(line);
+            block.push('\n');
+        }
+    }
+    if !block.is_empty() {
+        out.push_str(&f(&block));
+    }
+    out
 }
 
 /// A `<picture>` choosing art by `prefers-color-scheme` becomes one image per
@@ -1679,6 +1705,30 @@ mod tests {
         let out = preprocess("$\\sqrt[3]{x}$\n");
         assert!(out.contains("<math"));
         assert!(!out.contains("<span>3</span>"));
+    }
+
+    /// A span whose text wraps onto the next source line is one span — the
+    /// editor wraps prose, and brackets left sitting on the slide as literal
+    /// text was the syntax reference's longest-standing "known constraint".
+    #[test]
+    fn a_span_may_wrap_onto_the_next_line() {
+        let out = preprocess("Before [a phrase that\nwraps]{.small} after.\n");
+        assert!(
+            out.contains("<span class=\"small\">a phrase that\nwraps</span>"),
+            "{out}"
+        );
+    }
+
+    /// A paragraph break is still a wall: a `[` left open in one paragraph
+    /// must not reach into the next and swallow the text between them.
+    #[test]
+    fn a_span_never_crosses_a_paragraph_break() {
+        let src = "An aside [left open\n\nand closed]{.small} later.\n";
+        let out = preprocess(src);
+        assert!(!out.contains("<span"), "{out}");
+        // And a fence between them is a wall with its own rule.
+        let fenced = "open [a\n```\ntext ]{.x}\n```\n";
+        assert!(!preprocess(fenced).contains("<span"));
     }
 
     #[test]

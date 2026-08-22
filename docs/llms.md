@@ -15,9 +15,9 @@ mirzam check deck.md --format json # every problem, as records — run this afte
 Each of these fails **silently or as literal text**, and each has cost a real
 author a slide.
 
-1. **An attribute span must fit on one source line.** `[a phrase]{.small}`
-   wrapped across a line break is left alone and the brackets reach the slide.
-   Rewrap the sentence.
+1. **An attribute span must stay in one paragraph.** `[a phrase]{.small}`
+   may wrap onto the next source line, but a blank line between the brackets
+   leaves them on the slide as literal text.
 2. **`shape`, `pane`, `connect`, `annotate`, `effects`, `anim` only parse at
    slide top level** — never inside `::: pane`. Inside a pane the fence is
    ordinary Markdown and renders as a code block. Only `chart`, `mermaid`,
