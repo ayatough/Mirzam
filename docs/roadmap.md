@@ -44,7 +44,7 @@ changing.
 | Footers and slide numbers | Done |
 | A theme per slide, and per pane | Done |
 | A theme sets type, not only colour; `theme:` takes a path | Done |
-| Carrying an element from one slide to the next (`.carry`) | Done · unreleased |
+| Carrying an element from one slide to the next | Next |
 | Demo recording (the edit loop, typed live) and a generated themes gallery | Done |
 | Dragging an annotation back into the Markdown | Next |
 | Syntax highlighting in code blocks (36 languages, theme-token colours) | Done |
@@ -82,13 +82,20 @@ a formula into shape on the phone it was built for. The effort went into the
 math grammar instead, which is why `v0.4.0` says more about what `$...$` can
 hold than about how it is edited.
 
-The one long named here — **carrying an element from one slide to the next** —
-landed: the same `#id` marked `.carry` on two consecutive slides flies between
-its two boxes on the page turn, forwards and backwards, as a lifted copy in a
-layer above both slides. Marp's `view-transition-name` morph exists only on
-screen; this one keeps the resting-state rule, so the PDF and a scriptless
-reader see two complete, ordinary slides. The reasoning behind the rest of
-the current queue is in the [post-v0.9 plan](reports/2026-08-v0.10-plan.md).
+The one worth naming here is **carrying an element from one slide to the
+next** — and it joins structural math editing as a thing that was **built and
+then withdrawn**. A `.carry` runtime landed on a branch after `v0.9.0`: the
+same `#id` on two consecutive slides, a lifted clone flown between its two
+boxes, backwards as good as forwards, with the PDF and a scriptless reader
+seeing two complete ordinary slides. It worked exactly as specified — and
+watching it in a real deck, the author judged the motion unnatural, so it was
+pulled before it merged. The mechanism is written up in
+[W18's brief](workstreams.md#w18--carrying-an-element-from-one-slide-to-the-next)
+along with what the withdrawal teaches: the invariants were never the hard
+part, the *feel* is — a straight-line flight with linear scaling, over the top
+of the page turn, does not read as the component travelling. It stays Next,
+with that as the bar. The reasoning behind the rest of the current queue is in
+the [post-v0.9 plan](reports/2026-08-v0.10-plan.md).
 
 ### Measured performance
 

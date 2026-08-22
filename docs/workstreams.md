@@ -72,7 +72,7 @@ there is. The model column follows from that:
 | W9 | Release hardening and `v0.1.0` | A | Opus | all | ✅ |
 | W16 | Showing the thing working: demo recording, themes gallery | C | — | — | ✅ |
 | W17 | A theme per slide | B | — | — | ✅ |
-| W18 | Carrying an element from one slide to the next | S | — | W2 | ✅ |
+| W18 | Carrying an element from one slide to the next | S | — | W2 | |
 | W5 | Typst-flavoured math | A | Sonnet | — | ✅ |
 | W19 | Structural math editing: tap and place, not type | S | Fable | W5 | withdrawn |
 | W8 | Annotation editing, written back to Markdown | S | Opus | W6, W7 | deferred |
@@ -918,15 +918,26 @@ invites the second thing.
 
 ## W18 — Carrying an element from one slide to the next
 
-**Difficulty S · landed** — `.carry` plus a shared `#id` on two consecutive
-slides; a lifted clone flies between the two measured boxes in a layer inside
-`#deck`, both originals hidden for exactly that long, backwards as good as
-forwards. Boxes are measured relative to each element's own slide in the
-deck's unscaled coordinates, which is what makes a slide mid-transition
-measure the same as one at rest. The clone's root carries its computed
-metrics, because it no longer sits in the pane whose rules sized it. The
-opt-in keyword the brief guessed would be kinder was right: `.carry` is the
-declaration, and a shared id without it does nothing.
+**Difficulty S · built and withdrawn, 2026-08.** A complete `.carry` runtime
+landed on the post-v0.9 branch and was pulled before merging: the author
+watched it in a real deck and judged the motion unnatural. What was proven,
+so the next attempt does not re-derive it: `.carry` plus a shared `#id` on
+two consecutive slides is a workable declaration (a shared id without the
+keyword does nothing); a lifted clone flown between the two measured boxes
+in a layer inside `#deck`, both originals hidden for exactly that long,
+satisfies every invariant — backwards as good as forwards, PDF and
+scriptless readers see two complete ordinary slides, boxes measured
+relative to each element's own slide in the deck's unscaled coordinates so
+a slide mid-transition measures the same as one at rest, the clone's root
+carrying its computed metrics because it no longer sits in the pane whose
+rules sized it. What was disproven is that the invariants were the hard
+part. The straight-line flight with linear width/height scaling, played
+over the top of the deck's own page turn, reads as a copy flying over the
+deck rather than the component travelling. The next attempt starts from
+feel: an arced or eased path, scale that respects the element's type
+rather than stretching it, coordination with (or suppression of) the page
+turn around the moving element, and a real deck watched before anything is
+called done.
 
 The case: a slide presents three components, and the next three slides take one
 each. Today that is four page turns, and the audience re-finds the component

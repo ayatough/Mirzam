@@ -654,17 +654,6 @@ code { font-family: var(--mz-font-mono, 'SF Mono', Consolas, Menlo, monospace); 
   border-radius: 3px;
 }
 .mz-code-nums { display: block; counter-reset: mz-line; }
-/* The layer a carried element flies in (`.carry` + a shared `#id` on two
-   slides): over every slide, never catching a click, populated only while a
-   morph is in flight. It sits inside #deck, so the deck's own scale applies
-   and a clone is placed in slide coordinates. */
-.mz-carry-layer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 40;
-}
-
 .mz-code-nums .mz-cl::before {
   counter-increment: mz-line;
   content: counter(mz-line);

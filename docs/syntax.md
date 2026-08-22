@@ -1724,35 +1724,6 @@ A slide that declares its own whole-slide track overrides the matching half —
 slide : …` the outgoing one. There is no separate per-slide `transition:`,
 because that is what those two tracks already are.
 
-### Carrying an element to the next slide
-
-A slide presents three components; the next takes one. Give that one the
-same `#id` marked `.carry` on both slides, and on the page turn it *moves* —
-from the box it had into the box it gets — instead of leaving with one slide
-and arriving with the other:
-
-```markdown
-[render]{#comp .metric .carry}          <!-- on slide 12, in a row of three -->
-
-## [render]{#comp .metric .carry}       <!-- on slide 13, as the heading -->
-```
-
-That is the whole declaration: no block, no timing to write. The move works
-on anything an attribute list attaches to — a span, an image, a heading —
-grows or shrinks between the two boxes, and plays backwards on `←` exactly
-as well. An id present on only one side does nothing at all: the element
-just travels with its slide, which is also what every carried element does
-under `prefers-reduced-motion`, in print, and in a reader with no
-JavaScript — the two slides are two complete, ordinary slides, and the
-flight is pure runtime. The deck's own transition still turns the page
-around the moving element.
-
-What flies is a lifted copy: while it is in the air the original on each
-side hides, and a clip inside a carried element never plays from the copy.
-Keep the carried thing compact — a card, a chip, a figure — rather than a
-whole pane of prose, and keep its `#id` unique to the pair of slides it
-moves between.
-
 ### What animation never changes
 
 Elements are laid out in their **final** state, and the runtime is the only

@@ -299,61 +299,6 @@ of that with an ordinary whole-slide track — this one wipes in and irises out:
 |  head                              |
 +------------------------------------+
 |                                    |
-|                                    |
-|  row                               |
-|                                    |
-+------------------------------------+
-```
-
-::: pane head
-[Carrying]{.eyebrow}
-## Three parts, and the page turns under one
-:::
-
-::: pane row {align=center valign=middle}
-[parse]{#carry-render-demo-a .metric} [render]{#carry-render-demo .metric .carry} [export]{#carry-render-demo-b .metric}
-
-[Press `→`. The middle one does not leave — it **moves**.]{.small}
-:::
-
-<!-- note: The next slide names the same id with .carry, which is the whole declaration. -->
-
----
-
-```pane
-+------------------------------------+
-|                                    |
-|  head                              |
-+------------------------------------+
-|                                    |
-|  body                              |
-|                                    |
-+------------------------------------+
-```
-
-::: pane head
-[Carrying]{.eyebrow}
-## [render]{#carry-render-demo .metric .carry}, carried
-:::
-
-::: pane body {valign=middle}
-The same `#id` marked `.carry` on two consecutive slides is the whole
-declaration: on the page turn the element flies from the box it had to the
-box it gets — backwards too, press `←`. The parts that were not carried
-left with their slide.
-
-Without JavaScript, and in the PDF, these are two ordinary slides: the
-move is pure runtime, so nothing here is ever hidden from a reader.
-:::
-
----
-
-```pane
-+------------------------------------+
-|                                    |
-|  head                              |
-+------------------------------------+
-|                                    |
 |  body                              |
 |                                    |
 +------------------------------------+
