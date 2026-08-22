@@ -59,8 +59,9 @@ changing.
 | Handout PDF: notes beside each slide (`export pdf --handout`) | Done · unreleased |
 | Data-driven slides: one slide per CSV row (```` ```each ````) | Done · unreleased |
 | A slide's own autoplay dwell; autoplay that waits for a clip | Done · unreleased |
-| Code line highlighting and line numbers | Next |
-| Plugins, PPTX export | Later |
+| Code line highlighting and line numbers (```` ```js {2,4-5 lines} ````) | Done · unreleased |
+| PPTX export, stage one: slide pictures and real speaker notes | Done · unreleased |
+| Plugins, PPTX with native text boxes | Later |
 
 Each of those has a brief — what it is for, what is not free about it, and where
 it stops — in [workstreams.md](workstreams.md). "Next" means the reasoning is
@@ -187,11 +188,12 @@ already quotes.
 before rendering, and JavaScript modules that register runtime effects. Themes stay
 plain CSS plus a manifest, since that already works.
 
-**Export beyond HTML and PDF.** PowerPoint via OOXML, staged: slides as images
-plus real speaker notes first, which is where Marp, Slidev and Touying all
-stop — then native text boxes, which none of them ships and the market survey
-found to be the loudest unmet ask across every Markdown slide tool. Elements
-with no OOXML equivalent are rasterized rather than dropped; Google Slides
+**Export beyond HTML and PDF.** The first stage landed: `mirzam export pptx`
+writes PowerPoint via hand-written OOXML — slides as pictures plus real
+speaker notes, which is where Marp, Slidev and Touying all stop. What remains
+is the stage none of them ships and the market survey found to be the loudest
+unmet ask across every Markdown slide tool: native text boxes, with elements
+that have no OOXML equivalent rasterized rather than dropped. Google Slides
 comes through the same path. Direct PDF generation without Chromium is a
 separate, larger question that depends on adopting a text layout engine.
 

@@ -20,6 +20,21 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   one — a substitution could previously rewrite the inside of an example.
 
 ### Added
+- **`mirzam export pptx`: the deck as a PowerPoint file.** For the room that
+  requires one: one picture per slide, photographed by the same headless
+  Chromium the PDF export drives, at twice the deck's pixel size and its
+  exact aspect — and the speaker notes in the notes pane, where presenter
+  view reads them. The slides are images, which is where Marp, Slidev and
+  Touying's PowerPoint exports all stop too; what an image-only export
+  usually throws away is the notes, and those are real here. No new
+  dependency: the package is hand-written OOXML in the ZIP writer
+  `skill install --zip` already carries. Verified by round-tripping through
+  python-pptx and LibreOffice Impress, English and CJK decks both. One
+  mechanical find worth recording: current headless builds keep browser
+  chrome's height in `--window-size`'s arithmetic even though nothing draws
+  it, so the shot is taken oversized and the package crops the blank strip
+  by the slide's own aspect. Native text boxes stay on the roadmap as the
+  stage nobody ships.
 - **An element can take the page turn with you.** The same `#id` marked
   `.carry` on two consecutive slides is the whole declaration: on the turn
   the element *moves* — from the box it had on one slide into the box it gets

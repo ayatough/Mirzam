@@ -31,11 +31,22 @@ const EXTERNAL_ATTRS: u32 = 0o100_644 << 16;
 /// Builds a ZIP archive holding `files` as `(path inside the archive, contents)`,
 /// each stored uncompressed.
 pub fn archive(files: &[(String, String)]) -> Vec<u8> {
+    let bytes: Vec<(String, Vec<u8>)> = files
+        .iter()
+        .map(|(n, b)| (n.clone(), b.as_bytes().to_vec()))
+        .collect();
+    archive_bytes(&bytes)
+}
+
+/// The same archive over binary contents — what a `.pptx` needs, whose media
+/// entries are PNGs. Still stored uncompressed: the images arrive compressed
+/// already, and the XML parts beside them are small.
+pub fn archive_bytes(files: &[(String, Vec<u8>)]) -> Vec<u8> {
     let mut out: Vec<u8> = Vec::new();
     let mut entries: Vec<Entry> = Vec::with_capacity(files.len());
 
     for (name, body) in files {
-        let bytes = body.as_bytes();
+        let bytes: &[u8] = body;
         let entry = Entry {
             name: name.clone(),
             crc: crc32(bytes),

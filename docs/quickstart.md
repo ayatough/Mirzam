@@ -73,6 +73,7 @@ mirzam new deck.md                   # a deck to start from
 mirzam serve deck.md                 # live preview at localhost:4321
 mirzam build deck.md -o out          # one self-contained HTML file
 mirzam export pdf deck.md -o deck.pdf
+mirzam export pptx deck.md           # PowerPoint: slide pictures + real notes
 mirzam build notes.md --split h2     # any document becomes a deck, unedited
 mirzam export pdf notes.md --split h2 --theme mirzam -o notes.pdf
 mirzam check deck.md                 # clipped panes, unresolved connectors, and the rest
@@ -84,6 +85,12 @@ the same slides in one command — there is no need to `build` first. It always
 reads the Markdown source, never a built `out/index.html`: pass it the `.md`
 file. Add `--handout` for one page per slide with the speaker notes printed
 beside it, and ruled lines to write on where a slide has none.
+
+`export pptx` writes a PowerPoint file for the room that requires one: one
+picture per slide, pixel-identical to the deck, with the speaker notes in
+the notes pane where presenter view reads them. The slides are images —
+which is also where every other Markdown slide tool's PowerPoint export
+stops — so edit the Markdown and re-export rather than editing the `.pptx`.
 
 `check` builds the deck and renders it with headless Chromium to catch what a
 build's own warnings cannot: content clipped by its pane, an unresolved

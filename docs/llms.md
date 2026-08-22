@@ -76,6 +76,8 @@ vars:
 
 `mirzam export pdf deck.md --handout` prints one page per slide with the
 speaker notes beside it; slides without notes get ruled lines.
+`mirzam export pptx deck.md` writes PowerPoint: one picture per slide plus
+the notes in the notes pane. Edit the Markdown and re-export, not the pptx.
 
 `autoplay:` takes an interval — seconds by default (`8s`, `1.5s`, bare `8`),
 `ms` accepted — and optionally `loop`. One advance is one click step, then the

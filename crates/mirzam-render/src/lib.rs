@@ -972,8 +972,9 @@ section.slide {{ width: {w}px; height: {h}px; }}
 /// notes themselves. The notes travel *inside* the section — one
 /// `<aside class="notes">` holding every note the slide wrote — so the handout
 /// can lift them out and set them beside the slide instead of scaled down
-/// within it.
-fn split_notes(section: &str) -> (String, Option<String>) {
+/// within it, and the PPTX export can hand them to PowerPoint's own notes
+/// pane.
+pub fn split_notes(section: &str) -> (String, Option<String>) {
     const OPEN: &str = "<aside class=\"notes\">";
     const CLOSE: &str = "</aside>";
     let Some(start) = section.find(OPEN) else {
@@ -1082,6 +1083,60 @@ section.slide {{ width: {w}px; height: {h}px; transform: scale({scale}); }}
         body_theme = body_theme_attr(meta, file_themes),
         grid_css = meta.grid_metrics_css(),
         pages = pages.concat(),
+    )
+}
+
+/// A page holding exactly one slide at its own pixel size, top-left, for a
+/// screenshot: `mirzam export pptx` renders each slide through one of these
+/// and photographs it at the deck's exact dimensions. Videos become their
+/// stills, because a picture runs nothing; annotations and shrink-to-fit run,
+/// because they are part of what the slide looks like.
+pub fn assemble_shot_page(meta: &DeckMeta, section: &str, file_themes: &[FileTheme]) -> String {
+    let (w, h) = meta.slide_size();
+    let section = videos_to_stills(section);
+    let sections = std::slice::from_ref(&section);
+    let math_css = if sections_have_math(sections) {
+        theme::math_font_css()
+    } else {
+        ""
+    };
+    let annot_js = if deck_has_annot(sections) {
+        format!("<script>{}</script>\n", theme::ANNOT_JS)
+    } else {
+        String::new()
+    };
+    let fit_js = if deck_has_fit(meta, sections) {
+        format!("<script>{}</script>\n", theme::FIT_JS)
+    } else {
+        String::new()
+    };
+    let (theme_name, mode_attr) = theme_attrs(meta);
+    format!(
+        r#"<!doctype html>
+<html lang="en" data-theme="{theme_name}"{mode_attr}>
+<head>
+<meta charset="utf-8">
+<style>{css}</style>
+<style>{math_css}</style>
+<style>{print_css}
+html, body {{ margin: 0; padding: 0; }}
+section.slide {{ width: {w}px; height: {h}px; break-after: auto; page-break-after: auto; }}
+</style>
+<style>{theme_files_css}</style>
+<style>{grid_css}</style>
+</head>
+<body{body_theme}>
+<div id="deck"{fit}>
+{section}</div>
+{fit_js}{annot_js}</body>
+</html>
+"#,
+        css = theme::theme_css_for(&themes_used(meta, sections, false)),
+        print_css = theme::PRINT_CSS,
+        fit = deck_fit_attr(meta),
+        theme_files_css = file_themes_css(file_themes),
+        body_theme = body_theme_attr(meta, file_themes),
+        grid_css = meta.grid_metrics_css(),
     )
 }
 
