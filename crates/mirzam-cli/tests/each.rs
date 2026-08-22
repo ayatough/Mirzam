@@ -60,8 +60,11 @@ fn rows_can_live_in_a_csv_file_and_the_file_is_watched() {
         "file",
         "```each\ndata: rows.csv\n```\n\n## {{city}}\n\n{{count}} sites\n",
     );
-    std::fs::write(deck.dir.join("rows.csv"), "city, count\nOsaka, 3\nNagoya, 2\n")
-        .expect("write csv");
+    std::fs::write(
+        deck.dir.join("rows.csv"),
+        "city, count\nOsaka, 3\nNagoya, 2\n",
+    )
+    .expect("write csv");
     let out = build(&deck);
     assert_eq!(out.sections.len(), 2, "{:?}", out.warnings);
     assert!(out.sections[0].contains("Osaka") && out.sections[0].contains("3 sites"));

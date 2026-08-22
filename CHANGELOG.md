@@ -20,6 +20,21 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   one — a substitution could previously rewrite the inside of an example.
 
 ### Added
+- **The language server completes, explains and jumps.** `mirzam lsp` shipped
+  understanding the deck's problems; it now understands its names. `::: pane `
+  completes the panes this slide's grid actually defines, `<!-- layout: -->`
+  the deck's masters, `<!-- theme: -->` and frontmatter `theme:` the built-ins
+  and your own stylesheet's stem, `[@` the bibliography's keys with each
+  paper's title beside them, `{{` the deck's `vars` with their values, an
+  opening fence the block forms, and a bare `<!--` the slide settings nothing
+  on screen lists. Hovering a `[@key]` shows the entry it cites and the mark
+  it renders as; hovering a `{{ expr }}` shows the evaluated value; hovering a
+  `data:` line in a `chart` or `each` block says which fields the file holds
+  and how many rows. Go-to-definition follows `![[section.md]]` into the file,
+  `[@key]` to its BibTeX entry, `<!-- layout: -->` to the master's heading in
+  the masters file, and a `theme:` path to the stylesheet. Same rules as
+  before: no browser, no new dependency, and everything is read from the
+  buffer being typed, not the file on disk.
 - **A run of slides from a table: ```each renders a slide per data row.** The
   slide holding the block is a template — heading, panes, chart and all — and
   each row of the block's CSV fills its `{{field}}` marks the way frontmatter

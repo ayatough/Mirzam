@@ -125,6 +125,17 @@ outline of the deck's slides. It reads; it never writes to your files, and it
 never opens a browser, so the layout checks (content clipped by its pane, panes
 overlapping) are still `mirzam check`.
 
+It also completes, explains and jumps. `::: pane ` completes the names in
+this slide's grid, `<!-- layout: ` the deck's masters, `<!-- theme: ` (and
+frontmatter `theme:`) the built-ins and your own stylesheet's stem, `[@` the
+bibliography's keys, `{{` the deck's `vars`, and an opening ``` ``` ``` the
+block forms. Hovering a `[@key]` shows the entry it cites, hovering a
+`{{ expr }}` shows the value it renders as, and hovering a `data:` line in a
+`chart` or `each` block says what the file holds. Go-to-definition follows a
+`![[section.md]]` into the file it pastes in, a `[@key]` to its BibTeX
+entry, a `<!-- layout: -->` to the master's heading, and a `theme:` path to
+the stylesheet.
+
 **See it work without configuring anything.** A language server prints nothing
 on its own — started by hand it just sits there — so there is a probe that runs
 one whole session and shows you the answer:
