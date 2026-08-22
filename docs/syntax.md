@@ -115,6 +115,15 @@ Sections written by different people usually want the same slide shapes; see
 
 Press `N` in the viewer to show them.
 
+The notes also make a handout: `mirzam export pdf deck.md --handout` prints
+one page per slide with the slide at reading size on the left and its notes
+beside it — the page a speaker rehearses from, and the printout an audience
+takes away. A slide with no notes hands the column to the reader as ruled
+lines to write on. The notes column prints as ink on paper whatever mode the
+slides are baked in, and everything else about the export — `--split`,
+`--theme`, `--mode`, the links between slides — works exactly as it does
+without the flag.
+
 ## Layout
 
 For how space is allocated and what to do when content does not fit, see the
@@ -488,6 +497,24 @@ Highlighting happens **at build time**. The deck carries `<span>` runs and no
 highlighter, so it stays one self-contained file with no client-side
 JavaScript, and the PDF export — which never runs a script — is coloured too.
 
+**Lines can be lit, and numbered.** After the language, in the spelling Marp,
+Slidev and GitHub share:
+
+````markdown
+```js {2,4-5 lines}
+```
+````
+
+`2,4-5` washes those lines across the full width of the block — how a talk
+walks a room through a listing without a laser pointer — and `lines` numbers
+every line, in the muted colour, unselectable so copied code stays clean.
+Either half works alone: `{3}` lights one line, `{lines}` only numbers. It
+works on fences Mirzam does not colour too (`text {3}` points at one line of
+a config file), and anything in the braces that is not line ranges or the
+word `lines` is ignored, so a fence carrying another tool's words renders as
+it always did. The wash is mixed from the theme's own ink and follows `D`;
+`--mz-code-hl` overrides it.
+
 **The colours are the deck's, not the highlighter's.** Six theme tokens carry
 them, so code in a `nord` deck reads Nord and code follows the deck through
 `D`:
@@ -540,10 +567,12 @@ Every colour here is a theme token, so it moves with the palette and survives
 value picked against a white slide is the one thing that cannot follow the
 deck into dark mode.
 
-**A `[span]{...}` has to fit on one source line.** The transform runs line by
-line, so a span whose text is wrapped across two lines is left alone and the
-brackets and braces reach the slide as literal characters. Rewrap the sentence,
-or split it into two spans.
+**A `[span]{...}` may wrap onto the next source line** — the transform runs
+per paragraph, so an editor rewrapping prose never breaks a mark. What it
+cannot cross is a blank line: a paragraph break between the brackets leaves
+them on the slide as literal characters, which is also what stops a `[` left
+open in one paragraph from swallowing the next. An *image* reference and its
+attributes still sit on one line.
 
 ### Marks beyond CommonMark
 
@@ -673,6 +702,58 @@ system, which is the one mark on a slide that would not follow the theme or
 Values come from frontmatter `vars`. Arithmetic, parentheses, and `round`, `ceil`,
 `floor` are supported. Anything that fails to evaluate is left as written, so a
 typo never silently deletes text.
+
+A `{{ }}` also works inside the blocks that put words and data on the slide —
+a `shape` label, a `chart` title or its data, a `connect` label, a `danmaku`
+line — because those are markup, not code being quoted. Ordinary code fences,
+quoted examples (a four-backtick fence) and `mermaid` blocks are left exactly
+as typed: Mermaid's own hexagon-node syntax is `{{ }}`, and a code sample is
+a sample.
+
+### Slides from data
+
+A slide holding an ```` ```each ```` block is a template, rendered once per
+data row — the run of slides Typst generates with a loop, written as one
+slide:
+
+`````markdown
+---
+
+```each
+name, role
+Ada, Engineer
+"Grace, H.", Admiral
+```
+
+## {{name}}
+
+{{name}} is our {{role}}.
+
+---
+`````
+
+Two rows, two slides. The first row names the fields; each later row fills
+the template's `{{ }}` marks, and a value that reads as a number does
+arithmetic like any other variable (`{{ms * 2}}`). Values are trimmed,
+quotes hold commas (`"Grace, H."`), and a doubled quote is a literal one.
+
+The rows can live in a file instead — `data: rows.csv` as the block's only
+line — which is the shape a generated report wants: the numbers change, the
+deck follows. The file resolves relative to the deck, `mirzam serve`
+watches it, and appending a row adds a slide.
+
+Everything else on the slide works unchanged: a generated slide can carry
+its pane on with `<!-- next -->`, animate, cite. What to know:
+
+- One `each` block per slide. A second one warns, and the slide renders
+  once, as written.
+- A column that shares a name with a frontmatter `var` warns: the deck's
+  value wins, because deck variables are filled in before templates are
+  found. Rename the column.
+- On any failure — an unreadable file, a header with no rows — the build
+  says why and the slide renders once with its `{{ }}` marks left visible,
+  which is also how the template reads anywhere plain Markdown renders it:
+  the block degrades to a small table of the data.
 
 ### Math
 
@@ -1757,6 +1838,26 @@ when the deck is a talk rehearsing itself. A loop of photographs usually
 wants the opposite — every caption playing the moment the slide arrives — so
 trigger them on `[enter]` with a `delay=` for each later beat, and the loop
 keeps one clock: the page turn.
+
+One slide may need more of that clock than the rest — a table to read in a
+loop of photographs, a notice with three sentences on it. Say so on the
+slide, the way a slide already picks its theme or its master:
+
+```markdown
+<!-- autoplay: 20s -->
+```
+
+That slide holds twenty seconds and every other keeps the deck's beat. The
+value is an interval and nothing more — `loop` stays in the frontmatter,
+because one slide cannot wrap a deck — and a slide with steps holds that
+long on each of them. Without deck-wide (or `?autoplay=`) playback the
+comment does nothing at all.
+
+A slide holding a clip is paced by the clip, not the countdown: when the
+interval ends while a video or a recording is still playing, the page turns
+when it ends instead of cutting it off mid-sentence. A `{.loop}` clip never
+ends, so it never holds the page, and pausing one by hand restarts the
+countdown rather than parking the deck on it.
 
 [`examples/slideshow.md`](../examples/slideshow.md) is the whole pattern as a
 deck: full-bleed photographs, captions entering on their own beat, a slow

@@ -25,7 +25,7 @@
 //! must not touch the filesystem, because that is what keeps the WebAssembly
 //! build possible.
 
-mod zip;
+pub(crate) mod zip;
 
 use crate::pipeline::{BuildOutput, WarningSite};
 use std::path::{Path, PathBuf};

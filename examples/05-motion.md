@@ -430,7 +430,9 @@ the deck loaded:
 +------------------+-----------------+
 |                  |                 |
 |                  |                 |
+|                  |                 |
 |  src             |  note           |
+|                  |                 |
 |                  |                 |
 |                  |                 |
 +------------------+-----------------+
@@ -448,8 +450,15 @@ autoplay: 8s loop
 ---
 ```
 
-One advance every eight seconds — a click step while the slide has any
-left, then the next slide — and `loop` wraps back to the start.
+One advance every eight seconds — a click step while the slide has
+any left, then the page — and `loop` wraps back to the start.
+
+```markdown
+<!-- autoplay: 20s -->
+```
+
+The slide that needs reading time holds longer; one whose clip is
+still playing turns when the clip ends.
 :::
 
 ::: pane note {valign=middle}

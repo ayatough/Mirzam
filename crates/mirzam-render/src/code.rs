@@ -266,11 +266,99 @@ fn escape(out: &mut String, text: &str) {
     let _ = comrak::html::escape(out, text);
 }
 
+/// What a fence's info string asks for past the language:
+/// ```` ```js {2,4-5 lines} ```` highlights lines 2, 4 and 5 and numbers them
+/// all. The braces and the comma ranges are the convention Marp, Slidev and
+/// GitHub share, which is the whole value of the spelling.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct FenceMeta {
+    /// 1-based inclusive line ranges to emphasize.
+    ranges: Vec<(usize, usize)>,
+    /// Whether every line carries its number.
+    numbered: bool,
+}
+
+impl FenceMeta {
+    fn wants(&self, line: usize) -> bool {
+        self.ranges.iter().any(|(a, b)| (*a..=*b).contains(&line))
+    }
+}
+
+/// Parses `{2,4-5 lines}`. `None` for anything that is not exactly that shape
+/// — an unrecognised meta is ignored rather than guessed at, so a fence
+/// carrying words for some other tool keeps rendering as it always did.
+fn parse_meta(meta: &str) -> Option<FenceMeta> {
+    let inner = meta.trim().strip_prefix('{')?.strip_suffix('}')?;
+    let mut out = FenceMeta::default();
+    for tok in inner
+        .split([',', ' '])
+        .map(str::trim)
+        .filter(|t| !t.is_empty())
+    {
+        if tok.eq_ignore_ascii_case("lines") {
+            out.numbered = true;
+        } else if let Some((a, b)) = tok.split_once('-') {
+            let (a, b) = (a.trim().parse().ok()?, b.trim().parse().ok()?);
+            if a == 0 || b < a {
+                return None;
+            }
+            out.ranges.push((a, b));
+        } else {
+            let n: usize = tok.parse().ok()?;
+            if n == 0 {
+                return None;
+            }
+            out.ranges.push((n, n));
+        }
+    }
+    (out.numbered || !out.ranges.is_empty()).then_some(out)
+}
+
+/// Rebuilds a block's inner HTML as one block-level span per line, so a
+/// highlight reaches the full width of the pane and a number has a line to
+/// count. `html` is what [`highlight`] produced — token spans never cross a
+/// `\n` — or plain escaped text; either way splitting on `\n` is safe.
+///
+/// The trailing empty piece a final newline leaves is dropped: as text it
+/// rendered as nothing, but as a block it would be a visible empty line.
+fn wrap_lines(html: &str, meta: &FenceMeta) -> String {
+    let mut lines: Vec<&str> = html.split('\n').collect();
+    if lines.last() == Some(&"") {
+        lines.pop();
+    }
+    let mut out = String::with_capacity(html.len() * 2);
+    if meta.numbered {
+        let digits = lines.len().max(1).ilog10() as usize + 1;
+        out.push_str(&format!(
+            "<span class=\"mz-code-nums\" style=\"--mz-ln-w:{digits}ch\">"
+        ));
+    }
+    for (i, line) in lines.iter().enumerate() {
+        let hl = if meta.wants(i + 1) { " mz-hl" } else { "" };
+        out.push_str(&format!("<span class=\"mz-cl{hl}\">{line}</span>"));
+    }
+    if meta.numbered {
+        out.push_str("</span>");
+    }
+    out
+}
+
+thread_local! {
+    /// The `data-meta` of the block currently being written. Comrak calls
+    /// `write_pre_tag`, `write_code_tag` and `write_highlighted` for one block
+    /// before moving to the next, on one thread, and only the middle call is
+    /// handed the meta — this carries it the one step further it has to go.
+    static PENDING_META: RefCell<Option<String>> = const { RefCell::new(None) };
+}
+
 /// The comrak plugin that puts [`highlight`] in the code-fence path.
 ///
 /// Comrak hands the adapter the `<pre>` and `<code>` attributes it had already
 /// worked out, so `language-rust` still lands on the `<code>` exactly as
-/// before and only the contents change.
+/// before and only the contents change. The `data-meta` attribute — the info
+/// string past the language, present because `full_info_string` is on — is
+/// read here and kept off the page: it is a request to this renderer, not
+/// content.
 pub struct Highlighter;
 
 impl comrak::adapters::SyntaxHighlighterAdapter for Highlighter {
@@ -280,9 +368,20 @@ impl comrak::adapters::SyntaxHighlighterAdapter for Highlighter {
         lang: Option<&str>,
         code: &str,
     ) -> fmt::Result {
-        match lang.and_then(|lang| highlight(lang, code)) {
-            Some(html) => output.write_str(&html),
-            None => comrak::html::escape(output, code),
+        let meta = PENDING_META.with(|m| m.borrow_mut().take());
+        let meta = meta.as_deref().and_then(parse_meta);
+        let coloured = lang.and_then(|lang| highlight(lang, code));
+        match (coloured, meta) {
+            (Some(html), Some(meta)) => output.write_str(&wrap_lines(&html, &meta)),
+            (Some(html), None) => output.write_str(&html),
+            // Line features work on a fence Mirzam does not colour too:
+            // `text {3}` points a room at line 3 of a config file.
+            (None, Some(meta)) => {
+                let mut plain = String::with_capacity(code.len());
+                comrak::html::escape(&mut plain, code)?;
+                output.write_str(&wrap_lines(&plain, &meta))
+            }
+            (None, None) => comrak::html::escape(output, code),
         }
     }
 
@@ -291,14 +390,20 @@ impl comrak::adapters::SyntaxHighlighterAdapter for Highlighter {
         output: &mut dyn fmt::Write,
         attributes: HashMap<&'static str, Cow<'_, str>>,
     ) -> fmt::Result {
+        // A block whose meta was never consumed (a `math` fence, an empty
+        // info) must not leak it into the next block's rendering.
+        PENDING_META.with(|m| *m.borrow_mut() = None);
         comrak::html::write_opening_tag(output, "pre", attributes)
     }
 
     fn write_code_tag(
         &self,
         output: &mut dyn fmt::Write,
-        attributes: HashMap<&'static str, Cow<'_, str>>,
+        mut attributes: HashMap<&'static str, Cow<'_, str>>,
     ) -> fmt::Result {
+        if let Some(meta) = attributes.remove("data-meta") {
+            PENDING_META.with(|m| *m.borrow_mut() = Some(meta.into_owned()));
+        }
         comrak::html::write_opening_tag(output, "code", attributes)
     }
 }
@@ -487,5 +592,64 @@ mod tests {
         let html = render_markdown("```python\ndef f():\n    return 1\n```\n");
         assert!(html.contains("<code class=\"language-python\">"), "{html}");
         assert!(html.contains("tok-keyword"), "{html}");
+    }
+
+    #[test]
+    fn meta_parses_the_shared_convention_and_nothing_else() {
+        let m = parse_meta("{2,4-5 lines}").expect("parses");
+        assert!(m.numbered);
+        assert!(m.wants(2) && m.wants(4) && m.wants(5));
+        assert!(!m.wants(1) && !m.wants(3) && !m.wants(6));
+        assert!(parse_meta("{lines}").is_some_and(|m| m.numbered && m.ranges.is_empty()));
+        assert!(parse_meta("{3}").is_some_and(|m| m.wants(3)));
+        // Not this convention: ignored, never guessed at.
+        assert!(parse_meta("title=\"x\"").is_none());
+        assert!(parse_meta("{2-}").is_none());
+        assert!(parse_meta("{0}").is_none());
+        assert!(parse_meta("{5-2}").is_none());
+        assert!(parse_meta("{}").is_none());
+    }
+
+    /// The whole feature through comrak: the meta reaches the renderer, the
+    /// requested lines carry the wash, every line is a block, and the meta
+    /// itself never lands on the page.
+    #[test]
+    fn a_fence_meta_highlights_lines_and_numbers_them() {
+        let html = render_markdown("```python {2 lines}\ndef f():\n    return 1\n```\n");
+        assert!(html.contains("<code class=\"language-python\">"), "{html}");
+        assert!(!html.contains("data-meta"), "{html}");
+        assert!(html.contains("mz-code-nums"), "{html}");
+        assert!(html.contains("--mz-ln-w:1ch"), "{html}");
+        assert_eq!(html.matches("<span class=\"mz-cl\"").count(), 1, "{html}");
+        assert_eq!(html.matches("mz-cl mz-hl").count(), 1, "{html}");
+        // The second line is the emphasized one, tokens still coloured.
+        let hl_at = html.find("mz-cl mz-hl").unwrap();
+        assert!(html[hl_at..].contains("return"), "{html}");
+        assert!(html.contains("tok-keyword"), "{html}");
+    }
+
+    /// Line features do not need a language Mirzam colours — `text {2}` points
+    /// a room at one line of a config file — and a fence with no meta is
+    /// byte-identical to what it always was.
+    #[test]
+    fn meta_works_on_plain_fences_and_absent_meta_changes_nothing() {
+        let html = render_markdown("```text {2}\na & b\nhere\n```\n");
+        assert!(html.contains("mz-cl mz-hl"), "{html}");
+        assert!(html.contains("a &amp; b"), "{html}");
+        assert!(!html.contains("tok-"), "{html}");
+
+        let plain = render_markdown("```python\ndef f():\n    return 1\n```\n");
+        assert!(!plain.contains("mz-cl"), "{plain}");
+        // And a stray meta on one block never leaks into the next.
+        let two = render_markdown("```python {2}\na = 1\nb = 2\n```\n\n```python\nc = 3\n```\n");
+        assert_eq!(two.matches("mz-cl").count(), 2, "{two}");
+    }
+
+    #[test]
+    fn the_line_classes_are_ones_the_stylesheet_styles() {
+        let css = crate::theme::BASE_CSS;
+        for class in [".mz-cl {", ".mz-hl {", ".mz-code-nums {"] {
+            assert!(css.contains(class), "base.css does not style `{class}`");
+        }
     }
 }

@@ -73,6 +73,7 @@ mirzam new deck.md                   # a deck to start from
 mirzam serve deck.md                 # live preview at localhost:4321
 mirzam build deck.md -o out          # one self-contained HTML file
 mirzam export pdf deck.md -o deck.pdf
+mirzam export pptx deck.md           # PowerPoint: slide pictures + real notes
 mirzam build notes.md --split h2     # any document becomes a deck, unedited
 mirzam export pdf notes.md --split h2 --theme mirzam -o notes.pdf
 mirzam check deck.md                 # clipped panes, unresolved connectors, and the rest
@@ -82,7 +83,14 @@ mirzam check deck.md                 # clipped panes, unresolved connectors, and
 as `build`, so a deck assembled with one of those flags exports to PDF with
 the same slides in one command — there is no need to `build` first. It always
 reads the Markdown source, never a built `out/index.html`: pass it the `.md`
-file.
+file. Add `--handout` for one page per slide with the speaker notes printed
+beside it, and ruled lines to write on where a slide has none.
+
+`export pptx` writes a PowerPoint file for the room that requires one: one
+picture per slide, pixel-identical to the deck, with the speaker notes in
+the notes pane where presenter view reads them. The slides are images —
+which is also where every other Markdown slide tool's PowerPoint export
+stops — so edit the Markdown and re-export rather than editing the `.pptx`.
 
 `check` builds the deck and renders it with headless Chromium to catch what a
 build's own warnings cannot: content clipped by its pane, an unresolved
@@ -123,6 +131,17 @@ citation key nothing defines — each underlined where the mistake is, plus an
 outline of the deck's slides. It reads; it never writes to your files, and it
 never opens a browser, so the layout checks (content clipped by its pane, panes
 overlapping) are still `mirzam check`.
+
+It also completes, explains and jumps. `::: pane ` completes the names in
+this slide's grid, `<!-- layout: ` the deck's masters, `<!-- theme: ` (and
+frontmatter `theme:`) the built-ins and your own stylesheet's stem, `[@` the
+bibliography's keys, `{{` the deck's `vars`, and an opening ``` ``` ``` the
+block forms. Hovering a `[@key]` shows the entry it cites, hovering a
+`{{ expr }}` shows the value it renders as, and hovering a `data:` line in a
+`chart` or `each` block says what the file holds. Go-to-definition follows a
+`![[section.md]]` into the file it pastes in, a `[@key]` to its BibTeX
+entry, a `<!-- layout: -->` to the master's heading, and a `theme:` path to
+the stylesheet.
 
 **See it work without configuring anything.** A language server prints nothing
 on its own — started by hand it just sits there — so there is a probe that runs

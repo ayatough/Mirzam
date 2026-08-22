@@ -592,6 +592,20 @@ pub fn substitute_vars(text: &str, vars: &BTreeMap<String, Value>) -> String {
     out
 }
 
+/// Whether `{{ }}` substitution reaches inside a fenced block with this info
+/// string. The blocks that put words and data on the slide — a shape label, a
+/// chart title, a connector label, a danmaku line — are markup, and a variable
+/// in them means the same thing it means in a paragraph. The rest stay
+/// verbatim: `pane` is a drawing, `anim` is selectors and timing, `mermaid` is
+/// another language whose own syntax uses `{{ }}` (hexagon nodes), and an
+/// ordinary code fence is being quoted, not written.
+pub fn substitutable_block(info: &str) -> bool {
+    matches!(
+        info.split_whitespace().next().unwrap_or(""),
+        "shape" | "chart" | "connect" | "annotate" | "effects"
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

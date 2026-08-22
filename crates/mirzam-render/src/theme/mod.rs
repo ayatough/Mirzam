@@ -81,6 +81,12 @@ pub const PRESENTER_JS: &str = concat!("\n", shipped!("presenter.js"));
 /// Slide dimensions and the `@page` size are appended by `assemble_print_page`.
 pub const PRINT_CSS: &str = concat!("\n", shipped!("print.css"));
 
+/// The handout layout, applied after [`PRINT_CSS`]: one page per slide, the
+/// slide scaled to the left and its speaker notes beside it. The dimensions
+/// are appended by `assemble_handout_page`, which computes them from the
+/// deck's own slide size.
+pub const HANDOUT_CSS: &str = concat!("\n", shipped!("handout.css"));
+
 /// The theme a deck renders in when it names none, and what an unrecognized
 /// name falls back to. There is no separate `default` theme: a deck that
 /// chooses nothing is already in the project's colours, so `theme:` is a

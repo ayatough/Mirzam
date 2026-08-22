@@ -90,6 +90,8 @@ autoplay: 6s loop
 +------------------------------------+
 ```
 
+<!-- autoplay: 12s -->
+
 ::: pane head
 [The recipe]{.eyebrow}
 ## The whole file is Markdown

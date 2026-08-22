@@ -246,10 +246,11 @@ does not.
   one deck to `--strict`, which is what stops the site publishing the code
   block. Install it (`npm install -g @mermaid-js/mermaid-cli`) only if you are
   changing what the diagram looks like.
-- **An attribute span has to be on one line.** `[text]{.small}` split across a
-  line break is not recognised and renders as literal `[text]{.small}` on the
-  slide. The layout checker measures boxes, so it passes this happily — only
-  looking at the slide catches it.
+- **An attribute span has to stay in one paragraph.** `[text]{.small}` may
+  wrap onto the next source line, but a blank line between the brackets is a
+  paragraph break and leaves them as literal `[text]{.small}` on the slide.
+  The layout checker measures boxes, so it passes this happily — the build's
+  "still on the slide as text" warning is what catches it.
 - **`git push` of a tag is refused for an agent** (403; the credentials are
   scoped to branches) — but cutting the release is still yours to do, and the
   403 is not a reason to hand it back. Two facts make it work: the version-bump

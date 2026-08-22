@@ -30,6 +30,8 @@ fn sample_block(kind: &str) -> &'static str {
         "effects" => "1 : flash\n",
         "toc" => "from: 2\ndepth: 3\n",
         "bibliography" => "show: cited\nback: true\n",
+        // Degrades into a small, readable table of the data itself.
+        "each" => "name, ms\nparse, 4\nrender, 11\n",
         other => panic!("no sample written for the `{other}` block"),
     }
 }

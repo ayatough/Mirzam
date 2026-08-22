@@ -7,7 +7,110 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+- **A `[span]{...}` may wrap onto the next source line.** The inline-attribute
+  transform ran line by line, so an editor rewrapping prose broke the mark and
+  left literal brackets on the slide — the syntax reference's longest-standing
+  "known constraint", now removed from it. The transform runs per paragraph:
+  a blank line between the brackets is still a wall, which is also what stops
+  a `[` left open in one paragraph from swallowing the next, and nothing
+  inside a fence is touched, as ever. An *image* reference and its attributes
+  still sit on one line.
+- **`{{ }}` reaches the blocks that put words on the slide.** A variable in a
+  `shape` label, a `chart` title or its data, a `connect` label or a `danmaku`
+  line was left on the slide as literal braces — `examples/research.md` has
+  said "`{{sensors}}` gratings, one fibre" under its figure since the slide
+  was written, while the same variable two slides later rendered as 16. Those
+  blocks are markup, so substitution now treats them like prose. Code fences
+  and quoted examples stay exactly as typed, and so does `mermaid`, whose own
+  hexagon-node syntax is `{{ }}`. Matching fences by length on the way past
+  also stops a four-backtick fence *quoting* a Mirzam block from being read as
+  one — a substitution could previously rewrite the inside of an example.
+
+### Added
+- **`mirzam export pptx`: the deck as a PowerPoint file.** For the room that
+  requires one: one picture per slide, photographed by the same headless
+  Chromium the PDF export drives, at twice the deck's pixel size and its
+  exact aspect — and the speaker notes in the notes pane, where presenter
+  view reads them. The slides are images, which is where Marp, Slidev and
+  Touying's PowerPoint exports all stop too; what an image-only export
+  usually throws away is the notes, and those are real here. No new
+  dependency: the package is hand-written OOXML in the ZIP writer
+  `skill install --zip` already carries. Verified by round-tripping through
+  python-pptx and LibreOffice Impress, English and CJK decks both. One
+  mechanical find worth recording: current headless builds keep browser
+  chrome's height in `--window-size`'s arithmetic even though nothing draws
+  it, so the shot is taken oversized and the package crops the blank strip
+  by the slide's own aspect. Native text boxes stay on the roadmap as the
+  stage nobody ships.
+- **A code block can light its lines, and number them.** ```` ```js {2,4-5
+  lines} ```` washes lines 2, 4 and 5 across the block's full width — how a
+  talk walks a room through a listing without a laser pointer — and `lines`
+  numbers every line in the muted colour, unselectable so copied code stays
+  clean. The spelling is the one Marp, Slidev and GitHub share, because the
+  convention is the value; either half works alone, and it works on fences
+  Mirzam does not colour (`text {3}` points at one line of a config file).
+  The wash is mixed from the theme's own ink so it holds in both modes with
+  no new token to define, `--mz-code-hl` overrides it, and it prints. A fence
+  with no meta renders byte-identically to before; anything in the braces
+  that is not ranges or `lines` is ignored rather than guessed at.
+- **The language server completes, explains and jumps.** `mirzam lsp` shipped
+  understanding the deck's problems; it now understands its names. `::: pane `
+  completes the panes this slide's grid actually defines, `<!-- layout: -->`
+  the deck's masters, `<!-- theme: -->` and frontmatter `theme:` the built-ins
+  and your own stylesheet's stem, `[@` the bibliography's keys with each
+  paper's title beside them, `{{` the deck's `vars` with their values, an
+  opening fence the block forms, and a bare `<!--` the slide settings nothing
+  on screen lists. Hovering a `[@key]` shows the entry it cites and the mark
+  it renders as; hovering a `{{ expr }}` shows the evaluated value; hovering a
+  `data:` line in a `chart` or `each` block says which fields the file holds
+  and how many rows. Go-to-definition follows `![[section.md]]` into the file,
+  `[@key]` to its BibTeX entry, `<!-- layout: -->` to the master's heading in
+  the masters file, and a `theme:` path to the stylesheet. Same rules as
+  before: no browser, no new dependency, and everything is read from the
+  buffer being typed, not the file on disk.
+- **A run of slides from a table: ```each renders a slide per data row.** The
+  slide holding the block is a template — heading, panes, chart and all — and
+  each row of the block's CSV fills its `{{field}}` marks the way frontmatter
+  variables always have, arithmetic included. The rows can live in a file
+  instead (`data: rows.csv`), which is the shape a generated report wants:
+  `serve` watches the file, the numbers change, the deck follows, and
+  appending a row adds a slide. This was the one structural advantage Typst's
+  scripting held over every Markdown slide tool, and it lands in Mirzam's own
+  grammar: no loop, no scripting language, a table where the table would be.
+  Everything downstream — `<!-- next -->`, animation, citations, the cache —
+  sees ordinary slides, because the expansion happens on the text before
+  anything parses it. On any failure the build says why and the slide renders
+  once with its placeholders visible, which is also how the template degrades
+  anywhere plain Markdown renders it: the block is a small, readable table of
+  the data. The browser editor expands it identically, so the preview shows
+  the slides a build will produce. `examples/04-components.md` ends by
+  rendering its own cost table this way.
+- **`mirzam export pdf --handout`: the deck as a printout, notes beside each
+  slide.** One page per slide, the slide at reading size on the left and its
+  speaker notes beside it — the page a speaker rehearses from, and the handout
+  an audience takes away. A slide with no notes hands the column to the reader
+  as ruled lines to write on. The notes print as ink on paper whatever mode
+  the slides are baked in; the slide itself is scaled, never reflowed, so
+  panes, shapes and annotations land exactly where the screen puts them, and
+  the links a deck writes between its own slides keep working because each
+  handout page carries the same anchor the plain export gives it. This is the
+  most-reacted open request on Marp's CLI, unmet there since 2019.
+- **A slide can hold the loop longer than the rest of the deck.**
+  `<!-- autoplay: 20s -->` on a slide is the deck's autoplay interval, for that
+  slide — the notice with three sentences in a loop of photographs paced for
+  one, the table that needs reading time. The comment is the same shape a slide
+  already uses to pick its theme or its master, it is invisible anywhere plain
+  Markdown renders, and without autoplay it does nothing at all. The value is
+  an interval and nothing more: `loop` stays in the frontmatter, because one
+  slide cannot wrap a deck, and writing it there warns with the slide's number.
+  `examples/slideshow.md` uses it on its recipe slide — the one slide of prose
+  in a deck of photographs.
+- **Autoplay waits for a clip to finish before turning its page.** A slide
+  holding a video or a recording that is still playing when the interval ends
+  now turns when the clip does, instead of cutting it off mid-sentence. A
+  `{.loop}` clip never ends, so it never holds the page; pausing one by hand
+  restarts the countdown rather than parking the deck on it.
 
 ## [0.9.0] - 2026-08-21
 
