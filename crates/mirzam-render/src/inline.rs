@@ -1143,6 +1143,11 @@ pub fn render_markdown(md: &str) -> String {
     // A bare DOI or arXiv URL in a reference becomes a link without ceremony.
     options.extension.autolink = true;
     options.render.r#unsafe = true;
+    // The fence's info string past the language — ```js {2,4-5 lines} — is
+    // where line highlighting and numbering are asked for. Comrak only hands
+    // it over as a `data-meta` attribute; the adapter reads it there and keeps
+    // it off the page.
+    options.render.full_info_string = true;
     // Syntax highlighting runs here rather than in a later pass over the HTML,
     // because comrak hands the adapter the *raw* fence contents: the tokenizer
     // sees the code the author wrote, and escaping happens once, on the way

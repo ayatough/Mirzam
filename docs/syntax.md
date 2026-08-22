@@ -497,6 +497,24 @@ Highlighting happens **at build time**. The deck carries `<span>` runs and no
 highlighter, so it stays one self-contained file with no client-side
 JavaScript, and the PDF export — which never runs a script — is coloured too.
 
+**Lines can be lit, and numbered.** After the language, in the spelling Marp,
+Slidev and GitHub share:
+
+````markdown
+```js {2,4-5 lines}
+```
+````
+
+`2,4-5` washes those lines across the full width of the block — how a talk
+walks a room through a listing without a laser pointer — and `lines` numbers
+every line, in the muted colour, unselectable so copied code stays clean.
+Either half works alone: `{3}` lights one line, `{lines}` only numbers. It
+works on fences Mirzam does not colour too (`text {3}` points at one line of
+a config file), and anything in the braces that is not line ranges or the
+word `lines` is ignored, so a fence carrying another tool's words renders as
+it always did. The wash is mixed from the theme's own ink and follows `D`;
+`--mz-code-hl` overrides it.
+
 **The colours are the deck's, not the highlighter's.** Six theme tokens carry
 them, so code in a `nord` deck reads Nord and code follows the deck through
 `D`:

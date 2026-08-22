@@ -214,8 +214,9 @@ fn main() { ... }
 ```
 ````
 
-Name the language after the fence and the block is coloured. A horizontal rule
-is `***` — three hyphens would end the slide.
+Name the language after the fence and the block is coloured; add
+`{2 lines}` after it and line 2 is lit, with every line numbered. A
+horizontal rule is `***` — three hyphens would end the slide.
 :::
 
 ::: pane out {valign=middle}
@@ -231,7 +232,7 @@ fn main() {
 }
 ```
 
-```python
+```python {2 lines}
 def greet(name):  # 36 languages
     return f"hello {name}"
 ```

@@ -189,7 +189,9 @@ Fenced code is coloured for 36 languages (`rust`, `python`, `js`, `ts`, `go`,
 `diff`, … and the usual aliases). Name the language or the block stays plain —
 which is also what `chart`, `shape` and the rest stay when they land somewhere
 that leaves them as code. Colours are the theme's `--mz-code-*` tokens, so do
-not write a palette into the deck.
+not write a palette into the deck. ` ```js {2,4-5 lines} ` washes lines 2, 4
+and 5 across the block's width and numbers every line; either half works
+alone, on any fence, coloured or not.
 
 ### Attributes
 

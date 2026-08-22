@@ -20,6 +20,17 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   one — a substitution could previously rewrite the inside of an example.
 
 ### Added
+- **A code block can light its lines, and number them.** ```` ```js {2,4-5
+  lines} ```` washes lines 2, 4 and 5 across the block's full width — how a
+  talk walks a room through a listing without a laser pointer — and `lines`
+  numbers every line in the muted colour, unselectable so copied code stays
+  clean. The spelling is the one Marp, Slidev and GitHub share, because the
+  convention is the value; either half works alone, and it works on fences
+  Mirzam does not colour (`text {3}` points at one line of a config file).
+  The wash is mixed from the theme's own ink so it holds in both modes with
+  no new token to define, `--mz-code-hl` overrides it, and it prints. A fence
+  with no meta renders byte-identically to before; anything in the braces
+  that is not ranges or `lines` is ignored rather than guessed at.
 - **The language server completes, explains and jumps.** `mirzam lsp` shipped
   understanding the deck's problems; it now understands its names. `::: pane `
   completes the panes this slide's grid actually defines, `<!-- layout: -->`
