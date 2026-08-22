@@ -1758,6 +1758,26 @@ wants the opposite — every caption playing the moment the slide arrives — so
 trigger them on `[enter]` with a `delay=` for each later beat, and the loop
 keeps one clock: the page turn.
 
+One slide may need more of that clock than the rest — a table to read in a
+loop of photographs, a notice with three sentences on it. Say so on the
+slide, the way a slide already picks its theme or its master:
+
+```markdown
+<!-- autoplay: 20s -->
+```
+
+That slide holds twenty seconds and every other keeps the deck's beat. The
+value is an interval and nothing more — `loop` stays in the frontmatter,
+because one slide cannot wrap a deck — and a slide with steps holds that
+long on each of them. Without deck-wide (or `?autoplay=`) playback the
+comment does nothing at all.
+
+A slide holding a clip is paced by the clip, not the countdown: when the
+interval ends while a video or a recording is still playing, the page turns
+when it ends instead of cutting it off mid-sentence. A `{.loop}` clip never
+ends, so it never holds the page, and pausing one by hand restarts the
+countdown rather than parking the deck on it.
+
 [`examples/slideshow.md`](../examples/slideshow.md) is the whole pattern as a
 deck: full-bleed photographs, captions entering on their own beat, a slow
 fade between pages, and `autoplay: 6s loop` driving it — open it and it is

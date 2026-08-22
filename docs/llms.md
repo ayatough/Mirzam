@@ -77,7 +77,10 @@ vars:
 `autoplay:` takes an interval — seconds by default (`8s`, `1.5s`, bare `8`),
 `ms` accepted — and optionally `loop`. One advance is one click step, then the
 next slide. In the viewer, `?autoplay=8s+loop` plays any deck and
-`?autoplay=off` stills one; `A` pauses and resumes.
+`?autoplay=off` stills one; `A` pauses and resumes. `<!-- autoplay: 20s -->`
+on a slide holds that one slide longer than the deck's beat (interval only,
+no `loop`), and a slide whose video is still playing when the interval ends
+turns when the video does.
 
 ## Slides
 

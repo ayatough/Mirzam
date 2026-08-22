@@ -7,7 +7,22 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- **A slide can hold the loop longer than the rest of the deck.**
+  `<!-- autoplay: 20s -->` on a slide is the deck's autoplay interval, for that
+  slide — the notice with three sentences in a loop of photographs paced for
+  one, the table that needs reading time. The comment is the same shape a slide
+  already uses to pick its theme or its master, it is invisible anywhere plain
+  Markdown renders, and without autoplay it does nothing at all. The value is
+  an interval and nothing more: `loop` stays in the frontmatter, because one
+  slide cannot wrap a deck, and writing it there warns with the slide's number.
+  `examples/slideshow.md` uses it on its recipe slide — the one slide of prose
+  in a deck of photographs.
+- **Autoplay waits for a clip to finish before turning its page.** A slide
+  holding a video or a recording that is still playing when the interval ends
+  now turns when the clip does, instead of cutting it off mid-sentence. A
+  `{.loop}` clip never ends, so it never holds the page; pausing one by hand
+  restarts the countdown rather than parking the deck on it.
 
 ## [0.9.0] - 2026-08-21
 

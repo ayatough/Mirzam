@@ -1185,8 +1185,21 @@ fn render_slide(
 
     let chrome_html = chrome_html(slide, index, ctx, warnings);
 
+    // `<!-- autoplay: 20s -->`: how long this slide holds under the deck's
+    // autoplay. Baked as milliseconds so the viewer reads a number, not a
+    // grammar; a value that does not parse leaves the slide on the deck's
+    // interval and says so.
+    let dwell_attr = match slide.autoplay.as_deref().map(mirzam_anim::parse_dwell) {
+        None => String::new(),
+        Some(Ok(ms)) => format!(" data-dwell=\"{ms}\""),
+        Some(Err(e)) => {
+            warnings.push(format!("slide {}: autoplay: {e}", index + 1));
+            String::new()
+        }
+    };
+
     format!(
-        "<section class=\"slide\" data-index=\"{index}\"{slide_theme}{connect_attr}>\n{error_html}{body}{chrome_html}{shapes_html}{anim_html}{annot_html}{effects_html}{notes_html}</section>\n"
+        "<section class=\"slide\" data-index=\"{index}\"{slide_theme}{connect_attr}{dwell_attr}>\n{error_html}{body}{chrome_html}{shapes_html}{anim_html}{annot_html}{effects_html}{notes_html}</section>\n"
     )
 }
 
@@ -3369,6 +3382,32 @@ mod tests {
         assert_eq!(
             out.html.matches("<div class=\"mz-slide-chrome\">").count(),
             1
+        );
+    }
+
+    /// A slide's `<!-- autoplay: 20s -->` reaches the viewer as milliseconds
+    /// on the section, and a value that does not parse leaves the attribute
+    /// off and warns with the slide's number.
+    #[test]
+    fn a_slide_dwell_is_baked_as_milliseconds() {
+        let slides = [
+            parse_slide("<!-- autoplay: 20s -->\n\na\n"),
+            parse_slide("b\n"),
+        ];
+        let out = render_deck(&DeckMeta::default(), &slides, Path::new("."));
+        assert!(out.html.contains(" data-dwell=\"20000\""));
+        assert_eq!(out.html.matches("data-dwell").count(), 1);
+        assert!(out.warnings.is_empty(), "{:?}", out.warnings);
+
+        let bad = [parse_slide("<!-- autoplay: 8s loop -->\n\na\n")];
+        let out = render_deck(&DeckMeta::default(), &bad, Path::new("."));
+        assert!(!out.html.contains("data-dwell"));
+        assert!(
+            out.warnings
+                .iter()
+                .any(|w| w.starts_with("slide 1: autoplay:") && w.contains("loop")),
+            "{:?}",
+            out.warnings
         );
     }
 

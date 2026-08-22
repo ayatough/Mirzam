@@ -596,6 +596,10 @@ pub struct SlideSource {
     /// `<!-- mode: dark -->`: light or dark for this one slide, independent of
     /// the deck and of the reader's `D` key.
     pub mode: Option<String>,
+    /// `<!-- autoplay: 20s -->`: under the deck's autoplay, how long this one
+    /// slide stays up — the slide that needs reading time, in a loop paced for
+    /// the rest. `None` means the deck's interval.
+    pub autoplay: Option<String>,
     /// ```shape blocks; multiple blocks are concatenated.
     pub shapes: Vec<String>,
     /// ```connect blocks.
@@ -880,6 +884,7 @@ pub fn parse_slide(src: &str) -> SlideSource {
                     "mode" => slide.mode = Some(value.to_string()),
                     "layout" => slide.layout_name = Some(value.to_string()),
                     "chrome" => slide.chrome = Some(value.to_string()),
+                    "autoplay" => slide.autoplay = Some(value.to_string()),
                     _ => unreachable!("parse_setting_comment only returns known keys"),
                 }
                 continue;
@@ -1054,7 +1059,7 @@ fn parse_setting_comment(comment: &str) -> Option<(&'static str, String)> {
     let inner = inner.strip_suffix("-->").unwrap_or(inner).trim();
     let (key, value) = inner.split_once(':')?;
     let key = key.trim().to_ascii_lowercase();
-    let key = ["theme", "mode", "layout", "chrome"]
+    let key = ["theme", "mode", "layout", "chrome", "autoplay"]
         .into_iter()
         .find(|k| *k == key)?;
     let value = value.trim();
@@ -1533,6 +1538,16 @@ loose text
         assert_eq!(s.layout, None);
         assert!(!s.loose.contains("layout"));
         assert!(s.loose.contains("# Quiet"));
+    }
+
+    /// `<!-- autoplay: 20s -->` is a setting like the others: recorded, and
+    /// kept off the slide. The value is not judged here — the renderer parses
+    /// it, so the warning can name the slide it is on.
+    #[test]
+    fn a_slide_can_ask_for_its_own_dwell() {
+        let s = parse_slide("<!-- autoplay: 20s -->\n\n# Long table\n");
+        assert_eq!(s.autoplay.as_deref(), Some("20s"));
+        assert!(!s.loose.contains("autoplay"));
     }
 
     /// A slide that draws its own grid keeps it: the master is what a slide
