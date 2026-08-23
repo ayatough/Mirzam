@@ -62,8 +62,9 @@ changes.
 | `mirzam-connect` | Connector DSL → JSON for the runtime. |
 | `mirzam-anim` | `anim` DSL → the timeline IR, with easing curves resolved at build time. |
 | `mirzam-annot` | `annotate` DSL → the annotation model drawn over a picture or a chart mark. |
+| `mirzam-figure` | A laid-out page → its captioned figures: which line is a caption, and which ink belongs to it. Knows nothing about PDF. |
 | `mirzam-render` | Assembles slides into HTML; owns the theme, viewer runtime and asset inlining. |
-| `mirzam-cli` | `build` / `serve` / `export pdf`, the caching build pipeline, the benchmark. |
+| `mirzam-cli` | `build` / `serve` / `export pdf` / `import pdf`, the caching build pipeline, the benchmark. |
 | `mirzam-wasm` | wasm-bindgen bindings over the same pipeline, with host-injected files and assets. |
 
 ## Key decisions
@@ -113,6 +114,33 @@ A `chart` block renders SVG from CSV at build time. Every mark carries an id
 derived from the chart id, series index and row index, which is what allows a
 `connect` arrow to point at one bar. A screenshot cannot offer that, and neither
 can an embedded image.
+
+### A figure comes out of a paper before the build, not during it
+
+`import pdf` writes files and stops. It could have been an asset reference —
+`![Fig. 3](paper.pdf#fig=3)`, resolved while building — and that was rejected
+twice over. The core may not open a file, so the browser and the editor
+extension would show a placeholder where the terminal shows a figure; and a
+deck would stop building when the paper moved. A command that writes an SVG
+next to the deck leaves the deck ordinary: no new syntax, nothing to resolve,
+and the same Markdown everywhere.
+
+The parsing splits the way the rest of the project does. `mirzam-figure` is
+given a page that has already been measured — lines with boxes, ink with boxes —
+and decides what a figure is; `mirzam-cli` opens the file and measures it,
+because opening files is what a process may do and a browser may not. That is
+also why the geometry can be tested against pages written by hand rather than
+against a committed PDF.
+
+**Rendering the crop is where the licence line runs.** Turning a cropped page
+into an image means a PDF renderer, and the two that do it well — MuPDF and
+Poppler — are AGPL and GPL. Linking either would relicense an MIT project, so
+neither is a dependency. They are *invoked*, when installed, exactly as
+Chromium is for the PDF export and `mmdc` is for a `mermaid` fence: a separate
+program, discovered on `PATH` or named by an environment variable, never
+shipped. Without one the command still answers — an image stored in the page
+comes out whole, and a drawn figure comes out as a one-page PDF — which is the
+same shape of promise the `mermaid` fence makes when no renderer is installed.
 
 ### Annotations and the PDF
 

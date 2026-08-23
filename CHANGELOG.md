@@ -28,6 +28,26 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   one — a substitution could previously rewrite the inside of an example.
 
 ### Added
+- **`mirzam import pdf`: a figure out of a paper and onto a slide.** The job
+  this replaces is a screenshot — crop Figure 3 off the screen, paste the
+  bitmap, retype the caption, forget the citation. The figure is already in
+  the file, usually as curves rather than pixels, with its caption beside it.
+  So: `mirzam import pdf paper.pdf --cite vaswani2017` finds every captioned
+  float, cuts each one out, and prints the line that puts it on a slide —
+  `caption=` filled in from the paper, `credit=` written as `[@vaswani2017]`,
+  which is what lands the paper in the deck's reference list. `--list` says
+  what is in a PDF without writing anything.
+
+  A figure the page stores as one image comes out *untouched*, which is
+  better than any screenshot of it can be. Everything else is cropped, and
+  turned into a vector SVG when this machine has `mutool` or `pdftocairo` —
+  found on `PATH` or named by `MIRZAM_PDFTOOL`, and never bundled, because
+  both are copyleft and running a program is not shipping one. Without either,
+  the crop is a one-page PDF that converts later, and the command says so.
+
+  No new syntax: `caption=`, `credit=` and `[@key]` already existed, and this
+  writes them. New crate `mirzam-figure` holds the part worth testing on its
+  own — which line is a caption, and which ink belongs to it.
 - **`mirzam export pptx`: the deck as a PowerPoint file.** For the room that
   requires one: one picture per slide, photographed by the same headless
   Chromium the PDF export drives, at twice the deck's pixel size and its
