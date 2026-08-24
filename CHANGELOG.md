@@ -89,12 +89,12 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   the masters file, and a `theme:` path to the stylesheet. Same rules as
   before: no browser, no new dependency, and everything is read from the
   buffer being typed, not the file on disk.
-- **A run of slides from a table: ```each renders a slide per data row.** The
-  slide holding the block is a template — heading, panes, chart and all — and
-  each row of the block's CSV fills its `{{field}}` marks the way frontmatter
-  variables always have, arithmetic included. The rows can live in a file
-  instead (`data: rows.csv`), which is the shape a generated report wants:
-  `serve` watches the file, the numbers change, the deck follows, and
+- **A run of slides from a table: ```` ```each ```` renders a slide per data
+  row.** The slide holding the block is a template — heading, panes, chart and
+  all — and each row of the block's CSV fills its `{{field}}` marks the way
+  frontmatter variables always have, arithmetic included. The rows can live
+  in a file instead (`data: rows.csv`), which is the shape a generated report
+  wants: `serve` watches the file, the numbers change, the deck follows, and
   appending a row adds a slide. This was the one structural advantage Typst's
   scripting held over every Markdown slide tool, and it lands in Mirzam's own
   grammar: no loop, no scripting language, a table where the table would be.

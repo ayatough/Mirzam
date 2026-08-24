@@ -565,9 +565,23 @@ channel, version, built = os.environ["CHANNEL"], os.environ["VERSION"], os.envir
 build_id = re.sub(r"[^A-Za-z0-9._-]+", "-", f"{version}-{built}").strip("-")
 
 
+def code_span(m):
+    body = m.group(2)
+    # CommonMark drops one space from each end when both are there, which is
+    # what lets a run of backticks quote a token that starts with one.
+    if len(body) > 1 and body[0] == " " and body[-1] == " " and body.strip():
+        body = body[1:-1]
+    return f"<code>{body}</code>"
+
+
 def inline(text):
     out = html.escape(text)
-    out = re.sub(r"`([^`]+)`", r"<code>\1</code>", out)
+    # A code span is delimited by a *run* of backticks, not by one: ```` quotes
+    # a ```js fence, which is how the changelog writes a fence at all. Matching
+    # only single backticks used to pair the last backtick of an opening ````
+    # with the first of the fence inside it, and the entry came out as loose
+    # backticks around an empty <code>.
+    out = re.sub(r"(`+)(.+?)\1(?!`)", code_span, out)
     out = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", out)
     out = re.sub(r"\*([^*]+)\*", r"<em>\1</em>", out)  # bold is already gone
     return re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)", r'<a href="\2">\1</a>', out)
