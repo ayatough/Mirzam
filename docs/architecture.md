@@ -141,6 +141,9 @@ program, discovered on `PATH` or named by an environment variable, never
 shipped. Without one the command still answers — an image stored in the page
 comes out whole, and a drawn figure comes out as a one-page PDF — which is the
 same shape of promise the `mermaid` fence makes when no renderer is installed.
+What it would take to need no tool at all — a page-to-SVG transpiler, and the
+three stages of the font problem behind it — is in
+[roadmap.md](roadmap.md#later).
 
 ### Annotations and the PDF
 
