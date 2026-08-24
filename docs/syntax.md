@@ -945,6 +945,44 @@ The first column holds categories; every other column is a series. `data` may
 instead name a `.csv` file, which is resolved like any other asset (and watched by
 `mirzam serve`). Values may contain `%` or thousands separators.
 
+A key the chart does not read is reported rather than dropped, so `ylabel` for
+`y_label` says so at build time instead of quietly rendering without it.
+
+### The x axis
+
+`x:` names the column the categories come from, which is what a file whose
+value columns come first needs to be plotted without editing it:
+
+````markdown
+```chart
+type: line
+x: minute
+data: |
+  checkout, search, minute
+  1.8, 0.9, 0
+  0.7, 0.6, 2
+  0.4, 0.4, 60
+```
+````
+
+**A category column that is numbers all the way down is treated as a
+quantity.** For `line` and `area` the points are then placed along the axis by
+value, so the example above draws the hour between minute 2 and minute 60 as an
+hour rather than as one more step — and a line whose rows are out of order is
+drawn left to right rather than doubling back. Anything else — `W1`, `2024 Q1`,
+a column with one non-number in it — is a set of labels and keeps the even
+spacing it has always had.
+
+The label text is never reformatted: an `hour` column of `00, 04, 08` positions
+by 0, 4 and 8 and still prints `00`.
+
+**Bars are ordinal whatever the column holds**, because a bar's width is its
+slot and slots have to be equal. Tick labels that would overlap their
+neighbour are dropped, on either kind of axis.
+
+`<chart-id>-<series>-<row>` still names the row, not the drawing order, so a
+`connect` arrow points at the same mark however the axis is laid out.
+
 Each mark gets an id of the form `<chart-id>-<series>-<row>`, so the second bar of
 the first series above is `#latency-0-1`. That is what makes it possible to point
 an arrow at one bar. For a bar chart the id names a group holding the bar *and*

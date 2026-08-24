@@ -8,6 +8,18 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Fixed
+- **A `line` or `area` chart whose first column is numbers now measures with
+  it.** The x position came from the row's index and nothing else, so a column
+  of `0, 1, 2, 5, 15, 60` drew as six even steps and a reader saw a recovery
+  four times faster than the one in the data. A category column that parses as
+  numbers all the way down is a quantity: the points are placed along the axis
+  by value, and rows out of order are drawn left to right instead of doubling
+  back. Labels — `W1`, `2024 Q1`, anything with one non-number in it — keep the
+  even spacing they always had, and so do bars either way, because a bar's
+  width is its slot. The label text is never reformatted: an `hour` column of
+  `00, 04, 08` still prints `00`. Mark ids still name the row, so a `connect`
+  arrow points where it pointed. Visible in `research.md` slide 6, whose hours
+  now reach the full width of the chart.
 - **A `[span]{...}` may wrap onto the next source line.** The inline-attribute
   transform ran line by line, so an editor rewrapping prose broke the mark and
   left literal brackets on the slide — the syntax reference's longest-standing
@@ -28,6 +40,15 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   one — a substitution could previously rewrite the inside of an example.
 
 ### Added
+- **`x:` names the column a chart's categories come from.** It was always the
+  first one, so a spreadsheet exported with its value columns first had to be
+  edited before it could be plotted; now `x: minute` picks the column out
+  wherever it sits, and the rest are series as before. New in the gallery:
+  `04-components.md` slide 5, "An axis that measures".
+- **A chart key nothing reads is reported.** `serde` dropped an unrecognised
+  key without a word, so `ylabel` for `y_label` rendered a chart with no axis
+  label and said nothing about why. The build now warns, as `build.chart`, and
+  draws the chart with everything it did understand.
 - **`mirzam export pptx`: the deck as a PowerPoint file.** For the room that
   requires one: one picture per slide, photographed by the same headless
   Chromium the PDF export drives, at twice the deck's pixel size and its

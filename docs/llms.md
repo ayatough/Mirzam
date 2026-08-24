@@ -235,6 +235,7 @@ type: bar          # bar | line | area | pie
 id: latency        # optional; mark ids derive from it
 title: p95 latency by region (ms)
 y_label: ms
+x: region          # optional; the category column, else the first one
 highlight: after   # dim every series but this one
 data: |
   region, before, after
@@ -243,10 +244,17 @@ data: |
 ```
 ````
 
-First column is categories, every other column a series. `data:` may instead
-name a `.csv` file. Each mark gets the id `<chart-id>-<series>-<row>`, so
-`#latency-0-1` is the second bar of the first series — that is what an arrow or
-an annotation points at.
+First column is categories, every other column a series; `x:` picks a different
+column when the file puts it elsewhere. `data:` may instead name a `.csv` file.
+Each mark gets the id `<chart-id>-<series>-<row>`, so `#latency-0-1` is the
+second bar of the first series — that is what an arrow or an annotation points
+at.
+
+A category column that is numbers all the way down is a quantity: `line` and
+`area` place their points along the axis by value, so an irregular step is
+drawn as one, and rows out of order are drawn left to right. Labels keep the
+even spacing, and bars are ordinal either way. A key the chart does not read
+warns as `build.chart` rather than being dropped.
 
 ## `mermaid` — inside a pane
 

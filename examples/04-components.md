@@ -150,6 +150,54 @@ data: |
 +------------------------------------+
 |                                    |
 |  head                              |
++---------------------+--------------+
+|                     |              |
+|                     |              |
+|  chart              |  note        |
+|                     |              |
+|                     |              |
++---------------------+--------------+
+```
+
+::: pane head
+[Charts]{.eyebrow}
+## An axis that measures
+:::
+
+::: pane chart
+```chart
+type: line
+id: recovery
+title: Error rate after deploy (%), by minute
+y_label: "%"
+x: minute
+data: |
+  checkout, search, minute
+  1.8, 0.9, 0
+  1.2, 0.8, 1
+  0.7, 0.6, 2
+  0.5, 0.5, 5
+  0.4, 0.4, 15
+  0.4, 0.4, 60
+```
+:::
+
+::: pane note {valign=middle}
+- `minute` holds **numbers**, so the axis measures: the hour between 15 and 60
+  is drawn as the hour it is, not as one more step
+- A column of labels — `W1`, `2024 Q1` — keeps the even spacing it always had
+- `x:` names the column, so a file whose value columns come first needs no
+  editing to be plotted
+:::
+
+<!-- note: The tail is flat and sparse; on an evenly spaced axis it would read as a much faster recovery than it was. -->
+
+---
+
+```pane
++------------------------------------+
+|                                    |
+|  head                              |
 +------------------+-----------------+
 |                  |                 |
 |                  |                 |
