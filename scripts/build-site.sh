@@ -546,17 +546,21 @@ HTML
 sed -i.bak "s|<!--TRY-->|$TRY_CARD|" "$OUT/index.html" && rm -f "$OUT/index.html.bak"
 sed -i.bak "s|<!--GALLERY-->|$GALLERY_CARD|" "$OUT/index.html" && rm -f "$OUT/index.html.bak"
 
+# The `[Unreleased]` section of CHANGELOG.md, as HTML for the dev banner - so
+# that the question the dev site exists to answer, "what does this build have
+# that the last release did not", is on the page instead of one tap away on
+# GitHub. `scripts/changelog-html.py` holds the converter, and is where CI
+# checks it: this script does not run until the Pages job, which is after CI
+# is green and too late to be told.
+UNRELEASED_HTML=""
+if [ "$CHANNEL" = dev ]; then
+  UNRELEASED_HTML="$(python3 scripts/changelog-html.py)"
+fi
+
 # The channel markers. Python rather than sed because two of the three
-# replacements are multi-line, and one of them is the `[Unreleased]` section of
-# CHANGELOG.md turned into HTML - so that the question the dev site exists to
-# answer, "what does this build have that the last release did not", is on the
-# page instead of one tap away on GitHub.
-#
-# The converter handles the subset the changelog actually uses: `### Heading`,
-# `- bullet` with indented continuation lines, and inline code, bold and links.
-# Anything else passes through as escaped text, which is wrong-looking rather
-# than broken, and is the trade for not carrying a Markdown library here.
-CHANNEL="$CHANNEL" VERSION="$VERSION" BUILT="$BUILT" python3 - "$OUT/index.html" <<'PY'
+# replacements are multi-line, and one of them is that changelog section.
+CHANNEL="$CHANNEL" VERSION="$VERSION" BUILT="$BUILT" \
+  UNRELEASED_HTML="$UNRELEASED_HTML" python3 - "$OUT/index.html" <<'PY'
 import html, os, re, sys
 
 page = sys.argv[1]
@@ -565,70 +569,8 @@ channel, version, built = os.environ["CHANNEL"], os.environ["VERSION"], os.envir
 build_id = re.sub(r"[^A-Za-z0-9._-]+", "-", f"{version}-{built}").strip("-")
 
 
-def code_span(m):
-    body = m.group(2)
-    # CommonMark drops one space from each end when both are there, which is
-    # what lets a run of backticks quote a token that starts with one.
-    if len(body) > 1 and body[0] == " " and body[-1] == " " and body.strip():
-        body = body[1:-1]
-    return f"<code>{body}</code>"
-
-
-def inline(text):
-    out = html.escape(text)
-    # A code span is delimited by a *run* of backticks, not by one: ```` quotes
-    # a ```js fence, which is how the changelog writes a fence at all. Matching
-    # only single backticks used to pair the last backtick of an opening ````
-    # with the first of the fence inside it, and the entry came out as loose
-    # backticks around an empty <code>.
-    out = re.sub(r"(`+)(.+?)\1(?!`)", code_span, out)
-    out = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", out)
-    out = re.sub(r"\*([^*]+)\*", r"<em>\1</em>", out)  # bold is already gone
-    return re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)", r'<a href="\2">\1</a>', out)
-
-
-def unreleased_html():
-    """The `## [Unreleased]` section of the changelog, as HTML."""
-    lines, inside = [], False
-    for line in open("CHANGELOG.md", encoding="utf-8"):
-        if line.startswith("## [Unreleased]"):
-            inside = True
-            continue
-        if inside and line.startswith("## "):
-            break
-        if inside:
-            lines.append(line.rstrip())
-
-    out, items, item = [], [], None
-
-    def flush():
-        # A list closes on the first line that is not part of one.
-        nonlocal item
-        if item is not None:
-            items.append(item)
-            item = None
-        if items:
-            out.append("<ul>" + "".join(f"<li>{inline(i)}</li>" for i in items) + "</ul>")
-            items.clear()
-
-    for line in lines:
-        if line.startswith("### "):
-            flush()
-            out.append(f"<h3>{inline(line[4:])}</h3>")
-        elif line.startswith("- "):
-            if item is not None:
-                items.append(item)
-            item = line[2:]
-        elif line.strip() and item is not None:
-            item += " " + line.strip()   # an indented continuation of the bullet
-        elif not line.strip():
-            flush()
-    flush()
-    return "\n".join(out)
-
-
 if channel == "dev":
-    body = unreleased_html()
+    body = os.environ["UNRELEASED_HTML"]
     fill = {
         "<!--NOINDEX-->": '<meta name="robots" content="noindex, nofollow">',
         "<!--DEVBAR-->": (
