@@ -233,7 +233,9 @@ an API.
   `docs/ja/` and are a convenience, never the source of truth.
 - Comments explain *why*, not *what*. The surrounding code already says what.
 - Every new syntax feature needs three things: a parser test, a line in
-  `docs/syntax.md`, and an appearance in `examples/04-components.md`.
+  `docs/syntax.md`, and an appearance in the deck that owns it —
+  `examples/04-components.md` for most forms, `examples/07-charts.md` for
+  anything a `chart` block reads.
 - Anything that affects how content is placed also needs a rule in
   `docs/layout.md` and a slide in `examples/03-layout.md`, so the guidance is
   verified by the layout checker rather than merely asserted.
@@ -248,7 +250,8 @@ an API.
    geometry belong away from `render`.
 3. Emit HTML/SVG from `mirzam-render`, styling it through theme variables rather
    than hard-coded colors.
-4. Add it to `examples/04-components.md` and refresh the snapshots.
+4. Add it to `examples/04-components.md` — or to `examples/07-charts.md` if it
+   is part of the `chart` block — and refresh the snapshots.
 5. If it is a fenced block, add its name to `mirzam_syntax::BLOCK_KINDS` and a
    sample body to `sample_block` in `tests/commonmark_compat.rs`. The promise
    that plain Markdown still reads is only kept for forms that list is aware
@@ -351,7 +354,8 @@ push or tag, because those are the steps worth looking at.
    roadmap](roadmap.md#measured-performance) without anything being wrong. What
    has to stay flat is single-slide edit latency, not full-build time
 3. Sample decks build and pass `mirzam check`: `01-start`, `02-writing`,
-   `03-layout`, `04-components`, `05-motion`, `06-theming`, `pitch`, `seminar`
+   `03-layout`, `04-components`, `05-motion`, `06-theming`, `07-charts`,
+   `pitch`, `seminar`
 4. `./scripts/build-vsix.sh` succeeds — it builds the WASM package on its way to
    the extension, so it covers `build-wasm.sh` too
 5. `CHANGELOG.md` closed, and the version written in the root `Cargo.toml`,

@@ -16,7 +16,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 OUT="${1:-site}"
-DECKS=(01-start 02-writing 03-layout 04-components 05-motion 06-theming pitch research seminar slideshow)
+DECKS=(01-start 02-writing 03-layout 04-components 05-motion 06-theming 07-charts pitch research seminar slideshow)
 
 CHANNEL="${MIRZAM_SITE_CHANNEL:-stable}"
 # Falls back to `git describe` so a build run by hand is stamped too. The
@@ -420,9 +420,10 @@ try {
   <div class="cards">
     <a class="card" href="decks/02-writing/"><b>02 · Writing a slide</b><span>Headings, emphasis, lists, tables, maths, footnotes, emoji</span></a>
     <a class="card" href="decks/03-layout/"><b>03 · Layout</b><span>One layout rule per slide</span></a>
-    <a class="card" href="decks/04-components/"><b>04 · Components</b><span>Charts, shapes, connectors, media, annotations</span></a>
+    <a class="card" href="decks/04-components/"><b>04 · Components</b><span>Shapes, connectors, media, annotations</span></a>
     <a class="card" href="decks/05-motion/"><b>05 · Motion</b><span>Entrances, click-through builds, page turns, effects</span></a>
     <a class="card" href="decks/06-theming/"><b>06 · Theming</b><span>Themes, frontmatter, attributes, custom CSS</span></a>
+    <a class="card" href="decks/07-charts/"><b>07 · Charts</b><span>Chart types, data inline or from CSV, marks an arrow can point at</span></a>
     <!--GALLERY-->
   </div>
 

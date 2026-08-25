@@ -298,8 +298,9 @@ you drew, row heights from the number of lines.
   fit, keeping arrows out of the text
 - **[Troubleshooting](troubleshooting.md)** — a slide that doesn't fit, markup
   showing as literal text, the current PDF steps, and every build warning
-- **[The examples](../examples/)** — six numbered decks that teach the markup in
-  order, starting at [`01-start.md`](../examples/01-start.md), plus
+- **[The examples](../examples/)** — the numbered decks, a reference by subject
+  area rather than an order to read in, starting at
+  [`01-start.md`](../examples/01-start.md), plus
   [`research.md`](../examples/research.md), a report with math, a chart and a
   cited bibliography, and [`seminar.md`](../examples/seminar.md), the same shape
   in Japanese with a quoted figure

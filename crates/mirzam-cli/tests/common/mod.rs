@@ -26,6 +26,7 @@ pub const EXAMPLE_DECKS: &[&str] = &[
     "04-components.md",
     "05-motion.md",
     "06-theming.md",
+    "07-charts.md",
     "pitch.md",
     "research.md",
     "seminar.md",

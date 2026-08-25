@@ -122,9 +122,10 @@ code --install-extension editors/vscode/mirzam-preview-*.vsix
 |---|---|
 | `examples/02-writing.md` | ペインの中身すべて。見出し・強調・リスト・表・数式・脚注・絵文字 |
 | `examples/03-layout.md` | レイアウト規則を 1 スライド 1 ルールで |
-| `examples/04-components.md` | グラフ・図形・コネクタ・メディア・注釈をソースと並べて |
+| `examples/04-components.md` | 図形・コネクタ・メディア・注釈をソースと並べて |
 | `examples/05-motion.md` | アニメーション。登場・クリック送り・ページ送り・演出 |
 | `examples/06-theming.md` | テーマ(6 パレットのギャラリー付き)、フロントマターの全項目、属性、カスタム CSS |
+| `examples/07-charts.md` | グラフ。全種類、インラインまたは CSV のデータ、コネクタが指せる各マーク |
 
 ドキュメントではなく、デッキとして書かれたもの:
 

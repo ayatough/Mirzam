@@ -20,7 +20,8 @@ slide and tests — that can be merged on its own. Half a feature cannot.
    next. Keep your own diff to the snapshot minimal by adding sample slides at
    the *end* of a deck.
 4. **New markup goes in `examples/04-components.md` and `docs/syntax.md`**, per
-   the definition of done. New layout behaviour goes in `examples/03-layout.md`
+   the definition of done — `examples/07-charts.md` instead when it is part of
+   the `chart` block. New layout behaviour goes in `examples/03-layout.md`
    and `docs/layout.md`.
 5. **The final state is the resting state.** Anything animated, annotated or
    themed must look correct with JavaScript disabled and in PDF export. The

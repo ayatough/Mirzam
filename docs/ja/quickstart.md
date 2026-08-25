@@ -177,7 +177,7 @@ data: |
 - **[レイアウトガイド](../layout.md)** — ペインの寸法、入りきらないときの対処、
   矢印を本文から遠ざける方法
 - **[サンプル](../../examples/)** — まずは [`01-start.md`](../../examples/01-start.md)。
-  02〜06 は分野別の記法リファレンスで、どこから読んでも構いません。
+  02〜07 は分野別の記法リファレンスで、どこから読んでも構いません。
   [`research.md`](../../examples/research.md) は数式・グラフ・参考文献つきの研究報告(英語)、
   [`seminar.md`](../../examples/seminar.md) はその日本語版で図の引用と脚注つき
 - **[全部動いているところ](https://ayatough.github.io/Mirzam/)**

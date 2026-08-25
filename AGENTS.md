@@ -39,7 +39,7 @@ cargo test --workspace                       # 23 suites
 cargo clippy --workspace --all-targets       # zero warnings
 cargo fmt --all -- --check
 node --test editors/vscode/test/*.test.js   # only if you touched editors/vscode
-for d in 01-start 02-writing 03-layout 04-components 05-motion 06-theming pitch research seminar slideshow; do
+for d in 01-start 02-writing 03-layout 04-components 05-motion 06-theming 07-charts pitch research seminar slideshow; do
   cargo run -q --bin mirzam -- check "examples/$d.md"   # needs a browser, nothing else
 done
 ```
@@ -55,7 +55,8 @@ plus, when the change is user-visible:
 
 - a line in `CHANGELOG.md` under `[Unreleased]`
 - syntax changes documented in `docs/syntax.md` and shown in `examples/04-components.md`
-  (or `examples/05-motion.md` if it moves, `examples/06-theming.md` if it is a setting)
+  (or `examples/05-motion.md` if it moves, `examples/06-theming.md` if it is a
+  setting, `examples/07-charts.md` if it is a chart)
 - layout behaviour documented in `docs/layout.md` and shown in `examples/03-layout.md`
 - golden snapshots updated **deliberately**, with the diff reviewed:
   `MIRZAM_UPDATE_SNAPSHOTS=1 cargo test -p mirzam-cli --test golden`
@@ -138,7 +139,7 @@ it small and dependency-free.
 `01-start.md` is on its own: the path from reading about Mirzam to having a
 deck. It is the only one with an order to it.
 
-**02 to 06 are a reference, not a course.** They were labelled a tutorial to be
+**02 to 07 are a reference, not a course.** They were labelled a tutorial to be
 read in order, which was a claim nothing supported — the numbers are subject
 areas, and nobody reads 04 because they finished 03. They are written in the
 markup they document, so the source beside the slides is the example. Ordering
@@ -148,9 +149,10 @@ a change by "which deck owns this":
 |---|---|
 | `02-writing.md` | Everything inside a pane: headings, emphasis, lists, tables, maths, footnotes, emoji. Held to `markup_coverage.rs` — a mark that renders and is not shown here fails CI |
 | `03-layout.md` | Layout rules, one per slide; the companion to `docs/layout.md` |
-| `04-components.md` | Charts, shapes, connectors, media, annotations |
+| `04-components.md` | Shapes, connectors, media, annotations |
 | `05-motion.md` | `anim`, transitions, `effects` |
 | `06-theming.md` | Themes, frontmatter, attributes, custom CSS |
+| `07-charts.md` | Charts: the `chart` block's types, data inline or from CSV, and the per-mark ids `connect` aims at |
 
 `pitch.md`, `research.md`, `seminar.md` and `slideshow.md` are the third group:
 complete decks, written the way somebody would write one for an audience —
@@ -200,7 +202,8 @@ ends with green quality gates can be merged independently; half a feature cannot
 pane, in the renderer's extraction pass — see `crates/mirzam-render/src/charts.rs`)
 → put the semantics in its own crate → emit HTML/SVG from `mirzam-render` using
 theme variables, never hard-coded colors → document in `docs/syntax.md` → add a
-slide to `examples/04-components.md` → update snapshots.
+slide to the deck that owns it, `examples/04-components.md` for most forms and
+`examples/07-charts.md` for anything a `chart` block reads → update snapshots.
 
 **Change how something looks.** Edit `crates/mirzam-render/src/theme/base.css` for
 layout shared by every theme, or `theme/themes/*.css` for one theme's tokens →

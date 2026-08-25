@@ -40,7 +40,7 @@ jobs:
 
       - name: build sample decks
         run: |
-          for deck in 01-start 02-writing 03-layout 04-components 05-motion 06-theming pitch research seminar; do
+          for deck in 01-start 02-writing 03-layout 04-components 05-motion 06-theming 07-charts pitch research seminar; do
             cargo run -q --bin mirzam -- build "examples/$deck.md" -o "/tmp/out-$deck"
           done
 
@@ -96,7 +96,7 @@ jobs:
         run: |
           node scripts/lsp-probe.mjs --expect-clean \
             examples/01-start.md examples/02-writing.md examples/03-layout.md \
-            examples/05-motion.md examples/06-theming.md \
+            examples/05-motion.md examples/06-theming.md examples/07-charts.md \
             examples/pitch.md examples/research.md examples/seminar.md \
             examples/slideshow.md
 
@@ -193,6 +193,7 @@ jobs:
           node scripts/check-layout.mjs --build \
             examples/01-start.md examples/02-writing.md examples/03-layout.md \
             examples/04-components.md examples/05-motion.md examples/06-theming.md \
+            examples/07-charts.md \
             examples/pitch.md examples/research.md examples/seminar.md
       # And the viewer's own behaviour, which the layout check cannot see: it
       # measures the slide, not what happens when somebody presses a key. `O`
@@ -203,6 +204,7 @@ jobs:
           node scripts/check-viewer.mjs --build \
             examples/01-start.md examples/02-writing.md examples/03-layout.md \
             examples/04-components.md examples/05-motion.md examples/06-theming.md \
+            examples/07-charts.md \
             examples/pitch.md examples/research.md examples/seminar.md
 
   bench:

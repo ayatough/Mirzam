@@ -220,9 +220,10 @@ source beside the slides is the example.
 |---|---|
 | [`examples/02-writing.md`](examples/02-writing.md) | Headings, emphasis, lists, tables, maths, footnotes, emoji |
 | [`examples/03-layout.md`](examples/03-layout.md) | Layout rules, one per slide — the companion to [docs/layout.md](docs/layout.md) |
-| [`examples/04-components.md`](examples/04-components.md) | Charts, shapes, connectors, media and annotations, beside their source |
+| [`examples/04-components.md`](examples/04-components.md) | Shapes, connectors, media and annotations, beside their source |
 | [`examples/05-motion.md`](examples/05-motion.md) | Animation: entrances, click-through builds, page turns, presentation effects |
 | [`examples/06-theming.md`](examples/06-theming.md) | Themes, every frontmatter field, attributes, custom CSS |
+| [`examples/07-charts.md`](examples/07-charts.md) | Charts: every type, data inline or from a CSV file, and the marks a connector can point at |
 
 **Whole decks**, written for an audience rather than as documentation:
 

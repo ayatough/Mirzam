@@ -103,104 +103,6 @@ Every block on the following slides is plain Markdown. View the source alongside
 +------------------+-----------------+
 |                  |                 |
 |                  |                 |
-|  bars            |  line           |
-|                  |                 |
-|                  |                 |
-+------------------+-----------------+
-```
-
-::: pane head
-[Charts]{.eyebrow}
-## Data in, chart out
-:::
-
-::: pane bars
-```chart
-type: bar
-id: latency
-title: p95 latency by region (ms)
-data: |
-  region, before, after
-  us-east, 210, 120
-  eu-west, 260, 140
-  ap-ne, 380, 180
-```
-:::
-
-::: pane line
-```chart
-type: line
-id: errors
-title: Error rate (%)
-y_label: "%"
-data: |
-  week, checkout, search
-  W1, 1.8, 0.9
-  W2, 1.2, 0.8
-  W3, 0.7, 0.6
-  W4, 0.4, 0.5
-```
-:::
-
-<!-- note: Both charts are written as CSV in the slide; no image files involved. -->
-
----
-
-```pane
-+------------------------------------+
-|                                    |
-|  head                              |
-+---------------------+--------------+
-|                     |              |
-|                     |              |
-|  chart              |  note        |
-|                     |              |
-|                     |              |
-+---------------------+--------------+
-```
-
-::: pane head
-[Charts]{.eyebrow}
-## An axis that measures
-:::
-
-::: pane chart
-```chart
-type: line
-id: recovery
-title: Error rate after deploy (%), by minute
-y_label: "%"
-x: minute
-data: |
-  checkout, search, minute
-  1.8, 0.9, 0
-  1.2, 0.8, 1
-  0.7, 0.6, 2
-  0.5, 0.5, 5
-  0.4, 0.4, 15
-  0.4, 0.4, 60
-```
-:::
-
-::: pane note {valign=middle}
-- `minute` holds **numbers**, so the axis measures: the hour between 15 and 60
-  is drawn as the hour it is, not as one more step
-- A column of labels — `W1`, `2024 Q1` — keeps the even spacing it always had
-- `x:` names the column, so a file whose value columns come first needs no
-  editing to be plotted
-:::
-
-<!-- note: The tail is flat and sparse; on an evenly spaced axis it would read as a much faster recovery than it was. -->
-
----
-
-```pane
-+------------------------------------+
-|                                    |
-|  head                              |
-+------------------+-----------------+
-|                  |                 |
-|                  |                 |
 |  text            |  fig            |
 |                  |                 |
 |                  |                 |
@@ -1049,9 +951,10 @@ the file: append a row, gain a slide.
 ::: pane main {align=center valign=middle}
 ## That is the whole vocabulary
 
-`pane` · `::: pane` · `chart` · `shape` · `connect` · `annotate` · `bibliography` · `each` · attributes · variables
+`pane` · `::: pane` · `shape` · `connect` · `annotate` · `bibliography` · `each` · attributes · variables
 
-Motion is next door, in `05-motion.md`.
+Charts have a deck of their own, in `07-charts.md`; motion is next door, in
+`05-motion.md`.
 :::
 
 ::: pane foot {align=right}

@@ -79,11 +79,12 @@ fn example_slide_counts() {
         ("01-start.md", 6),
         ("02-writing.md", 11),
         ("03-layout.md", 14),
-        // 27 rendered from 26 authored: the `each` example is one slide
+        // 25 rendered from 24 authored: the `each` example is one slide
         // written, two rows rendered.
-        ("04-components.md", 27),
+        ("04-components.md", 25),
         ("05-motion.md", 11),
         ("06-theming.md", 16),
+        ("07-charts.md", 10),
         ("pitch.md", 9),
         ("research.md", 9),
         ("seminar.md", 12),

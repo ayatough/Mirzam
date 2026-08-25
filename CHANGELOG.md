@@ -45,6 +45,13 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   one — a substitution could previously rewrite the inside of an example.
 
 ### Added
+- **A deck of their own: `examples/07-charts.md`.** Six chart types with keys
+  apiece no longer fit as two slides in the component gallery, so charts moved
+  out of `04-components.md` into a deck that shows each kind, both stackings,
+  the value axis and the projected cloud - and, last, why a chart here is data
+  and not a picture: a phrase and one point of a 3D cloud marked together, in
+  one colour, which is a thing a screenshot cannot offer. `04-components.md`
+  keeps shapes, connectors, media and annotations.
 - **`type: scatter3d`: a point cloud, projected at build time.** Three
   dimensional data otherwise leaves the deck as a screenshot, and a screenshot
   cannot be pointed at — a projected cloud is marks with ids, so `connect` and
