@@ -95,12 +95,32 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - **`x:` names the column a chart's categories come from.** It was always the
   first one, so a spreadsheet exported with its value columns first had to be
   edited before it could be plotted; now `x: minute` picks the column out
-  wherever it sits, and the rest are series as before. New in the gallery:
-  `04-components.md` slide 5, "An axis that measures".
+  wherever it sits, and the rest are series as before. Shown in
+  `07-charts.md`, "An axis that measures".
 - **A chart key nothing reads is reported.** `serde` dropped an unrecognised
   key without a word, so `ylabel` for `y_label` rendered a chart with no axis
   label and said nothing about why. The build now warns, as `build.chart`, and
   draws the chart with everything it did understand.
+- **`mirzam import pdf`: a figure out of a paper and onto a slide.** The job
+  this replaces is a screenshot — crop Figure 3 off the screen, paste the
+  bitmap, retype the caption, forget the citation. The figure is already in
+  the file, usually as curves rather than pixels, with its caption beside it.
+  So: `mirzam import pdf paper.pdf --cite vaswani2017` finds every captioned
+  float, cuts each one out, and prints the line that puts it on a slide —
+  `caption=` filled in from the paper, `credit=` written as `[@vaswani2017]`,
+  which is what lands the paper in the deck's reference list. `--list` says
+  what is in a PDF without writing anything.
+
+  A figure the page stores as one image comes out *untouched*, which is
+  better than any screenshot of it can be. Everything else is cropped, and
+  turned into a vector SVG when this machine has `mutool` or `pdftocairo` —
+  found on `PATH` or named by `MIRZAM_PDFTOOL`, and never bundled, because
+  both are copyleft and running a program is not shipping one. Without either,
+  the crop is a one-page PDF that converts later, and the command says so.
+
+  No new syntax: `caption=`, `credit=` and `[@key]` already existed, and this
+  writes them. New crate `mirzam-figure` holds the part worth testing on its
+  own — which line is a caption, and which ink belongs to it.
 - **`mirzam export pptx`: the deck as a PowerPoint file.** For the room that
   requires one: one picture per slide, photographed by the same headless
   Chromium the PDF export drives, at twice the deck's pixel size and its
@@ -142,12 +162,12 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   the masters file, and a `theme:` path to the stylesheet. Same rules as
   before: no browser, no new dependency, and everything is read from the
   buffer being typed, not the file on disk.
-- **A run of slides from a table: ```each renders a slide per data row.** The
-  slide holding the block is a template — heading, panes, chart and all — and
-  each row of the block's CSV fills its `{{field}}` marks the way frontmatter
-  variables always have, arithmetic included. The rows can live in a file
-  instead (`data: rows.csv`), which is the shape a generated report wants:
-  `serve` watches the file, the numbers change, the deck follows, and
+- **A run of slides from a table: ```` ```each ```` renders a slide per data
+  row.** The slide holding the block is a template — heading, panes, chart and
+  all — and each row of the block's CSV fills its `{{field}}` marks the way
+  frontmatter variables always have, arithmetic included. The rows can live
+  in a file instead (`data: rows.csv`), which is the shape a generated report
+  wants: `serve` watches the file, the numbers change, the deck follows, and
   appending a row adds a slide. This was the one structural advantage Typst's
   scripting held over every Markdown slide tool, and it lands in Mirzam's own
   grammar: no loop, no scripting language, a table where the table would be.
@@ -184,6 +204,27 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   now turns when the clip does, instead of cutting it off mid-sentence. A
   `{.loop}` clip never ends, so it never holds the page; pausing one by hand
   restarts the countdown rather than parking the deck on it.
+- **`mirzam-anim` exposes the effect grammar as a dialect.** A consumer with
+  its own time base (Barnard's beats and loops) can now parse the same
+  `target : effect key=value` clause with its own effect names and duration
+  grammar: `Dialect` (effects, directional set, duration parsers),
+  `parse_effect_in(&Dialect, …)` — which now also owns the `dir=` rules, so
+  they hold identically in every dialect — and `split_line`, which hands the
+  `[trigger]` back uninterpreted for the caller to define. `ParsedEffect`,
+  `parse_target`, `parse_split`, `parse_ms`, `parse_dir` and `parse_ease` are
+  public, and `ease_json` is published as `ease_css`. A dialect also names
+  its `duration_hint` (the example in the missing-duration error, so a beat
+  dialect never recommends `400ms`), and `is_ms_token` — the default
+  `bare_duration` — is public for dialects that accept `ms` plus their own
+  units. `ParsedEffect` is `#[non_exhaustive]` (an output type); `Dialect`
+  deliberately is not, since a consumer writes it as a struct literal.
+  `Dialect::default()` is the slide grammar unchanged; `parse` and its
+  output are byte-identical.
+- **`mirzam-shape` can hand the parsed model across a boundary.** An
+  off-by-default `serde` feature derives `Serialize`/`Deserialize` on
+  `ShapeKind`, `Edge`, `EndRef`, `Shape` and `ShapeDoc` (enums in
+  kebab-case), for consumers that draw the shapes themselves — a canvas, not
+  this crate's SVG. `ShapeDoc` also derives `Debug`, `Clone`, `Default`.
 
 ## [0.9.0] - 2026-08-21
 

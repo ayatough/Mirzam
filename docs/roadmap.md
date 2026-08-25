@@ -61,6 +61,8 @@ changing.
 | A slide's own autoplay dwell; autoplay that waits for a clip | Done · unreleased |
 | Code line highlighting and line numbers (```` ```js {2,4-5 lines} ````) | Done · unreleased |
 | PPTX export, stage one: slide pictures and real speaker notes | Done · unreleased |
+| Quoting a figure out of a paper (`import pdf`) | Done · unreleased |
+| Rendering that figure to SVG without a tool installed | Later |
 | Plugins, PPTX with native text boxes | Later |
 
 Each of those has a brief — what it is for, what is not free about it, and where
@@ -203,6 +205,72 @@ unmet ask across every Markdown slide tool: native text boxes, with elements
 that have no OOXML equivalent rasterized rather than dropped. Google Slides
 comes through the same path. Direct PDF generation without Chromium is a
 separate, larger question that depends on adopting a text layout engine.
+
+**A figure into SVG without a tool installed.** `mirzam import pdf` cuts a
+captioned figure out of a paper and, where the figure is one stored image,
+hands it over untouched. Where it is *drawn* — which is most of what a LaTeX
+paper contains — turning the crop into something a slide can show means
+rendering a PDF page, and when this entry was first written the two libraries
+that did that well were AGPL and GPL. So the command runs `mutool` or
+`pdftocairo` when the machine has one, and writes a one-page cropped PDF when
+it does not: the one step in the whole feature that asks the author to go and
+install something.
+
+That premise has expired. [hayro](https://github.com/LaurenzV/hayro) — a PDF
+interpreter and renderer in pure Rust, from the typst ecosystem, Apache-2.0
+OR MIT — converts a page to SVG (`hayro-svg`) with the text as deduplicated
+outline paths, which is exactly what `text=path` asks of `mutool` today. A
+spike (August 2026) pushed figure crops through it — Type 3 fonts, embedded
+TrueType, un-embedded standard-14 — and each came back correct in under
+20 ms; the crate compiles for `wasm32-unknown-unknown` unchanged. The
+transpiler this section used to plan — three stages of font work, several
+thousand lines, shadings refused — is hayro's daily business, shadings
+included, proven against a corpus of 1400+ PDFs this project could never
+assemble. So the work is adoption, not construction, and the decision is to
+adopt.
+
+What it costs, measured rather than guessed: ~70 crates onto `mirzam-cli` and
+about 5 MB onto the release binary (built with this workspace's own profile),
+an MSRV bump from 1.91 to 1.92, and a real change to "nothing else is
+bundled" — hayro carries Foxit's standard-14 replacement fonts (BSD, ~300 KB)
+and two ICC profiles, so the README's licence paragraph becomes a short
+attribution list rather than an explanation of copyleft held at arm's length.
+hayro is pre-1.0 and says so; the version gets pinned. `--format png` keeps
+its tool for now: rasterizing is hayro's other half and another couple of
+megabytes, a separate decision.
+
+One thing the spike did not weigh, and it is the thing that would otherwise be
+found after the code landed: **hayro converts a page, and does not leave out
+what falls outside it.** A crop here is the same page with a narrowed box, so
+every glyph in both columns rides along in the SVG — 1.49 MB per figure,
+against `mutool`'s 4 to 17 KB, and 1.49 MB whichever figure it is. A deck
+inlines its pictures as data URIs under a 20 MB ceiling, so three figures
+would spend a third of a deck on ink nobody sees.
+
+It is not a blocker, and the fix is small enough to name: dropping the paths
+and `use`s whose box lies outside the `viewBox` brought those same three files
+to 4, 9 and 26 KB, rendering identically. hayro writes absolute coordinates
+under one uniform transform, which is what keeps such a pass short — the
+prototype was forty lines. So adoption carries one piece of work this decision
+does not otherwise mention, and it is worth reporting upstream as well: not
+emitting off-page geometry is hayro's to fix, not ours to work around for
+good.
+
+Also checked while the spike was open: `hayro-svg` alone resolves 61 crates,
+it builds for `wasm32-unknown-unknown` with nothing added, the standard-14
+substitutes are PDFium's Foxit fonts under BSD-3 — attribution, not just a
+mention — and hayro ships CCITT, JBIG2 and JPEG 2000 decoders, which are the
+three stored-image cases `import pdf` refuses today.
+
+What survives from the old plan is its two guard-rails: the refusal path — a
+page hayro will not take falls back to the cropped PDF and says so, rather
+than shipping a picture with something missing from it — and the rendering
+comparison in CI, because an SVG that is subtly wrong looks like an SVG.
+`MIRZAM_PDFTOOL` stays as the escape hatch it already is, and the staged
+transpiler plan stays in this file's history, the fallback if hayro's
+direction ever turns. The WASM dividend stands: the conversion runs where the
+editor extension and the browser build live, so a figure could be imported
+there too.
 
 **Editing anywhere.** The WASM core already runs in a browser; a progressive web
 app on top of it is what makes phone editing real. An Obsidian plugin reuses the

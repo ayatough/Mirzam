@@ -28,6 +28,14 @@ jobs:
       - name: check formatting
         run: cargo fmt --all -- --check
 
+      # /next/ shows the changelog's unreleased section, rendered by a
+      # converter that `build-site.sh` runs in the Pages job - after this
+      # workflow is green, where a reader finds the breakage before anyone
+      # here does. An entry quoting a fence came out as one monospace block
+      # that way. This is the same converter, checked before the merge.
+      - name: the changelog renders on the site
+        run: python3 scripts/changelog-html.py --check
+
       - name: clippy
         run: cargo clippy --workspace --all-targets
 
@@ -37,6 +45,18 @@ jobs:
       #  - incremental build equivalence (incremental == full rebuild)
       - name: test
         run: cargo test --workspace
+
+      # An off-by-default feature is invisible to every line above: neither
+      # `--workspace` nor `--all-targets` turns one on, so the derives and the
+      # round-trip test behind `mirzam-shape/serde` would compile only on the
+      # machine of whoever remembered to ask for them. The consumer that reads
+      # the model across a boundary is not in this repository and cannot fail
+      # this build, so the field that stops deriving `Serialize` has to fail it
+      # here or nowhere.
+      - name: test off-by-default features
+        run: |
+          cargo clippy -p mirzam-shape --all-targets --features serde
+          cargo test -p mirzam-shape --features serde
 
       - name: build sample decks
         run: |

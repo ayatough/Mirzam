@@ -3,6 +3,8 @@
 
 pub mod lsp;
 pub mod mermaid;
+pub mod pdfimport;
+pub mod pdfpage;
 pub mod pipeline;
 pub mod pptx;
 pub mod scaffold;

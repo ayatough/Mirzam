@@ -158,6 +158,7 @@ mirzam build README.md --split h2    # any document becomes a deck, unedited
 mirzam serve deck.md                 # live preview at localhost:4321
 mirzam export pdf deck.md -o deck.pdf
 mirzam check deck.md                 # clipped panes, unresolved connectors, and the rest
+mirzam import pdf paper.pdf --cite vaswani2017   # a figure out of a paper, caption and all
 mirzam skill install                 # teach Claude Code to write decks in this repository
 ```
 
@@ -338,3 +339,9 @@ syntax is the expensive part to get wrong.
 ## License
 
 MIT. The bundled STIX Two Math font is licensed under the SIL Open Font License.
+
+Nothing else is bundled. `import pdf` runs `mutool` (MuPDF, AGPL) or
+`pdftocairo` (Poppler, GPL) when the machine has one, the way the exporter runs
+Chromium — as separate programs, discovered rather than shipped. No copyleft
+code is linked into Mirzam or distributed with it, and what those tools draw is
+the paper's picture, not theirs.

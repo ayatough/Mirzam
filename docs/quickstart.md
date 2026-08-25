@@ -77,6 +77,7 @@ mirzam export pptx deck.md           # PowerPoint: slide pictures + real notes
 mirzam build notes.md --split h2     # any document becomes a deck, unedited
 mirzam export pdf notes.md --split h2 --theme mirzam -o notes.pdf
 mirzam check deck.md                 # clipped panes, unresolved connectors, and the rest
+mirzam import pdf paper.pdf --cite vaswani2017   # a figure out of a paper, caption and all
 ```
 
 `export pdf` takes the same `--split`, `--theme`, `--fit` and `--mode`
@@ -91,6 +92,25 @@ picture per slide, pixel-identical to the deck, with the speaker notes in
 the notes pane where presenter view reads them. The slides are images —
 which is also where every other Markdown slide tool's PowerPoint export
 stops — so edit the Markdown and re-export rather than editing the `.pptx`.
+
+`import pdf` is for the slide that quotes a paper. It reads the PDF, finds the
+captioned figures and tables, cuts each one out, and prints the Markdown line
+that puts it on a slide — the caption taken from the paper, the credit written
+as `[@key]` when `--cite` says which paper this is, so the reference list fills
+itself in. `--list` says what is in the file without writing anything, and
+`--figure 3` takes one.
+
+A figure the page stores as an image comes out as that image, untouched. A
+drawn one is cropped, and becomes a vector SVG if the machine has `mutool`
+(mupdf-tools) or `pdftocairo` (poppler-utils) — neither ships with Mirzam,
+which runs one when it is there and writes the crop as a one-page PDF when it
+is not. Either way it beats a screenshot: the picture is at the paper's own
+resolution rather than the screen's.
+
+```bash
+mirzam import pdf paper.pdf --list                     # what is in there
+mirzam import pdf paper.pdf -o img --cite vaswani2017 >> talk.md
+```
 
 `check` builds the deck and renders it with headless Chromium to catch what a
 build's own warnings cannot: content clipped by its pane, an unresolved

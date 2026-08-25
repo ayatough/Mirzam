@@ -70,6 +70,7 @@ mirzam serve deck.md                 # localhost:4321 でライブプレビュ�
 mirzam build deck.md -o out          # 自己完結 HTML 1 枚
 mirzam export pdf deck.md -o deck.pdf
 mirzam build notes.md --split h2     # 普通の文書をそのままデッキに
+mirzam import pdf paper.pdf --cite vaswani2017   # 論文の図をキャプションごと取り込む
 ```
 
 `new` はフロントマター・タイトルスライド・スライド区切りだけを書き出します
@@ -79,6 +80,23 @@ mirzam build notes.md --split h2     # 普通の文書をそのままデッキ�
 
 `serve` は変更したスライドだけを再描画するので、大きなデッキでも執筆中の反応は
 一定です。
+
+`import pdf` は論文の図を引くためのものです。PDF からキャプションのある図表を探し、
+その領域だけを切り出し、スライドに貼る Markdown 1 行を出力します。キャプションは
+論文から、クレジットは `--cite` で渡したキーの `[@key]` として入るので、参考文献
+リストは引用しただけで埋まります。`--list` は書き出さずに中身だけを表示し、
+`--figure 3` は 1 枚だけを取り出します。
+
+ページに画像として貼られている図はその画像のまま（再ラスタライズなし）出てきます。
+描画された図は切り抜かれ、`mutool`（mupdf-tools）か `pdftocairo`（poppler-utils）が
+入っている環境ではベクタのまま SVG になります。どちらも Mirzam には同梱されておらず、
+あれば呼ぶ、なければ切り抜きを 1 ページの PDF として書いてそう伝えます。いずれにせよ
+画面のスクリーンショットより解像度は上です。
+
+```bash
+mirzam import pdf paper.pdf --list                     # 何が入っているかを見る
+mirzam import pdf paper.pdf -o img --cite vaswani2017 >> talk.md
+```
 
 ## 3. VS Code
 

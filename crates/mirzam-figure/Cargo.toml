@@ -1,0 +1,9 @@
+[package]
+name = "mirzam-figure"
+description = "Captioned figures on a laid-out page: where the caption is, and which ink belongs to it"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]

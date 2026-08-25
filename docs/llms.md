@@ -79,6 +79,12 @@ speaker notes beside it; slides without notes get ruled lines.
 `mirzam export pptx deck.md` writes PowerPoint: one picture per slide plus
 the notes in the notes pane. Edit the Markdown and re-export, not the pptx.
 
+`mirzam import pdf paper.pdf -o img --cite key` cuts the captioned figures out
+of a paper and prints the `![...](...){caption= credit=}` line for each, the
+credit as `[@key]`. `--list` to look first, `--figure 3` for one. A stored
+image comes out as itself; a drawn figure needs `mutool` or `pdftocairo` to
+become an SVG, and is a cropped PDF without one.
+
 `autoplay:` takes an interval — seconds by default (`8s`, `1.5s`, bare `8`),
 `ms` accepted — and optionally `loop`. One advance is one click step, then the
 next slide. In the viewer, `?autoplay=8s+loop` plays any deck and
