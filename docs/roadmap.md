@@ -61,6 +61,8 @@ changing.
 | A slide's own autoplay dwell; autoplay that waits for a clip | Done · unreleased |
 | Code line highlighting and line numbers (```` ```js {2,4-5 lines} ````) | Done · unreleased |
 | PPTX export, stage one: slide pictures and real speaker notes | Done · unreleased |
+| Quoting a figure out of a paper (`import pdf`) | Done · unreleased |
+| Rendering that figure to SVG without a tool installed | Later |
 | Plugins, PPTX with native text boxes | Later |
 
 Each of those has a brief — what it is for, what is not free about it, and where
@@ -203,6 +205,49 @@ unmet ask across every Markdown slide tool: native text boxes, with elements
 that have no OOXML equivalent rasterized rather than dropped. Google Slides
 comes through the same path. Direct PDF generation without Chromium is a
 separate, larger question that depends on adopting a text layout engine.
+
+**A figure into SVG without a tool installed.** `mirzam import pdf` cuts a
+captioned figure out of a paper and, where the figure is one stored image,
+hands it over untouched. Where it is *drawn* — which is most of what a LaTeX
+paper contains — turning the crop into something a slide can show means
+rendering a PDF page, and the two libraries that do that well are AGPL and
+GPL. So the command runs `mutool` or `pdftocairo` when the machine has one,
+and writes a one-page cropped PDF when it does not. That fallback is honest
+but it is a fallback: the one step in the whole feature that asks the author
+to go and install something.
+
+Closing it means writing the conversion, and the shape of that work is not a
+rasterizer. It is a **transpiler from one PDF page to SVG**: paths, clips and
+placed images map across almost directly, and the measuring pass in
+`mirzam-cli/src/pdfpage.rs` already walks a content stream keeping the
+transform, so half the plumbing exists. Shadings and patterns are rare enough
+in figures to refuse outright.
+
+**Text is the whole difficulty**, and it splits into two roads. Outlining the
+glyphs — a CFF charstring interpreter, TrueType `glyf`, Type 1 `eexec` — is
+always correct and is several thousand lines. Re-packaging the embedded font
+into an `@font-face` is far less code, since `/FontFile2` is already a
+complete TrueType file, but a subset font carries its own encoding, so the
+character map has to be rebuilt from `/ToUnicode` and getting it wrong prints
+the wrong letters rather than failing.
+
+Staged, with the honest caveat attached:
+
+1. Paths, clips and images only; a figure containing text still goes to the
+   tool. Diagrams and schematics stop needing one.
+2. `/FontFile2` and OpenType inlined as `@font-face` — figures out of Word and
+   Chromium stop needing one.
+3. CFF and Type 1 outlined. **Only here does "no tool required" become true**,
+   because the papers this feature exists for are set in LaTeX.
+
+So it is one piece of work, not three, and it should be judged as such. Two
+things have to come with it: a rendering comparison in CI, because an SVG that
+is subtly wrong looks like an SVG, and a refusal path — anything the
+transpiler does not cover falls back to the crop and says so, rather than
+writing a picture with something missing from it. What it buys, beyond the
+missing install: the conversion would run in WebAssembly, which is where the
+editor extension and the browser build could import a figure too, and the
+licence question in the README stops needing a paragraph.
 
 **Editing anywhere.** The WASM core already runs in a browser; a progressive web
 app on top of it is what makes phone editing real. An Obsidian plugin reuses the

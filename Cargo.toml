@@ -10,6 +10,7 @@ members = [
     "crates/mirzam-connect",
     "crates/mirzam-anim",
     "crates/mirzam-annot",
+    "crates/mirzam-figure",
     "crates/mirzam-tmath",
     "crates/mirzam-render",
     "crates/mirzam-cli",
@@ -44,6 +45,7 @@ mirzam-cite = { path = "crates/mirzam-cite" }
 mirzam-connect = { path = "crates/mirzam-connect" }
 mirzam-anim = { path = "crates/mirzam-anim" }
 mirzam-annot = { path = "crates/mirzam-annot" }
+mirzam-figure = { path = "crates/mirzam-figure" }
 mirzam-tmath = { path = "crates/mirzam-tmath" }
 mirzam-render = { path = "crates/mirzam-render" }
 comrak = "0.39"

@@ -28,6 +28,14 @@ jobs:
       - name: check formatting
         run: cargo fmt --all -- --check
 
+      # /next/ shows the changelog's unreleased section, rendered by a
+      # converter that `build-site.sh` runs in the Pages job - after this
+      # workflow is green, where a reader finds the breakage before anyone
+      # here does. An entry quoting a fence came out as one monospace block
+      # that way. This is the same converter, checked before the merge.
+      - name: the changelog renders on the site
+        run: python3 scripts/changelog-html.py --check
+
       - name: clippy
         run: cargo clippy --workspace --all-targets
 

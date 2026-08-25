@@ -28,6 +28,26 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   one — a substitution could previously rewrite the inside of an example.
 
 ### Added
+- **`mirzam import pdf`: a figure out of a paper and onto a slide.** The job
+  this replaces is a screenshot — crop Figure 3 off the screen, paste the
+  bitmap, retype the caption, forget the citation. The figure is already in
+  the file, usually as curves rather than pixels, with its caption beside it.
+  So: `mirzam import pdf paper.pdf --cite vaswani2017` finds every captioned
+  float, cuts each one out, and prints the line that puts it on a slide —
+  `caption=` filled in from the paper, `credit=` written as `[@vaswani2017]`,
+  which is what lands the paper in the deck's reference list. `--list` says
+  what is in a PDF without writing anything.
+
+  A figure the page stores as one image comes out *untouched*, which is
+  better than any screenshot of it can be. Everything else is cropped, and
+  turned into a vector SVG when this machine has `mutool` or `pdftocairo` —
+  found on `PATH` or named by `MIRZAM_PDFTOOL`, and never bundled, because
+  both are copyleft and running a program is not shipping one. Without either,
+  the crop is a one-page PDF that converts later, and the command says so.
+
+  No new syntax: `caption=`, `credit=` and `[@key]` already existed, and this
+  writes them. New crate `mirzam-figure` holds the part worth testing on its
+  own — which line is a caption, and which ink belongs to it.
 - **`mirzam export pptx`: the deck as a PowerPoint file.** For the room that
   requires one: one picture per slide, photographed by the same headless
   Chromium the PDF export drives, at twice the deck's pixel size and its
@@ -69,12 +89,12 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   the masters file, and a `theme:` path to the stylesheet. Same rules as
   before: no browser, no new dependency, and everything is read from the
   buffer being typed, not the file on disk.
-- **A run of slides from a table: ```each renders a slide per data row.** The
-  slide holding the block is a template — heading, panes, chart and all — and
-  each row of the block's CSV fills its `{{field}}` marks the way frontmatter
-  variables always have, arithmetic included. The rows can live in a file
-  instead (`data: rows.csv`), which is the shape a generated report wants:
-  `serve` watches the file, the numbers change, the deck follows, and
+- **A run of slides from a table: ```` ```each ```` renders a slide per data
+  row.** The slide holding the block is a template — heading, panes, chart and
+  all — and each row of the block's CSV fills its `{{field}}` marks the way
+  frontmatter variables always have, arithmetic included. The rows can live
+  in a file instead (`data: rows.csv`), which is the shape a generated report
+  wants: `serve` watches the file, the numbers change, the deck follows, and
   appending a row adds a slide. This was the one structural advantage Typst's
   scripting held over every Markdown slide tool, and it lands in Mirzam's own
   grammar: no loop, no scripting language, a table where the table would be.

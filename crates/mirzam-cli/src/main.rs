@@ -7,7 +7,7 @@
 
 mod check;
 
-use mirzam_cli::{pipeline, scaffold, serve, skill};
+use mirzam_cli::{pdfimport, pipeline, scaffold, serve, skill};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -225,6 +225,79 @@ fn main() -> ExitCode {
             };
             run(check::check(&input, &opts))
         }
+        Some("import") => {
+            if args.get(1).map(String::as_str) != Some("pdf") {
+                return usage("import takes a format: pdf");
+            }
+            let mut opts = pdfimport::Options::default();
+            let mut input: Option<PathBuf> = None;
+            let mut i = 2;
+            while i < args.len() {
+                match args[i].as_str() {
+                    "-o" | "--out" => {
+                        i += 1;
+                        match args.get(i) {
+                            Some(dir) => opts.out_dir = PathBuf::from(dir),
+                            None => return usage("-o requires an output directory"),
+                        }
+                    }
+                    "--figure" => {
+                        i += 1;
+                        match args.get(i) {
+                            Some(n) => opts.only = Some(n.clone()),
+                            None => {
+                                return usage("--figure requires a number, as the paper writes it")
+                            }
+                        }
+                    }
+                    "--page" => {
+                        i += 1;
+                        match args.get(i).and_then(|v| v.parse().ok()) {
+                            Some(n) => opts.page = Some(n),
+                            None => return usage("--page requires a page number"),
+                        }
+                    }
+                    "--format" => {
+                        i += 1;
+                        match args.get(i).map(|f| pdfimport::Format::parse(f)) {
+                            Some(Ok(format)) => opts.format = format,
+                            Some(Err(e)) => return usage(&e),
+                            None => return usage("--format takes auto, svg, png, image or pdf"),
+                        }
+                    }
+                    "--dpi" => {
+                        i += 1;
+                        match args.get(i).and_then(|v| v.parse().ok()).filter(|&d| d > 0) {
+                            Some(dpi) => opts.dpi = dpi,
+                            None => return usage("--dpi requires a resolution"),
+                        }
+                    }
+                    "--cite" => {
+                        i += 1;
+                        match args.get(i) {
+                            Some(key) => opts.cite = Some(key.clone()),
+                            None => return usage("--cite requires a bibliography key"),
+                        }
+                    }
+                    "--tool" => {
+                        i += 1;
+                        match args.get(i) {
+                            Some(p) => opts.tool = Some(p.clone()),
+                            None => return usage("--tool requires an executable path"),
+                        }
+                    }
+                    "--list" => opts.list = true,
+                    arg if input.is_none() => input = Some(PathBuf::from(arg)),
+                    arg => return usage(&format!("unknown argument: {arg}")),
+                }
+                i += 1;
+            }
+            let Some(input) = input else {
+                return usage("a PDF is required");
+            };
+            opts.input = input;
+            run(import_pdf(&opts))
+        }
         Some("lsp") => {
             if args.len() > 1 {
                 return usage("lsp takes no arguments - the editor starts it and speaks to it");
@@ -306,6 +379,50 @@ fn edit_distance(a: &str, b: &str) -> usize {
     prev[b.len()]
 }
 
+/// `import pdf`: what was found, where it went, and the line to paste.
+///
+/// The Markdown goes to stdout and everything else to stderr, so the useful
+/// half can be piped straight into a deck:
+/// `mirzam import pdf paper.pdf --cite vaswani2017 >> talk.md`.
+fn import_pdf(options: &pdfimport::Options) -> Result<(), String> {
+    let import = pdfimport::run(options)?;
+    let found = &import.figures;
+    for figure in found {
+        let size = format!(
+            "{:.0}×{:.0}pt",
+            figure.box_pt.width(),
+            figure.box_pt.height()
+        );
+        match &figure.file {
+            Some(file) => eprintln!(
+                "  {} - page {}, {size}, {} -> {}",
+                figure.label,
+                figure.page,
+                figure.how,
+                file.display()
+            ),
+            None => eprintln!(
+                "  {} - page {}, {size}: {}",
+                figure.label, figure.page, figure.caption
+            ),
+        }
+        if !options.list {
+            println!("{}", figure.markdown(&import.credit));
+        }
+    }
+    eprintln!(
+        "{} {} in {}",
+        found.len(),
+        if found.len() == 1 {
+            "figure"
+        } else {
+            "figures"
+        },
+        options.input.display()
+    );
+    Ok(())
+}
+
 fn run(result: Result<(), String>) -> ExitCode {
     match result {
         Ok(()) => ExitCode::SUCCESS,
@@ -346,6 +463,9 @@ Usage:
                [--fit shrink] [--mode light|dark] [--base-url <url>]
                [--debug-layout] [--chromium <bin>] [--min-slack <px>]
                [--format text|json]
+  mirzam import pdf <paper.pdf> [-o <dir>] [--figure <n>] [--page <n>]
+               [--format auto|svg|png|image|pdf] [--dpi <n>] [--cite <key>]
+               [--tool <bin>] [--list]
   mirzam lsp
   mirzam skill install [--user] [--zip [<path>]] [--force]
 
@@ -367,6 +487,14 @@ Usage:
           `pptx` writes one picture per slide - where every Markdown slide
           tool's PowerPoint export stops today - with the speaker notes in
           the notes pane, where presenter view reads them
+  import  cut a captioned figure out of a PDF and write the Markdown that
+          puts it on a slide - caption and credit filled in, and the credit
+          written as `[@key]` when --cite says which paper this is. A figure
+          the page stores as one image comes out untouched; anything else is
+          cropped, and turned into an SVG when `mutool` or `pdftocairo` is
+          installed (also honors MIRZAM_PDFTOOL). Neither is bundled: both
+          are copyleft, and Mirzam runs one rather than shipping it.
+          --list says what is in the file without writing anything
   check   build the deck, then render it with headless Chromium (also honors
           MIRZAM_CHROMIUM) and report every slide with content clipped by its
           pane, panes overflowing into a neighbour, a nested list sized wrong,

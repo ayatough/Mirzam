@@ -20,8 +20,15 @@ mirzam-core.workspace = true
 mirzam-layout.workspace = true
 mirzam-render.workspace = true
 mirzam-anim.workspace = true
+mirzam-figure.workspace = true
 tiny_http = "0.12"
 serde_json = "1"
+# Reading a PDF, for `import pdf`. Default features off on purpose: they add a
+# date library, a thread pool and a cipher suite to answer questions this only
+# asks of the page tree. `flate2` comes with it either way, and is what the
+# extracted images are compressed with on the way back out.
+lopdf = { version = "0.44", default-features = false }
+flate2 = "1"
 
 [dev-dependencies]
 comrak = { version = "0.54", default-features = false, features = ["shortcodes"] }

@@ -895,6 +895,12 @@ way a `[@key]` in prose does. Free text is a credit too:
 **A value with a space in it goes in `"quotes"`**, and the whole reference has
 to fit on one source line, like every other attribute list.
 
+**A figure quoted from a paper need not be retyped.** `mirzam import pdf
+paper.pdf --cite vaswani2017` cuts the captioned figures out of the PDF and
+writes exactly this line for each one, caption and credit filled in from the
+paper — see [the quickstart](quickstart.md). It is the same markup either way;
+the command only saves the screenshot and the typing.
+
 With `fit=contain` the picture takes its own shape inside the pane rather than
 filling it, so the caption sits against the picture's own bottom edge instead
 of an inch below a letterboxed one. Both lines are centred under the picture
