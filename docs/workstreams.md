@@ -1565,8 +1565,13 @@ itself from the moment it opens.
 are placed by the quoted-token rule below. The VS Code extension now starts it,
 with the protocol layer written here rather than taken from
 `vscode-languageclient`, so the package keeps its no-dependencies property and
-a machine without the CLI keeps the preview it always had. Stage 3 — the layout
-pass as a command — is not started.
+a machine without the CLI keeps the preview it always had. The browser editor
+answers the same question its own way: it cannot run a server — there is no
+process in a browser — but it does not need one, since the WASM core already
+had the warnings and now places them too, so its strip is a list of rows that
+put the cursor on the word. The rule for reading a place out of a message
+lives in `mirzam-render::diagnose`, beside the kind table, so all three agree.
+Stage 3 — the layout pass as a command — is not started.
 
 The VS Code extension previews a deck and understands nothing about it. Type
 `::: pane fig` when the grid drew `figure`, cite `[@wilson2021]` when the

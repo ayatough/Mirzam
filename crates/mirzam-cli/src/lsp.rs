@@ -18,6 +18,7 @@
 //! specification does not need a runtime brought in to speak it.
 
 use crate::pipeline::{self, warning_kind, BuildOutput, RenderCache};
+use mirzam_render::diagnose::{line_column, line_end, locate};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::{BufRead, Read, Write};
@@ -793,51 +794,6 @@ fn slide_end(built: &BuildOutput, slide: Option<usize>, file: &Path) -> Option<u
     (next.0 == file).then_some(next.1)
 }
 
-/// The range a diagnostic underlines.
-///
-/// A warning knows its slide, not its token — but it *quotes* what is wrong:
-/// "`[@wilson2021]` is in no bibliography entry", "pane `fig` is not in the
-/// layout", "unknown theme `nord2`". So the first backticked word in the
-/// message is looked for inside the slide, and that is the range. It is an
-/// approximation and is documented as one: the first occurrence wins, and a
-/// message that quotes nothing falls back to the slide's first line, which is
-/// still better than underlining the slide.
-///
-/// The exact answer is a span on every warning, which means changing the
-/// `Vec<String>` every crate builds them in. That is a stream of its own; this
-/// costs nothing and does not stand in its way.
-fn locate(text: &str, from: usize, to: usize, message: &str) -> (usize, usize) {
-    if let Some(token) = quoted(message) {
-        if let Some(window) = text.get(from..to) {
-            if let Some(at) = window.find(&token) {
-                return (from + at, from + at + token.len());
-            }
-        }
-        // Frontmatter warnings belong to no slide, so the window is the whole
-        // file and this is the same search: `theme:` names its bad value, and
-        // the value is up there in the YAML.
-        if from == 0 {
-            if let Some(at) = text.find(&token) {
-                return (at, at + token.len());
-            }
-        }
-    }
-    let start = text[..from.min(text.len())]
-        .rfind('\n')
-        .map_or(0, |nl| nl + 1);
-    let start = start + text[start..].len() - text[start..].trim_start().len();
-    (start, line_end(text, start))
-}
-
-/// The first backticked run in a warning message, when it holds one worth
-/// looking for. A single character is not: `` `D` `` is a key, and finding a
-/// `D` somewhere on the slide points at nothing.
-fn quoted(message: &str) -> Option<String> {
-    let after = message.split_once('`')?.1;
-    let token = after.split_once('`')?.0;
-    (token.len() > 1 && !token.contains('\n')).then(|| token.to_string())
-}
-
 /// The first heading in a slide, as its name in the outline.
 fn heading(text: &str, from: usize, to: usize) -> Option<String> {
     let slide = text.get(from..to.min(text.len()))?;
@@ -878,12 +834,6 @@ fn strip_tags(text: &str) -> String {
     out.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-fn line_end(text: &str, from: usize) -> usize {
-    text[from.min(text.len())..]
-        .find('\n')
-        .map_or(text.len(), |nl| from + nl)
-}
-
 /// A byte range as the protocol wants it: zero-based lines, and columns
 /// counted in UTF-16 code units, which is what makes a deck written in
 /// Japanese land its marks where the text is.
@@ -892,15 +842,8 @@ fn span(text: &str, start: usize, end: usize) -> Value {
 }
 
 fn position(text: &str, offset: usize) -> Value {
-    let upto = &text[..offset.min(text.len())];
-    let line = upto.matches('\n').count();
-    let column = upto
-        .rfind('\n')
-        .map_or(upto, |nl| &upto[nl + 1..])
-        .chars()
-        .map(char::len_utf16)
-        .sum::<usize>();
-    json!({ "line": line, "character": column })
+    let (line, character) = line_column(text, offset);
+    json!({ "line": line, "character": character })
 }
 
 fn is_markdown(path: &Path) -> bool {
@@ -1186,22 +1129,6 @@ mod tests {
             position(text, "日本語のスライド ".len()),
             json!({ "line": 0, "character": 9 })
         );
-    }
-
-    #[test]
-    fn a_message_quoting_nothing_falls_back_to_the_line_it_starts_on() {
-        let text = "one\n  two\nthree\n";
-        assert_eq!(locate(text, 6, text.len(), "nothing quoted here"), (6, 9));
-    }
-
-    #[test]
-    fn a_single_character_is_not_a_token_worth_hunting() {
-        assert_eq!(quoted("press `D` to flip the deck"), None);
-        assert_eq!(
-            quoted("pane `fig` is not in the layout").as_deref(),
-            Some("fig")
-        );
-        assert_eq!(quoted("nothing here"), None);
     }
 
     #[test]

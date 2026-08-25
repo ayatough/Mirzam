@@ -27,6 +27,12 @@ Open it, present from it, email it, put it on a share.
 - **Pictures work.** Attach, drop or paste an image; it is inserted as
   `![](shot.png)` and its bytes end up inside the downloaded file. Screenshots
   from a paper are exactly the case this is for.
+- **A warning is a place to go.** Under the editor, anything the build has to
+  say about the deck is a row carrying the line it is about — an unknown theme,
+  a pane name that does not match the grid, a citation key nothing defines —
+  and pressing one puts the cursor on the word. These are the mistakes that
+  look fine in the preview: a mistyped pane name silently drops its content off
+  the slide.
 - **On a phone** the editor and the preview take turns, with a tab each.
 - **Start from nothing.** **New** empties the editor for a deck of your own;
   **Sample** puts the example back. Your draft is only in that browser, so both

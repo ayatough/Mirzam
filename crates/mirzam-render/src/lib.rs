@@ -8,6 +8,7 @@ mod charts;
 mod cite;
 mod code;
 mod connect;
+pub mod diagnose;
 mod effects;
 mod inline;
 mod json;

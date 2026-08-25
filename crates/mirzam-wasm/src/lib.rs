@@ -84,7 +84,16 @@ pub struct RenderOutput {
     pub html: String,
     /// Warnings, as a JSON array.
     pub warnings: String,
+    /// The same warnings with a place in the source, as a JSON array of
+    /// `{message, kind, line, character, endLine, endCharacter}`. Separate
+    /// from `warnings` rather than replacing it: a host that only prints them
+    /// keeps working, and one that can point at them has what it needs.
+    pub diagnostics: String,
     pub slide_count: usize,
+}
+
+fn placed_json(placed: &[Placed]) -> String {
+    serde_json::Value::Array(placed.iter().map(Placed::to_json).collect()).to_string()
 }
 
 /// Renderer with incremental support.
@@ -144,6 +153,7 @@ impl Renderer {
         RenderOutput {
             html: mirzam_render::assemble_page(&built.meta, &built.sections, &opts),
             warnings: serde_json::to_string(&built.warnings).unwrap_or_else(|_| "[]".into()),
+            diagnostics: placed_json(&built.diagnostics),
             slide_count: built.sections.len(),
         }
     }
@@ -179,6 +189,7 @@ impl Renderer {
             "structural": structural,
             "changes": changes,
             "warnings": built.warnings,
+            "diagnostics": built.diagnostics.iter().map(Placed::to_json).collect::<Vec<_>>(),
         })
         .to_string();
         *prev = built.sections;
@@ -271,10 +282,114 @@ struct Built {
     meta: mirzam_core::DeckMeta,
     sections: Vec<String>,
     warnings: Vec<String>,
+    /// The same warnings, each with the place in the *editor's buffer* it is
+    /// about — for a host that can show a person where to look rather than
+    /// only what is wrong. Warnings belonging to a transcluded file are left
+    /// out: an editor showing one document cannot point into another.
+    diagnostics: Vec<Placed>,
     /// The stylesheets named by `theme:`, when the host supplied them.
     file_themes: Vec<mirzam_render::FileTheme>,
     /// Everything the assembled page carries around the slides.
     page_fingerprint: u64,
+}
+
+/// A warning, and the place in the *root* document it is about.
+///
+/// Lines are zero-based and columns are UTF-16 code units, which is what a
+/// browser's `textarea` counts in — so a mark on a line of Japanese lands on
+/// the word rather than several characters to its left.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Placed {
+    message: String,
+    kind: &'static str,
+    line: usize,
+    character: usize,
+    end_line: usize,
+    end_character: usize,
+}
+
+impl Placed {
+    fn to_json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "message": self.message,
+            "kind": self.kind,
+            "line": self.line,
+            "character": self.character,
+            "endLine": self.end_line,
+            "endCharacter": self.end_character,
+        })
+    }
+}
+
+/// Puts each warning where it belongs in the document being edited.
+///
+/// A warning names a *rendered* slide, and an editor holds *authored* text, so
+/// the walk is: the number in the message, to the slide somebody wrote (which
+/// an ```each fence makes a many-to-one step), to that slide's span in the
+/// expanded document, to a byte of the root file through the source map. From
+/// there the shared rule in `mirzam-render` finds the word the message quotes.
+///
+/// Two kinds of warning get no place, and are dropped rather than guessed at:
+/// one about a slide living in a transcluded file — an editor showing one
+/// document cannot point into another — and one naming a slide that is not
+/// there, which a deck mid-edit can briefly produce.
+fn place(
+    source: &str,
+    expanded: &mirzam_syntax::Expansion,
+    authored_spans: &[mirzam_syntax::SlideSpan],
+    authored_of: &[usize],
+    warnings: &[String],
+) -> Vec<Placed> {
+    let root = Path::new("");
+    // Where a slide begins in the root file, or `None` when it begins in a
+    // file this editor is not showing.
+    let in_root = |at: usize| -> Option<usize> {
+        expanded
+            .map
+            .lookup(at)
+            .filter(|(file, _)| *file == root)
+            .map(|(_, offset)| offset)
+    };
+
+    let mut out = Vec::new();
+    for message in warnings {
+        let window = match mirzam_render::diagnose::slide_number(message) {
+            Some(rendered) => {
+                let Some(&authored) = rendered
+                    .checked_sub(1)
+                    .and_then(|index| authored_of.get(index))
+                else {
+                    continue;
+                };
+                let Some(from) = authored_spans.get(authored).and_then(|s| in_root(s.start)) else {
+                    continue;
+                };
+                // The next slide bounds the search. One that starts in another
+                // file ends this one at the end of the document, which is the
+                // widest honest window rather than a wrong narrow one.
+                let to = authored_spans
+                    .get(authored + 1)
+                    .and_then(|s| in_root(s.start))
+                    .unwrap_or(source.len());
+                (from, to)
+            }
+            // A warning about the deck rather than one of its slides — the
+            // frontmatter's, usually — searches the whole document.
+            None => (0, source.len()),
+        };
+        let (start, end) = mirzam_render::diagnose::locate(source, window.0, window.1, message);
+        let (line, character) = mirzam_render::diagnose::line_column(source, start);
+        let (end_line, end_character) = mirzam_render::diagnose::line_column(source, end);
+        out.push(Placed {
+            message: message.clone(),
+            kind: mirzam_render::diagnose::warning_kind(message),
+            line,
+            character,
+            end_line,
+            end_character,
+        });
+    }
+    out
 }
 
 impl Built {
@@ -314,14 +429,24 @@ impl Renderer {
         }
         warnings.extend(meta.grid_metrics().1);
         // There is no current directory in WASM, so the base is an empty path.
+        // The offset is the frontmatter's length, so the map speaks in offsets
+        // into the file somebody is editing rather than into the body — which
+        // is what lets a warning be pointed at in a `textarea`.
+        let body_offset = source.len() - body.len();
         let expanded = mirzam_syntax::expand_includes_mapped(
             body,
-            0,
+            body_offset,
             Path::new(""),
             Path::new(""),
             &MapFiles(&self.files),
             &mut Default::default(),
         );
+        // The authored slides, in the coordinates the map speaks: split before
+        // variables are substituted, because a substitution moves every offset
+        // after it and the map does not know it happened. The rule is the same
+        // either way, so the two splits agree on where a slide begins.
+        let authored_spans =
+            mirzam_syntax::split_slides_spanned(&expanded.text, meta.split_level());
         // Reported here as well as in the CLI: a section drawn on the deck's
         // shapes rather than its own looks the same in both, and a preview
         // that stayed quiet about it would be the place nobody found out.
@@ -338,17 +463,27 @@ impl Renderer {
         // to show the slides a build will produce, not the template. Rows in a
         // file come out of the host's table, like everything a deck reads.
         let mut slide_srcs: Vec<String> = Vec::new();
-        for src in mirzam_syntax::split_slides_at(&body, meta.split_level()) {
+        // Which authored slide each rendered one came from. They are the same
+        // list until an ```each fence turns one slide into a row's worth, and
+        // a warning about the fourth rendered slide has to point at the one
+        // slide somebody actually wrote.
+        let mut authored_of: Vec<usize> = Vec::new();
+        for (authored, src) in mirzam_syntax::split_slides_at(&body, meta.split_level())
+            .into_iter()
+            .enumerate()
+        {
             let extracted = match mirzam_syntax::extract_each(&src) {
                 Ok(found) => found,
                 Err(e) => {
                     warnings.push(e);
                     slide_srcs.push(src);
+                    authored_of.push(authored);
                     continue;
                 }
             };
             let Some((block, template)) = extracted else {
                 slide_srcs.push(src);
+                authored_of.push(authored);
                 continue;
             };
             let table = mirzam_syntax::parse_each_spec(&block).and_then(|spec| {
@@ -383,11 +518,13 @@ impl Renderer {
                             })
                             .collect();
                         slide_srcs.push(substitute_outside_fences(&template, &row_vars));
+                        authored_of.push(authored);
                     }
                 }
                 Err(e) => {
                     warnings.push(e);
                     slide_srcs.push(template);
+                    authored_of.push(authored);
                 }
             }
         }
@@ -477,10 +614,14 @@ impl Renderer {
         }
         let page_fingerprint =
             mirzam_render::page_fingerprint(&meta, &sections, &page_options(file_themes.clone()));
+        // Last, because every warning has to be in before any of them can be
+        // placed - a citation's is pushed after the slides have rendered.
+        let diagnostics = place(source, &expanded, &authored_spans, &authored_of, &warnings);
         Built {
             meta,
             sections,
             warnings,
+            diagnostics,
             file_themes,
             page_fingerprint,
         }
@@ -533,6 +674,71 @@ fn substitute_outside_fences(body: &str, vars: &BTreeMap<String, mirzam_core::Va
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The editor's whole reason for wanting these: a warning that names a
+    /// line is one a person can click, and one that does not is a sentence
+    /// they have to go and search for.
+    #[test]
+    fn a_warning_is_placed_on_the_word_it_quotes() {
+        let deck = "---\ntitle: T\ntheme: nosuchtheme\n---\n\n```pane\n+-----+\n|     |\n| a   |\n|     |\n+-----+\n```\n\n::: pane nowhere\nText.\n:::\n";
+        let placed = Renderer::new().build(deck).diagnostics;
+        let seen: Vec<(usize, usize, &str)> = placed
+            .iter()
+            .map(|p| (p.line, p.character, p.kind))
+            .collect();
+        assert_eq!(
+            seen,
+            vec![(2, 7, "build.theme"), (13, 9, "build.layout")],
+            "{:?}",
+            placed.iter().map(|p| &p.message).collect::<Vec<_>>()
+        );
+        // And the range covers the word itself, not the rest of the line.
+        assert_eq!(placed[0].end_character, 7 + "nosuchtheme".len());
+    }
+
+    /// An ```each fence turns one authored slide into a row's worth, so the
+    /// number in the message stops being the number of the slide somebody
+    /// wrote. Without the mapping the mark lands on an earlier slide.
+    #[test]
+    fn a_warning_after_an_each_fence_points_at_the_slide_that_was_written() {
+        let deck = "---\ntitle: T\n---\n\n# One\n\n---\n\n```each\nname\na\nb\nc\n```\n\n# {{ name }}\n\n---\n\n```pane\n+-----+\n|     |\n| a   |\n|     |\n+-----+\n```\n\n::: pane nowhere\nText.\n:::\n";
+        let built = Renderer::new().build(deck);
+        // Five rendered slides - one, three rows, one - and one warning, about
+        // the last of them.
+        assert_eq!(built.sections.len(), 5);
+        assert_eq!(built.diagnostics.len(), 1, "{:?}", built.warnings);
+        let mark = &built.diagnostics[0];
+        let line = deck.lines().nth(mark.line).expect("a line");
+        assert!(
+            line.contains("::: pane nowhere"),
+            "landed on {:?} instead",
+            line
+        );
+    }
+
+    /// A warning about a slide that begins inside a transcluded file has no
+    /// place in the document the editor is showing, so it is dropped rather
+    /// than pointed at whatever line happens to be nearby.
+    #[test]
+    fn a_warning_about_another_file_is_left_unplaced() {
+        let section = "# From the file\n\n---\n\n```pane\n+-----+\n|     |\n| a   |\n|     |\n+-----+\n```\n\n::: pane nowhere\nText.\n:::\n";
+        let mut renderer = Renderer::new();
+        renderer
+            .set_files(&serde_json::json!({ "part.md": section }).to_string())
+            .expect("files");
+        let deck = "---\ntitle: T\n---\n\n# One\n\n![[part.md]]\n";
+        let built = renderer.build(deck);
+        assert!(
+            built.warnings.iter().any(|w| w.contains("nowhere")),
+            "the transcluded slide should still warn: {:?}",
+            built.warnings
+        );
+        assert!(
+            built.diagnostics.is_empty(),
+            "a warning about another file was placed anyway: {:?}",
+            built.diagnostics
+        );
+    }
 
     #[test]
     fn renders_page_with_includes_and_assets() {

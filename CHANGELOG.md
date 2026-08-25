@@ -8,6 +8,21 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- **The browser editor says *where* a warning is.** The strip under the editor
+  used to be one line of text with ` / ` between the warnings, which said what
+  was wrong and never where — and most of these are mistakes whose whole
+  difficulty is finding them: a pane name that does not match the grid drops
+  its content off the slide, an unknown theme falls back to the default, and
+  the preview looks fine in both cases. Each warning is now a row carrying the
+  line it is about, and pressing it puts the cursor on the word the message
+  quotes.
+
+  The core answers with the place, so the CLI, the language server and the
+  editor agree on it: the rule for reading a location back out of a warning
+  moved into `mirzam-render::diagnose` alongside the kind table `check
+  --format json` has always used. `RenderOutput` grew a `diagnostics` field
+  beside `warnings`, and `render_changed` the same key — additive, so a host
+  that only prints the sentences keeps working.
 - **The VS Code extension starts `mirzam lsp`.** The server has completed,
   hovered and jumped since it landed, and the one editor this project ships an
   extension for did not start it — so none of it reached the people using it.

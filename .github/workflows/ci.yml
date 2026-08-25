@@ -276,3 +276,27 @@ jobs:
         with:
           name: mirzam-wasm
           path: pkg/
+
+      # The browser editor is the only surface with no check at all, and it is
+      # the one shipped to people who install nothing. This opens it, types a
+      # deck with two invisible mistakes in it, and presses a warning the way a
+      # person does - which is the half no unit test can see: the row is a
+      # button, pressing it takes focus off the editor, and a caret set on a
+      # textarea that has lost focus is one the browser puts back at the end.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: install the browser
+        # Bounded, and retried, because this step is where the runner hangs.
+        # See the layout job for the whole story.
+        run: |
+          for attempt in 1 2 3; do
+            if timeout -k 30s 5m bash -c 'npm i playwright-core && npx playwright install --with-deps chromium'; then
+              exit 0
+            fi
+            echo "attempt $attempt did not finish inside five minutes; retrying"
+          done
+          echo "the browser would not install in three attempts"
+          exit 1
+      - name: check the browser editor
+        run: node scripts/check-editor.mjs --pkg pkg
