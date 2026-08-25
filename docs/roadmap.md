@@ -210,44 +210,44 @@ separate, larger question that depends on adopting a text layout engine.
 captioned figure out of a paper and, where the figure is one stored image,
 hands it over untouched. Where it is *drawn* — which is most of what a LaTeX
 paper contains — turning the crop into something a slide can show means
-rendering a PDF page, and the two libraries that do that well are AGPL and
-GPL. So the command runs `mutool` or `pdftocairo` when the machine has one,
-and writes a one-page cropped PDF when it does not. That fallback is honest
-but it is a fallback: the one step in the whole feature that asks the author
-to go and install something.
+rendering a PDF page, and when this entry was first written the two libraries
+that did that well were AGPL and GPL. So the command runs `mutool` or
+`pdftocairo` when the machine has one, and writes a one-page cropped PDF when
+it does not: the one step in the whole feature that asks the author to go and
+install something.
 
-Closing it means writing the conversion, and the shape of that work is not a
-rasterizer. It is a **transpiler from one PDF page to SVG**: paths, clips and
-placed images map across almost directly, and the measuring pass in
-`mirzam-cli/src/pdfpage.rs` already walks a content stream keeping the
-transform, so half the plumbing exists. Shadings and patterns are rare enough
-in figures to refuse outright.
+That premise has expired. [hayro](https://github.com/LaurenzV/hayro) — a PDF
+interpreter and renderer in pure Rust, from the typst ecosystem, Apache-2.0
+OR MIT — converts a page to SVG (`hayro-svg`) with the text as deduplicated
+outline paths, which is exactly what `text=path` asks of `mutool` today. A
+spike (August 2026) pushed figure crops through it — Type 3 fonts, embedded
+TrueType, un-embedded standard-14 — and each came back correct in under
+20 ms; the crate compiles for `wasm32-unknown-unknown` unchanged. The
+transpiler this section used to plan — three stages of font work, several
+thousand lines, shadings refused — is hayro's daily business, shadings
+included, proven against a corpus of 1400+ PDFs this project could never
+assemble. So the work is adoption, not construction, and the decision is to
+adopt.
 
-**Text is the whole difficulty**, and it splits into two roads. Outlining the
-glyphs — a CFF charstring interpreter, TrueType `glyf`, Type 1 `eexec` — is
-always correct and is several thousand lines. Re-packaging the embedded font
-into an `@font-face` is far less code, since `/FontFile2` is already a
-complete TrueType file, but a subset font carries its own encoding, so the
-character map has to be rebuilt from `/ToUnicode` and getting it wrong prints
-the wrong letters rather than failing.
+What it costs, measured rather than guessed: ~70 crates onto `mirzam-cli` and
+about 5 MB onto the release binary (built with this workspace's own profile),
+an MSRV bump from 1.91 to 1.92, and a real change to "nothing else is
+bundled" — hayro carries Foxit's standard-14 replacement fonts (BSD, ~300 KB)
+and two ICC profiles, so the README's licence paragraph becomes a short
+attribution list rather than an explanation of copyleft held at arm's length.
+hayro is pre-1.0 and says so; the version gets pinned. `--format png` keeps
+its tool for now: rasterizing is hayro's other half and another couple of
+megabytes, a separate decision.
 
-Staged, with the honest caveat attached:
-
-1. Paths, clips and images only; a figure containing text still goes to the
-   tool. Diagrams and schematics stop needing one.
-2. `/FontFile2` and OpenType inlined as `@font-face` — figures out of Word and
-   Chromium stop needing one.
-3. CFF and Type 1 outlined. **Only here does "no tool required" become true**,
-   because the papers this feature exists for are set in LaTeX.
-
-So it is one piece of work, not three, and it should be judged as such. Two
-things have to come with it: a rendering comparison in CI, because an SVG that
-is subtly wrong looks like an SVG, and a refusal path — anything the
-transpiler does not cover falls back to the crop and says so, rather than
-writing a picture with something missing from it. What it buys, beyond the
-missing install: the conversion would run in WebAssembly, which is where the
-editor extension and the browser build could import a figure too, and the
-licence question in the README stops needing a paragraph.
+What survives from the old plan is its two guard-rails: the refusal path — a
+page hayro will not take falls back to the cropped PDF and says so, rather
+than shipping a picture with something missing from it — and the rendering
+comparison in CI, because an SVG that is subtly wrong looks like an SVG.
+`MIRZAM_PDFTOOL` stays as the escape hatch it already is, and the staged
+transpiler plan stays in this file's history, the fallback if hayro's
+direction ever turns. The WASM dividend stands: the conversion runs where the
+editor extension and the browser build live, so a figure could be imported
+there too.
 
 **Editing anywhere.** The WASM core already runs in a browser; a progressive web
 app on top of it is what makes phone editing real. An Obsidian plugin reuses the
