@@ -14,7 +14,7 @@
   },
   "categories": ["Visualization", "Other"],
   "keywords": ["markdown", "slides", "presentation", "mirzam"],
-  "activationEvents": [],
+  "activationEvents": ["onLanguage:markdown"],
   "main": "./src/extension.js",
   "contributes": {
     "commands": [
@@ -57,6 +57,16 @@
           "type": "number",
           "default": 20971520,
           "description": "Maximum size in bytes of images and video inlined into the preview"
+        },
+        "mirzam.languageServer": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run `mirzam lsp` for diagnostics, completion, hover and go-to-definition in decks. Needs the mirzam CLI on PATH (or mirzam.serverPath); the preview works without it."
+        },
+        "mirzam.serverPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the mirzam binary the language server runs from. Empty means `mirzam` on PATH."
         }
       }
     }

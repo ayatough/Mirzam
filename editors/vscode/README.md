@@ -25,12 +25,30 @@ Inside the preview: `←` `→` to navigate, `N` for speaker notes, `F` for full
 **Mirzam: Export as HTML** saves the deck as a single self-contained file. PDF
 export lives in the CLI (`mirzam export pdf`).
 
+## Diagnostics, with the CLI installed
+
+If `mirzam` is on your `PATH`, the extension also starts `mirzam lsp` and the
+deck gets underlined where it is wrong as you type: an unknown theme, a pane
+that is not in the grid, a `<!-- layout: -->` naming no master, a citation key
+nothing defines. Completion knows the names a deck refers to by name — pane
+names, anchor ids, BibTeX keys, theme and master names — hover says what one
+stands for, and `Ctrl+Shift+O` lists the deck's slides.
+
+**Without the CLI nothing changes.** The preview runs the WebAssembly core in
+the webview and needs nothing installed, so a missing binary means no
+diagnostics rather than an error. Only files that look like decks are analysed,
+so an ordinary README in the same folder is left alone. The server never opens
+a browser: the layout checks — content clipped by its pane, panes overlapping —
+stay `mirzam check`.
+
 ## Settings
 
 | Setting | Default | Description |
 |---|---|---|
 | `mirzam.previewDelay` | 120 | Milliseconds between an edit and the preview update |
 | `mirzam.maxAssetSize` | 20971520 | Maximum size in bytes of images and video inlined into the preview |
+| `mirzam.languageServer` | `true` | Start `mirzam lsp` for diagnostics, completion, hover and go-to-definition |
+| `mirzam.serverPath` | `""` | Path to the `mirzam` binary; empty means `mirzam` on `PATH` |
 
 ## Supported syntax
 

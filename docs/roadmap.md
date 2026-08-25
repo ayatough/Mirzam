@@ -56,6 +56,7 @@ changing.
 | Figure captions and credits (`caption=`, `credit=`), a credit that cites | Done · unreleased |
 | A language server (`mirzam lsp`): diagnostics and an outline | Done · unreleased |
 | The same server's completion, hover and definitions | Done · unreleased |
+| The VS Code extension starts that server | Done · unreleased |
 | Handout PDF: notes beside each slide (`export pdf --handout`) | Done · unreleased |
 | Data-driven slides: one slide per CSV row (```` ```each ````) | Done · unreleased |
 | A slide's own autoplay dwell; autoplay that waits for a clip | Done · unreleased |

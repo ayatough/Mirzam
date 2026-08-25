@@ -6,7 +6,7 @@ Five ways in, depending on what you have. Pick the first row that describes you.
 |---|---|---|
 | A browser | **[the browser editor](https://ayatough.github.io/Mirzam/try/)** | A finished `.html` deck, no install, works on a phone |
 | A terminal | **the `mirzam` CLI** | Everything: live preview, PDF export, includes, local images |
-| VS Code | **the preview extension** | The deck beside the Markdown, re-rendering as you type |
+| VS Code | **the preview extension** | The deck beside the Markdown, re-rendering as you type — and diagnostics, with the CLI installed |
 | Helix, Neovim, anything | **`mirzam lsp`** | Diagnostics as you type, and an outline of the slides |
 | Obsidian | **your vault** | Write there, build with the CLI or the browser editor |
 | A coding agent | **`mirzam skill install`** | Claude Code writes the deck and checks its own layout |
@@ -142,6 +142,21 @@ only the slide you touched, and moving the cursor scrolls the preview to match.
 The extension bundles the WebAssembly core, so it does not shell out to the CLI
 — but the CLI is still what exports PDFs.
 
+**Diagnostics, completion and go-to-definition** come from `mirzam lsp`, which
+the extension starts when the CLI is on your `PATH`: an unknown theme, a pane
+that is not in the grid, a `<!-- layout: -->` naming no master, a citation key
+nothing defines — underlined where the mistake is, as you type. Completion
+knows the names a deck refers to by name (pane names, anchor ids, BibTeX keys,
+theme and master names), hover says what one stands for, and `Ctrl+Shift+O`
+lists the deck's slides.
+
+Without the CLI installed **nothing changes**: the preview runs the WASM core
+in the webview and needs nothing, so a missing binary means no diagnostics
+rather than an error. `mirzam.serverPath` points at a binary that is not on
+`PATH`; `mirzam.languageServer: false` turns the whole thing off. The server
+never opens a browser, so the layout checks — content clipped by its pane,
+panes overlapping — are still `mirzam check`.
+
 ## 4. In any editor — diagnostics as you type
 
 `mirzam lsp` is a language server: an editor starts it, sends it the buffer as
@@ -205,8 +220,8 @@ vim.lsp.enable("mirzam")
 **Zed** — it takes a language server through an extension, so for now use the
 probe or one of the editors above.
 
-**VS Code** — the preview extension does not start it yet; that is the next
-piece of this work. Until then the probe and `mirzam check` are the way.
+**VS Code** — nothing to configure: the preview extension starts it for you
+when the CLI is on your `PATH`. See [In VS Code](#3-in-vs-code) above.
 
 Two things to know about what it reports. Diagnostics are **warnings, never
 errors**: a deck with a problem still renders, and that is deliberate

@@ -1559,12 +1559,14 @@ itself from the moment it opens.
 
 ## W25 — A language server: the editor understands the deck
 
-**Difficulty B · Sonnet · stage 1 landed** — `mirzam lsp` publishes diagnostics
-and answers `documentSymbol`, over stdio, with no dependency and no browser.
-Ranges are placed by the quoted-token rule below. Stages 2 and 3 — completion,
-hover, definition, and the layout pass on request — are not started, and
-neither is the VS Code client: the extension previews as it always did and does
-not start the server yet.
+**Difficulty B · Sonnet · stages 1 and 2 landed, and the client with them** —
+`mirzam lsp` publishes diagnostics and answers `documentSymbol`, `completion`,
+`hover` and `definition`, over stdio, with no dependency and no browser; ranges
+are placed by the quoted-token rule below. The VS Code extension now starts it,
+with the protocol layer written here rather than taken from
+`vscode-languageclient`, so the package keeps its no-dependencies property and
+a machine without the CLI keeps the preview it always had. Stage 3 — the layout
+pass as a command — is not started.
 
 The VS Code extension previews a deck and understands nothing about it. Type
 `::: pane fig` when the grid drew `figure`, cite `[@wilson2021]` when the

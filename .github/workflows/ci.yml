@@ -93,14 +93,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      # The client's test drives the real server, so the binary has to exist
+      # before the suite runs. Built here rather than left to `cargo run`
+      # inside a test, which would time the build against a test's clock.
+      - name: build the binary the client talks to
+        run: cargo build --bin mirzam
       # The webview has no filesystem, so the extension host decides which of a
       # deck's files ever reach the renderer. Nothing else can see that list
       # drift: a form it misses previews as a broken deck and builds perfectly
       # from the CLI. No dependencies - it is node's own test runner.
+      #
+      # `CI` is what turns the client test's skip into a failure: on a laptop
+      # with no binary built, skipping is right; here, a skipped check is a
+      # check that did not happen.
       - name: extension host tests
+        env:
+          MIRZAM_BIN: target/debug/mirzam
         run: node --test editors/vscode/test/*.test.js
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
       # The other half of the editor's story: a language server has no output
       # of its own, so the only way to know it still speaks is to speak to it.
       # The probe runs a whole session against every sample deck and fails if

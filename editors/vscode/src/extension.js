@@ -9,11 +9,17 @@ const vscode = require("vscode");
 const path = require("path");
 const fs = require("fs");
 const { references, isTextFile, isWidget, htmlReferences } = require("./references");
+const language = require("./language");
 
 /** Open previews, keyed by document URI. */
 const panels = new Map();
 
 function activate(context) {
+  // The deck understood, beside the deck drawn. Independent of the preview by
+  // design: this needs the `mirzam` binary and the preview needs nothing, so a
+  // machine without one keeps everything it had.
+  language.activate(context);
+
   context.subscriptions.push(
     vscode.commands.registerCommand("mirzam.showPreview", () =>
       showPreview(context)

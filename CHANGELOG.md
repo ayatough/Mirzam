@@ -7,7 +7,24 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- **The VS Code extension starts `mirzam lsp`.** The server has completed,
+  hovered and jumped since it landed, and the one editor this project ships an
+  extension for did not start it — so none of it reached the people using it.
+  Now a deck is underlined where it is wrong as you type, completion knows the
+  names a deck refers to by name, hover says what one stands for, and
+  `Ctrl+Shift+O` lists the slides.
+
+  The client is written here rather than taken from `vscode-languageclient`:
+  the protocol layer is a `Content-Length` header and a body, and the package
+  has no dependencies today. Two settings — `mirzam.languageServer` to turn it
+  off, `mirzam.serverPath` for a binary that is not on `PATH`.
+
+  **Without the CLI installed nothing changes.** The preview runs the WASM core
+  in the webview and needs nothing, so a missing binary means no diagnostics
+  rather than a dialog about a tool the author may have chosen not to install.
+  Only documents that look like decks are analysed — frontmatter, or a block
+  only a deck has — so an ordinary README in the same folder is left alone.
 
 ## [0.10.0] - 2026-08-25
 
