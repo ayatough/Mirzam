@@ -929,7 +929,7 @@ would break.
 
 ````markdown
 ```chart
-type: bar          # bar | line | area | pie
+type: bar          # bar | line | area | scatter | pie
 id: latency        # optional; ids of individual marks derive from it
 title: p95 latency by region (ms)
 y_label: ms
@@ -995,6 +995,27 @@ spacing it has always had.
 
 The label text is never reformatted: an `hour` column of `00, 04, 08` positions
 by 0, 4 and 8 and still prints `00`.
+
+**The x axis is labelled row by row while every row's label fits.** Those are
+the words the author wrote, so they are worth keeping. Once they stop fitting,
+showing whichever subset survived would be worse than showing the scale, so a
+value axis of round numbers takes over — it counts across the same range, which
+is why its first and last tick sit inside the data rather than on it. A
+category axis has no scale to fall back on and keeps as many labels as it can.
+
+`type: scatter` draws the same points with no line through them, and places
+them by value under the same rule. A wide table gives every series the same x
+column:
+
+````markdown
+```chart
+type: scatter
+data: |
+  weight, before, after
+  1.0, 2.1, 1.2
+  2.4, 3.8, 1.9
+```
+````
 
 **Bars are ordinal whatever the column holds**, because a bar's width is its
 slot and slots have to be equal. Tick labels that would overlap their

@@ -231,7 +231,7 @@ spaces goes in `"quotes"`.
 
 ````markdown
 ```chart
-type: bar          # bar | line | area | pie
+type: bar          # bar | line | area | scatter | pie
 id: latency        # optional; mark ids derive from it
 title: p95 latency by region (ms)
 y_label: ms
@@ -251,9 +251,11 @@ Each mark gets the id `<chart-id>-<series>-<row>`, so `#latency-0-1` is the
 second bar of the first series — that is what an arrow or an annotation points
 at.
 
-A category column that is numbers all the way down is a quantity: `line` and
-`area` place their points along the axis by value, so an irregular step is
-drawn as one, and rows out of order are drawn left to right. Labels keep the
+A category column that is numbers all the way down is a quantity: `line`,
+`area` and `scatter` place their points along the axis by value, so an
+irregular step is drawn as one, and rows out of order are drawn left to right.
+The x axis keeps the rows' own labels while they all fit and falls back to a
+value axis of round numbers once they do not. Labels keep the
 even spacing, and bars are ordinal either way. A key the chart does not read
 warns as `build.chart` rather than being dropped, and so does `stacked:` on a
 kind that does not stack.

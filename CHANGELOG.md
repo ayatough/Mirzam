@@ -40,6 +40,15 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   one — a substitution could previously rewrite the inside of an example.
 
 ### Added
+- **`type: scatter` draws points with no line through them.** It places them
+  along the axis by value the way `line` and `area` now do, so it is the same
+  chart without the join; a wide table gives every series the same x column.
+- **A crowded x axis shows the scale instead of a subset of the rows.** While
+  every row's label fits, those are still the words the author wrote and they
+  are all drawn. Past that, the axis counts in round numbers across the same
+  range rather than keeping whichever labels happened not to collide - which
+  is what a scatter of any size needs, and what a long `line` wanted already.
+  A category axis has no scale to fall back on and is unchanged.
 - **Bar charts stack.** `stacked: true` stands a category's series on top of
   each other and takes the axis up to the tallest column; `stacked: percent`
   fills every column instead, so the segments read as shares of it and the

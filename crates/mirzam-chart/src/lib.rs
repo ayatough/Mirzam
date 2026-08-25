@@ -27,6 +27,8 @@ pub enum ChartKind {
     Bar,
     Line,
     Area,
+    /// Points with no line through them.
+    Scatter,
     Pie,
 }
 
@@ -468,15 +470,18 @@ fn render_cartesian(svg: &mut String, spec: &ChartSpec, table: &Table, id: &str,
     // `area` place their points along it by value: three years one apart and
     // then a gap of four stop drawing as four even steps. Bars stay ordinal
     // whatever the column holds, because a bar's width *is* its slot.
-    let span = matches!(spec.kind, ChartKind::Line | ChartKind::Area)
-        .then_some(table.x_values.as_ref())
-        .flatten()
-        .filter(|xs| xs.len() > 1)
-        .and_then(|xs| {
-            let lo = xs.iter().copied().fold(f64::INFINITY, f64::min);
-            let hi = xs.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-            (hi > lo).then_some((xs, lo, hi))
-        });
+    let span = matches!(
+        spec.kind,
+        ChartKind::Line | ChartKind::Area | ChartKind::Scatter
+    )
+    .then_some(table.x_values.as_ref())
+    .flatten()
+    .filter(|xs| xs.len() > 1)
+    .and_then(|xs| {
+        let lo = xs.iter().copied().fold(f64::INFINITY, f64::min);
+        let hi = xs.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+        (hi > lo).then_some((xs, lo, hi))
+    });
 
     // Keep the extremes off the edges of the plot area: a disc sitting on the
     // axis hangs over the value labels, and its tick lands underneath them.
@@ -493,24 +498,58 @@ fn render_cartesian(svg: &mut String, spec: &ChartSpec, table: &Table, id: &str,
         order.sort_by(|a, b| x_at(*a).total_cmp(&x_at(*b)));
     }
 
-    // Category labels, dropping any that would run into the one before it. The
-    // width is an estimate - the renderer has no font metrics - so it is
-    // deliberately generous: a label too many is worse than a gap.
-    let mut filled = f64::NEG_INFINITY;
-    for &ci in &order {
-        let cat = &table.categories[ci];
-        let x = x_at(ci);
-        let half = 4.5 * cat.chars().count() as f64;
-        if x - half < filled {
-            continue;
-        }
-        filled = x + half + 6.0;
+    // The x axis is labelled row by row while every row's label fits, because
+    // those are the words the author wrote - `00` is an hour, `2024 Q1` is a
+    // quarter. Once they stop fitting, showing whichever subset happened to
+    // survive is worse than showing the scale itself, so a value axis takes
+    // over. A category axis has no scale to fall back on and keeps as many
+    // labels as it can.
+    //
+    // The widths are estimates: the renderer has no font metrics, so they are
+    // deliberately generous. A label too few is better than two overlapping.
+    let baseline = top + ph + 22.0;
+    let tick = |svg: &mut String, x: f64, text: &str| {
         let _ = write!(
             svg,
-            "<text class=\"mz-chart-tick\" x=\"{x:.1}\" y=\"{:.1}\" text-anchor=\"middle\">{}</text>",
-            top + ph + 22.0,
-            esc(cat)
+            "<text class=\"mz-chart-tick\" x=\"{x:.1}\" y=\"{baseline:.1}\" text-anchor=\"middle\">{}</text>",
+            esc(text)
         );
+    };
+    let fits = |xs: &[(f64, String)]| {
+        let mut filled = f64::NEG_INFINITY;
+        xs.iter().all(|(x, text)| {
+            let half = 4.5 * text.chars().count() as f64;
+            let room = x - half >= filled;
+            filled = x + half + 6.0;
+            room
+        })
+    };
+
+    let rows: Vec<(f64, String)> = order
+        .iter()
+        .map(|&ci| (x_at(ci), table.categories[ci].clone()))
+        .collect();
+    match span {
+        Some((_, lo, hi)) if !fits(&rows) => {
+            for (x, text) in value_ticks(lo, hi) {
+                tick(
+                    svg,
+                    left + inset + (x - lo) / (hi - lo) * (pw - 2.0 * inset),
+                    &text,
+                );
+            }
+        }
+        _ => {
+            let mut filled = f64::NEG_INFINITY;
+            for (x, text) in &rows {
+                let half = 4.5 * text.chars().count() as f64;
+                if x - half < filled {
+                    continue;
+                }
+                filled = x + half + 6.0;
+                tick(svg, *x, text);
+            }
+        }
     }
 
     let dim = |si: usize| -> &'static str {
@@ -594,6 +633,20 @@ fn render_cartesian(svg: &mut String, spec: &ChartSpec, table: &Table, id: &str,
                         );
                     }
                     svg.push_str("</g>");
+                }
+            }
+        }
+        ChartKind::Scatter => {
+            for (si, s) in table.series.iter().enumerate() {
+                let c = color_for(spec, si);
+                for (ci, v) in s.values.iter().enumerate() {
+                    let _ = write!(
+                        svg,
+                        "<circle class=\"mz-chart-point\" id=\"{id}-{si}-{ci}\" cx=\"{:.1}\" cy=\"{:.1}\" r=\"5\" fill=\"{c}\"{}/>",
+                        x_at(ci),
+                        top + ph - (v / max) * ph,
+                        dim(si)
+                    );
                 }
             }
         }
@@ -696,6 +749,25 @@ fn render_pie(svg: &mut String, spec: &ChartSpec, table: &Table, id: &str, w: f6
 /// What one category's series add up to.
 fn column_total(table: &Table, ci: usize) -> f64 {
     table.series.iter().filter_map(|s| s.values.get(ci)).sum()
+}
+
+/// Round numbers across a range, for an axis whose rows are too crowded to
+/// label one by one. The range itself is not moved - the points are where the
+/// data put them - so the first and last tick sit inside it rather than on it.
+fn value_ticks(lo: f64, hi: f64) -> Vec<(f64, String)> {
+    let step = nice_ceil((hi - lo) / 4.0);
+    if step <= 0.0 || !step.is_finite() {
+        return Vec::new();
+    }
+    let first = (lo / step).ceil() * step;
+    let mut out = Vec::new();
+    let mut v = first;
+    while v <= hi + step * 1e-9 && out.len() < 12 {
+        // `-0` is the same tick as `0` and reads worse.
+        out.push((v, num(if v == 0.0 { 0.0 } else { v })));
+        v += step;
+    }
+    out
 }
 
 /// Rounds an axis maximum up to a readable value.
@@ -1121,6 +1193,93 @@ mod tests {
             "{:?}",
             doc.errors
         );
+    }
+
+    #[test]
+    fn scatter_draws_points_with_no_line_through_them() {
+        let doc = parse_chart(
+            "type: scatter\nid: p\ndata: |\n  x, y\n  1, 2\n  4, 3\n  9, 1\n",
+            none,
+        );
+        assert!(doc.errors.is_empty(), "{:?}", doc.errors);
+        let svg = render_svg(&doc, "c");
+        assert_eq!(svg.matches("mz-chart-point").count(), 3);
+        assert!(!svg.contains("mz-chart-line"), "a scatter has no line");
+        assert!(!svg.contains("mz-chart-area"));
+        assert!(svg.contains("id=\"p-0-2\""), "marks keep their row ids");
+    }
+
+    #[test]
+    fn scatter_places_points_by_value() {
+        let doc = parse_chart(
+            "type: scatter\ndata: |\n  x, y\n  0, 1\n  1, 1\n  9, 1\n",
+            none,
+        );
+        let xs = point_xs(&render_svg(&doc, "c"));
+        let ratio = (xs[2] - xs[1]) / (xs[1] - xs[0]);
+        assert!(
+            (ratio - 8.0).abs() < 0.05,
+            "{ratio} should be 8, from {xs:?}"
+        );
+    }
+
+    /// Two series over one shared x column, which is what a wide table holds.
+    #[test]
+    fn scatter_colours_a_second_series() {
+        let doc = parse_chart(
+            "type: scatter\nid: p\ndata: |\n  x, a, b\n  1, 2, 5\n  4, 3, 6\n",
+            none,
+        );
+        let svg = render_svg(&doc, "c");
+        assert!(svg.contains("id=\"p-1-0\""));
+        assert_eq!(svg.matches("mz-chart-point").count(), 4);
+    }
+
+    /// While every row's label fits, those are the words the author wrote.
+    #[test]
+    fn a_few_rows_keep_their_own_labels() {
+        let doc = parse_chart(
+            "type: line\ndata: |\n  hour, v\n  00, 1\n  04, 2\n  08, 3\n",
+            none,
+        );
+        let t = ticks(&render_svg(&doc, "c"));
+        assert!(t.contains(&"00".to_string()), "{t:?}");
+        assert!(t.contains(&"08".to_string()), "{t:?}");
+    }
+
+    /// Once they stop fitting, the scale is better than whichever subset of
+    /// them happened to survive.
+    #[test]
+    fn crowded_rows_give_way_to_a_value_axis() {
+        let rows: String = (0..60).map(|i| format!("  {i}, 1\n", i = i)).collect();
+        let doc = parse_chart(&format!("type: scatter\ndata: |\n  x, y\n{rows}"), none);
+        let t = ticks(&render_svg(&doc, "c"));
+        // Five value ticks on the y axis, then round numbers across 0..59.
+        assert!(t.contains(&"20".to_string()), "{t:?}");
+        assert!(t.contains(&"40".to_string()), "{t:?}");
+        assert!(!t.contains(&"37".to_string()), "no row labels left: {t:?}");
+    }
+
+    #[test]
+    fn a_category_axis_never_falls_back_to_numbers() {
+        let rows: String = (0..40).map(|i| format!("  label-{i}, 1\n")).collect();
+        let doc = parse_chart(&format!("type: bar\ndata: |\n  k, v\n{rows}"), none);
+        let t = ticks(&render_svg(&doc, "c"));
+        assert!(
+            t.iter().any(|s| s.starts_with("label-")),
+            "text categories have no scale to fall back on: {t:?}"
+        );
+    }
+
+    #[test]
+    fn value_ticks_are_round_numbers_inside_the_range() {
+        let t: Vec<String> = value_ticks(0.0, 59.0).into_iter().map(|(_, s)| s).collect();
+        assert_eq!(t, vec!["0", "20", "40"]);
+        let t: Vec<String> = value_ticks(2020.0, 2024.0)
+            .into_iter()
+            .map(|(_, s)| s)
+            .collect();
+        assert_eq!(t, vec!["2020", "2021", "2022", "2023", "2024"]);
     }
 
     #[test]
