@@ -948,6 +948,26 @@ instead name a `.csv` file, which is resolved like any other asset (and watched 
 A key the chart does not read is reported rather than dropped, so `ylabel` for
 `y_label` says so at build time instead of quietly rendering without it.
 
+### Stacking
+
+`stacked:` puts a bar chart's series on top of each other instead of side by
+side. It takes `true`, or `percent` when the question is what share of each
+column a series holds rather than how much of it:
+
+| `stacked:` | The column | The axis |
+| --- | --- | --- |
+| unset, or `false` | series side by side | reaches the tallest bar |
+| `true` | series on top of each other | reaches the tallest **column** |
+| `percent` | every column filled | `0%` to `100%` |
+
+Each segment carries its own number, written on the segment rather than above
+it — above is where the next segment is — and left off when the segment is too
+shallow to hold it. A column of `percent` that sums to nothing is not drawn,
+having no shares to draw.
+
+Only bars stack. A `line`, `area` or `pie` chart that asks to is told so and
+drawn unstacked.
+
 ### The x axis
 
 `x:` names the column the categories come from, which is what a file whose

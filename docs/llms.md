@@ -236,6 +236,7 @@ id: latency        # optional; mark ids derive from it
 title: p95 latency by region (ms)
 y_label: ms
 x: region          # optional; the category column, else the first one
+stacked: true      # bars only; `percent` fills every column to 100%
 highlight: after   # dim every series but this one
 data: |
   region, before, after
@@ -254,7 +255,8 @@ A category column that is numbers all the way down is a quantity: `line` and
 `area` place their points along the axis by value, so an irregular step is
 drawn as one, and rows out of order are drawn left to right. Labels keep the
 even spacing, and bars are ordinal either way. A key the chart does not read
-warns as `build.chart` rather than being dropped.
+warns as `build.chart` rather than being dropped, and so does `stacked:` on a
+kind that does not stack.
 
 ## `mermaid` — inside a pane
 

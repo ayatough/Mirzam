@@ -30,6 +30,44 @@ pub enum ChartKind {
     Pie,
 }
 
+/// Whether a bar chart's series stand beside each other or on top.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Stacking {
+    /// Side by side, sharing the category's slot.
+    #[default]
+    None,
+    /// On top of each other, the axis still counting the values.
+    Sum,
+    /// On top of each other and every column filled, so the segments read as
+    /// shares of that column rather than as amounts.
+    Percent,
+}
+
+impl<'de> Deserialize<'de> for Stacking {
+    /// `true` is the answer most people mean, so it is the one a bare bool
+    /// gives; `percent` is the other question the same key can ask.
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Repr {
+            Flag(bool),
+            Name(String),
+        }
+        match Repr::deserialize(d)? {
+            Repr::Flag(false) => Ok(Stacking::None),
+            Repr::Flag(true) => Ok(Stacking::Sum),
+            Repr::Name(name) => match name.trim().to_ascii_lowercase().as_str() {
+                "none" | "no" => Ok(Stacking::None),
+                "sum" | "yes" => Ok(Stacking::Sum),
+                "percent" | "100%" | "share" => Ok(Stacking::Percent),
+                other => Err(serde::de::Error::custom(format!(
+                    "`stacked: {other}` is not one of true, false or percent"
+                ))),
+            },
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Default)]
 #[serde(default)]
 pub struct ChartSpec {
@@ -43,8 +81,8 @@ pub struct ChartSpec {
     pub x: Option<String>,
     /// Axis label for the value axis.
     pub y_label: Option<String>,
-    /// Format values as percentages of the column total.
-    pub stacked: bool,
+    /// Stand the series of a bar chart on top of each other.
+    pub stacked: Stacking,
     /// Hide the legend even when several series are present.
     pub legend: Option<bool>,
     /// Series colors; defaults to the theme palette.
@@ -129,6 +167,9 @@ pub fn parse_chart(src: &str, resolve: impl Fn(&str) -> Option<String>) -> Chart
     // word, so this is the only place it can be noticed.
     for key in unknown {
         errors.push(format!("chart: unknown key `{key}`, ignored"));
+    }
+    if spec.stacked != Stacking::None && spec.kind != ChartKind::Bar {
+        errors.push("chart: `stacked` applies to bar charts, ignored".to_string());
     }
 
     let table = match parse_csv(&csv, spec.x.as_deref()) {
@@ -365,12 +406,32 @@ fn render_cartesian(svg: &mut String, spec: &ChartSpec, table: &Table, id: &str,
     let bottom = if table.series.len() > 1 { 66.0 } else { 44.0 };
     let (pw, ph) = (w - left - right, h - top - bottom);
 
-    let max = table
-        .series
-        .iter()
-        .flat_map(|s| s.values.iter())
-        .fold(0.0f64, |a, b| a.max(*b));
-    let max = nice_ceil(if max <= 0.0 { 1.0 } else { max });
+    // Only bars stack; `parse_chart` says so when another kind asks to.
+    let stack = if spec.kind == ChartKind::Bar {
+        spec.stacked
+    } else {
+        Stacking::None
+    };
+
+    // Stacked, the axis has to reach the tallest *column*, not the tallest
+    // value in it; as shares, it always reaches exactly 100.
+    let max = match stack {
+        Stacking::Percent => 100.0,
+        Stacking::Sum => nice_ceil(
+            (0..table.categories.len())
+                .map(|ci| column_total(table, ci))
+                .fold(0.0f64, f64::max)
+                .max(1.0),
+        ),
+        Stacking::None => nice_ceil(
+            table
+                .series
+                .iter()
+                .flat_map(|s| s.values.iter())
+                .fold(0.0f64, |a, b| a.max(*b))
+                .max(1.0),
+        ),
+    };
 
     // Grid lines and value axis.
     for i in 0..=4 {
@@ -383,7 +444,11 @@ fn render_cartesian(svg: &mut String, spec: &ChartSpec, table: &Table, id: &str,
             left + pw,
             left - 10.0,
             y + 4.0,
-            num(v)
+            if stack == Stacking::Percent {
+                format!("{}%", num(v))
+            } else {
+                num(v)
+            }
         );
     }
     if let Some(label) = &spec.y_label {
@@ -459,13 +524,46 @@ fn render_cartesian(svg: &mut String, spec: &ChartSpec, table: &Table, id: &str,
         ChartKind::Bar => {
             let count = table.series.len().max(1) as f64;
             let group = slot * 0.68;
-            let bw = group / count;
+            // Stacked, the slot holds one bar; side by side, it is shared.
+            let bw = if stack == Stacking::None {
+                group / count
+            } else {
+                group
+            };
+            // How much of each column is already drawn, for the next segment
+            // to stand on.
+            let mut base = vec![0.0f64; table.categories.len()];
             for (si, s) in table.series.iter().enumerate() {
                 let c = color_for(spec, si);
                 for (ci, v) in s.values.iter().enumerate() {
-                    let bh = (v / max) * ph;
-                    let x = left + slot * ci as f64 + (slot - group) / 2.0 + bw * si as f64;
-                    let y = top + ph - bh;
+                    let total = column_total(table, ci);
+                    // A column that sums to nothing has no shares to draw.
+                    if stack == Stacking::Percent && total <= 0.0 {
+                        continue;
+                    }
+                    let shown = match stack {
+                        Stacking::Percent => v / total * 100.0,
+                        _ => *v,
+                    };
+                    let bh = (shown / max) * ph;
+                    let x = left
+                        + slot * ci as f64
+                        + (slot - group) / 2.0
+                        + if stack == Stacking::None {
+                            bw * si as f64
+                        } else {
+                            0.0
+                        };
+                    // Side by side, every bar stands on the axis; stacked, it
+                    // stands on what this column has drawn so far.
+                    let foot = match stack {
+                        Stacking::None => 0.0,
+                        _ => base.get(ci).copied().unwrap_or(0.0),
+                    };
+                    let y = top + ph - bh - foot;
+                    if let Some(b) = base.get_mut(ci) {
+                        *b += bh;
+                    }
                     // The mark's id sits on a group holding the bar *and* its
                     // value label, so animating `#chart-0-1` moves the number
                     // with the bar instead of leaving it floating.
@@ -475,13 +573,27 @@ fn render_cartesian(svg: &mut String, spec: &ChartSpec, table: &Table, id: &str,
                         (bw - 3.0).max(1.0),
                         dim(si)
                     );
-                    let _ = write!(
-                        svg,
-                        "<text class=\"mz-chart-value\" x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\">{}</text></g>",
-                        x + (bw - 3.0).max(1.0) / 2.0,
-                        y - 6.0,
-                        num(*v)
-                    );
+                    // Stacked, the number goes inside its own segment - above
+                    // the bar is where the segment above it is - and only when
+                    // the segment is deep enough to hold it.
+                    let label = match stack {
+                        Stacking::Percent => format!("{}%", num(shown)),
+                        _ => num(shown),
+                    };
+                    if stack == Stacking::None || bh >= 22.0 {
+                        let _ = write!(
+                            svg,
+                            "<text class=\"mz-chart-value{}\" x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\">{label}</text>",
+                            if stack == Stacking::None { "" } else { " mz-inset" },
+                            x + (bw - 3.0).max(1.0) / 2.0,
+                            if stack == Stacking::None {
+                                y - 6.0
+                            } else {
+                                y + bh / 2.0 + 5.0
+                            }
+                        );
+                    }
+                    svg.push_str("</g>");
                 }
             }
         }
@@ -579,6 +691,11 @@ fn render_pie(svg: &mut String, spec: &ChartSpec, table: &Table, id: &str, w: f6
         }
         angle = end;
     }
+}
+
+/// What one category's series add up to.
+fn column_total(table: &Table, ci: usize) -> f64 {
+    table.series.iter().filter_map(|s| s.values.get(ci)).sum()
 }
 
 /// Rounds an axis maximum up to a readable value.
@@ -853,7 +970,7 @@ mod tests {
 
     #[test]
     fn every_key_the_spec_reads_is_a_known_key() {
-        let src = "type: line\nid: i\ntitle: t\nx: k\ny_label: y\nstacked: true\n\
+        let src = "type: bar\nid: i\ntitle: t\nx: k\ny_label: y\nstacked: true\n\
                    legend: false\ncolors: [\"@accent1\"]\nhighlight: v\ndata: |\n  k, v\n  1, 2\n";
         let doc = parse_chart(src, none);
         assert!(doc.errors.is_empty(), "{:?}", doc.errors);
@@ -872,6 +989,137 @@ mod tests {
         assert!(
             drawn < 20 + 5,
             "{drawn} labels drawn, expected some dropped"
+        );
+    }
+
+    /// One mark's bar as `(x, y, width, height)`.
+    fn bar(svg: &str, mark: &str) -> (f64, f64, f64, f64) {
+        let g = svg
+            .split(&format!("<g id=\"{mark}\">"))
+            .nth(1)
+            .unwrap_or_else(|| panic!("no mark {mark} in {svg}"));
+        let attr = |name: &str| -> f64 {
+            g.split(&format!("{name}=\""))
+                .nth(1)
+                .unwrap()
+                .split('"')
+                .next()
+                .unwrap()
+                .parse()
+                .unwrap()
+        };
+        (attr("x"), attr("y"), attr("width"), attr("height"))
+    }
+
+    #[test]
+    fn stacked_bars_stand_on_each_other_in_one_slot() {
+        let doc = parse_chart(
+            "type: bar\nid: b\nstacked: true\ndata: |\n  k, a, c\n  x, 3, 1\n",
+            none,
+        );
+        assert!(doc.errors.is_empty(), "{:?}", doc.errors);
+        let svg = render_svg(&doc, "c");
+        let (x0, y0, w0, h0) = bar(&svg, "b-0-0");
+        let (x1, y1, w1, _) = bar(&svg, "b-1-0");
+        assert!((x0 - x1).abs() < 0.2, "one slot, not two: {x0} vs {x1}");
+        assert!((w0 - w1).abs() < 0.2, "same width: {w0} vs {w1}");
+        // The second series starts where the first one ended.
+        assert!(
+            (y1 + bar(&svg, "b-1-0").3 - y0).abs() < 0.2,
+            "{y1} should end at {y0}"
+        );
+        assert!(h0 > 0.0);
+    }
+
+    #[test]
+    fn grouped_bars_still_stand_side_by_side() {
+        let doc = parse_chart("type: bar\nid: b\ndata: |\n  k, a, c\n  x, 3, 1\n", none);
+        let svg = render_svg(&doc, "c");
+        let (x0, y0, w0, h0) = bar(&svg, "b-0-0");
+        let (x1, y1, _, h1) = bar(&svg, "b-1-0");
+        assert!(x1 > x0 + w0 - 4.0, "{x1} should sit right of {x0}+{w0}");
+        // Both stand on the axis. Carrying the stacking baseline into a
+        // grouped chart would lift the second series off it.
+        assert!(
+            (y0 + h0 - (y1 + h1)).abs() < 0.2,
+            "both feet on the axis: {} vs {}",
+            y0 + h0,
+            y1 + h1
+        );
+    }
+
+    /// Unstacked the axis reaches the tallest bar; stacked it has to reach the
+    /// tallest column, or the top segment leaves the chart.
+    #[test]
+    fn a_stacked_axis_reaches_the_column_total() {
+        let flat = parse_chart("type: bar\nid: b\ndata: |\n  k, a, c\n  x, 60, 60\n", none);
+        let piled = parse_chart(
+            "type: bar\nid: b\nstacked: true\ndata: |\n  k, a, c\n  x, 60, 60\n",
+            none,
+        );
+        // 60 rounds to an axis of 100; 120 rounds to 200, so the same bar is
+        // half the height it was.
+        let tall = bar(&render_svg(&flat, "c"), "b-0-0").3;
+        let short = bar(&render_svg(&piled, "c"), "b-0-0").3;
+        assert!(short < tall * 0.7, "{short} should be well under {tall}");
+    }
+
+    #[test]
+    fn percent_stacking_fills_every_column() {
+        let doc = parse_chart(
+            "type: bar\nid: b\nstacked: percent\ndata: |\n  k, a, c\n  x, 1, 3\n  y, 90, 10\n",
+            none,
+        );
+        assert!(doc.errors.is_empty(), "{:?}", doc.errors);
+        let svg = render_svg(&doc, "c");
+        let col = |ci: usize| bar(&svg, &format!("b-0-{ci}")).3 + bar(&svg, &format!("b-1-{ci}")).3;
+        assert!(
+            (col(0) - col(1)).abs() < 0.3,
+            "both columns fill the axis: {} vs {}",
+            col(0),
+            col(1)
+        );
+        // `a` is a quarter of the first column and nine tenths of the second.
+        let a0 = bar(&svg, "b-0-0").3;
+        assert!((a0 / col(0) - 0.25).abs() < 0.01, "{a0} of {}", col(0));
+        assert!(svg.contains("100%"), "the axis is labelled in shares");
+    }
+
+    #[test]
+    fn percent_stacking_skips_a_column_that_sums_to_nothing() {
+        let doc = parse_chart(
+            "type: bar\nid: b\nstacked: percent\ndata: |\n  k, a, c\n  x, 0, 0\n  y, 1, 1\n",
+            none,
+        );
+        let svg = render_svg(&doc, "c");
+        assert!(
+            !svg.contains("id=\"b-0-0\""),
+            "nothing to draw for an empty column"
+        );
+        assert!(svg.contains("id=\"b-0-1\""));
+    }
+
+    #[test]
+    fn stacking_a_chart_that_does_not_stack_warns() {
+        let doc = parse_chart("type: line\nstacked: true\ndata: |\n  k, a\n  x, 1\n", none);
+        assert!(
+            doc.errors.iter().any(|e| e.contains("stacked")),
+            "{:?}",
+            doc.errors
+        );
+        assert!(!render_svg(&doc, "c").is_empty(), "the line is still drawn");
+    }
+
+    #[test]
+    fn a_stacking_mode_nobody_defined_is_refused() {
+        let doc = parse_chart(
+            "type: bar\nstacked: sideways\ndata: |\n  k, a\n  x, 1\n",
+            none,
+        );
+        assert!(
+            doc.errors.iter().any(|e| e.contains("sideways")),
+            "{:?}",
+            doc.errors
         );
     }
 

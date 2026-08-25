@@ -40,6 +40,15 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   one — a substitution could previously rewrite the inside of an example.
 
 ### Added
+- **Bar charts stack.** `stacked: true` stands a category's series on top of
+  each other and takes the axis up to the tallest column; `stacked: percent`
+  fills every column instead, so the segments read as shares of it and the
+  axis is `0%` to `100%`. Each segment carries its own number, written on the
+  segment — above it is where the next segment is — and left off when the
+  segment is too shallow to hold it. The key had been declared and read by
+  nothing since charts landed, so `stacked: true` used to draw a plain grouped
+  chart and say nothing; only bars stack, and another kind that asks now
+  hears about it.
 - **`x:` names the column a chart's categories come from.** It was always the
   first one, so a spreadsheet exported with its value columns first had to be
   edited before it could be plotted; now `x: minute` picks the column out
