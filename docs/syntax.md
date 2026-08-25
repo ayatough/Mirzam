@@ -929,7 +929,7 @@ would break.
 
 ````markdown
 ```chart
-type: bar          # bar | line | area | scatter | pie
+type: bar          # bar | line | area | scatter | scatter3d | pie
 id: latency        # optional; ids of individual marks derive from it
 title: p95 latency by region (ms)
 y_label: ms
@@ -1009,6 +1009,68 @@ data: |
 Between about `0.5` and `0.65` reads best. From `0.45` up the hole carries what
 the slices add up to, which is the thing a pie has nowhere else to put; below
 that it is a ring rather than a hole and stays empty.
+
+### A point cloud in three dimensions
+
+`type: scatter3d` projects points from three dimensions to two at build time
+and emits them as ordinary SVG marks. Three-dimensional data otherwise leaves
+the deck as a screenshot, and a screenshot cannot be pointed at — where a
+projected cloud is marks with ids, so `connect` and `annotate` reach a single
+point exactly as they reach a bar. It also stays vector, so it prints at any
+resolution.
+
+````markdown
+```chart
+type: scatter3d
+id: samples
+azim: 45
+elev: 30
+data: |
+  width, depth, height, group
+  1.2, 3.4, 0.8, a
+  2.1, 1.9, 2.2, b
+```
+````
+
+**The columns are positional**: the first three are x, y and z, and their
+header names become the axis names. A fourth column, if there is one, names
+the series each row belongs to — first appearance orders them, which is also
+what picks their colours.
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `azim` | `45` | camera azimuth, in degrees |
+| `elev` | `30` | camera elevation, in degrees |
+| `zoom` | `1.0` | how much of the pane the box fills |
+
+`#samples-1-2` is the third point of the second series, **from every camera
+angle**. Depth sorting decides which disc is drawn over which and nothing else,
+so an arrow keeps pointing where it pointed when the camera turns.
+
+Each axis is normalised to the box, so a cloud in millimetres and one in years
+come out the same size. The three faces turned away from the camera are the
+ones drawn, which is a sign test rather than a rule per angle — so the box is
+always behind the data.
+
+**The projection is orthographic.** A perspective camera introduces a vanishing
+point, which bends the axis lines and makes tick spacing depend on where a tick
+sits; axonometric keeps all three axes straight, and is what mplot3d, Excel and
+Keynote draw for a chart.
+
+**Points only.** For a cloud of points, drawing back to front is exactly right
+rather than approximately right: discs facing the viewer cannot pass through
+each other, so there is always a correct order. Surfaces and 3D bars do not
+have that property — two that cross have no correct order at all — so they are
+not here.
+
+Past about 2000 points the build says so. Not because projecting them is slow —
+it is a matrix multiply each and one sort — but because every point becomes a
+mark the deck carries: ten thousand is a megabyte of SVG on one slide, and a
+smear to look at.
+
+There is no rotating it in the viewer. That would mean shipping a projection
+routine to the browser, which is a different decision with its own tradeoff —
+see the [roadmap](roadmap.md).
 
 ### The x axis
 

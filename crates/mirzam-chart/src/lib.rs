@@ -17,6 +17,9 @@
 //! a sentence to an individual bar or point - something a hand-drawn image
 //! cannot offer.
 
+mod scatter3d;
+
+pub use scatter3d::{Cloud, Group};
 use serde::Deserialize;
 use std::fmt::Write as _;
 
@@ -29,6 +32,8 @@ pub enum ChartKind {
     Area,
     /// Points with no line through them.
     Scatter,
+    /// A point cloud, projected from three dimensions at build time.
+    Scatter3d,
     Pie,
 }
 
@@ -89,6 +94,12 @@ pub struct ChartSpec {
     pub horizontal: bool,
     /// Cut a hole out of a pie, as a fraction of its radius: a donut.
     pub inner: Option<f64>,
+    /// Camera azimuth for `scatter3d`, in degrees.
+    pub azim: Option<f64>,
+    /// Camera elevation for `scatter3d`, in degrees.
+    pub elev: Option<f64>,
+    /// How much of the pane a `scatter3d` box fills.
+    pub zoom: Option<f64>,
     /// Hide the legend even when several series are present.
     pub legend: Option<bool>,
     /// Series colors; defaults to the theme palette.
@@ -117,6 +128,8 @@ pub struct Series {
 pub struct ChartDoc {
     pub spec: ChartSpec,
     pub table: Option<Table>,
+    /// The points of a `scatter3d`; `table` holds every other kind.
+    pub cloud: Option<Cloud>,
     pub errors: Vec<String>,
     /// A `data:` value that names a file the host must supply.
     pub data_file: Option<String>,
@@ -129,6 +142,7 @@ pub fn parse_chart(src: &str, resolve: impl Fn(&str) -> Option<String>) -> Chart
     let bail = |errors: Vec<String>| ChartDoc {
         spec: ChartSpec::default(),
         table: None,
+        cloud: None,
         errors,
         data_file: None,
     };
@@ -192,26 +206,71 @@ pub fn parse_chart(src: &str, resolve: impl Fn(&str) -> Option<String>) -> Chart
         }
         _ => {}
     }
+    if spec.kind != ChartKind::Scatter3d {
+        for (key, set) in [
+            ("azim", spec.azim.is_some()),
+            ("elev", spec.elev.is_some()),
+            ("zoom", spec.zoom.is_some()),
+        ] {
+            if set {
+                errors.push(format!("chart: `{key}` applies to scatter3d, ignored"));
+            }
+        }
+    }
 
-    let table = match parse_csv(&csv, spec.x.as_deref()) {
-        Ok(t) if !t.series.is_empty() && !t.categories.is_empty() => Some(t),
-        Ok(_) => {
-            errors.push("chart: no data rows".to_string());
-            None
+    let (table, cloud) = if spec.kind == ChartKind::Scatter3d {
+        let cloud = match scatter3d::parse_cloud(&csv) {
+            Ok(c) if c.groups.iter().any(|g| !g.points.is_empty()) => Some(c),
+            Ok(_) => {
+                errors.push("chart: no data rows".to_string());
+                None
+            }
+            Err(e) => {
+                errors.push(format!("chart: {e}"));
+                None
+            }
+        };
+        // What limits a point cloud is not the projecting - a matrix multiply
+        // each and one sort - but that every point becomes a mark the deck
+        // then carries: ten thousand of them is a megabyte of SVG on one
+        // slide, and a smear to look at.
+        if let Some(c) = &cloud {
+            let n: usize = c.groups.iter().map(|g| g.points.len()).sum();
+            if n > POINT_BUDGET {
+                errors.push(format!(
+                    "chart: {n} points on one slide; past about {POINT_BUDGET} a scatter is a smear and the deck carries every mark"
+                ));
+            }
         }
-        Err(e) => {
-            errors.push(format!("chart: {e}"));
-            None
-        }
+        (None, cloud)
+    } else {
+        let table = match parse_csv(&csv, spec.x.as_deref()) {
+            Ok(t) if !t.series.is_empty() && !t.categories.is_empty() => Some(t),
+            Ok(_) => {
+                errors.push("chart: no data rows".to_string());
+                None
+            }
+            Err(e) => {
+                errors.push(format!("chart: {e}"));
+                None
+            }
+        };
+        (table, None)
     };
 
     ChartDoc {
         spec,
         table,
+        cloud,
         errors,
         data_file,
     }
 }
+
+/// Past this many points a scatter stops telling anyone anything, and the
+/// marks start being what the deck weighs. It is a warning, not a limit: the
+/// author can see the chart and decide.
+const POINT_BUDGET: usize = 2000;
 
 /// Keys [`ChartSpec`] understands. It lives beside the struct because a field
 /// added there and not here starts warning about itself.
@@ -225,6 +284,9 @@ const KNOWN_KEYS: &[&str] = &[
     "stacked",
     "horizontal",
     "inner",
+    "azim",
+    "elev",
+    "zoom",
     "legend",
     "colors",
     "highlight",
@@ -373,9 +435,9 @@ fn num(v: f64) -> String {
 /// Renders the chart to SVG. The chart fills its pane, so the viewBox is fixed
 /// and the surrounding CSS scales it.
 pub fn render_svg(doc: &ChartDoc, chart_id: &str) -> String {
-    let Some(table) = &doc.table else {
+    if doc.table.is_none() && doc.cloud.is_none() {
         return String::new();
-    };
+    }
     let spec = &doc.spec;
     let id = spec.id.clone().unwrap_or_else(|| chart_id.to_string());
 
@@ -396,17 +458,29 @@ pub fn render_svg(doc: &ChartDoc, chart_id: &str) -> String {
         );
     }
 
-    match spec.kind {
-        ChartKind::Pie => render_pie(&mut svg, spec, table, &id, w, h),
-        ChartKind::Bar if spec.horizontal => render_bars_h(&mut svg, spec, table, &id, w, h),
-        _ => render_cartesian(&mut svg, spec, table, &id, w, h),
+    // What the legend would name: the series of a table, the groups of a
+    // cloud. Either way it is the order the colours were handed out in.
+    let names: Vec<String> = match (&doc.table, &doc.cloud) {
+        (_, Some(cloud)) => scatter3d::legend(cloud),
+        (Some(table), _) => table.series.iter().map(|s| s.name.clone()).collect(),
+        _ => Vec::new(),
+    };
+
+    match (&doc.table, &doc.cloud) {
+        (_, Some(cloud)) => scatter3d::render(&mut svg, spec, cloud, &id, w, h),
+        (Some(table), _) => match spec.kind {
+            ChartKind::Pie => render_pie(&mut svg, spec, table, &id, w, h),
+            ChartKind::Bar if spec.horizontal => render_bars_h(&mut svg, spec, table, &id, w, h),
+            _ => render_cartesian(&mut svg, spec, table, &id, w, h),
+        },
+        _ => {}
     }
 
     // Legend, when there is more than one series.
-    let show_legend = spec.legend.unwrap_or(table.series.len() > 1);
+    let show_legend = spec.legend.unwrap_or(names.len() > 1);
     if show_legend {
         let mut x = 70.0;
-        for (si, s) in table.series.iter().enumerate() {
+        for (si, name) in names.iter().enumerate() {
             let c = color_for(spec, si);
             let _ = write!(
                 svg,
@@ -415,9 +489,9 @@ pub fn render_svg(doc: &ChartDoc, chart_id: &str) -> String {
                 h - 18.0,
                 x + 20.0,
                 h - 6.0,
-                esc(&s.name)
+                esc(name)
             );
-            x += 34.0 + 9.0 * s.name.chars().count() as f64;
+            x += 34.0 + 9.0 * name.chars().count() as f64;
         }
     }
 
@@ -884,7 +958,10 @@ fn render_cartesian(svg: &mut String, spec: &ChartSpec, table: &Table, id: &str,
                 }
             }
         }
+        // Neither reaches here: a pie has its own pass, and a cloud is
+        // dispatched on having a cloud rather than a table at all.
         ChartKind::Pie => unreachable!("handled by render_pie"),
+        ChartKind::Scatter3d => unreachable!("handled by scatter3d::render"),
     }
 }
 

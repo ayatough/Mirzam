@@ -231,7 +231,7 @@ spaces goes in `"quotes"`.
 
 ````markdown
 ```chart
-type: bar          # bar | line | area | scatter | pie
+type: bar          # bar | line | area | scatter | scatter3d | pie
 id: latency        # optional; mark ids derive from it
 title: p95 latency by region (ms)
 y_label: ms
@@ -252,6 +252,12 @@ column when the file puts it elsewhere. `data:` may instead name a `.csv` file.
 Each mark gets the id `<chart-id>-<series>-<row>`, so `#latency-0-1` is the
 second bar of the first series — that is what an arrow or an annotation points
 at.
+
+`type: scatter3d` is the one kind that reads its columns positionally: x, y, z,
+then an optional fourth naming the series. `azim` (45) and `elev` (30) turn the
+orthographic camera, `zoom` (1.0) sizes the box. Header names become the axis
+names. Ids still name the row from every angle, so `connect` holds. Past about
+2000 points the build warns - the marks are what the deck carries.
 
 A category column that is numbers all the way down is a quantity: `line`,
 `area` and `scatter` place their points along the axis by value, so an

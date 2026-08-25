@@ -45,6 +45,19 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   one — a substitution could previously rewrite the inside of an example.
 
 ### Added
+- **`type: scatter3d`: a point cloud, projected at build time.** Three
+  dimensional data otherwise leaves the deck as a screenshot, and a screenshot
+  cannot be pointed at — a projected cloud is marks with ids, so `connect` and
+  `annotate` reach one point the way they already reach one bar, and the whole
+  thing prints as vector. `azim` and `elev` turn an orthographic camera,
+  `zoom` sizes the box; the first three columns are x, y and z and their
+  headers name the axes, with an optional fourth naming the series. A mark's
+  id names its row **from every angle** — depth sorting decides which disc is
+  drawn over which and nothing else — which a sweep of camera angles is held
+  to as a test, along with no two axis labels ever colliding. Points only, and
+  orthographic only, both for reasons written down in the syntax reference.
+  Past about 2000 points the build says so: not because projecting them is
+  slow but because every one becomes a mark the deck then carries.
 - **`inner:` cuts a hole in a pie, making it a donut.** The fraction is of the
   radius, so `0.6` looks like what it says. From `0.45` up the hole carries
   what the slices add up to — the one thing a pie has nowhere else to put.

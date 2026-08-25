@@ -944,6 +944,12 @@ svg.mz-chart { width: 100%; height: 100%; max-height: 100%; }
 .mz-chart-slice { stroke: var(--mz-slide-bg); stroke-width: 2; }
 /* What a donut's slices add up to, in the hole they leave. */
 .mz-chart-total { font-size: 28px; font-weight: 600; fill: var(--mz-fg); }
+/* A projected point cloud. The box is drawn from the three faces turned away
+   from the camera, so it is always behind the data; the discs carry the slide
+   behind them as an outline, which is what keeps a dense cluster countable. */
+.mz-chart-face { fill: var(--mz-muted); fill-opacity: .07; }
+.mz-chart-edge { stroke: var(--mz-border); stroke-width: 1; fill: none; }
+.mz-chart-3d { stroke: var(--mz-slide-bg); stroke-width: 1.5; }
 
 /* Mermaid diagrams (build-time SVG from an external renderer). The diagram
    arrives with its own viewBox and no size of its own — the pane decides the
