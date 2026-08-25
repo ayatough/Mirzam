@@ -131,7 +131,7 @@ That puts `mirzam` in `~/.local/bin`. On Windows, download the `.zip` from the
 releases page. See the [quick start](docs/quickstart.md) for every other way in
 — VS Code, Obsidian, the browser.
 
-To build it yourself instead, you need Rust 1.91 or newer:
+To build it yourself instead, you need Rust 1.92 or newer:
 
 ```bash
 git clone https://github.com/ayatough/Mirzam
@@ -340,8 +340,9 @@ syntax is the expensive part to get wrong.
 
 MIT. The bundled STIX Two Math font is licensed under the SIL Open Font License.
 
-Nothing else is bundled. `import pdf` runs `mutool` (MuPDF, AGPL) or
-`pdftocairo` (Poppler, GPL) when the machine has one, the way the exporter runs
-Chromium — as separate programs, discovered rather than shipped. No copyleft
-code is linked into Mirzam or distributed with it, and what those tools draw is
-the paper's picture, not theirs.
+`import pdf` turns a figure into an SVG with [hayro](https://github.com/LaurenzV/hayro)
+(Apache-2.0 OR MIT), which carries PDFium's Foxit substitute fonts and two ICC
+profiles — BSD-3 and CC-like terms, reproduced in those crates. `mutool` or
+`pdftocairo` are still run when `MIRZAM_PDFTOOL` or `--tool` names one, and for
+`--format png`; they are separate programs, discovered rather than shipped, so
+no copyleft code is linked into Mirzam or distributed with it.

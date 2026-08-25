@@ -7,7 +7,37 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
-Nothing yet.
+### Changed
+- **A figure out of a paper needs nothing installed.** `mirzam import pdf`
+  landed in 0.10 with one step that was not self-contained: a *drawn* figure —
+  which is most of what a LaTeX paper holds — became an SVG only if the machine
+  had `mutool` or `pdftocairo`, and a cropped PDF otherwise. It is now
+  converted here, in the same process, by [hayro] — a PDF interpreter in pure
+  Rust, Apache-2.0 OR MIT — with the text as outline paths, which is what a
+  deck needs when it embeds the picture as a data URI.
+
+  `--format png` still wants one of those tools, rasterising being a separate
+  question; `--tool` and `MIRZAM_PDFTOOL` still hand even the SVG to one, which
+  is the escape hatch for a figure Mirzam declines to draw. What it declines is
+  visible: a font it cannot read or an image that will not decode leaves the
+  crop on disk and says which it was, rather than writing a picture with a hole
+  in it.
+
+  Two things come with it. **The floor moves to Rust 1.92**, hayro's own, and
+  the release binary grows from 7.5 MB to 12.6 MB — a cost every reader pays
+  for a command some of them never run, and the reason `--format png` was left
+  where it is rather than pulling in a rasteriser as well. And "nothing else is bundled" is now
+  a short attribution list: hayro carries PDFium's Foxit substitute fonts
+  (BSD-3) for the fourteen standard faces a PDF may use without embedding, and
+  two ICC profiles.
+
+  A figure also stopped carrying the page around it. hayro converts a *page*,
+  and a crop here is a page with its box narrowed, so a straight conversion
+  brought both columns of body text along — 1.49 MB per figure. A culling pass
+  drops what the `viewBox` cannot show and leaves anything it cannot measure
+  alone; the same figures come out at 4 to 26 KB, rendering identically.
+
+  [hayro]: https://github.com/LaurenzV/hayro
 
 ## [0.10.0] - 2026-08-25
 

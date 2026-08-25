@@ -381,7 +381,31 @@ fn write_one(
         Format::Png => "png",
         _ => "svg",
     };
-    match Tool::discover(options.tool.as_deref()) {
+
+    // A vector figure is converted here, in this process, unless the author
+    // named a tool - `--tool` and MIRZAM_PDFTOOL are a choice, where `mutool`
+    // merely being on PATH is not.
+    let named = Tool::named(options.tool.as_deref());
+    let mut refused = None;
+    if wanted == "svg" && named.is_none() {
+        let bytes =
+            std::fs::read(&crop).map_err(|e| format!("cannot read {}: {e}", crop.display()))?;
+        match svg::convert(&bytes) {
+            Ok(drawing) => {
+                let file = options.out_dir.join(format!("{stem}.svg"));
+                std::fs::write(&file, drawing)
+                    .map_err(|e| format!("cannot write {}: {e}", file.display()))?;
+                let _ = std::fs::remove_file(&crop);
+                return Ok((file, "svg".to_string()));
+            }
+            // Not a failure to report and stop on: a figure hayro will not
+            // take is one an installed tool may still manage, and the crop is
+            // there either way.
+            Err(why) => refused = Some(why),
+        }
+    }
+
+    match named.or_else(|| Tool::discover(None)) {
         Some(tool) => {
             let file = options.out_dir.join(format!("{stem}.{wanted}"));
             tool.convert(&crop, &file, wanted, options.dpi)?;
@@ -390,17 +414,27 @@ fn write_one(
         }
         None if options.format == Format::Auto => Ok((
             crop,
-            "cropped - install mupdf-tools or poppler-utils for an SVG".to_string(),
+            match &refused {
+                Some(why) => format!("cropped - not converted here: {why}"),
+                None => "cropped".to_string(),
+            },
         )),
-        None => Err(format!(
-            "{wanted} needs a PDF tool, and this machine has none.\n\
-             Install mupdf-tools (`mutool`) or poppler-utils (`pdftocairo`), or point \
-             {TOOL_ENV} at one.\n\
-             Neither is bundled with Mirzam: both are copyleft, and a program Mirzam \
-             runs is not a program Mirzam ships.\n\
-             The crop is at {} and converts later.",
-            crop.display()
-        )),
+        None => Err(match (&refused, wanted) {
+            (Some(why), _) => format!(
+                "{}: {why}.\n\
+                 The crop is at {}, and `mutool` or `pdftocairo` may still convert it.",
+                figure.label,
+                crop.display()
+            ),
+            (None, _) => format!(
+                "a {wanted} is rendered by a tool, and this machine has none.\n\
+                 Install mupdf-tools (`mutool`) or poppler-utils (`pdftocairo`), or point \
+                 {TOOL_ENV} at one - neither is bundled, both being copyleft.\n\
+                 An SVG needs none of that: leave `--format` off.\n\
+                 The crop is at {}.",
+                crop.display()
+            ),
+        }),
     }
 }
 
@@ -455,6 +489,25 @@ impl Tool {
     /// something to write either way.
     fn discover(named: Option<&str>) -> Option<Tool> {
         Self::discover_with(named, |k| std::env::var(k).ok(), runs)
+    }
+
+    /// Only the tool the author *asked* for, by `--tool` or by the
+    /// environment. A tool that merely happens to be installed no longer wins:
+    /// the conversion is in this process now, and PATH is not a preference.
+    fn named(named: Option<&str>) -> Option<Tool> {
+        Self::named_with(named, |k| std::env::var(k).ok(), runs)
+    }
+
+    fn named_with(
+        named: Option<&str>,
+        env: impl Fn(&str) -> Option<String>,
+        usable: impl Fn(&Path) -> bool,
+    ) -> Option<Tool> {
+        named
+            .map(PathBuf::from)
+            .or_else(|| env(TOOL_ENV).map(PathBuf::from))
+            .filter(|p| usable(p))
+            .map(|p| Self::name_of(&p))
     }
 
     fn discover_with(
@@ -593,6 +646,9 @@ fn runs(program: &Path) -> bool {
 }
 
 mod image;
+// Public so a test can drive the conversion without going through the
+// command, and without a tool on the machine changing what it measures.
+pub mod svg;
 
 #[cfg(test)]
 mod tests {
