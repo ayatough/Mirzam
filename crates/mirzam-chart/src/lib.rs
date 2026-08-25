@@ -87,6 +87,8 @@ pub struct ChartSpec {
     pub stacked: Stacking,
     /// Lay a bar chart's categories down the side instead of along the bottom.
     pub horizontal: bool,
+    /// Cut a hole out of a pie, as a fraction of its radius: a donut.
+    pub inner: Option<f64>,
     /// Hide the legend even when several series are present.
     pub legend: Option<bool>,
     /// Series colors; defaults to the theme palette.
@@ -178,6 +180,18 @@ pub fn parse_chart(src: &str, resolve: impl Fn(&str) -> Option<String>) -> Chart
     if spec.horizontal && spec.kind != ChartKind::Bar {
         errors.push("chart: `horizontal` applies to bar charts, ignored".to_string());
     }
+    match spec.inner {
+        Some(_) if spec.kind != ChartKind::Pie => {
+            errors.push("chart: `inner` applies to pie charts, ignored".to_string());
+        }
+        Some(f) if !(0.0..0.9).contains(&f) => {
+            errors.push(format!(
+                "chart: `inner: {}` is not a fraction of the radius between 0 and 0.9",
+                num(f)
+            ));
+        }
+        _ => {}
+    }
 
     let table = match parse_csv(&csv, spec.x.as_deref()) {
         Ok(t) if !t.series.is_empty() && !t.categories.is_empty() => Some(t),
@@ -210,6 +224,7 @@ const KNOWN_KEYS: &[&str] = &[
     "y_label",
     "stacked",
     "horizontal",
+    "inner",
     "legend",
     "colors",
     "highlight",
@@ -885,18 +900,64 @@ fn render_pie(svg: &mut String, spec: &ChartSpec, table: &Table, id: &str, w: f6
     // Leave room on both sides for the outside labels.
     let (cx, cy) = (w / 2.0, h / 2.0 + 8.0);
     let r = (h - 150.0).max(60.0) / 2.0;
+    // A hole makes it a donut. The fraction is of the radius, so the numbers
+    // an author reaches for - a half, two thirds - mean what they look like.
+    let ri = r * spec.inner.unwrap_or(0.0).clamp(0.0, 0.9);
     let mut angle = -std::f64::consts::FRAC_PI_2;
 
     for (ci, v) in series.values.iter().enumerate() {
+        // A slice of nothing has no wedge, and a degenerate path is worse
+        // than no path.
+        if *v <= 0.0 {
+            continue;
+        }
         let sweep = v / total * std::f64::consts::TAU;
-        let (x0, y0) = (cx + r * angle.cos(), cy + r * angle.sin());
         let end = angle + sweep;
-        let (x1, y1) = (cx + r * end.cos(), cy + r * end.sin());
+        let at = |radius: f64, a: f64| (cx + radius * a.cos(), cy + radius * a.sin());
         let large = if sweep > std::f64::consts::PI { 1 } else { 0 };
         let c = color_for(spec, ci);
+        // One slice is the whole circle, and an arc whose ends meet is an arc
+        // SVG declines to draw - which is why a one-category pie used to come
+        // out blank. Two half turns have ends that meet nothing.
+        let ring = |radius: f64, sweep_flag: u8| {
+            format!(
+                "M {:.1} {cy:.1} A {radius:.1} {radius:.1} 0 1 {sweep_flag} {:.1} {cy:.1} A {radius:.1} {radius:.1} 0 1 {sweep_flag} {:.1} {cy:.1}",
+                cx - radius,
+                cx + radius,
+                cx - radius
+            )
+        };
+        let d = if sweep >= std::f64::consts::TAU - 1e-9 {
+            match ri > 0.0 {
+                true => format!("{} Z {} Z", ring(r, 1), ring(ri, 0)),
+                false => format!("{} Z", ring(r, 1)),
+            }
+        } else {
+            let (x0, y0) = at(r, angle);
+            let (x1, y1) = at(r, end);
+            match ri > 0.0 {
+                true => {
+                    let (i0, j0) = at(ri, angle);
+                    let (i1, j1) = at(ri, end);
+                    format!(
+                        "M {x0:.1} {y0:.1} A {r:.1} {r:.1} 0 {large} 1 {x1:.1} {y1:.1} \
+                         L {i1:.1} {j1:.1} A {ri:.1} {ri:.1} 0 {large} 0 {i0:.1} {j0:.1} Z"
+                    )
+                }
+                false => format!(
+                    "M {cx:.1} {cy:.1} L {x0:.1} {y0:.1} A {r:.1} {r:.1} 0 {large} 1 {x1:.1} {y1:.1} Z"
+                ),
+            }
+        };
         let _ = write!(
             svg,
-            "<path class=\"mz-chart-slice\" id=\"{id}-0-{ci}\" d=\"M {cx:.1} {cy:.1} L {x0:.1} {y0:.1} A {r:.1} {r:.1} 0 {large} 1 {x1:.1} {y1:.1} Z\" fill=\"{c}\"/>"
+            "<path class=\"mz-chart-slice\" id=\"{id}-0-{ci}\"{} d=\"{d}\" fill=\"{c}\"/>",
+            // Only a ring has an inside to leave out.
+            if ri > 0.0 {
+                " fill-rule=\"evenodd\""
+            } else {
+                ""
+            }
         );
         // Label outside the slice, anchored away from the pie so it never
         // overlaps the wedge. Slivers are left unlabeled.
@@ -917,6 +978,17 @@ fn render_pie(svg: &mut String, spec: &ChartSpec, table: &Table, id: &str, w: f6
             );
         }
         angle = end;
+    }
+
+    // The hole is the only part of a pie with room to say what the slices add
+    // up to - but only once it is a hole rather than a ring.
+    if spec.inner.unwrap_or(0.0) >= 0.45 {
+        let _ = write!(
+            svg,
+            "<text class=\"mz-chart-total\" x=\"{cx:.1}\" y=\"{:.1}\" text-anchor=\"middle\">{}</text>",
+            cy + 10.0,
+            num(total)
+        );
     }
 }
 
@@ -1550,6 +1622,95 @@ mod tests {
             doc.errors
         );
         assert!(!render_svg(&doc, "c").is_empty(), "the line is still drawn");
+    }
+
+    /// One category is the whole circle, and an arc whose ends meet is one SVG
+    /// declines to draw - so this used to render a pie with nothing in it.
+    #[test]
+    fn one_category_fills_the_circle() {
+        let doc = parse_chart("type: pie\nid: p\ndata: |\n  k, v\n  all, 240\n", none);
+        let svg = render_svg(&doc, "c");
+        let d = svg
+            .split("id=\"p-0-0\"")
+            .nth(1)
+            .unwrap()
+            .split("d=\"")
+            .nth(1)
+            .unwrap()
+            .split('"')
+            .next()
+            .unwrap();
+        assert_eq!(d.matches(" A ").count(), 2, "two half turns, not one: {d}");
+        assert!(
+            !d.contains("L "),
+            "a full circle has no radius to draw: {d}"
+        );
+    }
+
+    #[test]
+    fn a_donut_leaves_a_hole_and_a_pie_does_not() {
+        let pie = parse_chart("type: pie\nid: p\ndata: |\n  k, v\n  a, 1\n  b, 1\n", none);
+        let donut = parse_chart(
+            "type: pie\nid: p\ninner: 0.6\ndata: |\n  k, v\n  a, 1\n  b, 1\n",
+            none,
+        );
+        assert!(donut.errors.is_empty(), "{:?}", donut.errors);
+        let pie = render_svg(&pie, "c");
+        let donut = render_svg(&donut, "c");
+        // A wedge is drawn from the middle out; a ring never reaches it.
+        assert!(pie.contains("M 360.0 228.0 L"), "{pie}");
+        assert!(!donut.contains("M 360.0 228.0 L"), "{donut}");
+        assert!(donut.contains("fill-rule=\"evenodd\""));
+        assert!(!pie.contains("fill-rule"), "an ordinary pie gains nothing");
+    }
+
+    #[test]
+    fn a_hole_wide_enough_carries_the_total() {
+        let wide = parse_chart(
+            "type: pie\ninner: 0.6\ndata: |\n  k, v\n  a, 40\n  b, 60\n",
+            none,
+        );
+        let narrow = parse_chart(
+            "type: pie\ninner: 0.25\ndata: |\n  k, v\n  a, 40\n  b, 60\n",
+            none,
+        );
+        assert!(render_svg(&wide, "c").contains("mz-chart-total"));
+        assert!(
+            !render_svg(&narrow, "c").contains("mz-chart-total"),
+            "a ring is not a hole"
+        );
+    }
+
+    #[test]
+    fn a_slice_of_nothing_is_not_drawn() {
+        let doc = parse_chart("type: pie\nid: p\ndata: |\n  k, v\n  a, 1\n  b, 0\n", none);
+        let svg = render_svg(&doc, "c");
+        assert!(svg.contains("id=\"p-0-0\""));
+        assert!(!svg.contains("id=\"p-0-1\""), "no wedge to draw");
+    }
+
+    #[test]
+    fn a_hole_bigger_than_the_pie_is_refused() {
+        let doc = parse_chart("type: pie\ninner: 1.5\ndata: |\n  k, v\n  a, 1\n", none);
+        assert!(
+            doc.errors.iter().any(|e| e.contains("1.5")),
+            "{:?}",
+            doc.errors
+        );
+    }
+
+    #[test]
+    fn cutting_a_hole_in_something_that_is_not_a_pie_warns() {
+        let doc = parse_chart("type: bar\ninner: 0.5\ndata: |\n  k, v\n  a, 1\n", none);
+        assert!(
+            doc.errors.iter().any(|e| e.contains("inner")),
+            "{:?}",
+            doc.errors
+        );
+        assert!(
+            !render_svg(&doc, "c").is_empty(),
+            "the bars are still drawn"
+        );
     }
 
     #[test]

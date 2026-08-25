@@ -8,6 +8,11 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Fixed
+- **A pie of one category is no longer blank.** Its single slice is the whole
+  circle, and an arc whose two ends are the same point is one SVG declines to
+  draw, so the path came out as a bare line and nothing appeared. A full
+  circle is now drawn as two half turns. A slice worth nothing is left out
+  rather than drawn as a degenerate wedge.
 - **A `line` or `area` chart whose first column is numbers now measures with
   it.** The x position came from the row's index and nothing else, so a column
   of `0, 1, 2, 5, 15, 60` drew as six even steps and a reader saw a recovery
@@ -40,6 +45,9 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   one — a substitution could previously rewrite the inside of an example.
 
 ### Added
+- **`inner:` cuts a hole in a pie, making it a donut.** The fraction is of the
+  radius, so `0.6` looks like what it says. From `0.45` up the hole carries
+  what the slices add up to — the one thing a pie has nowhere else to put.
 - **`horizontal: true` lays a bar chart on its side.** Names down the side,
   bars along the bottom, and a side margin that grows to hold the longest of
   them. It is for what a column chart is bad at: a category worth reading -

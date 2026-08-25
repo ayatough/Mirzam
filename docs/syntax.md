@@ -991,6 +991,25 @@ bars would have nowhere left. Stacking works the same way, along the row.
 `y_label` still labels the value axis, which is now the bottom one. Like
 `stacked`, this is a bar chart's key: another kind that asks is told so.
 
+### A hole in the pie
+
+`inner:` cuts one, as a fraction of the radius, which makes the pie a donut:
+
+````markdown
+```chart
+type: pie
+inner: 0.6
+data: |
+  channel, share
+  Self-serve, 52
+  Enterprise, 28
+```
+````
+
+Between about `0.5` and `0.65` reads best. From `0.45` up the hole carries what
+the slices add up to, which is the thing a pie has nowhere else to put; below
+that it is a ring rather than a hole and stays empty.
+
 ### The x axis
 
 `x:` names the column the categories come from, which is what a file whose

@@ -238,6 +238,7 @@ y_label: ms
 x: region          # optional; the category column, else the first one
 stacked: true      # bars only; `percent` fills every column to 100%
 horizontal: true   # bars only; names down the side, bars along the bottom
+inner: 0.6         # pie only; a hole of that fraction of the radius
 highlight: after   # dim every series but this one
 data: |
   region, before, after
