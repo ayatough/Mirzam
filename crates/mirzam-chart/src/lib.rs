@@ -85,6 +85,8 @@ pub struct ChartSpec {
     pub y_label: Option<String>,
     /// Stand the series of a bar chart on top of each other.
     pub stacked: Stacking,
+    /// Lay a bar chart's categories down the side instead of along the bottom.
+    pub horizontal: bool,
     /// Hide the legend even when several series are present.
     pub legend: Option<bool>,
     /// Series colors; defaults to the theme palette.
@@ -173,6 +175,9 @@ pub fn parse_chart(src: &str, resolve: impl Fn(&str) -> Option<String>) -> Chart
     if spec.stacked != Stacking::None && spec.kind != ChartKind::Bar {
         errors.push("chart: `stacked` applies to bar charts, ignored".to_string());
     }
+    if spec.horizontal && spec.kind != ChartKind::Bar {
+        errors.push("chart: `horizontal` applies to bar charts, ignored".to_string());
+    }
 
     let table = match parse_csv(&csv, spec.x.as_deref()) {
         Ok(t) if !t.series.is_empty() && !t.categories.is_empty() => Some(t),
@@ -204,6 +209,7 @@ const KNOWN_KEYS: &[&str] = &[
     "x",
     "y_label",
     "stacked",
+    "horizontal",
     "legend",
     "colors",
     "highlight",
@@ -377,6 +383,7 @@ pub fn render_svg(doc: &ChartDoc, chart_id: &str) -> String {
 
     match spec.kind {
         ChartKind::Pie => render_pie(&mut svg, spec, table, &id, w, h),
+        ChartKind::Bar if spec.horizontal => render_bars_h(&mut svg, spec, table, &id, w, h),
         _ => render_cartesian(&mut svg, spec, table, &id, w, h),
     }
 
@@ -403,21 +410,172 @@ pub fn render_svg(doc: &ChartDoc, chart_id: &str) -> String {
     svg
 }
 
-fn render_cartesian(svg: &mut String, spec: &ChartSpec, table: &Table, id: &str, w: f64, h: f64) {
-    let (left, right, top) = (66.0, 20.0, if spec.title.is_some() { 46.0 } else { 20.0 });
-    let bottom = if table.series.len() > 1 { 66.0 } else { 44.0 };
+/// Bars laid along the bottom rather than up the side. The two axes swap
+/// roles, so this is its own pass rather than a flag threaded through the
+/// vertical one: what shares between them is the arithmetic above, not the
+/// geometry.
+///
+/// It exists for the case a vertical bar chart is bad at. Category names long
+/// enough to be worth reading - "Deployment frequency", a survey question, a
+/// country - have nowhere to go under a column, and the ranked list they
+/// usually form reads top to bottom anyway.
+fn render_bars_h(svg: &mut String, spec: &ChartSpec, table: &Table, id: &str, w: f64, h: f64) {
+    let stack = stacking(spec);
+    let max = axis_max(table, stack);
+
+    // The names sit in the margin now, so the margin is as wide as the longest
+    // of them - within reason, since past a point the bars have nowhere left.
+    let longest = table
+        .categories
+        .iter()
+        .map(|c| c.chars().count())
+        .max()
+        .unwrap_or(0) as f64;
+    let left = (9.0 * longest + 20.0).clamp(66.0, w * 0.42);
+    let right = 44.0; // room for the number written past the end of a bar
+    let top = if spec.title.is_some() { 46.0 } else { 20.0 };
+    let legend = table.series.len() > 1;
+    let bottom = if legend { 66.0 } else { 44.0 } + if spec.y_label.is_some() { 22.0 } else { 0.0 };
     let (pw, ph) = (w - left - right, h - top - bottom);
 
-    // Only bars stack; `parse_chart` says so when another kind asks to.
-    let stack = if spec.kind == ChartKind::Bar {
+    // The value axis runs along the bottom: its grid lines stand up.
+    for i in 0..=4 {
+        let v = max * i as f64 / 4.0;
+        let x = left + pw * (i as f64 / 4.0);
+        let _ = write!(
+            svg,
+            "<line class=\"mz-chart-grid\" x1=\"{x:.1}\" y1=\"{top:.1}\" x2=\"{x:.1}\" y2=\"{:.1}\"/>\
+             <text class=\"mz-chart-tick\" x=\"{x:.1}\" y=\"{:.1}\" text-anchor=\"middle\">{}</text>",
+            top + ph,
+            top + ph + 22.0,
+            if stack == Stacking::Percent {
+                format!("{}%", num(v))
+            } else {
+                num(v)
+            }
+        );
+    }
+    if let Some(label) = &spec.y_label {
+        let _ = write!(
+            svg,
+            "<text class=\"mz-chart-axis\" x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\">{}</text>",
+            left + pw / 2.0,
+            top + ph + 44.0,
+            esc(label)
+        );
+    }
+
+    let n = table.categories.len().max(1) as f64;
+    let slot = ph / n;
+    let y_at = |ci: usize| top + slot * (ci as f64 + 0.5);
+
+    // Category names down the side, dropping any that would run into the one
+    // above. Unlike the horizontal axis these are all the same height, so the
+    // test is the row pitch rather than the text.
+    let mut filled = f64::NEG_INFINITY;
+    for (ci, cat) in table.categories.iter().enumerate() {
+        let y = y_at(ci);
+        if y - 9.0 < filled {
+            continue;
+        }
+        filled = y + 9.0 + 2.0;
+        let _ = write!(
+            svg,
+            "<text class=\"mz-chart-tick\" x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"end\">{}</text>",
+            left - 10.0,
+            y + 5.0,
+            esc(cat)
+        );
+    }
+
+    let dim = |si: usize| -> &'static str {
+        match &spec.highlight {
+            Some(name) if table.series[si].name != *name => " opacity=\"0.32\"",
+            _ => "",
+        }
+    };
+
+    let count = table.series.len().max(1) as f64;
+    let group = slot * 0.68;
+    let thick = if stack == Stacking::None {
+        group / count
+    } else {
+        group
+    };
+    let mut base = vec![0.0f64; table.categories.len()];
+    for (si, s) in table.series.iter().enumerate() {
+        let c = color_for(spec, si);
+        for ci in 0..s.values.len() {
+            let Some((shown, label)) = segment(table, stack, si, ci) else {
+                continue;
+            };
+            let bw = (shown / max) * pw;
+            let foot = match stack {
+                Stacking::None => 0.0,
+                _ => base.get(ci).copied().unwrap_or(0.0),
+            };
+            let x = left + foot;
+            let y = top
+                + slot * ci as f64
+                + (slot - group) / 2.0
+                + if stack == Stacking::None {
+                    thick * si as f64
+                } else {
+                    0.0
+                };
+            if let Some(b) = base.get_mut(ci) {
+                *b += bw;
+            }
+            let height = (thick - 3.0).max(1.0);
+            let _ = write!(
+                svg,
+                "<g id=\"{id}-{si}-{ci}\"><rect class=\"mz-chart-bar\" x=\"{x:.1}\" y=\"{y:.1}\" width=\"{bw:.1}\" height=\"{height:.1}\" rx=\"3\" fill=\"{c}\"{}/>",
+                dim(si)
+            );
+            // Past the end of the bar when there is only one, inside the
+            // segment when the next one starts where the space was.
+            let room = if stack == Stacking::None {
+                true
+            } else {
+                bw >= 9.0 * label.chars().count() as f64
+            };
+            if room {
+                let _ = write!(
+                    svg,
+                    "<text class=\"mz-chart-value{}\" x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"{}\">{label}</text>",
+                    if stack == Stacking::None { "" } else { " mz-inset" },
+                    if stack == Stacking::None {
+                        x + bw + 6.0
+                    } else {
+                        x + bw / 2.0
+                    },
+                    y + height / 2.0 + 5.0,
+                    if stack == Stacking::None {
+                        "start"
+                    } else {
+                        "middle"
+                    }
+                );
+            }
+            svg.push_str("</g>");
+        }
+    }
+}
+
+/// How this chart's bars are put together. Only bars stack; `parse_chart` says
+/// so when another kind asks to.
+fn stacking(spec: &ChartSpec) -> Stacking {
+    if spec.kind == ChartKind::Bar {
         spec.stacked
     } else {
         Stacking::None
-    };
+    }
+}
 
-    // Stacked, the axis has to reach the tallest *column*, not the tallest
-    // value in it; as shares, it always reaches exactly 100.
-    let max = match stack {
+/// How far the value axis has to reach. Stacked, that is the tallest *column*
+/// rather than the tallest value in it; as shares, it is always exactly 100.
+fn axis_max(table: &Table, stack: Stacking) -> f64 {
+    match stack {
         Stacking::Percent => 100.0,
         Stacking::Sum => nice_ceil(
             (0..table.categories.len())
@@ -433,7 +591,32 @@ fn render_cartesian(svg: &mut String, spec: &ChartSpec, table: &Table, id: &str,
                 .fold(0.0f64, |a, b| a.max(*b))
                 .max(1.0),
         ),
-    };
+    }
+}
+
+/// One segment's length along the value axis, and the number written on it.
+/// `None` when the column has no shares to divide.
+fn segment(table: &Table, stack: Stacking, si: usize, ci: usize) -> Option<(f64, String)> {
+    let v = *table.series.get(si)?.values.get(ci)?;
+    match stack {
+        Stacking::Percent => {
+            let total = column_total(table, ci);
+            (total > 0.0).then(|| {
+                let share = v / total * 100.0;
+                (share, format!("{}%", num(share)))
+            })
+        }
+        _ => Some((v, num(v))),
+    }
+}
+
+fn render_cartesian(svg: &mut String, spec: &ChartSpec, table: &Table, id: &str, w: f64, h: f64) {
+    let (left, right, top) = (66.0, 20.0, if spec.title.is_some() { 46.0 } else { 20.0 });
+    let bottom = if table.series.len() > 1 { 66.0 } else { 44.0 };
+    let (pw, ph) = (w - left - right, h - top - bottom);
+
+    let stack = stacking(spec);
+    let max = axis_max(table, stack);
 
     // Grid lines and value axis.
     for i in 0..=4 {
@@ -574,15 +757,10 @@ fn render_cartesian(svg: &mut String, spec: &ChartSpec, table: &Table, id: &str,
             let mut base = vec![0.0f64; table.categories.len()];
             for (si, s) in table.series.iter().enumerate() {
                 let c = color_for(spec, si);
-                for (ci, v) in s.values.iter().enumerate() {
-                    let total = column_total(table, ci);
+                for ci in 0..s.values.len() {
                     // A column that sums to nothing has no shares to draw.
-                    if stack == Stacking::Percent && total <= 0.0 {
+                    let Some((shown, label)) = segment(table, stack, si, ci) else {
                         continue;
-                    }
-                    let shown = match stack {
-                        Stacking::Percent => v / total * 100.0,
-                        _ => *v,
                     };
                     let bh = (shown / max) * ph;
                     let x = left
@@ -615,10 +793,6 @@ fn render_cartesian(svg: &mut String, spec: &ChartSpec, table: &Table, id: &str,
                     // Stacked, the number goes inside its own segment - above
                     // the bar is where the segment above it is - and only when
                     // the segment is deep enough to hold it.
-                    let label = match stack {
-                        Stacking::Percent => format!("{}%", num(shown)),
-                        _ => num(shown),
-                    };
                     if stack == Stacking::None || bh >= 22.0 {
                         let _ = write!(
                             svg,
@@ -1280,6 +1454,102 @@ mod tests {
             .map(|(_, s)| s)
             .collect();
         assert_eq!(t, vec!["2020", "2021", "2022", "2023", "2024"]);
+    }
+
+    #[test]
+    fn horizontal_bars_run_from_one_left_edge() {
+        let doc = parse_chart(
+            "type: bar\nid: b\nhorizontal: true\ndata: |\n  k, v\n  a, 10\n  b, 40\n",
+            none,
+        );
+        assert!(doc.errors.is_empty(), "{:?}", doc.errors);
+        let svg = render_svg(&doc, "c");
+        let (x0, y0, w0, _) = bar(&svg, "b-0-0");
+        let (x1, y1, w1, _) = bar(&svg, "b-0-1");
+        assert!(
+            (x0 - x1).abs() < 0.2,
+            "both start at the axis: {x0} vs {x1}"
+        );
+        assert!(w1 > w0 * 3.0, "40 is four times 10: {w1} vs {w0}");
+        assert!(y1 > y0, "rows run down the side: {y0} then {y1}");
+    }
+
+    #[test]
+    fn horizontal_categories_sit_in_the_margin() {
+        let doc = parse_chart(
+            "type: bar\nhorizontal: true\ndata: |\n  k, v\n  Mean time to restore, 41\n",
+            none,
+        );
+        let svg = render_svg(&doc, "c");
+        assert!(
+            svg.contains("text-anchor=\"end\">Mean time to restore</text>"),
+            "{svg}"
+        );
+    }
+
+    /// A name worth reading is the reason to lay a bar chart on its side, so
+    /// the margin has to grow to hold one.
+    #[test]
+    fn a_long_name_widens_the_margin_and_a_short_one_does_not() {
+        let short = parse_chart(
+            "type: bar\nid: b\nhorizontal: true\ndata: |\n  k, v\n  a, 1\n",
+            none,
+        );
+        let long = parse_chart(
+            "type: bar\nid: b\nhorizontal: true\ndata: |\n  k, v\n  Change failure rate, 1\n",
+            none,
+        );
+        let near = bar(&render_svg(&short, "c"), "b-0-0").0;
+        let far = bar(&render_svg(&long, "c"), "b-0-0").0;
+        assert!(far > near, "{far} should be further right than {near}");
+    }
+
+    #[test]
+    fn horizontal_stacks_along_the_row() {
+        let doc = parse_chart(
+            "type: bar\nid: b\nhorizontal: true\nstacked: true\ndata: |\n  k, a, c\n  x, 3, 1\n",
+            none,
+        );
+        let svg = render_svg(&doc, "c");
+        let (x0, y0, w0, h0) = bar(&svg, "b-0-0");
+        let (x1, y1, _, h1) = bar(&svg, "b-1-0");
+        assert!(
+            (x0 + w0 - x1).abs() < 0.2,
+            "{x1} should start at {}",
+            x0 + w0
+        );
+        assert!((y0 - y1).abs() < 0.2, "one row, not two: {y0} vs {y1}");
+        assert!((h0 - h1).abs() < 0.2);
+    }
+
+    #[test]
+    fn horizontal_grouped_rows_do_not_carry_a_stacking_baseline() {
+        let doc = parse_chart(
+            "type: bar\nid: b\nhorizontal: true\ndata: |\n  k, a, c\n  x, 3, 1\n",
+            none,
+        );
+        let svg = render_svg(&doc, "c");
+        let (x0, y0, _, h0) = bar(&svg, "b-0-0");
+        let (x1, y1, _, _) = bar(&svg, "b-1-0");
+        assert!(
+            (x0 - x1).abs() < 0.2,
+            "both start at the axis: {x0} vs {x1}"
+        );
+        assert!(y1 > y0 + h0 - 4.0, "{y1} should sit below {y0}+{h0}");
+    }
+
+    #[test]
+    fn laying_a_chart_that_is_not_a_bar_chart_on_its_side_warns() {
+        let doc = parse_chart(
+            "type: line\nhorizontal: true\ndata: |\n  k, v\n  a, 1\n",
+            none,
+        );
+        assert!(
+            doc.errors.iter().any(|e| e.contains("horizontal")),
+            "{:?}",
+            doc.errors
+        );
+        assert!(!render_svg(&doc, "c").is_empty(), "the line is still drawn");
     }
 
     #[test]

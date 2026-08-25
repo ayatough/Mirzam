@@ -40,6 +40,12 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   one — a substitution could previously rewrite the inside of an example.
 
 ### Added
+- **`horizontal: true` lays a bar chart on its side.** Names down the side,
+  bars along the bottom, and a side margin that grows to hold the longest of
+  them. It is for what a column chart is bad at: a category worth reading -
+  "Lead time for changes", a survey question, a country - has nowhere to go
+  under a column, and the ranked list those charts usually are reads top to
+  bottom. Stacking works the same way along the row.
 - **`type: scatter` draws points with no line through them.** It places them
   along the axis by value the way `line` and `area` now do, so it is the same
   chart without the join; a wide table gives every series the same x column.

@@ -968,6 +968,29 @@ having no shares to draw.
 Only bars stack. A `line`, `area` or `pie` chart that asks to is told so and
 drawn unstacked.
 
+### On its side
+
+`horizontal: true` lays a bar chart's categories down the side and runs the
+bars along the bottom. It is for the case a column chart is bad at: a name long
+enough to be worth reading has nowhere to go under a column, and the ranked
+list those charts usually are reads top to bottom anyway.
+
+````markdown
+```chart
+type: bar
+horizontal: true
+data: |
+  question, agree
+  Deployment frequency, 82
+  Lead time for changes, 64
+```
+````
+
+The side margin grows to hold the longest name, up to a limit — past which the
+bars would have nowhere left. Stacking works the same way, along the row.
+`y_label` still labels the value axis, which is now the bottom one. Like
+`stacked`, this is a bar chart's key: another kind that asks is told so.
+
 ### The x axis
 
 `x:` names the column the categories come from, which is what a file whose
