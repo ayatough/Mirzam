@@ -7,6 +7,10 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.10.0] - 2026-08-25
+
 ### Fixed
 - **A pie of one category is no longer blank.** Its single slice is the whole
   circle, and an arc whose two ends are the same point is one SVG declines to

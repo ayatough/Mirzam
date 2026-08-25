@@ -6,7 +6,7 @@ Where Mirzam is and what comes next. Design rationale lives in
 
 ## Status
 
-`v0.9.0` is the current release: everything below marked Done is in it, built
+`v0.10.0` is the current release: everything below marked Done is in it, built
 by CI and published as a prebuilt binary. **Done · unreleased** means it is on
 `main` and waiting for the next tag — see the Unreleased section of
 [CHANGELOG.md](../CHANGELOG.md). It is still `0.x` — the markup will keep

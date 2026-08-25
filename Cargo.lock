@@ -436,21 +436,21 @@ dependencies = [
 
 [[package]]
 name = "mirzam-anim"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "serde_json",
 ]
 
 [[package]]
 name = "mirzam-annot"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "serde_json",
 ]
 
 [[package]]
 name = "mirzam-chart"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "serde",
  "serde_yaml",
@@ -458,11 +458,11 @@ dependencies = [
 
 [[package]]
 name = "mirzam-cite"
-version = "0.9.0"
+version = "0.10.0"
 
 [[package]]
 name = "mirzam-cli"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "comrak",
  "flate2",
@@ -479,14 +479,14 @@ dependencies = [
 
 [[package]]
 name = "mirzam-connect"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "serde_json",
 ]
 
 [[package]]
 name = "mirzam-core"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "serde",
  "serde_yaml",
@@ -494,15 +494,15 @@ dependencies = [
 
 [[package]]
 name = "mirzam-figure"
-version = "0.9.0"
+version = "0.10.0"
 
 [[package]]
 name = "mirzam-layout"
-version = "0.9.0"
+version = "0.10.0"
 
 [[package]]
 name = "mirzam-render"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "base64",
  "comrak",
@@ -523,7 +523,7 @@ dependencies = [
 
 [[package]]
 name = "mirzam-shape"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -531,18 +531,18 @@ dependencies = [
 
 [[package]]
 name = "mirzam-syntax"
-version = "0.9.0"
+version = "0.10.0"
 
 [[package]]
 name = "mirzam-tmath"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "math-core",
 ]
 
 [[package]]
 name = "mirzam-wasm"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "mirzam-core",
  "mirzam-layout",
