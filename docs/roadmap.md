@@ -239,6 +239,29 @@ hayro is pre-1.0 and says so; the version gets pinned. `--format png` keeps
 its tool for now: rasterizing is hayro's other half and another couple of
 megabytes, a separate decision.
 
+One thing the spike did not weigh, and it is the thing that would otherwise be
+found after the code landed: **hayro converts a page, and does not leave out
+what falls outside it.** A crop here is the same page with a narrowed box, so
+every glyph in both columns rides along in the SVG — 1.49 MB per figure,
+against `mutool`'s 4 to 17 KB, and 1.49 MB whichever figure it is. A deck
+inlines its pictures as data URIs under a 20 MB ceiling, so three figures
+would spend a third of a deck on ink nobody sees.
+
+It is not a blocker, and the fix is small enough to name: dropping the paths
+and `use`s whose box lies outside the `viewBox` brought those same three files
+to 4, 9 and 26 KB, rendering identically. hayro writes absolute coordinates
+under one uniform transform, which is what keeps such a pass short — the
+prototype was forty lines. So adoption carries one piece of work this decision
+does not otherwise mention, and it is worth reporting upstream as well: not
+emitting off-page geometry is hayro's to fix, not ours to work around for
+good.
+
+Also checked while the spike was open: `hayro-svg` alone resolves 61 crates,
+it builds for `wasm32-unknown-unknown` with nothing added, the standard-14
+substitutes are PDFium's Foxit fonts under BSD-3 — attribution, not just a
+mention — and hayro ships CCITT, JBIG2 and JPEG 2000 decoders, which are the
+three stored-image cases `import pdf` refuses today.
+
 What survives from the old plan is its two guard-rails: the refusal path — a
 page hayro will not take falls back to the cropped PDF and says so, rather
 than shipping a picture with something missing from it — and the rendering
