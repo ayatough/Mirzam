@@ -1,7 +1,10 @@
 /target
 /out
 /site
-node_modules/
+# No trailing slash: `playwright-core` is not a dependency here, so the
+# screenshot and layout scripts get it linked in from outside the repo, and a
+# symlink is not a directory as far as a trailing slash is concerned.
+node_modules
 *.log
 pkg/
 *.vsix
