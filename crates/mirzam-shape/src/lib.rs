@@ -18,6 +18,8 @@
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 pub enum ShapeKind {
     Rect,
     Ellipse,
@@ -27,6 +29,8 @@ pub enum ShapeKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 pub enum Edge {
     N,
     S,
@@ -37,12 +41,15 @@ pub enum Edge {
 
 /// An endpoint: either a literal point or an edge of another shape.
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 pub enum EndRef {
     Point(f64, f64),
     Anchor { id: String, edge: Edge },
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Shape {
     pub kind: Option<ShapeKind>,
     pub id: Option<String>,
@@ -55,6 +62,8 @@ pub struct Shape {
     pub kv: BTreeMap<String, String>,
 }
 
+#[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ShapeDoc {
     pub shapes: Vec<Shape>,
     pub errors: Vec<String>,
@@ -585,5 +594,27 @@ mod tests {
         assert!(errors.is_empty(), "{errors:?}");
         // #target centre x = 640 + 320 = 960, west edge = 960 - 64 = 896.
         assert!(svg.contains("x2=\"896.0\""), "{svg}");
+    }
+}
+
+#[cfg(all(test, feature = "serde"))]
+mod serde_tests {
+    use super::*;
+
+    /// The parsed model survives a JSON round trip byte-for-byte: what the
+    /// consumer deserializes is what the parser produced.
+    #[test]
+    fn shape_doc_round_trips_through_json() {
+        let doc = parse_shapes(
+            "rect #cache at(70%, 30%) size(30%, 14%) label=\"Cache\" fill=@accent2\narrow from(#cache.s) to(75%, 80%) style=dashed\nbadline",
+        );
+        assert!(!doc.shapes.is_empty());
+        assert!(!doc.errors.is_empty());
+        let json = serde_json::to_string(&doc).unwrap();
+        // Enums serialize kebab-case: a `rect` is "rect", an edge is "s".
+        assert!(json.contains("\"kind\":\"rect\""), "{json}");
+        assert!(json.contains("\"edge\":\"s\""), "{json}");
+        let back: ShapeDoc = serde_json::from_str(&json).unwrap();
+        assert_eq!(serde_json::to_string(&back).unwrap(), json);
     }
 }

@@ -46,6 +46,18 @@ jobs:
       - name: test
         run: cargo test --workspace
 
+      # An off-by-default feature is invisible to every line above: neither
+      # `--workspace` nor `--all-targets` turns one on, so the derives and the
+      # round-trip test behind `mirzam-shape/serde` would compile only on the
+      # machine of whoever remembered to ask for them. The consumer that reads
+      # the model across a boundary is not in this repository and cannot fail
+      # this build, so the field that stops deriving `Serialize` has to fail it
+      # here or nowhere.
+      - name: test off-by-default features
+        run: |
+          cargo clippy -p mirzam-shape --all-targets --features serde
+          cargo test -p mirzam-shape --features serde
+
       - name: build sample decks
         run: |
           for deck in 01-start 02-writing 03-layout 04-components 05-motion 06-theming pitch research seminar; do

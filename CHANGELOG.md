@@ -131,6 +131,27 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   now turns when the clip does, instead of cutting it off mid-sentence. A
   `{.loop}` clip never ends, so it never holds the page; pausing one by hand
   restarts the countdown rather than parking the deck on it.
+- **`mirzam-anim` exposes the effect grammar as a dialect.** A consumer with
+  its own time base (Barnard's beats and loops) can now parse the same
+  `target : effect key=value` clause with its own effect names and duration
+  grammar: `Dialect` (effects, directional set, duration parsers),
+  `parse_effect_in(&Dialect, …)` — which now also owns the `dir=` rules, so
+  they hold identically in every dialect — and `split_line`, which hands the
+  `[trigger]` back uninterpreted for the caller to define. `ParsedEffect`,
+  `parse_target`, `parse_split`, `parse_ms`, `parse_dir` and `parse_ease` are
+  public, and `ease_json` is published as `ease_css`. A dialect also names
+  its `duration_hint` (the example in the missing-duration error, so a beat
+  dialect never recommends `400ms`), and `is_ms_token` — the default
+  `bare_duration` — is public for dialects that accept `ms` plus their own
+  units. `ParsedEffect` is `#[non_exhaustive]` (an output type); `Dialect`
+  deliberately is not, since a consumer writes it as a struct literal.
+  `Dialect::default()` is the slide grammar unchanged; `parse` and its
+  output are byte-identical.
+- **`mirzam-shape` can hand the parsed model across a boundary.** An
+  off-by-default `serde` feature derives `Serialize`/`Deserialize` on
+  `ShapeKind`, `Edge`, `EndRef`, `Shape` and `ShapeDoc` (enums in
+  kebab-case), for consumers that draw the shapes themselves — a canvas, not
+  this crate's SVG. `ShapeDoc` also derives `Debug`, `Clone`, `Default`.
 
 ## [0.9.0] - 2026-08-21
 
