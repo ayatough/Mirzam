@@ -5,6 +5,7 @@
 //!   mirzam build <input.md> [-o <out_dir>]
 //!   mirzam serve <input.md> [-p <port>]
 
+mod cdp;
 mod check;
 mod video;
 
@@ -111,6 +112,7 @@ fn main() -> ExitCode {
             let mut chromium: Option<String> = None;
             let mut ffmpeg: Option<String> = None;
             let mut interval_ms: Option<u32> = None;
+            let mut stills = false;
             let mut handout = false;
             let mut deck = DeckArgs::default();
             let mut i = 2;
@@ -146,6 +148,7 @@ fn main() -> ExitCode {
                             None => return usage("--interval requires a duration, e.g. 8s"),
                         }
                     }
+                    "--stills" => stills = true,
                     arg => match parse_deck_flag(&args, &mut i, &mut deck) {
                         Some(Ok(())) => {}
                         Some(Err(e)) => return usage(&e),
@@ -172,8 +175,8 @@ fn main() -> ExitCode {
             if format != "pdf" && handout {
                 return usage("--handout is a PDF layout; it applies to `export pdf` only");
             }
-            if format != "video" && (ffmpeg.is_some() || interval_ms.is_some()) {
-                return usage("--ffmpeg and --interval belong to `export video`");
+            if format != "video" && (ffmpeg.is_some() || interval_ms.is_some() || stills) {
+                return usage("--ffmpeg, --interval and --stills belong to `export video`");
             }
             let ext = match format {
                 "pptx" => "pptx",
@@ -195,6 +198,7 @@ fn main() -> ExitCode {
                         chromium,
                         ffmpeg,
                         interval_ms,
+                        stills,
                     };
                     run(video::export_video(&input, &out_path, &args))
                 }
@@ -492,7 +496,7 @@ Usage:
                [--mode light|dark] [--chromium <bin>]
   mirzam export pptx <input.md> [-o <out.pptx>] [same flags, minus --handout]
   mirzam export video <input.md> [-o <out.webm>] [--interval <dur>]
-               [--ffmpeg <bin>] [same flags, minus --handout]
+               [--ffmpeg <bin>] [--stills] [same flags, minus --handout]
   mirzam check <input.md> [--split h1|h2|h3] [--theme <name|file.css>]...
                [--fit shrink] [--mode light|dark] [--base-url <url>]
                [--debug-layout] [--chromium <bin>] [--min-slack <px>]
@@ -521,13 +525,18 @@ Usage:
           `pptx` writes one picture per slide - where every Markdown slide
           tool's PowerPoint export stops today - with the speaker notes in
           the notes pane, where presenter view reads them.
-          `video` films the autoplay loop as a silent WebM ready for YouTube:
-          each slide held for the frontmatter's `autoplay:` interval, a
-          slide's own `<!-- autoplay: -->` dwell honored, --interval standing
-          in for the deck-level pace (5s when nothing says otherwise). It
-          needs an ffmpeg that encodes VP8 - one on PATH, MIRZAM_FFMPEG or
-          --ffmpeg, or the trimmed build Playwright installs, found
-          automatically
+          `video` films the deck playing itself as a silent WebM ready for
+          YouTube: the live viewer runs under autoplay in headless Chromium,
+          so click steps play out, the deck's `transition:` draws between
+          pages, and an embedded clip runs on screen. Each slide holds for
+          the frontmatter's `autoplay:` interval, a slide's own
+          `<!-- autoplay: -->` dwell honored, --interval standing in for the
+          deck-level pace (5s when nothing says otherwise); filming is in
+          real time, so the export takes as long as the deck plays.
+          --stills photographs each slide once instead - faster than real
+          time, for a deck where nothing moves. Either way it needs an
+          ffmpeg that encodes VP8 - one on PATH, MIRZAM_FFMPEG or --ffmpeg,
+          or the trimmed build Playwright installs, found automatically
   import  cut a captioned figure out of a PDF and write the Markdown that
           puts it on a slide - caption and credit filled in, and the credit
           written as `[@key]` when --cite says which paper this is. A figure

@@ -2053,9 +2053,10 @@ deck: full-bleed photographs, captions entering on their own beat, a slow
 fade between pages, and `autoplay: 6s loop` driving it — open it and it is
 already playing, bare.
 
-The same pacing is what `mirzam export video deck.md` films: a silent WebM,
-each slide held for its interval — dwells included — ready for YouTube or
-anywhere a deck cannot run. See the
+The same playback is what `mirzam export video deck.md` films: the deck
+playing itself in a headless browser — captions entering, pages fading,
+dwells holding — as a silent WebM ready for YouTube or anywhere a deck
+cannot run. See the
 [quickstart](quickstart.md#2-on-the-command-line--the-whole-thing) for what
 it needs.
 

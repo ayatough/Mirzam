@@ -1,38 +1,58 @@
 //! `mirzam export video`: the deck as a silent WebM — the autoplay loop,
-//! filmed. Each slide is photographed by headless Chromium exactly as
-//! `export pptx` photographs it, held on screen for its autoplay dwell, and
-//! the frames handed to an ffmpeg to encode as VP8 in WebM: the one
-//! container YouTube takes that a Chromium build without proprietary codecs
-//! can also play back, which is why the sample decks are `.webm` too.
+//! filmed. By default the film is a *recording*: the built deck, viewer and
+//! all, playing itself in a headless Chromium while the DevTools screencast
+//! hands back every painted frame — so click-step animations play out, the
+//! deck's `transition:` draws between pages, and an embedded clip runs on
+//! screen. `--stills` keeps the photographic mode instead: one screenshot
+//! per slide, exactly as `export pptx` takes them, held for its dwell —
+//! faster than real time and deterministic, at the price of everything that
+//! moves.
+//!
+//! Either way the frames end as VP8 in WebM: the one container YouTube
+//! takes that a Chromium build without proprietary codecs can also play
+//! back, which is why the sample decks are `.webm` too.
 //!
 //! The ffmpeg is found rather than shipped, and the bar is set deliberately
 //! low: the trimmed build Playwright keeps beside its browsers — present on
 //! any machine that has run Playwright, and probed for here by path — can
 //! decode MJPEG, encode VP8 and mux WebM, and nothing more. So the frames
-//! cross the pipe as JPEG (re-packed from Chromium's PNG in pure Rust), the
-//! output is WebM and only WebM, and a full ffmpeg simply also qualifies.
-//! What no ffmpeg gets is a clear error saying which three capabilities the
-//! command needs.
+//! cross the pipe as JPEG (the screencast's native wire format; the stills
+//! re-packed from Chromium's PNG in pure Rust), the output is WebM and only
+//! WebM, and a full ffmpeg simply also qualifies. What no ffmpeg gets is a
+//! clear error saying which three capabilities the command needs.
 //!
-//! Pacing is the viewer's own: the frontmatter's `autoplay:` interval, a
-//! slide's `<!-- autoplay: 20s -->` dwell overriding it, and `--interval`
-//! standing in for the deck-level pace from the command line. What the film
-//! does not carry — yet — is what a screenshot cannot: click-step
-//! animations play out (every step arrives revealed, as in the PDF), clips
-//! inside slides become their poster stills, and there is no audio track.
+//! Pacing is the viewer's own — literally, in a recording: the deck is
+//! walked once to warm the caches, started from the top through the
+//! viewer's `mz-autoplay` hook, and filmed until the viewer says it has
+//! played through (the `data-mz-autoplay-done` attribute its autoplay sets
+//! when a non-looping run rests). The frontmatter's `autoplay:` interval
+//! supplies that pace, `--interval` stands in for it, and a slide's
+//! `<!-- autoplay: 20s -->` dwell, a clip holding its page, and every click
+//! step are the viewer's business, exactly as in a browser. A `loop` deck
+//! is filmed for one pass: a loop has no end to record. What neither mode
+//! carries is audio — the film is pictures only.
 
-use crate::{apply_deck_overrides, find_chromium, photograph_slides, DeckArgs};
+use crate::{apply_deck_overrides, cdp, find_chromium, photograph_slides, DeckArgs};
+use serde_json::json;
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::Path;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
-/// Frames per second of the encoded video. The slides are stills, so the
-/// rate buys nothing but timing granularity: at 10, a dwell lands on its
-/// nearest 100ms — the same floor `parse_autoplay` holds intervals to.
-const FPS: u32 = 10;
+/// Frames per second of a stills export. The slides are stills, so the rate
+/// buys nothing but timing granularity: at 10, a dwell lands on its nearest
+/// 100ms — the same floor `parse_autoplay` holds intervals to.
+const STILLS_FPS: u32 = 10;
 
-/// How wide the video is, in pixels. Chromium photographs each slide at
+/// Frames per second of a recording, where motion is the point.
+const RECORD_FPS: u32 = 30;
+
+/// JPEG quality asked of the screencast. 90 keeps slide text legible
+/// through the VP8 encode behind it; the stills path packs its own JPEG at
+/// the same number.
+const JPEG_QUALITY: u32 = 90;
+
+/// How wide the video is, in pixels. Chromium renders each frame at
 /// whatever device scale turns the deck's CSS width into this: 1.5 for a
 /// 16:9 deck (1920x1080), 1.875 for 4:3 (1920x1440).
 const TARGET_WIDTH: u32 = 1920;
@@ -52,6 +72,10 @@ pub(crate) struct VideoArgs {
     /// interval. A slide's own `<!-- autoplay: -->` dwell still wins — it is
     /// the slide saying it needs reading time, whatever the deck's pace.
     pub(crate) interval_ms: Option<u32>,
+    /// `--stills`: photograph each slide once instead of recording the live
+    /// viewer — faster than real time, and still enough for a deck where
+    /// nothing moves.
+    pub(crate) stills: bool,
 }
 
 pub(crate) fn export_video(input: &Path, out_path: &Path, args: &VideoArgs) -> Result<(), String> {
@@ -87,14 +111,50 @@ pub(crate) fn export_video(input: &Path, out_path: &Path, args: &VideoArgs) -> R
         .map(|s| slide_dwell_ms(s, args.interval_ms, deck_interval))
         .collect();
 
-    // Find both externals before an hour of photography, not after: the
+    // Find both externals before minutes of filming, not after: the
     // missing-ffmpeg error should cost nothing but the build above.
     let chromium = find_chromium(args.chromium.as_deref())?;
     let ffmpeg = find_ffmpeg(args.ffmpeg.as_deref())?;
 
+    let (secs, verb) = if args.stills {
+        (
+            export_stills(&out, &dwells, &chromium, &ffmpeg, out_path)?,
+            "wrote",
+        )
+    } else {
+        let interval = args
+            .interval_ms
+            .or(deck_interval)
+            .unwrap_or(DEFAULT_DWELL_MS);
+        (
+            export_recording(&out, &dwells, interval, &chromium, &ffmpeg, out_path)?,
+            "recorded",
+        )
+    };
+
+    let size = std::fs::metadata(out_path).map(|m| m.len()).unwrap_or(0);
+    println!(
+        "✓ {verb} {} slides as {secs:.1}s of video to {} ({} ms, {} KB)",
+        out.sections.len(),
+        out_path.display(),
+        t0.elapsed().as_millis(),
+        size / 1024,
+    );
+    Ok(())
+}
+
+/// The photographic mode: one screenshot per slide, held for its dwell.
+/// Returns the seconds of video written.
+fn export_stills(
+    out: &mirzam_cli::pipeline::BuildOutput,
+    dwells: &[u32],
+    chromium: &str,
+    ffmpeg: &str,
+    out_path: &Path,
+) -> Result<f64, String> {
     let (w, _h) = out.meta.slide_size();
     let scale = f64::from(TARGET_WIDTH) / f64::from(w);
-    let shots = photograph_slides(&chromium, &out, scale)?;
+    let shots = photograph_slides(chromium, out, scale)?;
 
     let mut frames: Vec<Vec<u8>> = Vec::with_capacity(shots.len());
     for (i, (png, _notes)) in shots.iter().enumerate() {
@@ -103,25 +163,347 @@ pub(crate) fn export_video(input: &Path, out_path: &Path, args: &VideoArgs) -> R
         );
     }
 
-    encode_webm(&ffmpeg, &frames, &dwells, out_path)?;
-
-    let total_ms: u64 = dwells.iter().map(|&d| u64::from(d)).sum();
-    let size = std::fs::metadata(out_path).map(|m| m.len()).unwrap_or(0);
-    println!(
-        "✓ wrote {} slides as {:.1}s of video to {} ({} ms, {} KB)",
-        frames.len(),
-        total_ms as f64 / 1000.0,
-        out_path.display(),
-        t0.elapsed().as_millis(),
-        size / 1024,
-    );
-    Ok(())
+    let mut enc = Encoder::spawn(ffmpeg, STILLS_FPS, out_path)?;
+    'feed: for (jpg, &dwell) in frames.iter().zip(dwells) {
+        for _ in 0..frame_count(dwell, STILLS_FPS) {
+            if enc.frame(jpg).is_err() {
+                // A dead pipe means ffmpeg already failed; `finish` collects
+                // its status and says so.
+                break 'feed;
+            }
+        }
+    }
+    enc.finish()?;
+    Ok(dwells.iter().map(|&d| f64::from(d)).sum::<f64>() / 1000.0)
 }
 
-/// How long one slide stays on screen. The slide's own `<!-- autoplay: -->`
-/// dwell wins, then `--interval`, then the frontmatter's `autoplay:`
-/// interval, then the default — the same precedence the viewer gives them,
-/// with the flag standing where `?autoplay=` stands in a URL.
+/// The recording: the built deck — viewer and all — playing itself under
+/// `?autoplay=`, filmed through the DevTools screencast until the viewer
+/// marks the run played-through. Returns the seconds of video written.
+fn export_recording(
+    out: &mirzam_cli::pipeline::BuildOutput,
+    dwells: &[u32],
+    interval_ms: u32,
+    chromium: &str,
+    ffmpeg: &str,
+    out_path: &Path,
+) -> Result<f64, String> {
+    // The page `build` writes, assets embedded, so it plays from anywhere.
+    let opts = mirzam_render::PageOptions {
+        live_version: None,
+        file_themes: out.file_themes.clone(),
+        debug_layout: false,
+        all_themes: false,
+        source: None,
+    };
+    let html = mirzam_render::assemble_page(&out.meta, &out.sections, &opts);
+    let page_path = std::env::temp_dir().join(format!("mirzam-record-{}.html", std::process::id()));
+    std::fs::write(&page_path, &html).map_err(|e| format!("cannot write a temporary page: {e}"))?;
+    let result = record_page(
+        &page_path,
+        out,
+        dwells,
+        interval_ms,
+        chromium,
+        ffmpeg,
+        out_path,
+    );
+    let _ = std::fs::remove_file(&page_path);
+    result
+}
+
+fn record_page(
+    page_path: &Path,
+    out: &mirzam_cli::pipeline::BuildOutput,
+    dwells: &[u32],
+    interval_ms: u32,
+    chromium: &str,
+    ffmpeg: &str,
+    out_path: &Path,
+) -> Result<f64, String> {
+    let (w, h) = out.meta.slide_size();
+    let scale = f64::from(TARGET_WIDTH) / f64::from(w);
+
+    let browser = cdp::Browser::launch(chromium, w, h + 300)?;
+    let cdp = &browser.cdp;
+    cdp.attach()?;
+    cdp.call("Page.enable", json!({}))?;
+    // The viewport is the slide, and the device scale turns its CSS pixels
+    // into the video's: the viewer then fits the deck edge to edge, with
+    // nothing to crop.
+    cdp.call(
+        "Emulation.setDeviceMetricsOverride",
+        json!({"width": w, "height": h, "deviceScaleFactor": scale, "mobile": false}),
+    )?;
+
+    // The deck is loaded stilled, walked once end to end, and only then
+    // played for the camera — same document throughout. The walk is what
+    // makes the film smooth: the first display of a slide decodes its
+    // images, and on a machine rastering in software that can wedge the
+    // renderer for seconds, which filmed live would be a frozen page turn.
+    // Warmed, every arrival during the take re-uses the decoded images —
+    // and staying in one document is what keeps those caches warm, so the
+    // take starts through the viewer's own `mz-autoplay` hook rather than
+    // a reload. The hook restarts from slide 1 by the loop's own wrap, so
+    // its entrance and click steps play for the camera like everyone
+    // else's, whatever state the walk left them in.
+    cdp.call(
+        "Page.navigate",
+        json!({"url": format!("file://{}?autoplay=off&controls=none", page_path.display())}),
+    )?;
+    let load_deadline = Instant::now() + Duration::from_secs(60);
+    loop {
+        let ready = cdp
+            .eval("document.readyState === 'complete' && !!document.querySelector('#deck')")?
+            .as_bool()
+            .unwrap_or(false);
+        if ready {
+            break;
+        }
+        if Instant::now() > load_deadline {
+            return Err("the deck never finished loading in the recording browser".into());
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    for i in 2..=out.sections.len() {
+        // Each eval queues behind whatever the last slide's arrival cost,
+        // so the walk paces itself to the machine.
+        cdp.eval(&format!("location.hash = '#{i}'"))?;
+        std::thread::sleep(Duration::from_millis(300));
+    }
+    cdp.eval("location.hash = '#1'")?;
+    // On a screen the deck sits inset — a margin, a corner radius, a shadow:
+    // the page around the slide. A video has no page, so the take overrides
+    // that presentation and pins the deck edge to edge; the viewport already
+    // measures exactly one slide. `!important` outlives the viewer's own
+    // `fit()`, which keeps writing its inline transform on resize.
+    cdp.eval(
+        "var st = document.createElement('style'); \
+         st.textContent = '#deck { border-radius: 0 !important; box-shadow: none !important; \
+         transform: translate(-50%, -50%) scale(1) !important; }'; \
+         document.head.appendChild(st);",
+    )?;
+    // Long enough for the walk's last page turn to finish drawing: the take
+    // must not open on the tail of a warm-up transition.
+    std::thread::sleep(Duration::from_millis(2000));
+
+    let mut enc = Encoder::spawn(ffmpeg, RECORD_FPS, out_path)?;
+    cdp.call(
+        "Page.startScreencast",
+        json!({
+            "format": "jpeg",
+            "quality": JPEG_QUALITY,
+            "maxWidth": (f64::from(w) * scale).round() as u32,
+            "maxHeight": (f64::from(h) * scale).round() as u32,
+            "everyNthFrame": 1,
+        }),
+    )?;
+
+    // The page's own clock is the screencast's timestamp base; the take
+    // begins where the play command lands.
+    let t_start = clock(cdp)? - 0.05;
+    cdp.eval(&format!(
+        "document.dispatchEvent(new CustomEvent('mz-autoplay', {{detail: '{interval_ms}ms'}}))"
+    ))?;
+
+    // A ceiling on the recording, for the deck that never rests: generous,
+    // because click steps multiply a slide's dwell and a clip can hold its
+    // page for its own length — but not infinite, because a recorder that
+    // never returns explains nothing.
+    let cap =
+        Duration::from_secs((dwells.iter().map(|&d| u64::from(d)).sum::<u64>() / 100).max(600));
+
+    // Two frame sources, because headless has two behaviours. The
+    // screencast delivers every frame the compositor produces — the cheap,
+    // smooth source, and for main-thread animation it flows at full rate.
+    // But under headless software compositing, a compositor-only animation
+    // over freshly-rastered content — the page-turn fade onto a photograph
+    // slide — stops producing frames a few in (verified against this repo's
+    // own slideshow deck; fades onto photo-free slides played fine). So
+    // while the page says something is moving and the screencast has gone
+    // quiet anyway, `captureScreenshot` is used to *force* frames out: each
+    // call makes the compositor draw, at whatever rate the machine can
+    // manage. Stillness stays free — the forcer only runs while the page
+    // reports live animations or playing media.
+    let mut timeline = Timeline::new(RECORD_FPS);
+    let started = Instant::now();
+    let mut last_poll = Instant::now();
+    let mut jpeg_checked = false;
+    let mut moving = true; // the load itself animates; polls keep it current
+    let mut last_frame = Instant::now();
+    let mut check_frame = |jpg: &[u8]| -> Result<(), String> {
+        if !jpeg_checked {
+            jpeg_checked = true;
+            if let Some((fw, fh)) = jpeg_dims(jpg) {
+                if fw % 2 != 0 || fh % 2 != 0 {
+                    return Err(format!(
+                        "the recording came back {fw}x{fh}, which VP8's 4:2:0 \
+                         sampling cannot take - please report this deck's \
+                         aspect settings as a bug"
+                    ));
+                }
+            }
+        }
+        Ok(())
+    };
+    let t_end = loop {
+        if started.elapsed() > cap {
+            return Err(format!(
+                "the deck was still playing after {}s - it never marked its autoplay \
+                 played-through. If the deck really is that long, export it in parts \
+                 with --split, or photograph it with --stills",
+                cap.as_secs()
+            ));
+        }
+        match cdp.events.recv_timeout(Duration::from_millis(50)) {
+            Ok(ev) => match ev["method"].as_str() {
+                Some("Page.screencastFrame") => {
+                    let p = &ev["params"];
+                    if let Some(ack) = p["sessionId"].as_i64() {
+                        cdp.call_no_wait("Page.screencastFrameAck", json!({"sessionId": ack}))?;
+                    }
+                    let ts = p["metadata"]["timestamp"].as_f64().unwrap_or(0.0);
+                    if ts < t_start {
+                        continue;
+                    }
+                    let jpg = cdp::base64_decode(p["data"].as_str().unwrap_or(""))?;
+                    if std::env::var_os("MIRZAM_RECORD_DEBUG").is_some() {
+                        eprintln!(
+                            "frame ts={:.3} bytes={} (screencast)",
+                            ts - t_start,
+                            jpg.len()
+                        );
+                    }
+                    check_frame(&jpg)?;
+                    timeline.push(ts, jpg, &mut enc);
+                    last_frame = Instant::now();
+                }
+                Some("__closed") => {
+                    return Err("Chromium closed the connection mid-recording".into())
+                }
+                _ => {}
+            },
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                return Err("Chromium closed the connection mid-recording".into())
+            }
+        }
+        if moving && last_frame.elapsed() >= Duration::from_millis(100) {
+            let shot = cdp.call(
+                "Page.captureScreenshot",
+                json!({"format": "jpeg", "quality": JPEG_QUALITY, "optimizeForSpeed": true}),
+            )?;
+            let ts = clock(cdp)?;
+            let jpg = cdp::base64_decode(shot["data"].as_str().unwrap_or(""))?;
+            if std::env::var_os("MIRZAM_RECORD_DEBUG").is_some() {
+                eprintln!("frame ts={:.3} bytes={} (forced)", ts - t_start, jpg.len());
+            }
+            check_frame(&jpg)?;
+            timeline.push(ts, jpg, &mut enc);
+            last_frame = Instant::now();
+        }
+        if last_poll.elapsed() >= Duration::from_millis(250) {
+            last_poll = Instant::now();
+            let state = cdp
+                .eval(
+                    "document.querySelector('#deck[data-mz-autoplay-done]') ? 2 : \
+                     (document.getAnimations().length > 0 || \
+                      [...document.querySelectorAll('video')].some(v => !v.paused && !v.ended) \
+                      ? 1 : 0)",
+                )?
+                .as_i64()
+                .unwrap_or(0);
+            if state == 2 {
+                break clock(cdp)?;
+            }
+            moving = state == 1;
+            if std::env::var_os("MIRZAM_RECORD_DEBUG").is_some() {
+                eprintln!("poll t={:.3} moving={moving}", clock(cdp)? - t_start);
+            }
+        }
+    };
+    let _ = cdp.call("Page.stopScreencast", json!({}));
+    let secs = timeline.finish(t_end, &mut enc)?;
+    enc.finish()?;
+    if secs == 0.0 {
+        return Err("the recording delivered no frames".into());
+    }
+    Ok(secs)
+}
+
+/// The page's clock, in the screencast's terms: seconds since the epoch.
+fn clock(cdp: &cdp::Cdp) -> Result<f64, String> {
+    cdp.eval("Date.now() / 1000")?
+        .as_f64()
+        .ok_or_else(|| "the page's clock did not read as a number".into())
+}
+
+/// Turns the screencast's when-something-painted frames into the constant
+/// rate the MJPEG pipe needs: each frame is repeated until the next one's
+/// timestamp, so a still slide costs copies of one JPEG and an animation
+/// plays at whatever rate it painted.
+struct Timeline {
+    fps: u32,
+    t0: Option<f64>,
+    prev: Option<Vec<u8>>,
+    written: u64,
+    write_err: bool,
+}
+
+impl Timeline {
+    fn new(fps: u32) -> Timeline {
+        Timeline {
+            fps,
+            t0: None,
+            prev: None,
+            written: 0,
+            write_err: false,
+        }
+    }
+
+    /// A frame painted at `ts`. The previous frame covered the span up to
+    /// here; emit it that many times. A pipe error is remembered rather than
+    /// returned — ffmpeg's own status, collected in `Encoder::finish`, says
+    /// what actually went wrong.
+    fn push(&mut self, ts: f64, jpg: Vec<u8>, enc: &mut Encoder) {
+        if let (Some(t0), Some(prev)) = (self.t0, self.prev.as_ref()) {
+            let target = ((ts - t0) * f64::from(self.fps)).round().max(0.0) as u64;
+            while self.written < target && !self.write_err {
+                self.write_err = enc.frame(prev).is_err();
+                self.written += 1;
+            }
+        } else {
+            self.t0 = Some(ts);
+        }
+        self.prev = Some(jpg);
+    }
+
+    /// The run is over at `t_end`: the last frame covers the tail. Returns
+    /// the seconds of video written.
+    fn finish(mut self, t_end: f64, enc: &mut Encoder) -> Result<f64, String> {
+        if let (Some(t0), Some(prev)) = (self.t0, self.prev.as_ref()) {
+            let target = ((t_end - t0) * f64::from(self.fps)).round().max(0.0) as u64;
+            let target = target.max(self.written + 1);
+            while self.written < target && !self.write_err {
+                self.write_err = enc.frame(prev).is_err();
+                self.written += 1;
+            }
+        }
+        Ok(f64::from(u32::try_from(self.written).unwrap_or(u32::MAX)) / f64::from(self.fps))
+    }
+}
+
+/// How many video frames a dwell is: its nearest count at `fps`, and never
+/// zero — a slide asked for is a slide in the film.
+fn frame_count(dwell_ms: u32, fps: u32) -> u32 {
+    ((u64::from(dwell_ms) * u64::from(fps) + 500) / 1000).max(1) as u32
+}
+
+/// How long one slide stays on screen in the stills mode. The slide's own
+/// `<!-- autoplay: -->` dwell wins, then `--interval`, then the
+/// frontmatter's `autoplay:` interval, then the default — the same
+/// precedence the viewer gives them, with the flag standing where
+/// `?autoplay=` stands in a URL.
 fn slide_dwell_ms(section: &str, flag: Option<u32>, deck: Option<u32>) -> u32 {
     section_dwell(section)
         .or(flag)
@@ -178,7 +560,7 @@ fn frame_jpeg(png: &[u8], (slide_w, slide_h): (u32, u32)) -> Result<Vec<u8>, Str
     }
 
     let mut jpg = Vec::new();
-    let encoder = jpeg_encoder::Encoder::new(&mut jpg, 90);
+    let encoder = jpeg_encoder::Encoder::new(&mut jpg, JPEG_QUALITY as u8);
     encoder
         .encode(
             &rgb,
@@ -190,92 +572,126 @@ fn frame_jpeg(png: &[u8], (slide_w, slide_h): (u32, u32)) -> Result<Vec<u8>, Str
     Ok(jpg)
 }
 
-/// How many video frames a dwell is: its nearest count at `FPS`, and never
-/// zero — a slide asked for is a slide in the film.
-fn frame_count(dwell_ms: u32) -> u32 {
-    ((u64::from(dwell_ms) * u64::from(FPS) + 500) / 1000).max(1) as u32
+/// Width and height out of a JPEG's start-of-frame marker, for checking
+/// what the screencast actually delivered.
+fn jpeg_dims(jpg: &[u8]) -> Option<(u16, u16)> {
+    let mut i = 2; // past FFD8
+    while i + 4 <= jpg.len() {
+        if jpg[i] != 0xFF {
+            return None;
+        }
+        let marker = jpg[i + 1];
+        // SOF0-15 carry dimensions; C4/C8/CC are tables and extensions.
+        if (0xC0..=0xCF).contains(&marker) && !matches!(marker, 0xC4 | 0xC8 | 0xCC) {
+            if i + 9 > jpg.len() {
+                return None;
+            }
+            let h = u16::from_be_bytes([jpg[i + 5], jpg[i + 6]]);
+            let w = u16::from_be_bytes([jpg[i + 7], jpg[i + 8]]);
+            return Some((w, h));
+        }
+        let len = u16::from_be_bytes([jpg[i + 2], jpg[i + 3]]) as usize;
+        i += 2 + len;
+    }
+    None
 }
 
-/// Feeds the frames through ffmpeg into `out_path`. Each JPEG is written
-/// once per frame of its dwell: the piped image stream is the only demuxer
-/// the trimmed ffmpeg has that can carry them, and it has no per-frame
-/// durations, so duration is spelled in copies. The copies are cheap twice
-/// over — a slide's JPEG is small, and an encoder given an unchanged frame
-/// emits almost nothing.
-fn encode_webm(
-    ffmpeg: &str,
-    frames: &[Vec<u8>],
-    dwells: &[u32],
-    out_path: &Path,
-) -> Result<(), String> {
-    let out_abs = std::env::current_dir()
-        .map_err(|e| e.to_string())?
-        .join(out_path);
-    let mut child = std::process::Command::new(ffmpeg)
-        .args([
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-y",
-            "-f",
-            "image2pipe",
-            "-vcodec",
-            "mjpeg",
-            "-framerate",
-            &FPS.to_string(),
-            "-i",
-            // `pipe:0`, never `-`: ffmpeg 7 reads `-` as its `fd:` protocol,
-            // which the trimmed Playwright build compiles out; the `pipe:`
-            // protocol is in every build, that one included.
-            "pipe:0",
-            "-vcodec",
-            "libvpx",
-            "-pix_fmt",
-            "yuv420p",
-            // Constrained quality: `-crf` sets the quality slides need for
-            // legible text, `-b:v` caps what a pathological deck could ask.
-            "-crf",
-            "8",
-            "-b:v",
-            "6M",
-            "-qmin",
-            "0",
-            "-qmax",
-            "42",
-        ])
-        .arg(&out_abs)
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::null())
-        // Inherited on purpose: `-loglevel error` keeps a clean run silent,
-        // and a failing encode explains itself without this re-relaying it.
-        .stderr(std::process::Stdio::inherit())
-        .spawn()
-        .map_err(|e| format!("cannot run {ffmpeg}: {e}"))?;
+/// The ffmpeg encode, spelled once for both modes: piped MJPEG in, VP8 in
+/// WebM out. The piped image stream is the only demuxer the trimmed ffmpeg
+/// has that can carry the frames, and it has no per-frame durations, so
+/// duration is spelled in copies — cheap twice over, because a frame's JPEG
+/// is small and an encoder given an unchanged frame emits almost nothing.
+struct Encoder {
+    child: std::process::Child,
+    stdin: Option<std::process::ChildStdin>,
+    saw_write_error: bool,
+}
 
-    let mut stdin = child.stdin.take().expect("stdin was piped");
-    let mut write_err = None;
-    'feed: for (jpg, &dwell) in frames.iter().zip(dwells) {
-        for _ in 0..frame_count(dwell) {
-            if let Err(e) = stdin.write_all(jpg) {
-                // A dead pipe means ffmpeg already failed; its own stderr —
-                // inherited above — says why, and the wait below carries the
-                // status. The write error itself is just the echo.
-                write_err = Some(e);
-                break 'feed;
-            }
+impl Encoder {
+    fn spawn(ffmpeg: &str, fps: u32, out_path: &Path) -> Result<Encoder, String> {
+        let out_abs = std::env::current_dir()
+            .map_err(|e| e.to_string())?
+            .join(out_path);
+        let mut child = std::process::Command::new(ffmpeg)
+            .args([
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-f",
+                "image2pipe",
+                "-vcodec",
+                "mjpeg",
+                "-framerate",
+                &fps.to_string(),
+                "-i",
+                // `pipe:0`, never `-`: ffmpeg 7 reads `-` as its `fd:`
+                // protocol, which the trimmed Playwright build compiles out;
+                // the `pipe:` protocol is in every build, that one included.
+                "pipe:0",
+                "-vcodec",
+                "libvpx",
+                "-pix_fmt",
+                "yuv420p",
+                // Constrained quality: `-crf` sets the quality slides need
+                // for legible text, `-b:v` caps what a pathological deck
+                // could ask.
+                "-crf",
+                "8",
+                "-b:v",
+                "6M",
+                "-qmin",
+                "0",
+                "-qmax",
+                "42",
+            ])
+            .arg(&out_abs)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::null())
+            // Inherited on purpose: `-loglevel error` keeps a clean run
+            // silent, and a failing encode explains itself without this
+            // re-relaying it.
+            .stderr(std::process::Stdio::inherit())
+            .spawn()
+            .map_err(|e| format!("cannot run {ffmpeg}: {e}"))?;
+        let stdin = child.stdin.take();
+        Ok(Encoder {
+            child,
+            stdin,
+            saw_write_error: false,
+        })
+    }
+
+    /// One frame down the pipe. An error here usually echoes an encoder
+    /// that already died — `finish` turns its status into the message.
+    fn frame(&mut self, jpg: &[u8]) -> Result<(), ()> {
+        let ok = match self.stdin.as_mut() {
+            Some(stdin) => stdin.write_all(jpg).is_ok(),
+            None => false,
+        };
+        if ok {
+            Ok(())
+        } else {
+            self.saw_write_error = true;
+            Err(())
         }
     }
-    drop(stdin);
-    let status = child
-        .wait()
-        .map_err(|e| format!("cannot wait for {ffmpeg}: {e}"))?;
-    if !status.success() {
-        return Err(format!("ffmpeg failed to encode the video ({status})"));
+
+    /// Closes the pipe and waits the encode out.
+    fn finish(mut self) -> Result<(), String> {
+        drop(self.stdin.take());
+        let status = self
+            .child
+            .wait()
+            .map_err(|e| format!("cannot wait for ffmpeg: {e}"))?;
+        if !status.success() {
+            return Err(format!("ffmpeg failed to encode the video ({status})"));
+        }
+        if self.saw_write_error {
+            return Err("ffmpeg stopped reading frames".into());
+        }
+        Ok(())
     }
-    if let Some(e) = write_err {
-        return Err(format!("ffmpeg stopped reading frames: {e}"));
-    }
-    Ok(())
 }
 
 /// Locates an ffmpeg that can do the job: `--ffmpeg`, then $MIRZAM_FFMPEG —
@@ -284,7 +700,7 @@ fn encode_webm(
 /// its default install. The found candidates are probed for the one encoder
 /// this needs (`scripts/record-demo.mjs` probes the same way, for the same
 /// reason: the failure of a bare existence check is a codec error after the
-/// photography already succeeded).
+/// filming already succeeded).
 fn find_ffmpeg(explicit: Option<&str>) -> Result<String, String> {
     if let Some(f) = explicit {
         return Ok(f.to_string());
@@ -365,10 +781,10 @@ mod tests {
 
     #[test]
     fn frame_counts_round_to_the_nearest_frame_and_never_zero() {
-        assert_eq!(frame_count(5000), 50);
-        assert_eq!(frame_count(750), 8); // 7.5 frames rounds up
-        assert_eq!(frame_count(100), 1);
-        assert_eq!(frame_count(1), 1); // a floor, not a rounding accident
+        assert_eq!(frame_count(5000, 10), 50);
+        assert_eq!(frame_count(750, 10), 8); // 7.5 frames rounds up
+        assert_eq!(frame_count(100, 10), 1);
+        assert_eq!(frame_count(1, 10), 1); // a floor, not a rounding accident
     }
 
     #[test]
@@ -384,10 +800,56 @@ mod tests {
             writer.write_image_data(&vec![200u8; 64 * 50 * 4]).unwrap();
         }
         let jpg = frame_jpeg(&png_bytes, (1280, 720)).unwrap();
-        // SOF0 carries the dimensions; find it and read them back.
-        let sof = jpg.windows(2).position(|w| w == [0xFF, 0xC0]).unwrap();
-        let h = u16::from_be_bytes([jpg[sof + 5], jpg[sof + 6]]);
-        let w = u16::from_be_bytes([jpg[sof + 7], jpg[sof + 8]]);
-        assert_eq!((w, h), (64, 36));
+        assert_eq!(jpeg_dims(&jpg), Some((64, 36)));
+    }
+
+    /// An encoder stand-in for the timeline tests: `cat` consumes the pipe,
+    /// and the written count carries the arithmetic under test.
+    fn sink() -> Encoder {
+        let mut child = std::process::Command::new("cat")
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::null())
+            .spawn()
+            .expect("cat runs anywhere the tests do");
+        let stdin = child.stdin.take();
+        Encoder {
+            child,
+            stdin,
+            saw_write_error: false,
+        }
+    }
+
+    #[test]
+    fn timeline_repeats_each_frame_to_its_span() {
+        let mut enc = sink();
+        let mut tl = Timeline::new(10);
+        tl.push(100.0, vec![1], &mut enc); // t0; nothing written yet
+        tl.push(100.5, vec![2], &mut enc); // frame 1 covered 0.5s: 5 copies
+        assert_eq!(tl.written, 5);
+        // The run ends 1s in: frame 2 covers the tail, 10 frames total.
+        let secs = tl.finish(101.0, &mut enc).unwrap();
+        assert!((secs - 1.0).abs() < 1e-9);
+        let _ = enc.child.kill();
+    }
+
+    #[test]
+    fn timeline_writes_the_only_frame_at_least_once() {
+        let mut enc = sink();
+        let mut tl = Timeline::new(10);
+        tl.push(100.0, vec![1], &mut enc);
+        // The end lands on t0 exactly: the single frame still reaches the
+        // video rather than rounding away.
+        let secs = tl.finish(100.0, &mut enc).unwrap();
+        assert!(secs > 0.0);
+        let _ = enc.child.kill();
+    }
+
+    #[test]
+    fn jpeg_dims_reads_a_real_sof() {
+        let mut jpg = Vec::new();
+        let e = jpeg_encoder::Encoder::new(&mut jpg, 90);
+        e.encode(&[0u8; 12], 2, 2, jpeg_encoder::ColorType::Rgb)
+            .unwrap();
+        assert_eq!(jpeg_dims(&jpg), Some((2, 2)));
     }
 }

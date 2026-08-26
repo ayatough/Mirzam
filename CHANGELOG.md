@@ -8,17 +8,28 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
-- **`mirzam export video` films the deck as a WebM.** The autoplay loop,
-  recorded: each slide is photographed at 1920px wide by the same headless
-  Chromium the other exports drive, held for the frontmatter's `autoplay:`
-  interval — a slide's own `<!-- autoplay: 20s -->` still wins, `--interval`
-  stands in from the command line, 5s when nothing says otherwise — and
-  encoded as VP8 in WebM, which YouTube takes directly. The encoder is an
-  ffmpeg found rather than shipped, and the bar is deliberately low: the
-  trimmed build Playwright keeps beside its browsers is enough, and is looked
-  for automatically after PATH, `--ffmpeg` and `MIRZAM_FFMPEG`. Click-step
-  animations arrive revealed (as in the PDF), clips become their poster
-  stills, and there is no audio track — yet.
+- **`mirzam export video` films the deck as a WebM.** The deck plays itself —
+  the built page, viewer and all, running under autoplay in a headless
+  Chromium — while the recorder films it at 1920px wide: click steps play
+  out, the deck's `transition:` draws between pages, an embedded clip runs
+  on screen, and a slide's `<!-- autoplay: 20s -->` dwell holds exactly as
+  it would on a kiosk. Pacing comes from the frontmatter's `autoplay:`
+  interval, `--interval` standing in from the command line, 5s when nothing
+  says otherwise; a `loop` deck is filmed for one pass. Filming is in real
+  time — `--stills` instead photographs each slide once and holds it, faster
+  than any playback, for the deck where nothing moves. The frames are
+  encoded as VP8 in WebM, which YouTube takes directly, by an ffmpeg found
+  rather than shipped — the bar is deliberately low: the trimmed build
+  Playwright keeps beside its browsers is enough, and is looked for
+  automatically after PATH, `--ffmpeg` and `MIRZAM_FFMPEG`. No audio track —
+  yet.
+
+### Fixed
+- **A one-slide loop's wrap no longer un-arms the slide it re-enters.** The
+  leave animation's cleanup landed on the same section the arrival had just
+  armed, so every click step stood revealed before its click. A slide cannot
+  leave itself; the wrap now settles it and re-enters. Found by the video
+  export's restart, which rides the same wrap.
 
 ## [0.10.0] - 2026-08-25
 
