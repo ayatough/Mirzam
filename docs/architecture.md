@@ -154,6 +154,24 @@ any more. A shorthand it cannot read, a transform it does not recognise, a
 container holding one of those — all stay. A picture larger than it needs to be
 is a nuisance; a picture missing a line is a lie.
 
+**Outlines lose the words, so the words are put back.** Drawing a glyph as a
+path is what keeps a table's columns where the paper had them, and it is also
+what makes the table impossible to select, copy, search or read aloud. The
+measuring pass has already read every line off the page, so the converted
+figure carries them a second time as `<text>` at an alpha of one part in 255 —
+held to the width they were drawn at by `textLength`, invisible to a reader,
+and there for anything that looks for characters. It is the arrangement a
+scanned page gets from OCR, with the advantage that the text is not guessed.
+Not `fill="none"` or `opacity="0"`, which the three of them are dropped on the
+way into an exported PDF, which is where this matters most.
+
+That text is only as good as the encoding the file gives. A font from TeX
+arrives with neither `/ToUnicode` nor `/Encoding`, and that its code 58 is a
+full stop is written in one place only: the font program, as `dup 58 /period
+put`. Read as Latin-1 it is a colon, and `85.01` in a table of results comes
+back as `85:01` — so the header of an embedded Type 1 font is parsed for the
+encoding it declares, and a glyph name is turned into what it draws.
+
 [hayro]: https://github.com/LaurenzV/hayro
 
 ### Annotations and the PDF

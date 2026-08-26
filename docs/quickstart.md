@@ -108,6 +108,11 @@ PDF. `--format png` still wants `mutool` (mupdf-tools) or `pdftocairo`
 (poppler-utils), and `--tool` or `MIRZAM_PDFTOOL` hands the SVG to one of those
 instead, for a figure Mirzam declines to draw.
 
+The words in a figure come with it. The picture draws them as shapes — that is
+what keeps a table's columns where the paper had them — so the same words are
+laid over it again where nothing can see them: a table quoted onto a slide can
+be selected, copied and searched in the exported PDF.
+
 ```bash
 mirzam import pdf paper.pdf --list                     # what is in there
 mirzam import pdf paper.pdf -o img --cite vaswani2017 >> talk.md

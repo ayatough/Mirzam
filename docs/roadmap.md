@@ -253,6 +253,14 @@ shapes the next paper would have hit too, all now fixed and each with the page
 geometry that found it written into a test. The [changelog](../CHANGELOG.md)
 lists them.
 
+The paper also settled what a figure carries. Outlines are what keep a table's
+columns where the paper set them, and they are also what leaves a quoted table
+with nothing to select; the figure now carries its own words a second time, at
+an alpha of one part in 255, so the exported PDF has the cells in it. That in
+turn wanted the reading fixed: a TeX font declares its encoding only inside the
+font program, and until that was parsed every decimal point in a table came
+back as a colon.
+
 **Still open here:** not emitting off-page geometry belongs upstream, not in a
 culling pass this project maintains for good; and the conversion is pure Rust,
 so the editor extension and the browser build could import a figure too — the

@@ -7,6 +7,36 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+### Added
+- **A quoted table can be selected, copied and searched.** `import pdf` draws a
+  figure's glyphs as outline paths, because substituting a font the reader has
+  for the paper's would move every column in a table. That is what a picture
+  needs and it leaves nothing to select: the numbers on the slide were shapes.
+
+  The measuring pass has already read every line off the page, so the converted
+  figure now carries them a second time as `<text>`, at an alpha of one part in
+  255 and held to the width they were drawn at. Nothing is visible, nothing
+  moves, and the exported PDF has the table's cells in it — the arrangement a
+  scanned page gets from OCR, except that the text is read rather than guessed.
+  In the deck itself the picture is an `<img>`, and nothing inside one of those
+  is selectable; the PDF is where this lands.
+
+  A line the fonts could not explain is left out rather than laid down, since a
+  reader who copies a replacement character where a digit was is worse off than
+  one who copies nothing.
+
+### Fixed
+- **`85.01` no longer reads as `85:01`.** A font from TeX arrives with neither
+  `/ToUnicode` nor `/Encoding` — the dictionary for `CMMI8` says `/FirstChar
+  58` and nothing else — and that code 58 is a full stop is written in exactly
+  one place: the font program, as `dup 58 /period put`. Read as Latin-1 it is a
+  colon, which is what every decimal point in a table of results became, and
+  what a caption with mathematics in it would have become too. The header of an
+  embedded Type 1 font is now parsed for the encoding it declares, `/Encoding
+  /Differences` is read where the page gives one, and a glyph name is turned
+  into what it draws — including the ligatures a typesetter substitutes, so a
+  search for `find` finds one.
+
 ### Changed
 - **A figure out of a paper needs nothing installed.** `mirzam import pdf`
   landed in 0.10 with one step that was not self-contained: a *drawn* figure —

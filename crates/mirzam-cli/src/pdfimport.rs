@@ -109,6 +109,9 @@ struct Found {
     art: Rect,
     to_pdf: pdfpage::Matrix,
     images: Vec<(lopdf::ObjectId, Rect)>,
+    /// The lines the crop contains, kept so the converted picture can carry
+    /// them as text it does not show.
+    text: Vec<mirzam_figure::Line>,
 }
 
 /// One float, found and (unless listing) written.
@@ -176,18 +179,20 @@ pub fn run(options: &Options) -> Result<Import, String> {
                 continue;
             }
             let images = images_in(&page, &figure);
+            // A hairline of the page around the picture: cut exactly on the
+            // ink, a box's own stroke lands half outside the crop.
+            let art = figure
+                .art
+                .grow(2.0)
+                .intersect(&page.rect)
+                .unwrap_or(figure.art);
             found.push(Found {
                 page: page.number,
-                // A hairline of the page around the picture: cut exactly on the
-                // ink, a box's own stroke lands half outside the crop.
-                art: figure
-                    .art
-                    .grow(2.0)
-                    .intersect(&page.rect)
-                    .unwrap_or(figure.art),
+                art,
                 figure,
                 to_pdf: page.to_pdf,
                 images,
+                text: text_in(&page, &art),
             });
         }
     }
@@ -296,6 +301,18 @@ fn images_in(page: &Page, figure: &Figure) -> Vec<(lopdf::ObjectId, Rect)> {
         .collect()
 }
 
+/// The lines a crop holds, for the text layer laid over the converted picture.
+///
+/// Judged by where most of a line is: one clipped by the crop's edge is a
+/// fragment of the page around the figure, not part of it.
+fn text_in(page: &Page, art: &Rect) -> Vec<mirzam_figure::Line> {
+    page.lines
+        .iter()
+        .filter(|line| line.rect.share_inside(art) > 0.8)
+        .cloned()
+        .collect()
+}
+
 /// The name to write the file under: the citation key when there is one, since
 /// that is what the deck calls this paper, and the file's own name otherwise.
 /// A name no earlier figure in this run has taken.
@@ -353,6 +370,7 @@ fn write_one(
         art,
         to_pdf,
         images,
+        text,
     } = found;
     std::fs::create_dir_all(&options.out_dir)
         .map_err(|e| format!("cannot create {}: {e}", options.out_dir.display()))?;
@@ -411,7 +429,7 @@ fn write_one(
         match svg::convert(&bytes) {
             Ok(drawing) => {
                 let file = options.out_dir.join(format!("{stem}.svg"));
-                std::fs::write(&file, drawing)
+                std::fs::write(&file, svg::with_text(&drawing, text, *art))
                     .map_err(|e| format!("cannot write {}: {e}", file.display()))?;
                 let _ = std::fs::remove_file(&crop);
                 return Ok((file, "svg".to_string()));
@@ -432,7 +450,8 @@ fn write_one(
             // same. Rewritten only if it is read back whole.
             if wanted == "svg" {
                 if let Ok(drawing) = std::fs::read_to_string(&file) {
-                    let _ = std::fs::write(&file, svg::scalable(&drawing));
+                    let drawing = svg::with_text(&svg::scalable(&drawing), text, *art);
+                    let _ = std::fs::write(&file, drawing);
                 }
             }
             let _ = std::fs::remove_file(&crop);

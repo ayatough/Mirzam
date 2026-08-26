@@ -901,6 +901,12 @@ writes exactly this line for each one, caption and credit filled in from the
 paper — see [the quickstart](quickstart.md). It is the same markup either way;
 the command only saves the screenshot and the typing.
 
+A figure imported that way is a vector picture, so it stays sharp however large
+the pane is, and it carries the words that are in it: a table's cells can be
+selected and copied out of the exported PDF, and searched there, even though
+the picture draws them as shapes. What it cannot do is make them selectable in
+the *deck* — a picture on a slide is an `<img>`, and nothing inside one is.
+
 With `fit=contain` the picture takes its own shape inside the pane rather than
 filling it, so the caption sits against the picture's own bottom edge instead
 of an inch below a letterboxed one. Both lines are centred under the picture

@@ -205,16 +205,47 @@ fn the_svg_carries_the_figure_and_not_the_page() {
         "the page came along: {} bytes",
         svg.len()
     );
-    // The paragraph under the figure is set in the same font as the one word
-    // inside it, so this counts placements rather than looking for glyphs: the
-    // fixture draws one rectangle and shows no text inside it.
+    // The paragraph under the figure is set in the same font as the label
+    // inside it, so this counts placements rather than looking for glyphs. The
+    // crop holds one label of a dozen characters; the page under it holds two
+    // paragraphs of forty-two each, and a second caption besides.
     let uses = svg.matches("<use").count();
-    assert!(uses < 8, "{uses} glyphs for a figure that is a box");
+    assert!(uses < 30, "{uses} glyphs for a box with one label on it");
     assert!(
         svg.contains("<path"),
         "the box itself is still there: {svg}"
     );
     assert_eq!(svg.matches("<defs").count(), svg.matches("</defs>").count());
+}
+
+/// The picture is drawn as outlines, so the words in it would be lost. They
+/// are laid over it again where nothing can see them but everything that reads
+/// text can find them.
+#[test]
+fn the_words_inside_a_figure_come_back_as_text() {
+    let dir = TempDir::new("textlayer");
+    let found = pdfimport::run(&Options {
+        only: Some("1".to_string()),
+        ..options(&dir, Format::Svg)
+    })
+    .expect("Figure 1")
+    .figures;
+    let svg = std::fs::read_to_string(found[0].file.as_ref().unwrap()).expect("the svg");
+
+    assert!(
+        svg.contains(">rows &amp; columns</text>"),
+        "the label, escaped for XML: {svg}"
+    );
+    assert!(
+        svg.contains("fill-opacity=\"0.004\""),
+        "laid on at an alpha that survives a PDF but shows nothing"
+    );
+    // The page around the figure is not in the crop and must not be in its
+    // text either: a search of the deck would land on the wrong slide.
+    assert!(
+        !svg.contains("quick brown fox"),
+        "the page's own prose came along"
+    );
 }
 
 /// A snapshot, because an SVG that is subtly wrong still looks like an SVG.
@@ -326,11 +357,17 @@ fn turned() -> Vec<u8> {
     ))
 }
 
+/// The one thing written inside Figure 1, and the only text a crop of it
+/// holds. The ampersand is there because a picture's words go into an SVG,
+/// where three characters cannot stand for themselves.
+const LABEL: &str = "rows & columns";
+
 fn objects(prefix: &str, media: &str, rotate: &str) -> Vec<Vec<u8>> {
     let body = "the quick brown fox jumps over the lazy dog";
     let content = format!(
         "0 0 0 rg\n\
          40 300 200 80 re f\n\
+         1 1 1 rg BT /F1 6 Tf 60 330 Td ({LABEL}) Tj ET 0 0 0 rg\n\
          BT /F1 8 Tf 40 290 Td (Figure 1: A drawn box.) Tj ET\n\
          BT /F1 10 Tf 40 270 Td ({body}) Tj ET\n\
          BT /F1 10 Tf 40 256 Td ({body}) Tj ET\n\

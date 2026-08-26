@@ -83,8 +83,9 @@ the notes in the notes pane. Edit the Markdown and re-export, not the pptx.
 of a paper and prints the `![...](...){caption= credit=}` line for each, the
 credit as `[@key]`. `--list` to look first, `--figure 3` for one. A stored
 image comes out as itself; a drawn figure is converted to a vector SVG in
-process, with nothing installed. `--format png` needs `mutool` or
-`pdftocairo`.
+process, with nothing installed, and carries its own words as an invisible text
+layer, so a quoted table is selectable and searchable in the exported PDF.
+`--format png` needs `mutool` or `pdftocairo`.
 
 `autoplay:` takes an interval — seconds by default (`8s`, `1.5s`, bare `8`),
 `ms` accepted — and optionally `loop`. One advance is one click step, then the
