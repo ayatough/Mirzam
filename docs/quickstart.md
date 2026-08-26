@@ -74,6 +74,7 @@ mirzam serve deck.md                 # live preview at localhost:4321
 mirzam build deck.md -o out          # one self-contained HTML file
 mirzam export pdf deck.md -o deck.pdf
 mirzam export pptx deck.md           # PowerPoint: slide pictures + real notes
+mirzam export video deck.md          # the autoplay loop as a YouTube-ready WebM
 mirzam build notes.md --split h2     # any document becomes a deck, unedited
 mirzam export pdf notes.md --split h2 --theme mirzam -o notes.pdf
 mirzam check deck.md                 # clipped panes, unresolved connectors, and the rest
@@ -92,6 +93,16 @@ picture per slide, pixel-identical to the deck, with the speaker notes in
 the notes pane where presenter view reads them. The slides are images —
 which is also where every other Markdown slide tool's PowerPoint export
 stops — so edit the Markdown and re-export rather than editing the `.pptx`.
+
+`export video` films the deck the way [autoplay](syntax.md#the-deck-playing-itself)
+plays it: each slide held for the deck's `autoplay:` interval — a slide's own
+`<!-- autoplay: 20s -->` dwell honored, `--interval 8s` standing in from the
+command line, five seconds when nothing says otherwise — and written as a
+silent 1920px-wide WebM that YouTube takes as-is. It needs an ffmpeg that
+encodes VP8: one on PATH, named by `--ffmpeg` or `MIRZAM_FFMPEG`, or the
+trimmed build Playwright installs beside its browsers, which is enough and is
+found automatically. Click-step animations arrive revealed, as in the PDF,
+and clips inside slides become their poster stills.
 
 `import pdf` is for the slide that quotes a paper. It reads the PDF, finds the
 captioned figures and tables, cuts each one out, and prints the Markdown line

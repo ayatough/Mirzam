@@ -157,6 +157,7 @@ mirzam build deck.md -o out          # single self-contained HTML
 mirzam build README.md --split h2    # any document becomes a deck, unedited
 mirzam serve deck.md                 # live preview at localhost:4321
 mirzam export pdf deck.md -o deck.pdf
+mirzam export video deck.md          # the autoplay loop as a YouTube-ready WebM
 mirzam check deck.md                 # clipped panes, unresolved connectors, and the rest
 mirzam import pdf paper.pdf --cite vaswani2017   # a figure out of a paper, caption and all
 mirzam skill install                 # teach Claude Code to write decks in this repository

@@ -7,7 +7,18 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- **`mirzam export video` films the deck as a WebM.** The autoplay loop,
+  recorded: each slide is photographed at 1920px wide by the same headless
+  Chromium the other exports drive, held for the frontmatter's `autoplay:`
+  interval — a slide's own `<!-- autoplay: 20s -->` still wins, `--interval`
+  stands in from the command line, 5s when nothing says otherwise — and
+  encoded as VP8 in WebM, which YouTube takes directly. The encoder is an
+  ffmpeg found rather than shipped, and the bar is deliberately low: the
+  trimmed build Playwright keeps beside its browsers is enough, and is looked
+  for automatically after PATH, `--ffmpeg` and `MIRZAM_FFMPEG`. Click-step
+  animations arrive revealed (as in the PDF), clips become their poster
+  stills, and there is no audio track — yet.
 
 ## [0.10.0] - 2026-08-25
 

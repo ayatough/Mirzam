@@ -288,12 +288,18 @@ rough order of pull:
   separates "slides on a loop" from a screensaver made of photographs. It
   belongs to the `bg` attribute grammar, not to `anim`: the drift is a
   property of the image, repeated every time the slide comes round.
-- **Video export.** A deck driving itself is a deck a recording harness can
-  film with no script to write — `scripts/record-demo.mjs` already drives a
-  live tab for the README demo — so `mirzam export video deck.md` producing a
-  `.webm` is mostly plumbing that exists. That is the piece that turns the
-  telop-over-image pattern into simple video authoring: write Markdown, get a
-  clip.
+- **Video export** landed as of the next release: `mirzam export video
+  deck.md` films the autoplay loop — dwells honored, `--interval` standing in
+  where a deck names no pace — as a 1920px silent WebM any ffmpeg with VP8
+  can encode, the trimmed Playwright build included. That is the piece that
+  turns the telop-over-image pattern into simple video authoring: write
+  Markdown, get a clip. What the film does not yet carry is what a
+  slide-at-a-time screenshot cannot: click steps arrive revealed rather than
+  playing out, the deck's `transition:` does not draw between pages, clips
+  become their poster stills, and there is no audio. Filming the live viewer
+  through a screencast — the way `scripts/record-demo.mjs` records the README
+  demo — is the path to all four, and to a narration track paced by the
+  speaker notes beyond that.
 - **A progress hint** for the kiosk visitor: some quiet mark that the screen
   is a loop and where it is in it, in the chrome that `?controls=none`
   removes — so a display can choose between perfectly bare and legible.

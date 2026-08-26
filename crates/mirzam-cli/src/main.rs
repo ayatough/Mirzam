@@ -6,6 +6,7 @@
 //!   mirzam serve <input.md> [-p <port>]
 
 mod check;
+mod video;
 
 use mirzam_cli::{pdfimport, pipeline, scaffold, serve, skill};
 use std::collections::HashMap;
@@ -102,13 +103,14 @@ fn main() -> ExitCode {
         }
         Some("export") => {
             let format = args.get(1).map(String::as_str);
-            if !matches!(format, Some("pdf") | Some("pptx")) {
-                return usage("export takes a format: pdf or pptx");
-            }
-            let as_pptx = format == Some("pptx");
+            let Some(format @ ("pdf" | "pptx" | "video")) = format else {
+                return usage("export takes a format: pdf, pptx or video");
+            };
             let mut input: Option<PathBuf> = None;
             let mut out_path: Option<PathBuf> = None;
             let mut chromium: Option<String> = None;
+            let mut ffmpeg: Option<String> = None;
+            let mut interval_ms: Option<u32> = None;
             let mut handout = false;
             let mut deck = DeckArgs::default();
             let mut i = 2;
@@ -127,6 +129,21 @@ fn main() -> ExitCode {
                         match args.get(i) {
                             Some(p) => chromium = Some(p.clone()),
                             None => return usage("--chromium requires an executable path"),
+                        }
+                    }
+                    "--ffmpeg" => {
+                        i += 1;
+                        match args.get(i) {
+                            Some(p) => ffmpeg = Some(p.clone()),
+                            None => return usage("--ffmpeg requires an executable path"),
+                        }
+                    }
+                    "--interval" => {
+                        i += 1;
+                        match args.get(i).map(|v| mirzam_anim::parse_dwell(v)) {
+                            Some(Ok(ms)) => interval_ms = Some(ms),
+                            Some(Err(e)) => return usage(&e),
+                            None => return usage("--interval requires a duration, e.g. 8s"),
                         }
                     }
                     arg => match parse_deck_flag(&args, &mut i, &mut deck) {
@@ -148,14 +165,21 @@ fn main() -> ExitCode {
             if !is_markdown_path(&input) {
                 return usage(&format!(
                     "export expects a Markdown source, not {} - point it at the deck itself: \
-                     `mirzam export pdf deck.md --split h2 --theme <name> ...`",
+                     `mirzam export {format} deck.md --split h2 --theme <name> ...`",
                     input.display()
                 ));
             }
-            if as_pptx && handout {
-                return usage("--handout is a PDF layout; export pptx carries the notes already");
+            if format != "pdf" && handout {
+                return usage("--handout is a PDF layout; it applies to `export pdf` only");
             }
-            let ext = if as_pptx { "pptx" } else { "pdf" };
+            if format != "video" && (ffmpeg.is_some() || interval_ms.is_some()) {
+                return usage("--ffmpeg and --interval belong to `export video`");
+            }
+            let ext = match format {
+                "pptx" => "pptx",
+                "video" => "webm",
+                _ => "pdf",
+            };
             let out_path = out_path.unwrap_or_else(|| {
                 input
                     .with_extension(ext)
@@ -163,16 +187,24 @@ fn main() -> ExitCode {
                     .map(PathBuf::from)
                     .unwrap_or_else(|| PathBuf::from(format!("deck.{ext}")))
             });
-            if as_pptx {
-                run(export_pptx(&input, &out_path, chromium.as_deref(), &deck))
-            } else {
-                run(export_pdf(
+            match format {
+                "pptx" => run(export_pptx(&input, &out_path, chromium.as_deref(), &deck)),
+                "video" => {
+                    let args = video::VideoArgs {
+                        deck,
+                        chromium,
+                        ffmpeg,
+                        interval_ms,
+                    };
+                    run(video::export_video(&input, &out_path, &args))
+                }
+                _ => run(export_pdf(
                     &input,
                     &out_path,
                     chromium.as_deref(),
                     &deck,
                     handout,
-                ))
+                )),
             }
         }
         Some("check") => {
@@ -459,6 +491,8 @@ Usage:
                [--theme <name|file.css>]... [--fit shrink]
                [--mode light|dark] [--chromium <bin>]
   mirzam export pptx <input.md> [-o <out.pptx>] [same flags, minus --handout]
+  mirzam export video <input.md> [-o <out.webm>] [--interval <dur>]
+               [--ffmpeg <bin>] [same flags, minus --handout]
   mirzam check <input.md> [--split h1|h2|h3] [--theme <name|file.css>]...
                [--fit shrink] [--mode light|dark] [--base-url <url>]
                [--debug-layout] [--chromium <bin>] [--min-slack <px>]
@@ -478,15 +512,22 @@ Usage:
           one the fence stays a code block and the build says so; no browser
           is ever required for an ordinary build
   serve   development server with hot reload (default port 4321)
-  export  render a PDF or a PowerPoint file with headless Chromium (also
-          honors MIRZAM_CHROMIUM). Takes a Markdown source, not a built
+  export  render a PDF, a PowerPoint file or a video with headless Chromium
+          (also honors MIRZAM_CHROMIUM). Takes a Markdown source, not a built
           `out/index.html` - re-parsing already-rendered HTML as Markdown
           would silently lose the deck.
           --handout prints one page per slide with the speaker notes beside
           it, and ruled lines to write on where a slide has none.
           `pptx` writes one picture per slide - where every Markdown slide
           tool's PowerPoint export stops today - with the speaker notes in
-          the notes pane, where presenter view reads them
+          the notes pane, where presenter view reads them.
+          `video` films the autoplay loop as a silent WebM ready for YouTube:
+          each slide held for the frontmatter's `autoplay:` interval, a
+          slide's own `<!-- autoplay: -->` dwell honored, --interval standing
+          in for the deck-level pace (5s when nothing says otherwise). It
+          needs an ffmpeg that encodes VP8 - one on PATH, MIRZAM_FFMPEG or
+          --ffmpeg, or the trimmed build Playwright installs, found
+          automatically
   import  cut a captioned figure out of a PDF and write the Markdown that
           puts it on a slide - caption and credit filled in, and the credit
           written as `[@key]` when --cite says which paper this is. A figure
@@ -581,6 +622,7 @@ Examples:
   mirzam serve examples/04-components.md
   mirzam build README.md --split h2 -o out
   mirzam export pdf README.md --split h2 -o out.pdf
+  mirzam export video slideshow.md -o slideshow.webm
   mirzam build deck.md --strict
   mirzam check deck.md --split h2
   mirzam check deck.md --format json
@@ -1096,10 +1138,57 @@ fn export_pptx(
     }
     let bin = find_chromium(chromium)?;
     let (w, h) = out.meta.slide_size();
+    let slides: Vec<(Vec<u8>, Option<String>)> = photograph_slides(&bin, &out, 2.0)?
+        .into_iter()
+        .map(|(png, notes)| {
+            let notes = notes
+                .map(|n| mirzam_cli::pptx::notes_text(&n))
+                .filter(|t| !t.is_empty());
+            (png, notes)
+        })
+        .collect();
+
+    let bytes = mirzam_cli::pptx::package(w, h, &slides);
+    std::fs::write(out_path, &bytes).map_err(|e| format!("cannot write the pptx: {e}"))?;
+    println!(
+        "✓ wrote {} slides to {} ({} ms, {} KB)",
+        slides.len(),
+        out_path.display(),
+        t0.elapsed().as_millis(),
+        bytes.len() / 1024,
+    );
+    Ok(())
+}
+
+/// One photographed slide: its PNG, and the speaker notes that were taken
+/// out of the picture.
+type Shot = (Vec<u8>, Option<String>);
+
+/// Photographs every slide of a built deck: one one-shot headless Chromium
+/// process per slide, each rendering that slide alone through
+/// `assemble_shot_page`, at `scale` device pixels per CSS pixel. Returns each
+/// slide's PNG beside its speaker notes — the picture never contains them,
+/// `split_notes` having taken them out, but `export pptx` wants them back.
+/// Shared by `export pptx` and `export video`, which differ only in what the
+/// pictures become.
+///
+/// The shot is taller than the slide: current headless builds keep browser
+/// chrome's height in the window arithmetic even though nothing draws it, so
+/// a window sized exactly to the slide shows a viewport ~90px short and the
+/// shot loses the slide's bottom. Oversizing the window guarantees the whole
+/// slide is on screen, at the cost of a blank strip below it — which each
+/// caller crops away by the slide's own aspect (`pptx::bottom_crop`, the
+/// video's frame crop).
+pub(crate) fn photograph_slides(
+    bin: &str,
+    out: &pipeline::BuildOutput,
+    scale: f64,
+) -> Result<Vec<Shot>, String> {
+    let (w, h) = out.meta.slide_size();
     let tmp = std::env::temp_dir();
     let pid = std::process::id();
 
-    let mut slides: Vec<(Vec<u8>, Option<String>)> = Vec::with_capacity(out.sections.len());
+    let mut slides: Vec<Shot> = Vec::with_capacity(out.sections.len());
     for (i, section) in out.sections.iter().enumerate() {
         let (slide, notes) = mirzam_render::split_notes(section);
         let page = mirzam_render::assemble_shot_page(&out.meta, &slide, &out.file_themes);
@@ -1107,20 +1196,13 @@ fn export_pptx(
         let png_path = tmp.join(format!("mirzam-shot-{pid}-{i}.png"));
         std::fs::write(&html_path, &page)
             .map_err(|e| format!("cannot write a temporary page: {e}"))?;
-        let status = std::process::Command::new(&bin)
+        let status = std::process::Command::new(bin)
             .args([
                 "--headless",
                 "--disable-gpu",
                 "--no-sandbox",
                 "--hide-scrollbars",
-                "--force-device-scale-factor=2",
-                // The window, not the viewport: current headless builds keep
-                // browser chrome's height in the window arithmetic even
-                // though nothing draws it, so a window this exact size shows
-                // a viewport ~90px short and the shot loses the slide's
-                // bottom. Oversizing guarantees the whole slide is on
-                // screen; the package crops the blank strip below it by the
-                // slide's own aspect (`bottom_crop`).
+                &format!("--force-device-scale-factor={scale}"),
                 &format!("--window-size={w},{}", h + 300),
                 // Fast-forwards timers and rAF so annotations and
                 // shrink-to-fit have run before the picture is taken.
@@ -1142,22 +1224,9 @@ fn export_pptx(
             ));
         }
         let png = png.map_err(|e| format!("Chromium wrote no picture for slide {}: {e}", i + 1))?;
-        let notes = notes
-            .map(|n| mirzam_cli::pptx::notes_text(&n))
-            .filter(|t| !t.is_empty());
         slides.push((png, notes));
     }
-
-    let bytes = mirzam_cli::pptx::package(w, h, &slides);
-    std::fs::write(out_path, &bytes).map_err(|e| format!("cannot write the pptx: {e}"))?;
-    println!(
-        "✓ wrote {} slides to {} ({} ms, {} KB)",
-        slides.len(),
-        out_path.display(),
-        t0.elapsed().as_millis(),
-        bytes.len() / 1024,
-    );
-    Ok(())
+    Ok(slides)
 }
 
 /// Locates Chromium: explicit flag, then $MIRZAM_CHROMIUM, then well-known names.
