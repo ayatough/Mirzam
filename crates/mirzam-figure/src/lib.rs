@@ -228,6 +228,14 @@ pub fn find(page: Rect, lines: &[Line], ink: &[Rect]) -> Vec<Figure> {
             // without punctuation to prove it.
             continue;
         }
+        if continues_a_paragraph(&lines[i], &sheet) {
+            // `…the results are presented in` / `Table IV. We can see that…`:
+            // a cross-reference that a line break moved to the front of a line,
+            // with the sentence's own full stop after it standing in for a
+            // caption's punctuation. What gives it away is the line above,
+            // which is prose one leading up — a caption has its figure there.
+            continue;
+        }
         let column = column_for(&lines[i].rect, &sheet.columns, page);
         let caption = caption_block(lines, &ordered, at, &column);
         let Some(art) = art_box(&label.kind, &caption.rect, &column, &sheet) else {
@@ -245,6 +253,24 @@ pub fn find(page: Rect, lines: &[Line], ink: &[Rect]) -> Vec<Figure> {
         });
     }
     found
+}
+
+/// Whether a line carries on the paragraph above it: a line of prose sits
+/// directly over it, at its own size and one leading away.
+///
+/// A float is separated from the text around it by more than a leading, so
+/// nothing is ever set that close above a caption. A line of a paragraph, on
+/// the other hand, always has one.
+fn continues_a_paragraph(line: &Line, sheet: &Sheet) -> bool {
+    sheet.lines.iter().any(|above| {
+        let gap = above.rect.y0 - line.rect.y1;
+        gap > -line.size
+            && gap <= line.size * 0.9
+            && (above.size - line.size).abs() < 0.3
+            && above.rect.x1 > line.rect.x0
+            && above.rect.x0 < line.rect.x1
+            && is_prose(above, sheet)
+    })
 }
 
 /// Whether a line reads as prose: the page's dominant size, running the width
@@ -308,6 +334,21 @@ fn columns(lines: &[Line], body: f64, page: Rect) -> Vec<(f64, f64)> {
         }
     }
 
+    // A group that starts inside another is not a second column: it is an
+    // indent, a displayed equation, or the second half of a paragraph that
+    // hangs. Columns do not overlap, so overlapping groups are one column.
+    let mut merged: Vec<(f64, f64, usize)> = Vec::new();
+    for group in groups {
+        match merged.last_mut().filter(|(_, x1, _)| *x1 > group.0) {
+            Some((_, x1, n)) => {
+                *x1 = x1.max(group.1);
+                *n += group.2;
+            }
+            None => merged.push(group),
+        }
+    }
+    let groups = merged;
+
     let min_width = page.width() * 0.2;
     let cols: Vec<(f64, f64)> = groups
         .into_iter()
@@ -338,7 +379,17 @@ fn column_for(rect: &Rect, columns: &[(f64, f64)], page: Rect) -> (f64, f64) {
         })
         .copied()
         .unwrap_or((page.x0, page.x1));
-    if rect.x1 > own.1 + rect.height() {
+    // Or one that sits across the gutter: the number of a table spanning a
+    // two-column page is centred on the page, which is to say on the gap, and
+    // reaches a little way into both columns without running past either.
+    // Half a line's height of overlap on each side, so that a caption merely
+    // overhanging its own column by a hair is not read as spanning.
+    let straddles = columns
+        .iter()
+        .filter(|c| (rect.x1.min(c.1) - rect.x0.max(c.0)) > rect.height() * 0.5)
+        .count()
+        > 1;
+    if straddles || rect.x1 > own.1 + rect.height() {
         let x0 = columns.iter().map(|c| c.0).fold(page.x1, f64::min);
         let x1 = columns.iter().map(|c| c.1).fold(page.x0, f64::max);
         return (x0.min(rect.x0), x1.max(rect.x1));
@@ -372,11 +423,20 @@ struct Caption {
 /// its own, or a line following one that stopped short of the column — the last
 /// being the one that does the real work, since a caption's final line is
 /// short and the prose under it is not.
+///
+/// Lines in another column are stepped over rather than stopped on. Reading
+/// order runs down the page before it runs across, so in a two-column paper
+/// the next line after a caption's first is usually the line beside it in the
+/// other column; ending there would cut every caption in the paper to one line.
 fn caption_block(lines: &[Line], ordered: &[usize], at: usize, column: &(f64, f64)) -> Caption {
     let first = &lines[ordered[at]];
     let mut text = first.text.trim().to_string();
     let mut rect = first.rect;
     let mut prev = first;
+    // A first line that is nothing but the label — `TABLE III`, with the title
+    // set under it, as every IEEE table is — cannot be judged by how far it
+    // reaches. It is a heading, and a heading is short because it is a heading.
+    let heading = Label::parse(&text).is_some_and(|l| l.consumed >= text.trim_end().len());
     // What a line has to reach not to be the caption's last.
     //
     // The first line is measured against the column: a paragraph that wraps
@@ -386,18 +446,22 @@ fn caption_block(lines: &[Line], ordered: &[usize], at: usize, column: &(f64, f6
     // column it sits in — the one under a figure spanning a two-column page
     // does not — and comparing those with the column would cut them off.
     let mut widest = first.rect.x1;
-    for (joined, &j) in ordered[at + 1..].iter().take(12).enumerate() {
+    let mut joined = 0;
+    for &j in &ordered[at + 1..] {
         let line = &lines[j];
+        if line.rect.x0 < column.0 - prev.size || line.rect.x1 > column.1 + prev.size {
+            continue;
+        }
+        if joined == 12 {
+            break;
+        }
         let against = if joined == 0 { column.1 } else { widest };
-        let short = prev.rect.x1 < against - prev.size * 2.0;
+        let short = !(joined == 0 && heading) && prev.rect.x1 < against - prev.size * 2.0;
         let gap = prev.rect.y0 - line.rect.y1;
-        let same_column =
-            line.rect.x0 >= column.0 - prev.size && line.rect.x1 <= column.1 + prev.size;
         if short
             || gap > prev.size * 0.9
             || gap < -prev.size
             || (line.size - first.size).abs() > 0.3
-            || !same_column
             || Label::parse(&line.text).is_some()
         {
             break;
@@ -407,6 +471,7 @@ fn caption_block(lines: &[Line], ordered: &[usize], at: usize, column: &(f64, f6
         rect = rect.union(&line.rect);
         widest = widest.max(line.rect.x1);
         prev = line;
+        joined += 1;
     }
     let consumed = Label::parse(&text).map(|l| l.consumed).unwrap_or(0);
     Caption {
@@ -473,9 +538,18 @@ fn within(
     // table's cells are the same size and stop well short of it, which is what
     // lets a band swallow a table but not the paragraph under it.
     let stops = |l: &Line| {
+        // Measured against the line's own column, not against the band. A band
+        // over the whole text width — the one under a spanning table — is
+        // stopped by the ordinary two-column prose below it, and that prose
+        // fills its column while reaching barely half way across the page.
+        let own = column_for(&l.rect, &sheet.columns, page);
+        // Or a section heading, which is short: what gives it away is that it
+        // is set at the body size and begins where the column does. A table's
+        // cells are set smaller than the body and inset from the column's edge,
+        // so a band still swallows the table it was opened for.
+        let running = l.rect.width() > (own.1 - own.0) * 0.6 || l.rect.x0 <= own.0 + 1.0;
         in_column(&l.rect)
-            && ((l.size - body).abs() < 0.35 && l.rect.width() > (column.1 - column.0) * 0.6
-                || Label::parse(&l.text).is_some())
+            && ((l.size - body).abs() < 0.35 && running || Label::parse(&l.text).is_some())
     };
 
     let mut edge = if above { page.y1 } else { page.y0 };
@@ -658,6 +732,146 @@ mod tests {
                 )
             })
             .collect()
+    }
+
+    #[test]
+    fn a_caption_reads_past_the_column_beside_it() {
+        // Reading order runs down the page before it runs across, so between a
+        // caption's first line and its second stands the line beside it in the
+        // other column. Stopping there would cut every caption in the paper.
+        let mut lines = prose(RIGHT, 800.0, 3);
+        lines.extend(prose(LEFT, 800.0, 4));
+        lines.extend(prose(LEFT, 604.0, 4));
+        lines.push(line(
+            RIGHT,
+            600.0,
+            COLUMN,
+            8.0,
+            "Figure 1: The transformer,",
+        ));
+        lines.push(line(
+            RIGHT,
+            590.0,
+            COLUMN * 0.4,
+            8.0,
+            "and what it replaced",
+        ));
+        let ink = vec![Rect::new(RIGHT, 610.0, RIGHT + COLUMN, 700.0)];
+
+        let found = find(PAGE, &lines, &ink);
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].caption, "The transformer, and what it replaced");
+    }
+
+    #[test]
+    fn a_number_alone_is_a_heading_over_its_title() {
+        // Every table in an IEEE paper: `TABLE III` centred on one line, the
+        // title under it. The number line is short because it is a number.
+        let mut lines = prose(LEFT, 800.0, 4);
+        lines.extend(prose(RIGHT, 800.0, 4));
+        lines.push(line(LEFT + 90.0, 700.0, 45.0, 8.0, "TABLE 1"));
+        lines.push(line(
+            LEFT,
+            690.0,
+            COLUMN,
+            8.0,
+            "What the machine did, and for how long",
+        ));
+        let ink = vec![Rect::new(LEFT, 600.0, LEFT + COLUMN, 680.0)];
+
+        let found = find(PAGE, &lines, &ink);
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].caption, "What the machine did, and for how long");
+    }
+
+    #[test]
+    fn a_number_across_the_gutter_belongs_to_a_float_that_spans() {
+        // A spanning table's number is centred on the page, which is to say on
+        // the gap between the columns: it runs past neither of them.
+        let mut lines = prose(LEFT, 800.0, 4);
+        lines.extend(prose(RIGHT, 800.0, 4));
+        lines.push(line(280.0, 700.0, 35.0, 8.0, "TABLE 1"));
+        lines.push(line(LEFT, 690.0, 495.0, 8.0, "What both machines did"));
+        let ink = vec![Rect::new(LEFT, 620.0, RIGHT + COLUMN, 680.0)];
+
+        let found = find(PAGE, &lines, &ink);
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].caption, "What both machines did");
+        assert!(
+            found[0].art.width() > COLUMN * 1.5,
+            "the crop spans the page"
+        );
+    }
+
+    #[test]
+    fn a_cross_reference_at_the_head_of_a_line_is_not_a_caption() {
+        // `…the results are presented in` / `Table 4. We can see that…`: a line
+        // break put the reference at the front of a line and the sentence's own
+        // full stop after it. What tells them apart is the line above.
+        let ink = vec![Rect::new(LEFT, 600.0, LEFT + COLUMN, 680.0)];
+        let reference = |top: f64| {
+            let mut lines = prose(LEFT, 800.0, 5);
+            lines.extend(prose(RIGHT, 800.0, 5));
+            lines.push(line(
+                LEFT,
+                top,
+                COLUMN,
+                10.0,
+                "Table 4. We can see that it is faster",
+            ));
+            lines
+        };
+
+        assert!(find(PAGE, &reference(740.0), &ink).is_empty());
+        // The same line with a float's separation above it is a caption again.
+        assert_eq!(find(PAGE, &reference(700.0), &ink).len(), 1);
+    }
+
+    #[test]
+    fn a_section_heading_ends_a_band() {
+        // A heading is short, so it is not prose; what gives it away is that it
+        // is set at the body size and starts where the column starts.
+        let mut lines = prose(LEFT, 800.0, 4);
+        lines.extend(prose(RIGHT, 800.0, 4));
+        lines.push(line(
+            LEFT,
+            700.0,
+            COLUMN,
+            8.0,
+            "Table 1: What the machine did",
+        ));
+        lines.push(line(LEFT, 600.0, 60.0, 10.0, "B. Insertion"));
+        lines.extend(prose(LEFT, 585.0, 3));
+        let ink = vec![Rect::new(LEFT, 630.0, LEFT + COLUMN, 690.0)];
+
+        let found = find(PAGE, &lines, &ink);
+        assert_eq!(found.len(), 1);
+        assert!(found[0].art.y0 > 605.0, "the crop stops above the heading");
+    }
+
+    #[test]
+    fn an_indent_is_not_a_third_column() {
+        // A displayed equation, or a quotation, starts inside the column it is
+        // set in. Read as a column of its own it overlaps a real one, and then
+        // every caption beside it looks like it spans two.
+        let mut lines = prose(LEFT, 800.0, 4);
+        lines.extend(prose(RIGHT, 800.0, 4));
+        lines.push(line(
+            RIGHT + 55.0,
+            740.0,
+            COLUMN - 55.0,
+            10.0,
+            "x = y + z, for every x",
+        ));
+        lines.push(line(
+            RIGHT + 55.0,
+            728.0,
+            COLUMN - 55.0,
+            10.0,
+            "and every y in the set",
+        ));
+
+        assert_eq!(columns(&lines, 10.0, PAGE).len(), 2);
     }
 
     #[test]

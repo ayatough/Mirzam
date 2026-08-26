@@ -80,7 +80,51 @@ pub fn convert(pdf: &[u8]) -> Result<String, String> {
             }
         });
     }
-    Ok(cull(&svg))
+    Ok(scalable(&cull(&svg)))
+}
+
+/// Takes the fixed size off the root element, leaving the `viewBox`.
+///
+/// A converter writes the page's own measurements — `width="511.47"` — and an
+/// `<img>` then draws the figure at 511 CSS pixels whatever box it was given.
+/// On a slide that is a picture sitting at half the width of its pane with no
+/// way to say otherwise. The `viewBox` carries the shape, which is the part
+/// worth keeping; how big to draw it is the deck's business.
+pub fn scalable(svg: &str) -> String {
+    let Some(open) = svg.find("<svg") else {
+        return svg.to_string();
+    };
+    let Some(end) = svg[open..].find('>').map(|at| open + at) else {
+        return svg.to_string();
+    };
+    let head = &svg[open..end];
+    if !head.contains("viewBox=") {
+        return svg.to_string();
+    }
+    let mut kept = String::with_capacity(svg.len());
+    kept.push_str(&svg[..open]);
+    kept.push_str("<svg");
+    let mut rest = &head[4..];
+    while let Some(at) = rest.find(|c: char| !c.is_whitespace()) {
+        let attribute = &rest[at..];
+        let Some(name_end) = attribute.find('=') else {
+            break;
+        };
+        let name = attribute[..name_end].trim();
+        // The value runs to the closing quote of whichever quote opens it.
+        let after = &attribute[name_end + 1..];
+        let quote = after.chars().next().unwrap_or('"');
+        let Some(close) = after[1..].find(quote).map(|at| at + 2) else {
+            break;
+        };
+        if name != "width" && name != "height" {
+            kept.push(' ');
+            kept.push_str(&attribute[..name_end + 1 + close]);
+        }
+        rest = &after[close..];
+    }
+    kept.push_str(&svg[end..]);
+    kept
 }
 
 /// Drops what the `viewBox` cannot show.
@@ -495,6 +539,31 @@ fn map_rect(m: [f64; 6], r: Rect) -> Rect {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_root_keeps_its_shape_and_loses_its_size() {
+        let svg = r##"<svg viewBox="0 0 511 133" width="511" height="133.4" xmlns="http://www.w3.org/2000/svg"><g/></svg>"##;
+        assert_eq!(
+            scalable(svg),
+            r##"<svg viewBox="0 0 511 133" xmlns="http://www.w3.org/2000/svg"><g/></svg>"##
+        );
+    }
+
+    #[test]
+    fn a_root_with_no_view_box_keeps_the_only_size_it_has() {
+        // Without one there is nothing left to say how tall the figure is.
+        let svg = r##"<svg width="511" height="133"><g/></svg>"##;
+        assert_eq!(scalable(svg), svg);
+    }
+
+    #[test]
+    fn an_attribute_in_single_quotes_survives() {
+        let svg = r##"<svg viewBox='0 0 4 2' width='4' id='fig'><g/></svg>"##;
+        assert_eq!(
+            scalable(svg),
+            r##"<svg viewBox='0 0 4 2' id='fig'><g/></svg>"##
+        );
+    }
 
     /// A page the shape hayro writes one: drawn elements first, then the glyph
     /// outlines they point at, inside a `<defs>` that carries an id of its own.

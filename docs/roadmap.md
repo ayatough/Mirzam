@@ -241,6 +241,18 @@ image that will not decode leaves the crop on disk and says which it was,
 rather than shipping a picture with a hole in it. `MIRZAM_PDFTOOL` stays the
 escape hatch, and the staged transpiler plan stays in this file's history.
 
+Then it was held against a real paper: a two-column IEEE one, eight pages, 12
+floats, half of them tables, every one of its 20 fonts Type 1. hayro converted
+all 12 without a single refusal — which is the answer to whether the standard-14
+fallback and the Type 1 charstrings hold up outside a fixture, and the strongest
+number anyone has for what a self-written renderer would have to match. The
+figures came to 40 KB to 430 KB each as SVG, against 2.5 MB for the one that is
+a photograph and comes out of the file untouched. What the paper broke was
+everything *around* the conversion: six defects in reading the page, all of them
+shapes the next paper would have hit too, all now fixed and each with the page
+geometry that found it written into a test. The [changelog](../CHANGELOG.md)
+lists them.
+
 **Still open here:** not emitting off-page geometry belongs upstream, not in a
 culling pass this project maintains for good; and the conversion is pure Rust,
 so the editor extension and the browser build could import a figure too — the

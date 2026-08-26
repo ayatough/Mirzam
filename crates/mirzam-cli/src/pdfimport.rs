@@ -196,8 +196,9 @@ pub fn run(options: &Options) -> Result<Import, String> {
     }
 
     let mut done = Vec::new();
+    let mut taken: Vec<String> = Vec::new();
     for one in &found {
-        let stem = stem_for(options, &one.figure);
+        let stem = distinct(stem_for(options, &one.figure), &mut taken);
         let mut imported = Imported {
             page: one.page,
             label: one.figure.label.clone(),
@@ -297,6 +298,23 @@ fn images_in(page: &Page, figure: &Figure) -> Vec<(lopdf::ObjectId, Rect)> {
 
 /// The name to write the file under: the citation key when there is one, since
 /// that is what the deck calls this paper, and the file's own name otherwise.
+/// A name no earlier figure in this run has taken.
+///
+/// Two floats can want the same one — a paper that numbers its appendix from
+/// one again, a `Fig. 3` that is also written `FIG. 3`. Writing both to one
+/// file loses a figure without saying so, and a figure that quietly turns into
+/// a different figure is the worst outcome this command has.
+fn distinct(stem: String, taken: &mut Vec<String>) -> String {
+    let mut candidate = stem.clone();
+    let mut n = 1;
+    while taken.contains(&candidate) {
+        n += 1;
+        candidate = format!("{stem}-{n}");
+    }
+    taken.push(candidate.clone());
+    candidate
+}
+
 fn stem_for(options: &Options, figure: &Figure) -> String {
     let base = options.cite.clone().unwrap_or_else(|| {
         options
@@ -409,6 +427,14 @@ fn write_one(
         Some(tool) => {
             let file = options.out_dir.join(format!("{stem}.{wanted}"));
             tool.convert(&crop, &file, wanted, options.dpi)?;
+            // A tool writes the page's measurements onto the root element too,
+            // and a figure imported through one belongs on a slide just the
+            // same. Rewritten only if it is read back whole.
+            if wanted == "svg" {
+                if let Ok(drawing) = std::fs::read_to_string(&file) {
+                    let _ = std::fs::write(&file, svg::scalable(&drawing));
+                }
+            }
             let _ = std::fs::remove_file(&crop);
             Ok((file, format!("{} by {}", wanted, tool.name())))
         }
@@ -653,6 +679,16 @@ pub mod svg;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn no_two_figures_are_written_to_one_file() {
+        let mut taken = Vec::new();
+        let names: Vec<String> = ["p-fig3", "p-fig3", "p-fig4", "p-fig3"]
+            .into_iter()
+            .map(|s| distinct(s.to_string(), &mut taken))
+            .collect();
+        assert_eq!(names, ["p-fig3", "p-fig3-2", "p-fig4", "p-fig3-3"]);
+    }
 
     #[test]
     fn a_named_tool_wins_and_a_missing_one_is_ignored() {

@@ -39,6 +39,58 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
   [hayro]: https://github.com/LaurenzV/hayro
 
+### Fixed
+- **`import pdf`, held against a real paper.** The command was written against
+  a fixture and a handful of PDFs. Run over a two-column IEEE paper set in
+  Type 1 fonts — 12 floats, half of them tables — it found 13 figures where
+  there are 12, wrote 4 captions out of 12, and lost one table by overwriting
+  it. All six causes are fixed, and each one is a page shape common enough that
+  the next paper would have hit it too:
+
+  - **A lifted-out image is no longer half noise.** A large image in a PDF is
+    stored as PNG scanlines — a filter byte and a row written as a difference
+    from its neighbours — and the library this asked to inflate them undoes
+    that wrongly part way down the picture. Both steps happen here now, and the
+    result was checked byte for byte against the format's own definition. The
+    figure that exposed it came out correct for 450 rows and as coloured static
+    for the rest, which is exactly the failure nobody notices in a thumbnail.
+  - **A line of text may mix sizes.** Runs were grouped by the bottom of their
+    boxes rather than by the baseline they sit on, so a table title set in
+    small capitals — six-point letters whose own capitals are eight — arrived
+    as three interleaved lines reading `OMPARISON OF … C UFOM AP`. A footnote
+    mark or a subscript, being smaller and off the baseline, became a line of
+    its own and ended the caption it was written in; it is now absorbed into
+    the line it marks.
+  - **Two columns are no longer read as one line.** Runs a gutter apart were
+    joined when the gutter was narrower than one and a half times the text —
+    which is every two-column paper, twelve points of gap around ten-point
+    type. The joined lines then poisoned the column detection, and a caption
+    that looked like it spanned the page took the page.
+  - **A caption is read past the column beside it.** Reading order runs down
+    the page before it runs across, so between a caption's first line and its
+    second stands the line beside it in the other column. That line ended the
+    caption. Every caption in a two-column paper was its first line only.
+  - **A table titled under its number keeps its title.** `TABLE III` centred on
+    one line with the title under it — every table in an IEEE paper — was read
+    as a one-line caption, because the number line stops well short of the
+    column and that is how a caption's last line is recognised. A line holding
+    nothing but the number is a heading, and headings are short by design.
+  - **A cross-reference is no longer imported as a figure.** A line break can
+    put `Table IV.` at the front of a line, and the sentence's own full stop
+    then reads as a caption's punctuation. What tells them apart is the line
+    above: a caption has its figure there, a reference has the rest of its
+    paragraph. This one also wrote its crop over the real Table IV, so no two
+    figures in a run may take the same file name any more.
+
+  Two things that were not wrong so much as unusable also changed. A converted
+  figure no longer carries the page's own `width` and `height` — an `<img>`
+  drew it at 511 CSS pixels whatever pane it was given, which on a slide is a
+  picture at half the width of its box with no way to say otherwise; the
+  `viewBox` keeps the shape and the deck decides the size. And a band no longer
+  runs past a section heading, which is short, set at the body size, and starts
+  where the column starts — a table crop used to reach down and take the
+  `B. Insertion` under it.
+
 ## [0.10.0] - 2026-08-25
 
 ### Fixed
