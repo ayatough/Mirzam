@@ -221,6 +221,16 @@ substitute fonts (BSD-3) and two ICC profiles. `--format png` still wants
 `mutool` or `pdftocairo`: rasterising is hayro's other half and another couple
 of megabytes, which is a separate decision.
 
+The obvious way to buy those megabytes back was measured and rejected. Built at
+`opt-level = "z"` with fat LTO the binary is 9.8 MB — 2.8 MB off — and everything
+takes about twice as long: a 500-slide deck builds in 189 ms instead of 88, and
+the single-slide edit the design goal is stated in goes 4.1 ms to 8.6 ms.
+`opt-level = "s"` is 10.3 MB at 1.4×. Even fat LTO alone, which looked free,
+buys 654 KB for +22 % on the maths deck and +17 % on `import pdf` itself. So the
+release profile stays where it is: the size dial is a worse trade than carrying
+the megabytes, and the only remaining lever on them is a renderer this project
+writes itself.
+
 The guard-rails both survive, and one of them earned its place immediately.
 hayro converts a *page* and keeps what falls outside it — a crop being a page
 with its box narrowed, that meant 1.49 MB per figure against `mutool`'s 4 to
