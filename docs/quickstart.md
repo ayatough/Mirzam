@@ -106,7 +106,12 @@ plays; `--stills` instead photographs each slide once and holds it — faster
 than any playback, and enough for a deck where nothing moves. Either way it
 needs an ffmpeg that encodes VP8: one on PATH, named by `--ffmpeg` or
 `MIRZAM_FFMPEG`, or the trimmed build Playwright installs beside its
-browsers, which is enough and is found automatically.
+browsers, which is enough and is found automatically. With a *full* ffmpeg
+the film also has sound: each clip's own audio lands exactly where the clip
+played — a browser only forced the mute on autoplay, so the film does not —
+while a clip the author wrote `.muted` on stays silent, and `--mute`
+silences the whole film. With only the trimmed build, the export says what
+it could not mix and delivers the silent film.
 
 `import pdf` is for the slide that quotes a paper. It reads the PDF, finds the
 captioned figures and tables, cuts each one out, and prints the Markdown line

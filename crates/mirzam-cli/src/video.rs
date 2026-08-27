@@ -76,6 +76,9 @@ pub(crate) struct VideoArgs {
     /// viewer — faster than real time, and still enough for a deck where
     /// nothing moves.
     pub(crate) stills: bool,
+    /// `--mute`: keep the film silent even where clips carry sound and the
+    /// found ffmpeg could mix it in.
+    pub(crate) mute: bool,
 }
 
 pub(crate) fn export_video(input: &Path, out_path: &Path, args: &VideoArgs) -> Result<(), String> {
@@ -127,7 +130,9 @@ pub(crate) fn export_video(input: &Path, out_path: &Path, args: &VideoArgs) -> R
             .or(deck_interval)
             .unwrap_or(DEFAULT_DWELL_MS);
         (
-            export_recording(&out, &dwells, interval, &chromium, &ffmpeg, out_path)?,
+            export_recording(
+                &out, &dwells, interval, &chromium, &ffmpeg, args.mute, out_path,
+            )?,
             "recorded",
         )
     };
@@ -186,6 +191,7 @@ fn export_recording(
     interval_ms: u32,
     chromium: &str,
     ffmpeg: &str,
+    mute: bool,
     out_path: &Path,
 ) -> Result<f64, String> {
     // The page `build` writes, assets embedded, so it plays from anywhere.
@@ -206,12 +212,14 @@ fn export_recording(
         interval_ms,
         chromium,
         ffmpeg,
+        mute,
         out_path,
     );
     let _ = std::fs::remove_file(&page_path);
     result
 }
 
+#[allow(clippy::too_many_arguments)]
 fn record_page(
     page_path: &Path,
     out: &mirzam_cli::pipeline::BuildOutput,
@@ -219,21 +227,25 @@ fn record_page(
     interval_ms: u32,
     chromium: &str,
     ffmpeg: &str,
+    mute: bool,
     out_path: &Path,
 ) -> Result<f64, String> {
     let (w, h) = out.meta.slide_size();
     let scale = f64::from(TARGET_WIDTH) / f64::from(w);
+    // The viewport measures exactly one video frame, at device scale 1, and
+    // the deck is scaled up into it by CSS below. Both frame sources then
+    // agree on the pixels: the screencast captures at viewport size, the
+    // forced captures at viewport times device scale — any other split
+    // hands ffmpeg a stream that changes resolution mid-film.
+    let (vw, vh) = (TARGET_WIDTH, (f64::from(h) * scale).round() as u32);
 
-    let browser = cdp::Browser::launch(chromium, w, h + 300)?;
+    let browser = cdp::Browser::launch(chromium, vw, vh + 300)?;
     let cdp = &browser.cdp;
     cdp.attach()?;
     cdp.call("Page.enable", json!({}))?;
-    // The viewport is the slide, and the device scale turns its CSS pixels
-    // into the video's: the viewer then fits the deck edge to edge, with
-    // nothing to crop.
     cdp.call(
         "Emulation.setDeviceMetricsOverride",
-        json!({"width": w, "height": h, "deviceScaleFactor": scale, "mobile": false}),
+        json!({"width": vw, "height": vh, "deviceScaleFactor": 1, "mobile": false}),
     )?;
 
     // The deck is loaded stilled, walked once end to end, and only then
@@ -277,15 +289,33 @@ fn record_page(
     // that presentation and pins the deck edge to edge; the viewport already
     // measures exactly one slide. `!important` outlives the viewer's own
     // `fit()`, which keeps writing its inline transform on resize.
-    cdp.eval(
+    cdp.eval(&format!(
         "var st = document.createElement('style'); \
-         st.textContent = '#deck { border-radius: 0 !important; box-shadow: none !important; \
-         transform: translate(-50%, -50%) scale(1) !important; }'; \
-         document.head.appendChild(st);",
-    )?;
+         st.textContent = '#deck {{ border-radius: 0 !important; box-shadow: none !important; \
+         transform: translate(-50%, -50%) scale({scale}) !important; }}'; \
+         document.head.appendChild(st);"
+    ))?;
     // Long enough for the walk's last page turn to finish drawing: the take
     // must not open on the tail of a warm-up transition.
     std::thread::sleep(Duration::from_millis(2000));
+    if !mute {
+        // What the film will later be scored with: every play, pause and end
+        // of every clip, stamped on the page's own clock — the same clock
+        // the frames carry, which is what lets the mix land each sound where
+        // its clip sat in the take. Installed after the walk, so warm-up
+        // playback is never mistaken for the performance.
+        cdp.eval(
+            "window.__mzLog = []; \
+             window.__mzEls = Array.from(document.querySelectorAll('section.slide video, section.slide audio')); \
+             window.__mzEls.forEach(function (m, i) { \
+               ['play', 'pause', 'ended'].forEach(function (k) { \
+                 m.addEventListener(k, function () { \
+                   window.__mzLog.push([i, k, Date.now() / 1000, m.currentTime]); \
+                 }); \
+               }); \
+             });",
+        )?;
+    }
 
     let mut enc = Encoder::spawn(ffmpeg, RECORD_FPS, out_path)?;
     cdp.call(
@@ -293,8 +323,8 @@ fn record_page(
         json!({
             "format": "jpeg",
             "quality": JPEG_QUALITY,
-            "maxWidth": (f64::from(w) * scale).round() as u32,
-            "maxHeight": (f64::from(h) * scale).round() as u32,
+            "maxWidth": vw,
+            "maxHeight": vh,
             "everyNthFrame": 1,
         }),
     )?;
@@ -328,23 +358,30 @@ fn record_page(
     let mut timeline = Timeline::new(RECORD_FPS);
     let started = Instant::now();
     let mut last_poll = Instant::now();
-    let mut jpeg_checked = false;
+    let mut film_dims: Option<(u16, u16)> = None;
     let mut moving = true; // the load itself animates; polls keep it current
     let mut last_frame = Instant::now();
-    let mut check_frame = |jpg: &[u8]| -> Result<(), String> {
-        if !jpeg_checked {
-            jpeg_checked = true;
-            if let Some((fw, fh)) = jpeg_dims(jpg) {
-                if fw % 2 != 0 || fh % 2 != 0 {
-                    return Err(format!(
-                        "the recording came back {fw}x{fh}, which VP8's 4:2:0 \
-                         sampling cannot take - please report this deck's \
-                         aspect settings as a bug"
-                    ));
+    // The first frame sets the film's size; a frame of any other size — a
+    // straggler from before the viewport override landed — is dropped, because
+    // one stream must not change resolution mid-film.
+    let mut check_frame = |jpg: &[u8]| -> Result<bool, String> {
+        let dims = jpeg_dims(jpg);
+        match film_dims {
+            None => {
+                if let Some((fw, fh)) = dims {
+                    if fw % 2 != 0 || fh % 2 != 0 {
+                        return Err(format!(
+                            "the recording came back {fw}x{fh}, which VP8's 4:2:0 \
+                             sampling cannot take - please report this deck's \
+                             aspect settings as a bug"
+                        ));
+                    }
                 }
+                film_dims = dims;
+                Ok(true)
             }
+            Some(first) => Ok(dims == Some(first)),
         }
-        Ok(())
     };
     let t_end = loop {
         if started.elapsed() > cap {
@@ -374,9 +411,10 @@ fn record_page(
                             jpg.len()
                         );
                     }
-                    check_frame(&jpg)?;
-                    timeline.push(ts, jpg, &mut enc);
-                    last_frame = Instant::now();
+                    if check_frame(&jpg)? {
+                        timeline.push(ts, jpg, &mut enc);
+                        last_frame = Instant::now();
+                    }
                 }
                 Some("__closed") => {
                     return Err("Chromium closed the connection mid-recording".into())
@@ -398,8 +436,9 @@ fn record_page(
             if std::env::var_os("MIRZAM_RECORD_DEBUG").is_some() {
                 eprintln!("frame ts={:.3} bytes={} (forced)", ts - t_start, jpg.len());
             }
-            check_frame(&jpg)?;
-            timeline.push(ts, jpg, &mut enc);
+            if check_frame(&jpg)? {
+                timeline.push(ts, jpg, &mut enc);
+            }
             last_frame = Instant::now();
         }
         if last_poll.elapsed() >= Duration::from_millis(250) {
@@ -423,12 +462,107 @@ fn record_page(
         }
     };
     let _ = cdp.call("Page.stopScreencast", json!({}));
+    let film_t0 = timeline.t0;
     let secs = timeline.finish(t_end, &mut enc)?;
     enc.finish()?;
     if secs == 0.0 {
         return Err("the recording delivered no frames".into());
     }
+    if !mute {
+        if let Some(t0) = film_t0 {
+            mix_clip_audio(cdp, ffmpeg, t0, t_end, out_path)?;
+        }
+    }
     Ok(secs)
+}
+
+/// Scores the film from the take's own media log: reads what played when,
+/// pulls each audible clip's bytes out of the page, and lays the sound
+/// under the silent film — when the ffmpeg at hand can. The trimmed
+/// Playwright build cannot, and says so once instead of failing the export:
+/// the silent film is still the deliverable it always was.
+fn mix_clip_audio(
+    cdp: &cdp::Cdp,
+    ffmpeg: &str,
+    t0: f64,
+    t_end: f64,
+    out_path: &Path,
+) -> Result<(), String> {
+    let log: serde_json::Value = serde_json::from_str(
+        cdp.eval("JSON.stringify(window.__mzLog || [])")?
+            .as_str()
+            .unwrap_or("[]"),
+    )
+    .map_err(|e| format!("unreadable media log: {e}"))?;
+    let spans = crate::audio::spans(&log, t0, t_end);
+    if spans.is_empty() {
+        return Ok(());
+    }
+    let Some(codec) = crate::audio::mix_codec(ffmpeg) else {
+        println!(
+            "  ⚠ clips played during the take, but {ffmpeg} cannot mix their sound \
+             (it has no audio encoder or filters) - the film is silent. A full \
+             ffmpeg on PATH, or named by --ffmpeg or MIRZAM_FFMPEG, scores it"
+        );
+        return Ok(());
+    };
+
+    // One source file per element that made a sound; explicit `.muted` and
+    // audioless clips - a screen recording, say - drop out here.
+    let tmp = std::env::temp_dir();
+    let mut sources: HashMap<usize, Option<(std::path::PathBuf, bool)>> = HashMap::new();
+    let mut picked: Vec<(std::path::PathBuf, bool, crate::audio::Span)> = Vec::new();
+    let mut clips = std::collections::BTreeSet::new();
+    for span in spans {
+        let entry = match sources.entry(span.el) {
+            std::collections::hash_map::Entry::Occupied(e) => e.into_mut(),
+            std::collections::hash_map::Entry::Vacant(v) => {
+                let meta: serde_json::Value = serde_json::from_str(
+                    cdp.eval(&format!(
+                        "JSON.stringify([!!window.__mzEls[{el}].loop, \
+                         'mzMuted' in window.__mzEls[{el}].dataset, \
+                         window.__mzEls[{el}].currentSrc])",
+                        el = span.el
+                    ))?
+                    .as_str()
+                    .unwrap_or("[false,true,\"\"]"),
+                )
+                .map_err(|e| format!("unreadable clip metadata: {e}"))?;
+                let loops = meta[0].as_bool().unwrap_or(false);
+                let chose_muted = meta[1].as_bool().unwrap_or(false);
+                let src = meta[2].as_str().unwrap_or("");
+                let source = if chose_muted || src.is_empty() {
+                    None
+                } else {
+                    match crate::audio::source_file(src, &tmp, span.el) {
+                        Ok(f) if crate::audio::has_audio(ffmpeg, &f) => Some((f, loops)),
+                        Ok(_) | Err(_) => None,
+                    }
+                };
+                v.insert(source)
+            }
+        };
+        if let Some((file, loops)) = entry.clone() {
+            clips.insert(span.el);
+            picked.push((file, loops, span));
+        }
+    }
+    if picked.is_empty() {
+        return Ok(());
+    }
+    let result = crate::audio::mix_into(ffmpeg, out_path, &picked, codec);
+    for source in sources.values().flatten() {
+        if source.0.starts_with(&tmp) {
+            let _ = std::fs::remove_file(&source.0);
+        }
+    }
+    result?;
+    println!(
+        "  ♪ scored with the sound of {} clip{}",
+        clips.len(),
+        if clips.len() == 1 { "" } else { "s" }
+    );
+    Ok(())
 }
 
 /// The page's clock, in the screencast's terms: seconds since the epoch.

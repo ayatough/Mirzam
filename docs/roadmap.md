@@ -295,10 +295,12 @@ rough order of pull:
   1920px silent WebM any ffmpeg with VP8 can encode, the trimmed Playwright
   build included (`--stills` keeps the faster photograph-per-slide mode).
   That is the piece that turns the telop-over-image pattern into simple
-  video authoring: write Markdown, get a clip. What the film does not yet
-  carry is sound: a clip's own audio track, and beyond it a narration track
-  paced by the speaker notes — which needs a fuller ffmpeg for the mixing
-  than the encode alone does.
+  video authoring: write Markdown, get a clip. Sound followed in the same
+  release: a clip's own audio is mixed in where the clip played, when the
+  found ffmpeg is a full one — the mixing needs audio codecs and filters
+  the trimmed build does not carry. What remains is the voice: a narration
+  track paced by the speaker notes, read by whatever TTS the machine has,
+  with the dwells stretched to fit what is being said.
 - **A progress hint** for the kiosk visitor: some quiet mark that the screen
   is a loop and where it is in it, in the chrome that `?controls=none`
   removes — so a display can choose between perfectly bare and legible.

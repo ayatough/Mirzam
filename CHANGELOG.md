@@ -21,8 +21,12 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   encoded as VP8 in WebM, which YouTube takes directly, by an ffmpeg found
   rather than shipped — the bar is deliberately low: the trimmed build
   Playwright keeps beside its browsers is enough, and is looked for
-  automatically after PATH, `--ffmpeg` and `MIRZAM_FFMPEG`. No audio track —
-  yet.
+  automatically after PATH, `--ffmpeg` and `MIRZAM_FFMPEG`. And where that
+  ffmpeg is a *full* one, the film has sound: each clip's own audio is laid
+  under the video exactly where the clip played in the take — a clip the
+  author wrote `.muted` on stays silent, `--mute` silences the whole film,
+  and with only the trimmed build the export says what it could not mix.
+  Narration is the next stage; the film itself is Opus in the same WebM.
 
 ### Fixed
 - **A one-slide loop's wrap no longer un-arms the slide it re-enters.** The

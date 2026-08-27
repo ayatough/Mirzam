@@ -1383,6 +1383,11 @@ on the opening slide may therefore stay silent until the first key or click,
 which is why `.autoplay` on a video implies `.muted` and why a hosted video is
 muted when it starts on arrival.
 
+That implied mute is browser policy, not the author's choice, and the video
+export knows the difference: in an exported film a clip's own sound plays
+where the clip played, and only a `.muted` the author wrote out keeps it
+silent there.
+
 ### The player and the deck's keys
 
 A player's native controls live in a shadow tree the page cannot listen to, so

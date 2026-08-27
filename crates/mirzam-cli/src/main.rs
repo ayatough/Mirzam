@@ -5,6 +5,7 @@
 //!   mirzam build <input.md> [-o <out_dir>]
 //!   mirzam serve <input.md> [-p <port>]
 
+mod audio;
 mod cdp;
 mod check;
 mod video;
@@ -113,6 +114,7 @@ fn main() -> ExitCode {
             let mut ffmpeg: Option<String> = None;
             let mut interval_ms: Option<u32> = None;
             let mut stills = false;
+            let mut mute = false;
             let mut handout = false;
             let mut deck = DeckArgs::default();
             let mut i = 2;
@@ -149,6 +151,7 @@ fn main() -> ExitCode {
                         }
                     }
                     "--stills" => stills = true,
+                    "--mute" => mute = true,
                     arg => match parse_deck_flag(&args, &mut i, &mut deck) {
                         Some(Ok(())) => {}
                         Some(Err(e)) => return usage(&e),
@@ -175,8 +178,8 @@ fn main() -> ExitCode {
             if format != "pdf" && handout {
                 return usage("--handout is a PDF layout; it applies to `export pdf` only");
             }
-            if format != "video" && (ffmpeg.is_some() || interval_ms.is_some() || stills) {
-                return usage("--ffmpeg, --interval and --stills belong to `export video`");
+            if format != "video" && (ffmpeg.is_some() || interval_ms.is_some() || stills || mute) {
+                return usage("--ffmpeg, --interval, --stills and --mute belong to `export video`");
             }
             let ext = match format {
                 "pptx" => "pptx",
@@ -199,6 +202,7 @@ fn main() -> ExitCode {
                         ffmpeg,
                         interval_ms,
                         stills,
+                        mute,
                     };
                     run(video::export_video(&input, &out_path, &args))
                 }
@@ -496,7 +500,8 @@ Usage:
                [--mode light|dark] [--chromium <bin>]
   mirzam export pptx <input.md> [-o <out.pptx>] [same flags, minus --handout]
   mirzam export video <input.md> [-o <out.webm>] [--interval <dur>]
-               [--ffmpeg <bin>] [--stills] [same flags, minus --handout]
+               [--ffmpeg <bin>] [--stills] [--mute]
+               [same flags, minus --handout]
   mirzam check <input.md> [--split h1|h2|h3] [--theme <name|file.css>]...
                [--fit shrink] [--mode light|dark] [--base-url <url>]
                [--debug-layout] [--chromium <bin>] [--min-slack <px>]
@@ -536,7 +541,12 @@ Usage:
           --stills photographs each slide once instead - faster than real
           time, for a deck where nothing moves. Either way it needs an
           ffmpeg that encodes VP8 - one on PATH, MIRZAM_FFMPEG or --ffmpeg,
-          or the trimmed build Playwright installs, found automatically
+          or the trimmed build Playwright installs, found automatically.
+          A clip's own sound is laid under the film where the clip played -
+          a clip the author wrote `.muted` on stays silent - when the found
+          ffmpeg is a full one (audio codecs and filters; the trimmed
+          Playwright build is not, and the export says so). --mute keeps
+          the film silent either way
   import  cut a captioned figure out of a PDF and write the Markdown that
           puts it on a slide - caption and credit filled in, and the credit
           written as `[@key]` when --cite says which paper this is. A figure
