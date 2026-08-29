@@ -24,7 +24,10 @@ it can read the answer:
 mirzam check deck.md --format json
 ```
 
-Write the deck, run that, fix what it names, run it again. The exit code is
+Write the deck, run that, fix what it names, run it again. What the loop
+costs in context tokens against inspecting screenshots — measured, per
+review round and per deck size — is in [the agent context
+report](reports/2026-08-agent-context.md). The exit code is
 still `0` when the deck has no layout problems and non-zero when it has, so the
 loop works from a shell script that never parses anything; the document is for
 the caller that wants to *act* on a finding rather than only stop.

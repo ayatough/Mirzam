@@ -7,6 +7,19 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+### Added
+- **The agent's feedback loop, priced.** `scripts/bench-agent-context.py`
+  measures what a layout-fix loop costs an LLM agent in context tokens:
+  the real `mirzam check --format json` payload at every fix round against
+  one screenshot per slide under the published vision-token formula. The
+  first run, and a paired live run of two agents fixing the same seeded
+  deck through one channel each, are written up in
+  [docs/reports/2026-08-agent-context.md](docs/reports/2026-08-agent-context.md):
+  the JSON payload stays ~370 tokens per round whether the deck is 10
+  slides or 100, where a screenshot sweep is 41× that at 10 slides and
+  406× at 100 — and the live screenshot agent paid 100× more on the
+  feedback channel to reach the same clean deck two rounds slower.
+
 ### Changed
 - **A figure out of a paper needs nothing installed.** `mirzam import pdf`
   landed in 0.10 with one step that was not self-contained: a *drawn* figure —
