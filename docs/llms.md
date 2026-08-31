@@ -78,6 +78,12 @@ vars:
 speaker notes beside it; slides without notes get ruled lines.
 `mirzam export pptx deck.md` writes PowerPoint: one picture per slide plus
 the notes in the notes pane. Edit the Markdown and re-export, not the pptx.
+`mirzam export video deck.md` writes a WebM of the deck playing itself —
+steps, transitions and clips filmed live, each slide held for its
+`autoplay:` interval or `--interval`, encoded VP8 by any ffmpeg found (PATH,
+`--ffmpeg`, `MIRZAM_FFMPEG`, or Playwright's own). A full ffmpeg also mixes
+each clip's own sound in where it played (`.muted` clips stay silent;
+`--mute` for a silent film). Real time; `--stills` photographs instead.
 
 `mirzam import pdf paper.pdf -o img --cite key` cuts the captioned figures out
 of a paper and prints the `![...](...){caption= credit=}` line for each, the

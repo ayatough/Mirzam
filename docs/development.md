@@ -19,7 +19,9 @@ Optional, installed automatically by the scripts that need them:
 
 - `wasm32-unknown-unknown` target and `wasm-bindgen-cli` (for the WASM build)
 - Node.js (only to package the VS Code extension)
-- Chromium or Chrome (only for `mirzam export pdf`)
+- Chromium or Chrome (only for `mirzam export` and `mirzam check`)
+- ffmpeg (only for `mirzam export video`; the trimmed build Playwright
+  installs beside its browsers qualifies and is found automatically)
 
 ## Common tasks
 
