@@ -116,7 +116,14 @@ visible.
 That arrow is the caveat, and it cuts the other way. The connector the JSON
 agent restored crosses the word "the" in the prose beneath it; `check` has no
 diagnostic for an arrow that is drawn but ugly, so the JSON agent shipped it
-and the screenshot agent did not. The [performance
+and the screenshot agent did not. This is not news to the project — it is
+[W14](../workstreams.md#w14--linking-by-annotation-not-by-arrow)'s founding
+observation ("the feature most likely to look wrong"), and the syntax card
+already tells an agent to prefer a paired annotation over an arrow from a
+sentence to a figure, which is the mitigation that lives *inside* the JSON
+loop: an agent that takes the card's advice draws no crossing arrow to begin
+with. The seeded deck deliberately used the text-to-text `connect` that W14
+warns about, and the run confirmed the warning empirically. The [performance
 report](2026-08-performance.md) recorded the same asymmetry from the other
 side: three font-subsetting breakages the checker passes and only pixels
 catch. The honest division of labour stands as [AGENTS.md](../../AGENTS.md)
