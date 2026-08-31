@@ -551,9 +551,9 @@ Usage:
           puts it on a slide - caption and credit filled in, and the credit
           written as `[@key]` when --cite says which paper this is. A figure
           the page stores as one image comes out untouched; anything else is
-          cropped, and turned into an SVG when `mutool` or `pdftocairo` is
-          installed (also honors MIRZAM_PDFTOOL). Neither is bundled: both
-          are copyleft, and Mirzam runs one rather than shipping it.
+          cropped and drawn as a vector SVG, here, with nothing installed.
+          --format png needs `mutool` or `pdftocairo`, and --tool or
+          MIRZAM_PDFTOOL hands even the SVG to one of those.
           --list says what is in the file without writing anything
   check   build the deck, then render it with headless Chromium (also honors
           MIRZAM_CHROMIUM) and report every slide with content clipped by its

@@ -132,18 +132,29 @@ because opening files is what a process may do and a browser may not. That is
 also why the geometry can be tested against pages written by hand rather than
 against a committed PDF.
 
-**Rendering the crop is where the licence line runs.** Turning a cropped page
-into an image means a PDF renderer, and the two that do it well — MuPDF and
-Poppler — are AGPL and GPL. Linking either would relicense an MIT project, so
-neither is a dependency. They are *invoked*, when installed, exactly as
-Chromium is for the PDF export and `mmdc` is for a `mermaid` fence: a separate
-program, discovered on `PATH` or named by an environment variable, never
-shipped. Without one the command still answers — an image stored in the page
-comes out whole, and a drawn figure comes out as a one-page PDF — which is the
-same shape of promise the `mermaid` fence makes when no renderer is installed.
-What it would take to need no tool at all — a page-to-SVG transpiler, and the
-three stages of the font problem behind it — is in
-[roadmap.md](roadmap.md#later).
+**Rendering the crop was where the licence line ran.** Turning a cropped page
+into a picture means a PDF renderer, and for years the two that did it well —
+MuPDF and Poppler — were AGPL and GPL, so the command ran one as a separate
+program when the machine had one and wrote a cropped PDF when it did not.
+[hayro] ended that: a PDF interpreter in pure Rust under Apache-2.0 OR MIT,
+which converts the crop to SVG in this process, with the text as outline paths
+because a deck embeds its pictures as data URIs and a font named there is a
+font that is not there. The tools are still reachable — `--format png` is
+raster and wants one, and `--tool` or `MIRZAM_PDFTOOL` hands even the SVG to
+one — but nothing has to be installed for the ordinary path.
+
+**hayro converts a page, and keeps what falls outside it.** A crop here *is* a
+page — the paper's, with its box narrowed — so a straight conversion carries
+every glyph in both columns: 1.49 MB per figure, in a deck with a 20 MB
+ceiling. So the conversion is followed by a pass that drops what the `viewBox`
+cannot show, and that pass is deliberately timid. It removes only what it can
+prove is outside: a self-closing element drawn straight onto the page, or a
+group every part of which it could measure, plus the definitions nothing names
+any more. A shorthand it cannot read, a transform it does not recognise, a
+container holding one of those — all stay. A picture larger than it needs to be
+is a nuisance; a picture missing a line is a lie.
+
+[hayro]: https://github.com/LaurenzV/hayro
 
 ### Annotations and the PDF
 

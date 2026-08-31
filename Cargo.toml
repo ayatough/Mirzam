@@ -20,9 +20,10 @@ members = [
 [workspace.package]
 version = "0.10.0"
 edition = "2021"
-# Set by the dependency graph, not by us: `math-core` needs 1.91. CI builds the
-# workspace on exactly this toolchain so the number stays true.
-rust-version = "1.91"
+# Set by the dependency graph, not by us: `hayro`, which turns a figure into an
+# SVG, needs 1.92 (`math-core` needs 1.91). CI builds the workspace on exactly
+# this toolchain so the number stays true.
+rust-version = "1.92"
 license = "MIT"
 repository = "https://github.com/ayatough/Mirzam"
 

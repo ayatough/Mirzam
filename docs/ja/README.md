@@ -31,7 +31,7 @@ mirzam serve examples/01-start.md       # ホットリロード付きプレビ�
 mirzam export pdf examples/pitch.md
 ```
 
-自分でビルドする場合は Rust 1.91 以降が必要で、`cargo build --release` の出力は
+自分でビルドする場合は Rust 1.92 以降が必要で、`cargo build --release` の出力は
 `./target/release/mirzam` に置かれます（`PATH` には入りません）。
 
 ビューア操作: `←` `→` ページ送り / `O` 全スライド一覧(クリックで移動、番号入力も可) /

@@ -35,6 +35,13 @@ flate2 = "1"
 # pure Rust, so the CLI still builds with no C toolchain.
 png = "0.17"
 jpeg-encoder = "0.6"
+# Rendering a cropped figure to SVG, so `import pdf` needs nothing installed.
+# Apache-2.0 OR MIT and pure Rust, which is what makes it a dependency rather
+# than a program to shell out to; `0.7` is a pin while it is pre-1.0, since a
+# `0.x` caret does not cross a minor, and `Cargo.lock` fixes the patch.
+hayro-svg = "0.7"
+hayro-syntax = "0.7"
+hayro-interpret = "0.7"
 
 [dev-dependencies]
 comrak = { version = "0.54", default-features = false, features = ["shortcodes"] }

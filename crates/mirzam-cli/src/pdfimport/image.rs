@@ -10,10 +10,11 @@
 //! path where it applies: rendering such a figure would resample it, and a
 //! screenshot of it would resample it twice.
 
+use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 use flate2::Compression;
 use lopdf::{Document, Object, ObjectId};
-use std::io::Write;
+use std::io::{Read, Write};
 
 /// An image, ready to be written to disk.
 pub struct Extracted {
@@ -53,9 +54,20 @@ pub fn extract(doc: &Document, id: ObjectId) -> Result<Extracted, String> {
         return Err("a fax-coded scan, which is not decoded here".to_string());
     }
 
-    let samples = stream
-        .decompressed_content()
-        .map_err(|e| format!("image {id:?}: {e}"))?;
+    // Inflated here rather than by the library. What a PDF stores for a large
+    // image is not pixels but PNG scanlines — see `unpredict` — and undoing
+    // that is where an image quietly turns into noise half way down. Doing
+    // both steps in one place is what makes the second one checkable.
+    let samples = match filters.as_slice() {
+        [b"FlateDecode"] => inflate(&stream.content),
+        _ => None,
+    };
+    let samples = match samples {
+        Some(bytes) => bytes,
+        None => stream
+            .decompressed_content()
+            .map_err(|e| format!("image {id:?}: {e}"))?,
+    };
     let dict = &stream.dict;
     let width = int(doc, dict.get(b"Width").ok()).ok_or("an image with no width")? as usize;
     let height = int(doc, dict.get(b"Height").ok()).ok_or("an image with no height")? as usize;
@@ -86,6 +98,7 @@ pub fn extract(doc: &Document, id: ObjectId) -> Result<Extracted, String> {
         .and_then(|a| a.first().and_then(|o| o.as_float().ok()))
         .is_some_and(|first| first > 0.5);
 
+    let samples = unpredict(doc, dict, samples, width, height, bits, space.components());
     let mut rgb = to_rgb(&samples, width, height, bits, &space, inverted)?;
     let mut colour = Colour::Rgb;
     let mut what = format!("{width}×{height} image");
@@ -105,6 +118,110 @@ pub fn extract(doc: &Document, id: ObjectId) -> Result<Extracted, String> {
         extension: "png",
         what,
     })
+}
+
+/// Zlib, or nothing: a stream that will not inflate is left to the library,
+/// which knows about the filters this does not.
+fn inflate(bytes: &[u8]) -> Option<Vec<u8>> {
+    let mut out = Vec::new();
+    ZlibDecoder::new(bytes).read_to_end(&mut out).ok()?;
+    Some(out)
+}
+
+/// Undoes a PNG predictor, when the samples still carry one.
+///
+/// `/DecodeParms << /Predictor 15 … >>` says the deflated bytes are PNG
+/// scanlines rather than pixels: each row begins with a filter byte and is
+/// written as a difference from the row above it or the pixel beside it. It is
+/// how most large images in a PDF are stored, because it is what makes deflate
+/// work on a photograph, and read as pixels it is noise.
+///
+/// Whether the library that inflated the stream already undid this is not taken
+/// on trust. The two lengths differ by exactly one byte a row, so the bytes
+/// themselves answer the question, and the answer stays right if the library's
+/// behaviour ever changes underneath.
+fn unpredict(
+    doc: &Document,
+    dict: &lopdf::Dictionary,
+    samples: Vec<u8>,
+    width: usize,
+    height: usize,
+    bits: usize,
+    components: usize,
+) -> Vec<u8> {
+    let parms = dict
+        .get(b"DecodeParms")
+        .ok()
+        .and_then(|o| deref(doc, o))
+        .and_then(|o| o.as_dict().ok().cloned());
+    let Some(parms) = parms else {
+        return samples;
+    };
+    if int(doc, parms.get(b"Predictor").ok()).unwrap_or(1) < 10 {
+        return samples;
+    }
+    // The predictor was applied with these, which need not be the image's own:
+    // a mask's parameters describe the mask.
+    let columns = int(doc, parms.get(b"Columns").ok())
+        .unwrap_or(width as i64)
+        .max(1) as usize;
+    let colors = int(doc, parms.get(b"Colors").ok())
+        .unwrap_or(components as i64)
+        .max(1) as usize;
+    let depth = int(doc, parms.get(b"BitsPerComponent").ok())
+        .unwrap_or(bits as i64)
+        .max(1) as usize;
+
+    let stride = (columns * colors * depth).div_ceil(8);
+    // A pixel's worth of bytes, and never less than one: at four bits a
+    // component the byte to the left is the neighbour the format uses.
+    let step = (colors * depth / 8).max(1);
+    if stride == 0 || samples.len() != height * (stride + 1) {
+        return samples;
+    }
+    unfilter(&samples, stride, step)
+}
+
+/// PNG scanlines into pixels: `samples` is a filter byte and a row, repeated.
+fn unfilter(samples: &[u8], stride: usize, step: usize) -> Vec<u8> {
+    let height = samples.len() / (stride + 1);
+    let mut out: Vec<u8> = Vec::with_capacity(height * stride);
+    let mut previous = vec![0u8; stride];
+    for row in samples.chunks_exact(stride + 1) {
+        let mut line = row[1..].to_vec();
+        for x in 0..stride {
+            let left = if x >= step { line[x - step] } else { 0 } as i32;
+            let up = previous[x] as i32;
+            let corner = if x >= step { previous[x - step] } else { 0 } as i32;
+            let add = match row[0] {
+                1 => left,
+                2 => up,
+                3 => (left + up) / 2,
+                4 => {
+                    // Paeth: whichever of the three neighbours the plane
+                    // through them comes closest to.
+                    let guess = left + up - corner;
+                    let (dl, du, dc) = (
+                        (guess - left).abs(),
+                        (guess - up).abs(),
+                        (guess - corner).abs(),
+                    );
+                    if dl <= du && dl <= dc {
+                        left
+                    } else if du <= dc {
+                        up
+                    } else {
+                        corner
+                    }
+                }
+                _ => 0,
+            };
+            line[x] = (line[x] as i32).wrapping_add(add) as u8;
+        }
+        out.extend_from_slice(&line);
+        previous = line;
+    }
+    out
 }
 
 /// How the samples say what colour a pixel is.
@@ -379,5 +496,44 @@ mod tests {
         let space = Space::Indexed(vec![10, 20, 30]);
         let rgb = to_rgb(&[0b0100_0000], 1, 1, 4, &space, false).unwrap();
         assert_eq!(rgb, vec![0, 0, 0]);
+    }
+
+    /// The five PNG filters, one row each, over three-byte pixels.
+    ///
+    /// The expected rows were computed from the format's own definition rather
+    /// than from this code — the same working that reproduced a real paper's
+    /// figure byte for byte — so the test is an answer and not an echo.
+    #[test]
+    fn every_png_filter_comes_back_to_its_pixels() {
+        let want: [[u8; 6]; 5] = [
+            [10, 20, 30, 40, 50, 60],    // none
+            [11, 22, 33, 51, 72, 93],    // sub:     the pixel to the left
+            [21, 42, 63, 91, 122, 153],  // up:      the row above
+            [20, 41, 61, 95, 131, 167],  // average: the two of them, halved
+            [30, 61, 91, 135, 181, 227], // paeth
+        ];
+        // filter byte, then the row as the format writes it
+        let rows: [[u8; 7]; 5] = [
+            [0, 10, 20, 30, 40, 50, 60],
+            [1, 11, 22, 33, 40, 50, 60],
+            [2, 10, 20, 30, 40, 50, 60],
+            [3, 10, 20, 30, 40, 50, 60],
+            [4, 10, 20, 30, 40, 50, 60],
+        ];
+        let samples: Vec<u8> = rows.iter().flatten().copied().collect();
+
+        let out = unfilter(&samples, 6, 3);
+        let got: Vec<&[u8]> = out.chunks(6).collect();
+        for (row, (got, want)) in got.iter().zip(want.iter()).enumerate() {
+            assert_eq!(*got, want.as_slice(), "row {row}");
+        }
+    }
+
+    #[test]
+    fn samples_that_are_already_pixels_are_left_alone() {
+        // Nothing here to undo: without the length of a predicted image, the
+        // bytes are pixels and touching them would be the bug.
+        let pixels: Vec<u8> = (0..36).collect();
+        assert_eq!(unfilter(&pixels, 6, 3).len(), 30);
     }
 }

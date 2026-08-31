@@ -56,7 +56,7 @@ to change that). On Windows, take the `.zip` from the
 [releases page](https://github.com/ayatough/Mirzam/releases) and put the
 `mirzam.exe` somewhere on your `PATH`.
 
-To build it yourself instead, you need Rust 1.91 or newer from
+To build it yourself instead, you need Rust 1.92 or newer from
 [rustup.rs](https://rustup.rs):
 
 ```bash
@@ -121,11 +121,12 @@ itself in. `--list` says what is in the file without writing anything, and
 `--figure 3` takes one.
 
 A figure the page stores as an image comes out as that image, untouched. A
-drawn one is cropped, and becomes a vector SVG if the machine has `mutool`
-(mupdf-tools) or `pdftocairo` (poppler-utils) — neither ships with Mirzam,
-which runs one when it is there and writes the crop as a one-page PDF when it
-is not. Either way it beats a screenshot: the picture is at the paper's own
-resolution rather than the screen's.
+drawn one is cropped and converted to a vector SVG — by Mirzam itself, with
+nothing to install — so the picture arrives at the paper's own resolution
+rather than the screen's, and stays sharp on a projector and in the exported
+PDF. `--format png` still wants `mutool` (mupdf-tools) or `pdftocairo`
+(poppler-utils), and `--tool` or `MIRZAM_PDFTOOL` hands the SVG to one of those
+instead, for a figure Mirzam declines to draw.
 
 ```bash
 mirzam import pdf paper.pdf --list                     # what is in there

@@ -88,8 +88,9 @@ each clip's own sound in where it played (`.muted` clips stay silent;
 `mirzam import pdf paper.pdf -o img --cite key` cuts the captioned figures out
 of a paper and prints the `![...](...){caption= credit=}` line for each, the
 credit as `[@key]`. `--list` to look first, `--figure 3` for one. A stored
-image comes out as itself; a drawn figure needs `mutool` or `pdftocairo` to
-become an SVG, and is a cropped PDF without one.
+image comes out as itself; a drawn figure is converted to a vector SVG in
+process, with nothing installed. `--format png` needs `mutool` or
+`pdftocairo`.
 
 `autoplay:` takes an interval — seconds by default (`8s`, `1.5s`, bare `8`),
 `ms` accepted — and optionally `loop`. One advance is one click step, then the

@@ -196,8 +196,9 @@ pub fn run(options: &Options) -> Result<Import, String> {
     }
 
     let mut done = Vec::new();
+    let mut taken: Vec<String> = Vec::new();
     for one in &found {
-        let stem = stem_for(options, &one.figure);
+        let stem = distinct(stem_for(options, &one.figure), &mut taken);
         let mut imported = Imported {
             page: one.page,
             label: one.figure.label.clone(),
@@ -297,6 +298,23 @@ fn images_in(page: &Page, figure: &Figure) -> Vec<(lopdf::ObjectId, Rect)> {
 
 /// The name to write the file under: the citation key when there is one, since
 /// that is what the deck calls this paper, and the file's own name otherwise.
+/// A name no earlier figure in this run has taken.
+///
+/// Two floats can want the same one — a paper that numbers its appendix from
+/// one again, a `Fig. 3` that is also written `FIG. 3`. Writing both to one
+/// file loses a figure without saying so, and a figure that quietly turns into
+/// a different figure is the worst outcome this command has.
+fn distinct(stem: String, taken: &mut Vec<String>) -> String {
+    let mut candidate = stem.clone();
+    let mut n = 1;
+    while taken.contains(&candidate) {
+        n += 1;
+        candidate = format!("{stem}-{n}");
+    }
+    taken.push(candidate.clone());
+    candidate
+}
+
 fn stem_for(options: &Options, figure: &Figure) -> String {
     let base = options.cite.clone().unwrap_or_else(|| {
         options
@@ -381,26 +399,68 @@ fn write_one(
         Format::Png => "png",
         _ => "svg",
     };
-    match Tool::discover(options.tool.as_deref()) {
+
+    // A vector figure is converted here, in this process, unless the author
+    // named a tool - `--tool` and MIRZAM_PDFTOOL are a choice, where `mutool`
+    // merely being on PATH is not.
+    let named = Tool::named(options.tool.as_deref());
+    let mut refused = None;
+    if wanted == "svg" && named.is_none() {
+        let bytes =
+            std::fs::read(&crop).map_err(|e| format!("cannot read {}: {e}", crop.display()))?;
+        match svg::convert(&bytes) {
+            Ok(drawing) => {
+                let file = options.out_dir.join(format!("{stem}.svg"));
+                std::fs::write(&file, drawing)
+                    .map_err(|e| format!("cannot write {}: {e}", file.display()))?;
+                let _ = std::fs::remove_file(&crop);
+                return Ok((file, "svg".to_string()));
+            }
+            // Not a failure to report and stop on: a figure hayro will not
+            // take is one an installed tool may still manage, and the crop is
+            // there either way.
+            Err(why) => refused = Some(why),
+        }
+    }
+
+    match named.or_else(|| Tool::discover(None)) {
         Some(tool) => {
             let file = options.out_dir.join(format!("{stem}.{wanted}"));
             tool.convert(&crop, &file, wanted, options.dpi)?;
+            // A tool writes the page's measurements onto the root element too,
+            // and a figure imported through one belongs on a slide just the
+            // same. Rewritten only if it is read back whole.
+            if wanted == "svg" {
+                if let Ok(drawing) = std::fs::read_to_string(&file) {
+                    let _ = std::fs::write(&file, svg::scalable(&drawing));
+                }
+            }
             let _ = std::fs::remove_file(&crop);
             Ok((file, format!("{} by {}", wanted, tool.name())))
         }
         None if options.format == Format::Auto => Ok((
             crop,
-            "cropped - install mupdf-tools or poppler-utils for an SVG".to_string(),
+            match &refused {
+                Some(why) => format!("cropped - not converted here: {why}"),
+                None => "cropped".to_string(),
+            },
         )),
-        None => Err(format!(
-            "{wanted} needs a PDF tool, and this machine has none.\n\
-             Install mupdf-tools (`mutool`) or poppler-utils (`pdftocairo`), or point \
-             {TOOL_ENV} at one.\n\
-             Neither is bundled with Mirzam: both are copyleft, and a program Mirzam \
-             runs is not a program Mirzam ships.\n\
-             The crop is at {} and converts later.",
-            crop.display()
-        )),
+        None => Err(match (&refused, wanted) {
+            (Some(why), _) => format!(
+                "{}: {why}.\n\
+                 The crop is at {}, and `mutool` or `pdftocairo` may still convert it.",
+                figure.label,
+                crop.display()
+            ),
+            (None, _) => format!(
+                "a {wanted} is rendered by a tool, and this machine has none.\n\
+                 Install mupdf-tools (`mutool`) or poppler-utils (`pdftocairo`), or point \
+                 {TOOL_ENV} at one - neither is bundled, both being copyleft.\n\
+                 An SVG needs none of that: leave `--format` off.\n\
+                 The crop is at {}.",
+                crop.display()
+            ),
+        }),
     }
 }
 
@@ -455,6 +515,25 @@ impl Tool {
     /// something to write either way.
     fn discover(named: Option<&str>) -> Option<Tool> {
         Self::discover_with(named, |k| std::env::var(k).ok(), runs)
+    }
+
+    /// Only the tool the author *asked* for, by `--tool` or by the
+    /// environment. A tool that merely happens to be installed no longer wins:
+    /// the conversion is in this process now, and PATH is not a preference.
+    fn named(named: Option<&str>) -> Option<Tool> {
+        Self::named_with(named, |k| std::env::var(k).ok(), runs)
+    }
+
+    fn named_with(
+        named: Option<&str>,
+        env: impl Fn(&str) -> Option<String>,
+        usable: impl Fn(&Path) -> bool,
+    ) -> Option<Tool> {
+        named
+            .map(PathBuf::from)
+            .or_else(|| env(TOOL_ENV).map(PathBuf::from))
+            .filter(|p| usable(p))
+            .map(|p| Self::name_of(&p))
     }
 
     fn discover_with(
@@ -593,10 +672,23 @@ fn runs(program: &Path) -> bool {
 }
 
 mod image;
+// Public so a test can drive the conversion without going through the
+// command, and without a tool on the machine changing what it measures.
+pub mod svg;
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn no_two_figures_are_written_to_one_file() {
+        let mut taken = Vec::new();
+        let names: Vec<String> = ["p-fig3", "p-fig3", "p-fig4", "p-fig3"]
+            .into_iter()
+            .map(|s| distinct(s.to_string(), &mut taken))
+            .collect();
+        assert_eq!(names, ["p-fig3", "p-fig3-2", "p-fig4", "p-fig3-3"]);
+    }
 
     #[test]
     fn a_named_tool_wins_and_a_missing_one_is_ignored() {

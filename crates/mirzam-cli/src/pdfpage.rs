@@ -198,6 +198,13 @@ fn num(object: &Object) -> Option<f64> {
     }
 }
 
+/// How far below the baseline a run's box reaches, as a share of the font
+/// size. The box is built from it and the baseline is recovered from the box,
+/// so the two must agree: a line of text is glyphs sharing a baseline, and
+/// boxes that share a baseline share neither their top nor their bottom the
+/// moment the line mixes sizes.
+const DESCENT: f64 = 0.22;
+
 /// A run of glyphs shown by one operator, already placed on the page.
 struct Run {
     rect: Rect,
@@ -424,9 +431,9 @@ fn show(runs: &mut Vec<Run>, bytes: &[u8], font: &Font, text: &mut TextState, st
     // is already in `width`, so only the ascent and descent are guessed.
     let box_here = Rect::new(
         0.0,
-        text.rise - text.size * 0.22,
+        text.rise - text.size * DESCENT,
         width,
-        text.rise + text.size * 0.78,
+        text.rise + text.size * (1.0 - DESCENT),
     );
     let placed = map_rect(mul(text.tm, state.ctm), box_here);
     text.tm = mul([1.0, 0.0, 0.0, 1.0, width, 0.0], text.tm);
@@ -897,6 +904,18 @@ fn utf16be(bytes: &[u8]) -> String {
     String::from_utf16_lossy(&units)
 }
 
+/// Where a run sits on its baseline, recovered from the box `DESCENT` built.
+///
+/// Sorting and grouping by this rather than by the box's bottom edge is what
+/// lets a line mix sizes. It is how a journal sets a table caption — `TABLE
+/// III` at eight points, its title in six-point small capitals whose own
+/// capitals are eight again — and how any line carrying inline mathematics is
+/// set. By the bottom edge those runs are three separate lines, interleaved
+/// left to right, and the caption reads `OMPARISON OF … C UFOM AP`.
+fn baseline(run: &Run) -> f64 {
+    run.rect.y0 + run.size * DESCENT
+}
+
 /// Runs into lines.
 ///
 /// A PDF has no lines: it has strings placed one after another, sometimes one
@@ -906,9 +925,8 @@ fn utf16be(bytes: &[u8]) -> String {
 fn lines_from(mut runs: Vec<Run>) -> Vec<Line> {
     runs.retain(|r| r.rect.width().is_finite() && r.rect.height().is_finite());
     runs.sort_by(|a, b| {
-        b.rect
-            .y0
-            .partial_cmp(&a.rect.y0)
+        baseline(b)
+            .partial_cmp(&baseline(a))
             .unwrap_or(std::cmp::Ordering::Equal)
             .then(
                 a.rect
@@ -919,25 +937,34 @@ fn lines_from(mut runs: Vec<Run>) -> Vec<Line> {
     });
 
     let mut lines: Vec<Line> = Vec::new();
-    let mut current: Option<(Line, f64)> = None;
+    // The line being built, the right edge of its last run, and the baseline
+    // it was opened on — which is not recoverable from the line's own box once
+    // a taller run has joined it.
+    let mut current: Option<(Line, f64, f64)> = None;
     for run in runs {
+        let base = baseline(&run);
         match current.take() {
-            Some((mut line, right)) => {
-                let same_baseline =
-                    (line.rect.y0 - run.rect.y0).abs() < line.size.max(run.size) * 0.4;
+            Some((mut line, right, on)) => {
+                let same_baseline = (on - base).abs() < line.size.max(run.size) * 0.4;
                 let gap = run.rect.x0 - right;
+                // A gap of an em is not a word break. Justification stretches
+                // a space, but never that far, so anything wider is a gutter or
+                // the space between two cells of a table — and a two-column
+                // paper sets its columns twelve points apart, which is less
+                // than one and a half times the ten-point text between them.
+                //
                 // The overlap allowed is a kerned glyph's worth, not a
                 // column's: a width estimated from a font that gave no metrics
                 // can run past where the text really ended, and a generous
                 // rule here reads the two columns of a paper as single lines.
-                if same_baseline && gap < run.size.max(1.0) * 1.5 && gap > -run.size.max(1.0) {
+                if same_baseline && gap < run.size.max(1.0) && gap > -run.size.max(1.0) {
                     if gap > run.size * 0.18 && !line.text.ends_with(' ') {
                         line.text.push(' ');
                     }
                     line.text.push_str(&run.text);
                     line.rect = line.rect.union(&run.rect);
                     line.size = line.size.max(run.size);
-                    current = Some((line, run.rect.x1));
+                    current = Some((line, run.rect.x1, on));
                     continue;
                 }
                 lines.push(line);
@@ -948,6 +975,7 @@ fn lines_from(mut runs: Vec<Run>) -> Vec<Line> {
                         text: run.text,
                     },
                     run.rect.x1,
+                    base,
                 ));
             }
             None => {
@@ -958,11 +986,135 @@ fn lines_from(mut runs: Vec<Run>) -> Vec<Line> {
                         text: run.text,
                     },
                     run.rect.x1,
+                    base,
                 ))
             }
         }
     }
-    lines.extend(current.map(|(line, _)| line));
+    lines.extend(current.map(|(line, _, _)| line));
     lines.retain(|l| !l.text.trim().is_empty());
+    absorb_marks(lines)
+}
+
+/// A superscript is not a line.
+///
+/// A footnote marker or a subscript is set smaller and off the baseline, so it
+/// shares one with nothing and arrives here as a line of its own — sitting
+/// inside the line it was written in. Left there it splits a caption in two,
+/// because a caption ends at the first line set at another size, and `TABLE II,
+/// ON THE COW DATASET²` is exactly where a journal puts one.
+///
+/// The mark's text is dropped rather than spliced back in: where it belongs
+/// inside the line is not recoverable here, and a footnote number read into the
+/// middle of a caption is worse than one missing from it.
+fn absorb_marks(mut lines: Vec<Line>) -> Vec<Line> {
+    let mut host_of: Vec<Option<usize>> = vec![None; lines.len()];
+    for (i, mark) in lines.iter().enumerate() {
+        let over = |a: f64, b: f64, c: f64, d: f64| (b.min(d) - a.max(c)).max(0.0);
+        host_of[i] = lines.iter().enumerate().position(|(j, host)| {
+            j != i
+                && host.size > mark.size + 0.3
+                && over(mark.rect.x0, mark.rect.x1, host.rect.x0, host.rect.x1)
+                    > mark.rect.width() * 0.6
+                && over(mark.rect.y0, mark.rect.y1, host.rect.y0, host.rect.y1)
+                    > mark.rect.height() * 0.5
+        });
+    }
+    for (i, host) in host_of.iter().enumerate() {
+        // Only the box is kept, so that a caption's own rectangle still covers
+        // the mark and the crop below it does not begin on top of one.
+        if let Some(j) = *host {
+            lines[j].rect = lines[j].rect.union(&lines[i].rect);
+        }
+    }
+    let mut keep = host_of.iter();
+    lines.retain(|_| keep.next().is_some_and(|h| h.is_none()));
     lines
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A run of `size`-point text sitting on `base`, the way the walker leaves
+    /// it: the box reaches `DESCENT` below the baseline and the rest above.
+    fn run(x0: f64, width: f64, base: f64, size: f64, text: &str) -> Run {
+        Run {
+            rect: Rect::new(
+                x0,
+                base - size * DESCENT,
+                x0 + width,
+                base + size * (1.0 - DESCENT),
+            ),
+            size,
+            text: text.to_string(),
+        }
+    }
+
+    #[test]
+    fn a_line_may_mix_sizes() {
+        // How a journal sets a table's title: six-point small capitals whose
+        // own capitals are eight. The boxes share no edge, only a baseline.
+        let lines = lines_from(vec![
+            run(51.0, 6.0, 718.6, 7.97, "C"),
+            run(57.0, 205.0, 718.6, 6.38, "OMPARISON OF THE TIME TAKEN"),
+        ]);
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0].text, "COMPARISON OF THE TIME TAKEN");
+    }
+
+    #[test]
+    fn two_columns_are_not_one_line() {
+        // The gutter of a two-column paper is twelve points, which is narrower
+        // than the ten-point text on either side of it.
+        let lines = lines_from(vec![
+            run(
+                49.0,
+                251.0,
+                500.0,
+                9.96,
+                "can move straight down the octree",
+            ),
+            run(312.0, 251.0, 500.0, 9.96, "to a node that is either"),
+        ]);
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[1].rect.x0, 312.0);
+    }
+
+    #[test]
+    fn a_footnote_mark_stays_in_the_line_it_marks() {
+        // Raised and set smaller, it shares a baseline with nothing, and on its
+        // own it would end a caption that is not finished.
+        let lines = lines_from(vec![
+            run(
+                342.8,
+                189.5,
+                511.2,
+                7.97,
+                "ON THE COW DATASET , WITH DIFFERENT SIZES.",
+            ),
+            run(418.3, 3.0, 514.1, 5.98, "2"),
+        ]);
+        assert_eq!(lines.len(), 1);
+        assert!(
+            lines[0].rect.y1 >= 518.7,
+            "the mark is inside the line's box"
+        );
+    }
+
+    #[test]
+    fn a_line_of_its_own_survives_the_mark_test() {
+        // Smaller and above, but not inside anything: a caption over a figure.
+        let lines = lines_from(vec![
+            run(
+                49.0,
+                251.0,
+                500.0,
+                9.96,
+                "the paragraph that ends the column",
+            ),
+            run(49.0, 200.0, 520.0, 7.97, "Figure 3: what the machine did"),
+        ]);
+        assert_eq!(lines.len(), 2);
+    }
 }

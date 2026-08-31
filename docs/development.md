@@ -5,7 +5,7 @@ crates fit together, and how versions are handled.
 
 ## Setup
 
-Rust 1.91+ is the only hard requirement. The floor is declared as
+Rust 1.92+ is the only hard requirement. The floor is declared as
 `rust-version` in the root manifest and comes from `math-core`, not from our own
 code; CI builds the workspace on exactly that toolchain so the number stays
 true.

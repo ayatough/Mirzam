@@ -7,10 +7,11 @@
 //! is Figure 1, the two-by-two picture that is Figure 2, and the paragraph
 //! between them that stops each figure from swallowing the other.
 //!
-//! What is *not* tested here is the vector path: it needs `mutool` or
-//! `pdftocairo` installed, and a test may not depend on that. The tool's
-//! discovery and the arguments it is handed are unit-tested in
-//! `pdfimport.rs`; the crop it converts is tested here.
+//! The vector path is tested here too, now that it needs nothing installed:
+//! the same fixture goes through hayro, and its SVG is held to a snapshot.
+//! What is still *not* tested is the external tool - `mutool` and
+//! `pdftocairo` may not be on the machine running this - so its discovery and
+//! the arguments it is handed stay unit-tested in `pdfimport.rs`.
 
 use mirzam_cli::pdfimport::{self, Format, Options};
 use std::path::PathBuf;
@@ -159,6 +160,94 @@ fn a_pdf_with_no_captions_says_so_rather_than_guessing() {
     })
     .expect_err("nothing to find");
     assert!(error.contains("no captioned figure"), "{error}");
+}
+
+/// The conversion nobody has to install: a drawn figure comes out as an SVG
+/// with hayro, in this process, on a machine with no PDF tool at all.
+#[test]
+fn a_drawn_figure_becomes_an_svg_with_nothing_installed() {
+    let dir = TempDir::new("svg");
+    let found = pdfimport::run(&Options {
+        only: Some("1".to_string()),
+        ..options(&dir, Format::Auto)
+    })
+    .expect("Figure 1")
+    .figures;
+    let file = found[0].file.as_ref().expect("Figure 1 was written");
+
+    assert_eq!(file.extension().unwrap_or_default(), "svg", "{file:?}");
+    if std::env::var("MIRZAM_PDFTOOL").is_err() {
+        assert_eq!(found[0].how, "svg", "converted here, not by a tool");
+    }
+    let svg = std::fs::read_to_string(file).expect("the SVG is on disk");
+    assert!(svg.starts_with("<svg"), "{}", &svg[..svg.len().min(80)]);
+    assert!(svg.contains("viewBox"), "{svg}");
+}
+
+/// The crop is a page with its box narrowed, so everything the paper drew is
+/// still in it. What the view cannot show has to come back out, or a figure
+/// carries two columns of body text it never displays — 1.49 MB of it, in a
+/// deck with a 20 MB ceiling.
+#[test]
+fn the_svg_carries_the_figure_and_not_the_page() {
+    let dir = TempDir::new("cull");
+    let found = pdfimport::run(&Options {
+        only: Some("1".to_string()),
+        ..options(&dir, Format::Pdf)
+    })
+    .expect("Figure 1")
+    .figures;
+    let crop = std::fs::read(found[0].file.as_ref().unwrap()).expect("the crop");
+
+    let svg = pdfimport::svg::convert(&crop).expect("hayro converts it");
+    assert!(
+        svg.len() < 20_000,
+        "the page came along: {} bytes",
+        svg.len()
+    );
+    // The paragraph under the figure is set in the same font as the one word
+    // inside it, so this counts placements rather than looking for glyphs: the
+    // fixture draws one rectangle and shows no text inside it.
+    let uses = svg.matches("<use").count();
+    assert!(uses < 8, "{uses} glyphs for a figure that is a box");
+    assert!(
+        svg.contains("<path"),
+        "the box itself is still there: {svg}"
+    );
+    assert_eq!(svg.matches("<defs").count(), svg.matches("</defs>").count());
+}
+
+/// A snapshot, because an SVG that is subtly wrong still looks like an SVG.
+/// Reviewed by eye when hayro moves:
+///   MIRZAM_UPDATE_SNAPSHOTS=1 cargo test -p mirzam-cli --test pdf_import
+#[test]
+fn the_converted_figure_matches_its_snapshot() {
+    let dir = TempDir::new("snapshot");
+    let found = pdfimport::run(&Options {
+        only: Some("1".to_string()),
+        ..options(&dir, Format::Pdf)
+    })
+    .expect("Figure 1")
+    .figures;
+    let crop = std::fs::read(found[0].file.as_ref().unwrap()).expect("the crop");
+    let svg = pdfimport::svg::convert(&crop).expect("hayro converts it");
+
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/snapshots/figure.svg");
+    if std::env::var("MIRZAM_UPDATE_SNAPSHOTS").is_ok() {
+        std::fs::create_dir_all(path.parent().unwrap()).expect("snapshot directory");
+        std::fs::write(&path, &svg).expect("write the snapshot");
+        return;
+    }
+    let want = std::fs::read_to_string(&path).unwrap_or_else(|e| {
+        panic!(
+            "{}: {e} - run with MIRZAM_UPDATE_SNAPSHOTS=1 to write it",
+            path.display()
+        )
+    });
+    assert_eq!(
+        svg, want,
+        "the conversion moved; review the diff at {path:?}"
+    );
 }
 
 /// Asking for a figure the paper does not have is a different mistake from

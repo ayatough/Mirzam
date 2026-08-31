@@ -53,7 +53,7 @@ curl -fsSL https://raw.githubusercontent.com/ayatough/Mirzam/main/scripts/instal
 [リリースページ](https://github.com/ayatough/Mirzam/releases)から `.zip` を
 取得し、`mirzam.exe` を `PATH` の通った場所に置いてください。
 
-自分でビルドする場合は Rust 1.91 以降（[rustup.rs](https://rustup.rs)）が必要です。
+自分でビルドする場合は Rust 1.92 以降（[rustup.rs](https://rustup.rs)）が必要です。
 
 ```bash
 git clone https://github.com/ayatough/Mirzam
@@ -88,10 +88,11 @@ mirzam import pdf paper.pdf --cite vaswani2017   # 論文の図をキャプシ�
 `--figure 3` は 1 枚だけを取り出します。
 
 ページに画像として貼られている図はその画像のまま（再ラスタライズなし）出てきます。
-描画された図は切り抜かれ、`mutool`（mupdf-tools）か `pdftocairo`（poppler-utils）が
-入っている環境ではベクタのまま SVG になります。どちらも Mirzam には同梱されておらず、
-あれば呼ぶ、なければ切り抜きを 1 ページの PDF として書いてそう伝えます。いずれにせよ
-画面のスクリーンショットより解像度は上です。
+描画された図は切り抜かれ、**Mirzam 自身がベクタのまま SVG に変換**します（インストール
+するものはありません）。論文そのものの解像度で入るので、プロジェクタでも PDF 書き出し
+でも滲みません。`--format png` だけは `mutool`（mupdf-tools）か `pdftocairo`
+（poppler-utils）を使い、`--tool` か `MIRZAM_PDFTOOL` を指定すれば SVG もそちらに
+任せられます（Mirzam が描画を断った図のための逃げ道です）。
 
 ```bash
 mirzam import pdf paper.pdf --list                     # 何が入っているかを見る
