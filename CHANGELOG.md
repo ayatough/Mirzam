@@ -8,6 +8,17 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- **A label too long for its shape is now a finding.** A `shape` label is one
+  centred SVG text element and never wraps, so a label longer than its rect
+  or ellipse was drawn straight out of the box — nothing clipped, nothing
+  scrolled, and `mirzam check` passed the slide. The agent-context report
+  below surfaced the gap while probing what the checker cannot see, and this
+  member of the drawn-but-wrong family turned out to be checkable: the
+  in-page check now compares each label's rendered box against its shape's
+  and reports `layout.label`, an error like the rest of the layout family.
+  The sample decks all pass; a fitting label and a standalone `text` shape
+  (which has no box to overflow) are not reported.
+
 - **The agent's feedback loop, priced.** `scripts/bench-agent-context.py`
   measures what a layout-fix loop costs an LLM agent in context tokens:
   the real `mirzam check --format json` payload at every fix round against

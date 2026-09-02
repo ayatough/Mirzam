@@ -312,6 +312,40 @@ function mzSlideIssues(sec, tol, slack) {
     });
   }
 
+  // A shape's label is one SVG <text>, centred on its shape and never
+  // wrapped, so a label longer than its box walks straight out of it: drawn,
+  // wrong, and invisible to every measure above - nothing clips and nothing
+  // scrolls in an SVG layer. Label and shape share a centre by construction
+  // (`text-anchor: middle` at the shape's own centre), so overflow is a
+  // difference of sizes, not of positions. A standalone `text` shape has no
+  // box to overflow and always carries a style attribute; a label never does.
+  for (const label of sec.querySelectorAll(
+    "svg.mz-shapes text.mz-shape-label:not([style])"
+  )) {
+    const shape = label.previousElementSibling;
+    if (!shape || (shape.tagName !== "rect" && shape.tagName !== "ellipse")) continue;
+    let text, box;
+    try {
+      text = label.getBBox();
+      box = shape.getBBox();
+    } catch (e) {
+      continue; // an unrendered subtree has no geometry to measure
+    }
+    if (!text.width) continue;
+    const overX = text.width - box.width;
+    const overY = text.height - box.height;
+    if (overX <= tol && overY <= tol) continue;
+    const words = (label.textContent || "").trim();
+    const short = words.length > 32 ? words.slice(0, 32) + "…" : words;
+    const axis =
+      overX > tol ? `${Math.round(overX)}px wider` : `${Math.round(overY)}px taller`;
+    issues.push({
+      kind: "label",
+      pane: "-",
+      detail: `shape label "${short}" is ${axis} than its ${shape.tagName}`,
+    });
+  }
+
   // A connector whose endpoint could not be resolved is silently dropped;
   // report the count so a typo in an id does not go unnoticed.
   if (sec.dataset.connectors) {

@@ -126,7 +126,14 @@ with. The seeded deck deliberately used the text-to-text `connect` that W14
 warns about, and the run confirmed the warning empirically. The [performance
 report](2026-08-performance.md) recorded the same asymmetry from the other
 side: three font-subsetting breakages the checker passes and only pixels
-catch. The honest division of labour stands as [AGENTS.md](../../AGENTS.md)
+catch.
+
+Probing the same family turned up one member that *was* checkable: a `shape`
+label longer than its box is drawn straight out of it — SVG labels never
+wrap, so nothing clipped and nothing scrolled, and the checker passed a
+slide whose label overran its rect three times over. That one is geometry,
+not taste, and it now has a diagnostic: `layout.label`, landed alongside
+this report. The arrow stays a judgement call; the label no longer is. The honest division of labour stands as [AGENTS.md](../../AGENTS.md)
 states it — the checker for the iteration loop, a rendering for what the
 loop cannot see — and the numbers above say what that division is worth:
 run the 100× channel once at the end, not once per fix.

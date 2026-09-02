@@ -283,6 +283,10 @@ slide and pane:
   of the two: the pane still measures clean, and there is no reader who can
   scroll it
 - **overlap** — an overflowing pane runs into its neighbour
+- **label** — a `shape` label is wider or taller than the shape it names. A
+  label is one SVG text element and never wraps, so a long one is drawn
+  straight out of its box: nothing clips and nothing scrolls, which is why
+  neither measure above can see it
 - **connector** — a connector was declared but not drawn, usually a typo in an id
 - **annotation** — a mark could not be drawn, usually because the `#id` it names
   was renamed or removed. The mark is dropped silently at runtime by design; the

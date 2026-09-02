@@ -117,6 +117,7 @@ Two families, by the pass that found the problem.
 | `layout.clipped` | Content is taller or wider than its pane, or an element inside one hides part of itself by scrolling |
 | `layout.overlap` | An overflowing pane runs into its neighbour |
 | `layout.nesting` | A nested list or paragraph is set larger than the item it sits inside |
+| `layout.label` | A `shape` label is wider or taller than the rect or ellipse it names — SVG labels never wrap, so a long one is drawn straight out of its box |
 | `layout.connector` | A `connect` line was declared but no arrow was drawn — usually a typo in an id |
 | `layout.annotation` | An `annotate` mark could not be drawn, usually because the `#id` it names was renamed |
 | `layout.animation` | An element is still in its entrance state after that entrance has played, so nobody ever sees it |
