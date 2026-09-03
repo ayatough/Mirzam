@@ -285,9 +285,10 @@ thing it measures.
   breaks, named themes and dark mode down to a single pane, a theme of your own
   in a file, footers and slide numbers, speaker notes and a presenter window,
   touch and gesture controls, a table of contents from headings, VS Code
-  extension, WebAssembly core and a browser editor
+  extension, WebAssembly core and a browser editor, PowerPoint export with
+  editable text
 - **Next:** carrying an element from one slide to the next, dragging an
-  annotation back into the Markdown, PowerPoint export
+  annotation back into the Markdown
 - **Performance:** a 500-slide deck builds in 80 ms in 10 MiB; a single-slide
   edit re-renders in 3.5 ms. See [the measurements](docs/reports/2026-08-performance.md)
 

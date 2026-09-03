@@ -25,8 +25,6 @@
 //! must not touch the filesystem, because that is what keeps the WebAssembly
 //! build possible.
 
-pub(crate) mod zip;
-
 use crate::pipeline::{BuildOutput, WarningSite};
 use std::path::{Path, PathBuf};
 
@@ -113,7 +111,7 @@ pub fn write_zip(path: &Path) -> Result<(), String> {
         (format!("{WRITING_DIR}/SKILL.md"), stamped(WRITING_SKILL)),
         (format!("{WRITING_DIR}/{CARD_PATH}"), CARD.to_string()),
     ];
-    let bytes = zip::archive(&files);
+    let bytes = mirzam_pptx::zip::archive(&files);
     if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
         std::fs::create_dir_all(parent)
             .map_err(|e| format!("cannot create {}: {e}", parent.display()))?;

@@ -61,9 +61,10 @@ changing.
 | A slide's own autoplay dwell; autoplay that waits for a clip | Done |
 | Code line highlighting and line numbers (```` ```js {2,4-5 lines} ````) | Done |
 | PPTX export, stage one: slide pictures and real speaker notes | Done |
+| PPTX export, stage two: native text boxes, shapes and tables | Done · unreleased |
 | Quoting a figure out of a paper (`import pdf`) | Done |
 | That figure rendered to SVG with nothing installed | Done · unreleased |
-| Plugins, PPTX with native text boxes | Later |
+| Plugins | Later |
 
 Each of those has a brief — what it is for, what is not free about it, and where
 it stops — in [workstreams.md](workstreams.md). "Next" means the reasoning is
@@ -72,10 +73,10 @@ written down, not that a date exists.
 Four of those rows come out of the
 [August 2026 market survey](reports/2026-08-market-survey.md) — syntax
 highlighting and the agent contract (its two P0s), then Mermaid and the theme
-gallery (two of its four P1s). **PPTX export is the one item on that list still
-unbuilt**, which is why it heads the Later section; the survey also carries the
-priorities behind the rest of it and the reasoning for what is deliberately not
-on this page.
+gallery (two of its four P1s). PPTX export, the last item on that list, has
+now landed in both of its stages; the survey also carries the priorities
+behind the rest of it and the reasoning for what is deliberately not on this
+page.
 
 One left the table rather than moving up it: **structural math editing** — the
 Math panel in the browser editor — was built and then withdrawn before it was
@@ -197,14 +198,18 @@ already quotes.
 before rendering, and JavaScript modules that register runtime effects. Themes stay
 plain CSS plus a manifest, since that already works.
 
-**Export beyond HTML and PDF.** The first stage landed: `mirzam export pptx`
-writes PowerPoint via hand-written OOXML — slides as pictures plus real
-speaker notes, which is where Marp, Slidev and Touying all stop. What remains
-is the stage none of them ships and the market survey found to be the loudest
-unmet ask across every Markdown slide tool: native text boxes, with elements
-that have no OOXML equivalent rasterized rather than dropped. Google Slides
-comes through the same path. Direct PDF generation without Chromium is a
-separate, larger question that depends on adopting a text layout engine.
+**Export beyond HTML and PDF.** Both stages landed. `mirzam export pptx`
+writes PowerPoint via hand-written OOXML: the first stage was slides as
+pictures plus real speaker notes, which is where Marp, Slidev and Touying all
+stop; the second is the stage none of them ships and the market survey found
+to be the loudest unmet ask across every Markdown slide tool — native text
+boxes, shapes and tables read back off the browser's layout, with elements
+that have no OOXML equivalent photographed one by one rather than dropped.
+What is left is refinement rather than a stage: SVG shapes and chart marks
+as DrawingML instead of pictures, and block formulas as Office math. Google
+Slides comes through the same path. Direct PDF generation without Chromium
+is a separate, larger question that depends on adopting a text layout
+engine.
 
 **A figure into SVG without a tool installed.** Landed. `mirzam import pdf`
 converts a drawn figure with [hayro](https://github.com/LaurenzV/hayro) — a PDF

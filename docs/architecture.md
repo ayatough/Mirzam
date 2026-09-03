@@ -40,7 +40,7 @@ How Mirzam is put together, and why. For build instructions and conventions see
    │  render
    ├──▶ HTML + viewer runtime  (preview, presenting, distribution)
    ├──▶ print HTML → Chromium → PDF
-   └──▶ PPTX (planned)
+   └──▶ shot HTML → Chromium → scene → PPTX
 ```
 
 Connectors are the exception: they are *not* resolved here. Rust emits the
@@ -63,8 +63,9 @@ changes.
 | `mirzam-anim` | `anim` DSL → the timeline IR, with easing curves resolved at build time. |
 | `mirzam-annot` | `annotate` DSL → the annotation model drawn over a picture or a chart mark. |
 | `mirzam-figure` | A laid-out page → its captioned figures: which line is a caption, and which ink belongs to it. Knows nothing about PDF. |
+| `mirzam-pptx` | A laid-out slide's scene → a `.pptx`: text boxes, shapes, tables and pictures as OOXML. Knows nothing about browsers. |
 | `mirzam-render` | Assembles slides into HTML; owns the theme, viewer runtime and asset inlining. |
-| `mirzam-cli` | `build` / `serve` / `export pdf` / `import pdf`, the caching build pipeline, the benchmark. |
+| `mirzam-cli` | `build` / `serve` / `export pdf` / `export pptx` / `import pdf`, the caching build pipeline, the benchmark. |
 | `mirzam-wasm` | wasm-bindgen bindings over the same pipeline, with host-injected files and assets. |
 
 ## Key decisions
@@ -174,6 +175,28 @@ encoding it declares, and a glyph name is turned into what it draws.
 
 [hayro]: https://github.com/LaurenzV/hayro
 
+### PowerPoint is the browser's layout, read back
+
+`export pptx` does not lay a slide out a second time. Principle 4 above —
+the browser does typography — holds here too: each slide is opened in a
+headless Chromium, and a script reads the laid-out DOM back as a *scene*:
+every run of text with its box, font, size and colour; every surface with a
+fill or an edge; every table; and, for whatever has no DrawingML equivalent,
+a request to photograph exactly that element with the rest of the slide
+hidden. `mirzam-pptx` writes the scene as OOXML and never sees a browser,
+which is what makes it testable against scenes written by hand — the same
+split as `mirzam-figure` and the PDF reader.
+
+Two things in that scene are not a straight copy. Consecutive blocks that
+stack in one container become one text box with a paragraph each, spaced by
+the gaps the browser left, because that is how a PowerPoint deck is built
+and how an edit should reflow. And every line is moved by half its leading:
+a browser centres a font's content area in the line box, while PowerPoint
+and Impress put the extra space above it, so a box copied verbatim would
+draw its words a few pixels low. What the scene cannot carry is the font
+itself — a deck is not allowed to embed one — so a box is given a little
+room for a wider face, and a label that fit on one line is kept on one.
+
 ### Annotations and the PDF
 
 An annotation is positioned as a percentage of the box its target *paints*, and
@@ -210,5 +233,5 @@ through the WASM core instead of HTTP.
 | ASCII layout is too rigid for complex slides | Semantics limited to CSS Grid; anything else belongs on the shape layer |
 | Stale output after an incremental build | Equivalence with a full rebuild is a test, not an assumption |
 | PDF diverging from the preview | Both come from the same HTML through Chromium |
-| PPTX export losing fidelity | Elements that do not map will be rasterized; planned from the start |
+| PPTX export losing fidelity | Elements that do not map are photographed one by one; the layout is read off the browser rather than recomputed |
 | Scope growth | The roadmap states explicitly what each phase excludes |

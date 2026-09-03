@@ -12,6 +12,7 @@ members = [
     "crates/mirzam-annot",
     "crates/mirzam-figure",
     "crates/mirzam-tmath",
+    "crates/mirzam-pptx",
     "crates/mirzam-render",
     "crates/mirzam-cli",
     "crates/mirzam-wasm",
@@ -48,6 +49,7 @@ mirzam-anim = { path = "crates/mirzam-anim" }
 mirzam-annot = { path = "crates/mirzam-annot" }
 mirzam-figure = { path = "crates/mirzam-figure" }
 mirzam-tmath = { path = "crates/mirzam-tmath" }
+mirzam-pptx = { path = "crates/mirzam-pptx" }
 mirzam-render = { path = "crates/mirzam-render" }
 comrak = "0.39"
 serde = { version = "1", features = ["derive"] }

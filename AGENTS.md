@@ -125,6 +125,7 @@ acceptable here.
 | `mirzam-chart` | Chart DSL + CSV → SVG | Chart types, data parsing |
 | `mirzam-connect` | Connector DSL → JSON | Connector syntax (routing is in the viewer) |
 | `mirzam-figure` | Captioned figures on a laid-out page | Which line is a caption, which ink is the picture |
+| `mirzam-pptx` | A slide's scene → `.pptx` (OOXML) | What a text box, shape, table or picture is written as |
 | `mirzam-render` | HTML assembly, theme, viewer runtime | Output structure, CSS, viewer behaviour |
 | `mirzam-cli` | `build`/`serve`/`export`/`import`, build cache, benchmark | Commands, caching, watching, reading a PDF |
 | `mirzam-wasm` | Browser/editor bindings | Anything the editor extension needs |

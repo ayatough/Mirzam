@@ -21,6 +21,7 @@ mirzam-layout.workspace = true
 mirzam-render.workspace = true
 mirzam-anim.workspace = true
 mirzam-figure.workspace = true
+mirzam-pptx.workspace = true
 tiny_http = "0.12"
 serde_json = "1"
 # Reading a PDF, for `import pdf`. Default features off on purpose: they add a

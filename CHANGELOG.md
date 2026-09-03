@@ -8,6 +8,31 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- **`mirzam export pptx` writes the words, not a picture of them.** Every
+  heading, paragraph, list, code block and table on a slide is now a real
+  PowerPoint object — text boxes in the font, size and colour the browser
+  resolved, at the box the browser laid out; cards and code blocks as filled
+  shapes; tables as tables, with their borders and header fill; links that
+  click; the theme's rule under a heading as a gradient shape. The reader
+  can select, search and edit, which is what every Markdown slide tool's
+  PowerPoint export — including the first stage of this one — refused them.
+  What has no PowerPoint equivalent is photographed *per element*, with the
+  rest of the slide hidden while the shot is taken: a chart, a shape
+  diagram, a Mermaid graph, a block formula, a WebP or SVG picture, a
+  gradient scrim. An inline formula simple enough to be words (`T₁`,
+  `χ = g²/Δ`) is written as words. The old form survives as `--pictures`,
+  for the room that must see exactly the browser's pixels and will never
+  edit. How it works: each slide is opened in a headless Chromium over
+  DevTools, an extractor reads the laid-out DOM back as a scene, and the
+  new `mirzam-pptx` crate writes that scene as hand-written OOXML — the
+  browser keeps doing the typography, as everywhere else in Mirzam. Line
+  placement is corrected for the way PowerPoint and Impress set exact line
+  spacing (the leading goes above the line, where a browser splits it),
+  verified against LibreOffice Impress renderings of every sample deck.
+  What stays honest: the file is only as faithful as the fonts the
+  opening machine has, so a box is given a little room for a wider face,
+  a label that fit on one line is kept on one line, and the sample decks
+  were checked in a substituted font.
 - **`mirzam export video` films the deck as a WebM.** The deck plays itself —
   the built page, viewer and all, running under autoplay in a headless
   Chromium — while the recorder films it at 1920px wide: click steps play

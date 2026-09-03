@@ -8,6 +8,7 @@
 mod audio;
 mod cdp;
 mod check;
+mod pptx;
 mod video;
 
 use mirzam_cli::{pdfimport, pipeline, scaffold, serve, skill};
@@ -116,6 +117,7 @@ fn main() -> ExitCode {
             let mut stills = false;
             let mut mute = false;
             let mut handout = false;
+            let mut pictures = false;
             let mut deck = DeckArgs::default();
             let mut i = 2;
             while i < args.len() {
@@ -128,6 +130,7 @@ fn main() -> ExitCode {
                         }
                     }
                     "--handout" => handout = true,
+                    "--pictures" => pictures = true,
                     "--chromium" => {
                         i += 1;
                         match args.get(i) {
@@ -181,6 +184,9 @@ fn main() -> ExitCode {
             if format != "video" && (ffmpeg.is_some() || interval_ms.is_some() || stills || mute) {
                 return usage("--ffmpeg, --interval, --stills and --mute belong to `export video`");
             }
+            if format != "pptx" && pictures {
+                return usage("--pictures is a PowerPoint form; it applies to `export pptx` only");
+            }
             let ext = match format {
                 "pptx" => "pptx",
                 "video" => "webm",
@@ -194,7 +200,14 @@ fn main() -> ExitCode {
                     .unwrap_or_else(|| PathBuf::from(format!("deck.{ext}")))
             });
             match format {
-                "pptx" => run(export_pptx(&input, &out_path, chromium.as_deref(), &deck)),
+                "pptx" => {
+                    let args = pptx::PptxArgs {
+                        deck,
+                        chromium,
+                        pictures,
+                    };
+                    run(pptx::export_pptx(&input, &out_path, &args))
+                }
                 "video" => {
                     let args = video::VideoArgs {
                         deck,
@@ -498,7 +511,8 @@ Usage:
   mirzam export pdf <input.md> [-o <out.pdf>] [--handout] [--split h1|h2|h3]
                [--theme <name|file.css>]... [--fit shrink]
                [--mode light|dark] [--chromium <bin>]
-  mirzam export pptx <input.md> [-o <out.pptx>] [same flags, minus --handout]
+  mirzam export pptx <input.md> [-o <out.pptx>] [--pictures]
+               [same flags, minus --handout]
   mirzam export video <input.md> [-o <out.webm>] [--interval <dur>]
                [--ffmpeg <bin>] [--stills] [--mute]
                [same flags, minus --handout]
@@ -527,9 +541,13 @@ Usage:
           would silently lose the deck.
           --handout prints one page per slide with the speaker notes beside
           it, and ruled lines to write on where a slide has none.
-          `pptx` writes one picture per slide - where every Markdown slide
-          tool's PowerPoint export stops today - with the speaker notes in
-          the notes pane, where presenter view reads them.
+          `pptx` writes the slides as PowerPoint objects: text boxes,
+          shapes, tables and links where the browser laid them out, with
+          a picture for anything PowerPoint cannot draw (a chart, a
+          diagram, a block formula) and the speaker notes in the notes
+          pane. --pictures writes one picture per slide instead - where
+          every other Markdown slide tool's export stops - for a deck that
+          must look exactly as the browser drew it and will not be edited.
           `video` films the deck playing itself as a silent WebM ready for
           YouTube: the live viewer runs under autoplay in headless Chromium,
           so click steps play out, the deck's `transition:` draws between
@@ -1137,48 +1155,6 @@ fn export_pdf(
     Ok(())
 }
 
-/// `mirzam export pptx`: one picture per slide, photographed by Chromium at
-/// twice the deck's pixel size, with the speaker notes in PowerPoint's own
-/// notes pane. The slides are images — stage one, the same place every
-/// Markdown slide tool stops — but the notes are real, which is the half an
-/// image-only export usually throws away.
-fn export_pptx(
-    input: &Path,
-    out_path: &Path,
-    chromium: Option<&str>,
-    deck: &DeckArgs,
-) -> Result<(), String> {
-    let t0 = Instant::now();
-    let mut cache = HashMap::new();
-    let mut out = pipeline::build_deck_with(input, &mut cache, deck.split, None)?;
-    apply_deck_overrides(&mut out, deck)?;
-    for w in &out.warnings {
-        println!("  ⚠ {w}");
-    }
-    let bin = find_chromium(chromium)?;
-    let (w, h) = out.meta.slide_size();
-    let slides: Vec<(Vec<u8>, Option<String>)> = photograph_slides(&bin, &out, 2.0)?
-        .into_iter()
-        .map(|(png, notes)| {
-            let notes = notes
-                .map(|n| mirzam_cli::pptx::notes_text(&n))
-                .filter(|t| !t.is_empty());
-            (png, notes)
-        })
-        .collect();
-
-    let bytes = mirzam_cli::pptx::package(w, h, &slides);
-    std::fs::write(out_path, &bytes).map_err(|e| format!("cannot write the pptx: {e}"))?;
-    println!(
-        "✓ wrote {} slides to {} ({} ms, {} KB)",
-        slides.len(),
-        out_path.display(),
-        t0.elapsed().as_millis(),
-        bytes.len() / 1024,
-    );
-    Ok(())
-}
-
 /// One photographed slide: its PNG, and the speaker notes that were taken
 /// out of the picture.
 type Shot = (Vec<u8>, Option<String>);
@@ -1187,17 +1163,16 @@ type Shot = (Vec<u8>, Option<String>);
 /// process per slide, each rendering that slide alone through
 /// `assemble_shot_page`, at `scale` device pixels per CSS pixel. Returns each
 /// slide's PNG beside its speaker notes — the picture never contains them,
-/// `split_notes` having taken them out, but `export pptx` wants them back.
-/// Shared by `export pptx` and `export video`, which differ only in what the
-/// pictures become.
+/// `split_notes` having taken them out. `export video --stills` is what
+/// takes them; `export pptx` drives a kept-open browser of its own instead,
+/// since it has questions to ask the page and not only a picture to take.
 ///
 /// The shot is taller than the slide: current headless builds keep browser
 /// chrome's height in the window arithmetic even though nothing draws it, so
 /// a window sized exactly to the slide shows a viewport ~90px short and the
 /// shot loses the slide's bottom. Oversizing the window guarantees the whole
-/// slide is on screen, at the cost of a blank strip below it — which each
-/// caller crops away by the slide's own aspect (`pptx::bottom_crop`, the
-/// video's frame crop).
+/// slide is on screen, at the cost of a blank strip below it — which the
+/// video's frame crop takes away by the slide's own aspect.
 pub(crate) fn photograph_slides(
     bin: &str,
     out: &pipeline::BuildOutput,

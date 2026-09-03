@@ -1,4 +1,5 @@
-//! A minimal ZIP writer, enough for `mirzam skill install --zip`.
+//! A minimal ZIP writer, enough for a `.pptx` package and for
+//! `mirzam skill install --zip`.
 //!
 //! Written here rather than pulled in as a dependency because what this needs
 //! is the smallest corner of the format: a handful of small text files, stored

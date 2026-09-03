@@ -73,7 +73,7 @@ mirzam new deck.md                   # a deck to start from
 mirzam serve deck.md                 # live preview at localhost:4321
 mirzam build deck.md -o out          # one self-contained HTML file
 mirzam export pdf deck.md -o deck.pdf
-mirzam export pptx deck.md           # PowerPoint: slide pictures + real notes
+mirzam export pptx deck.md           # PowerPoint: editable text, shapes, tables, notes
 mirzam export video deck.md          # the autoplay loop as a YouTube-ready WebM
 mirzam build notes.md --split h2     # any document becomes a deck, unedited
 mirzam export pdf notes.md --split h2 --theme mirzam -o notes.pdf
@@ -88,11 +88,17 @@ reads the Markdown source, never a built `out/index.html`: pass it the `.md`
 file. Add `--handout` for one page per slide with the speaker notes printed
 beside it, and ruled lines to write on where a slide has none.
 
-`export pptx` writes a PowerPoint file for the room that requires one: one
-picture per slide, pixel-identical to the deck, with the speaker notes in
-the notes pane where presenter view reads them. The slides are images —
-which is also where every other Markdown slide tool's PowerPoint export
-stops — so edit the Markdown and re-export rather than editing the `.pptx`.
+`export pptx` writes a PowerPoint file for the room that requires one, with
+the words in it: text boxes where the slide put them, in the font, size and
+colour the browser resolved; cards and code blocks as shapes; tables as
+tables; links that click; and the speaker notes in the notes pane where
+presenter view reads them. What PowerPoint cannot draw — a chart, a
+diagram, a block formula, a WebP picture — goes in as a picture of exactly
+that element. The layout is the browser's, so the file matches the deck as
+closely as the opening machine's fonts allow; a deck set in a face that
+machine lacks wraps a little differently. `--pictures` writes the older
+form instead — one picture per slide, pixel-identical and uneditable — for
+the room that must see exactly what the browser drew.
 
 `export video` films the deck the way [autoplay](syntax.md#the-deck-playing-itself)
 plays it — literally: the built deck runs in a headless browser while the

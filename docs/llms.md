@@ -76,8 +76,11 @@ vars:
 
 `mirzam export pdf deck.md --handout` prints one page per slide with the
 speaker notes beside it; slides without notes get ruled lines.
-`mirzam export pptx deck.md` writes PowerPoint: one picture per slide plus
-the notes in the notes pane. Edit the Markdown and re-export, not the pptx.
+`mirzam export pptx deck.md` writes PowerPoint with editable text: text
+boxes, shapes, tables and links where the browser laid them out, pictures
+for charts, diagrams and block formulas, and the notes in the notes pane.
+`--pictures` writes one picture per slide instead. The Markdown stays the
+source; re-export rather than editing the pptx.
 `mirzam export video deck.md` writes a WebM of the deck playing itself —
 steps, transitions and clips filmed live, each slide held for its
 `autoplay:` interval or `--interval`, encoded VP8 by any ffmpeg found (PATH,
