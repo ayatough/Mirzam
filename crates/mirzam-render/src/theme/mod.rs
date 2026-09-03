@@ -913,7 +913,14 @@ mod tests {
             &[],
             &crate::PageOptions::default(),
         );
-        for id in ["mz-prev", "mz-next", "mz-mode", "mz-help"] {
+        for id in [
+            "mz-prev",
+            "mz-next",
+            "mz-ov-btn",
+            "mz-mode",
+            "mz-full",
+            "mz-help",
+        ] {
             assert!(
                 page.contains(&format!("id=\"{id}\"")),
                 "the control cluster is missing {id}"

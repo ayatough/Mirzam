@@ -266,6 +266,30 @@ away from your machine.
 - **Presenting from it:** the deck is one file, so AirDrop or a cloud folder is
   the entire deployment step.
 
+### Making it readable
+
+A slide is a landscape rectangle and a phone held upright is not, so a deck
+opened in a tab is a strip across the middle of the screen with the address
+bar above it and the toolbar below. Three ways out, in the order they help:
+
+- **Tap ⛶ in the controls.** The deck takes the whole screen, drops the margin
+  and the shadow it wears on a desk, and — on a phone, where a landscape slide
+  in a portrait screen is the whole problem — asks the screen to turn sideways
+  with it. `F` does the same from a keyboard. The button is there when the
+  browser offers full screen at all; Safari on an iPhone does not, which is
+  what the next one is for.
+- **Turn the phone sideways.** Nothing to press, and it is most of the gain:
+  the slide's shape and the screen's finally agree. In landscape both mobile
+  browsers also shrink their own bars.
+- **Add it to the home screen** (iPhone: Share → *Add to Home Screen*). Opened
+  from there the deck runs with no address bar and no toolbar — the only full
+  screen an iPhone has. It needs the deck at an `http(s)` address rather than
+  as a file: publish it, or put it behind any share link that opens in a
+  browser.
+
+The shortcut sheet — two-finger tap, or the **?** button — names whichever of
+these the browser you are holding can do.
+
 ## 7. With a coding agent
 
 If Claude Code writes your decks, give it the markup and the checker in one

@@ -183,7 +183,11 @@ any slide there is one keypress away.
 On a phone, swipe to turn the page, swipe up for notes, and two-finger tap for
 the same sheet — the long press is left alone, because that is how you select
 text. The controls below the bottom-right corner are the rest: page turns, the
-colour mode, that sheet, and `</>` for the Markdown behind the slide.
+colour mode, that sheet, `</>` for the Markdown behind the slide, and `⛶` for
+the whole screen — the deck fills it, sheds its margin, and asks a phone to
+turn sideways with it. Where a browser has no full screen to give (Safari on an
+iPhone), add the deck to the home screen and open it from there instead:
+[quickstart](docs/quickstart.md#making-it-readable).
 
 A slide that doesn't fit, markup that shows up as literal text, or a build
 warning you don't recognise — see [docs/troubleshooting.md](docs/troubleshooting.md).

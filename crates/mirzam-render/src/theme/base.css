@@ -35,6 +35,11 @@ body { background: var(--mz-bg); }
   box-shadow: 0 12px 60px rgba(0,0,0,.5); /* theme-independent: a shadow, not a surface */
   overflow: hidden;
 }
+/* Full screen, or launched from a home screen: nothing is around the deck, so
+   the inset that makes it read as a slide lying on a page becomes a frame
+   around nothing. `fit()` in the viewer drops the margin at the same moment;
+   this is the rest of the same decision. */
+html.mz-bare #deck { border-radius: 0; box-shadow: none; }
 section.slide {
   position: absolute; inset: 0;
   display: none;
@@ -1088,9 +1093,18 @@ aside.notes { display: none; }
    takes the whole cluster with it. */
 #chrome {
   position: fixed;
-  right: calc(18px + var(--mz-src-x, 0px));
-  bottom: calc(12px + var(--mz-src-y, 0px));
+  /* `env()` is zero everywhere but a phone with a notch or a home indicator,
+     where the deck is told to use the whole screen (`viewport-fit=cover`) and
+     the cluster would otherwise sit under the rounded corner or the bar. */
+  right: calc(18px + var(--mz-src-x, 0px) + env(safe-area-inset-right, 0px));
+  bottom: calc(12px + var(--mz-src-y, 0px) + env(safe-area-inset-bottom, 0px));
   display: flex; align-items: center; gap: 10px;
+  /* A cluster wider than the screen loses the button at the far end of it,
+     and on a small phone with touch-sized buttons the row is exactly that
+     wide. It wraps rather than running off: two rows of controls a thumb can
+     reach beat one row with the page turn missing from it. */
+  flex-wrap: wrap; justify-content: flex-end;
+  max-width: calc(100vw - 36px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
   padding: 5px 6px 5px 12px;
   background: var(--mz-ui-chip); color: var(--mz-ui-fg);
   border: 1px solid var(--mz-ui-line); border-radius: 12px;
@@ -1101,7 +1115,7 @@ aside.notes { display: none; }
    fades out again when the room settles. Only `opacity` animates, so waking it
    during a talk can never reflow the slide. */
 #controls {
-  display: flex; gap: 6px;
+  display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;
   opacity: 0; pointer-events: none; transition: opacity .25s ease;
 }
 html.mz-awake #controls { opacity: 1; pointer-events: auto; }
@@ -1297,7 +1311,7 @@ html[data-presenter] #chrome, html[data-presenter] #notes-panel { display: none;
   position: fixed; left: 0; right: 0; bottom: 0;
   /* theme-independent: an overlay panel, deliberately the same in every theme */
   background: rgba(20, 22, 29, .95); color: #dde1ee;
-  padding: 16px 24px 40px; font-size: 15px; line-height: 1.7;
+  padding: 16px 24px calc(40px + env(safe-area-inset-bottom, 0px)); font-size: 15px; line-height: 1.7;
   border-top: 2px solid var(--mz-accent2);
   max-height: 40%; overflow: auto;
 }

@@ -46,6 +46,23 @@ tightest pane had. If the deck is going to be shown on another machine, ask for
 a margin rather than for a fit: `mirzam check deck.md --min-slack 24`. See
 [Layout guide § What a clean run does and does not promise](layout.md#what-a-clean-run-does-and-does-not-promise).
 
+## The slide is tiny on my phone
+
+A slide is a landscape rectangle; a phone held upright is not. The deck is
+fitted into whatever the browser leaves after its address bar and toolbar, and
+in portrait that is a strip across the middle of the screen.
+
+| What to do | What it gives you |
+|---|---|
+| Tap **⛶** in the controls (`F` on a keyboard) | The whole screen, no margin, and a phone asked to turn sideways with the deck |
+| Turn the phone sideways | The slide's shape and the screen's agree, and both mobile browsers shrink their own bars in landscape |
+| Add the deck to the home screen and open it from there | No address bar, no toolbar — the only full screen Safari on an iPhone has |
+
+The **⛶** button is only there when the browser offers full screen at all, so
+on an iPhone the third row is the answer; it needs the deck at an `http(s)`
+address rather than as a file. The shortcut sheet — two-finger tap, or **?** —
+names whichever of these the browser you are holding can do.
+
 ## Something rendered as literal text instead of the feature you wrote
 
 Every Mirzam extension is designed to degrade to plain text in a parser that

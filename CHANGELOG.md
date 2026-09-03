@@ -8,6 +8,22 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- **A deck fills a phone's screen.** The control cluster carries a `⛶` button
+  beside the others (`F` from a keyboard): the deck takes the whole screen,
+  drops the margin, corner radius and shadow it wears as a page on a desk, and
+  asks a phone to turn sideways with it — a landscape slide inside a portrait
+  screen being the whole reason a deck reads small there. A deck launched from
+  the home screen goes edge to edge for the same reason and by the same rule.
+  Where a browser has no full screen to give — Safari on an iPhone offers it to
+  video and to nothing else — the button stays hidden and the shortcut sheet
+  names the way that does work: *Add to Home Screen*, which the built page now
+  declares itself capable of, and which opens the deck with no address bar and
+  no toolbar over it. The page also asks for the screen past a notch
+  (`viewport-fit=cover`) with the controls stepping around the cutout and the
+  home indicator, refits itself when a mobile viewport moves without a resize
+  event (the address bar retracting, the screen turning) but not while a reader
+  is pinch-zooming, and wraps the control cluster onto a second row rather than
+  running it off a 320px-wide screen.
 - **`mirzam export video` films the deck as a WebM.** The deck plays itself —
   the built page, viewer and all, running under autoplay in a headless
   Chromium — while the recorder films it at 1920px wide: click steps play
