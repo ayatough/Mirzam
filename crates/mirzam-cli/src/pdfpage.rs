@@ -683,6 +683,30 @@ impl Font {
             return font;
         }
 
+        // What the file calls each glyph, where it says so. Read after
+        // `/ToUnicode` and never over it: a CMap is what the writer meant a
+        // code to mean, a glyph name is only what the font calls the shape.
+        //
+        // `/Differences` is the encoding the page uses and wins over the one
+        // inside the font program, which is the font's own default.
+        let mut named = dict
+            .get(b"FontDescriptor")
+            .ok()
+            .and_then(|o| deref(doc, o))
+            .and_then(|o| o.as_dict().ok())
+            .and_then(|d| d.get(b"FontFile").ok())
+            .and_then(|o| deref(doc, o))
+            .and_then(|o| o.as_stream().ok())
+            .and_then(|s| s.decompressed_content().ok())
+            .map(|program| builtin_encoding(&program))
+            .unwrap_or_default();
+        named.extend(differences(doc, dict));
+        for (code, name) in named {
+            if let Some(text) = glyph_text(&name) {
+                font.unicode.entry(code).or_insert(text);
+            }
+        }
+
         let first = dict.get(b"FirstChar").ok().and_then(num).unwrap_or(0.0) as u32;
         if let Some(widths) = dict
             .get(b"Widths")
@@ -768,6 +792,260 @@ impl Font {
             return "\u{fffd}".to_string();
         }
         char::from_u32(code).unwrap_or('\u{fffd}').to_string()
+    }
+}
+
+/// `/Encoding << /Differences [ 58 /period 59 /comma ] >>`, as code to name.
+///
+/// Also accepts `/Encoding /WinAnsiEncoding`, which names no glyphs and so
+/// contributes none: the codes it moves are the ones a Latin-1 reading already
+/// gets right, and the ones it does not are the ones a font program names.
+fn differences(doc: &Document, dict: &Dictionary) -> HashMap<u32, String> {
+    let mut named = HashMap::new();
+    let list = dict
+        .get(b"Encoding")
+        .ok()
+        .and_then(|o| deref(doc, o))
+        .and_then(|o| o.as_dict().ok())
+        .and_then(|d| d.get(b"Differences").ok())
+        .and_then(|o| deref(doc, o))
+        .and_then(|o| o.as_array().ok());
+    let Some(list) = list else {
+        return named;
+    };
+    let mut code = 0u32;
+    for entry in list {
+        match deref(doc, entry) {
+            // A number restarts the run; every name after it takes the next.
+            Some(Object::Integer(_)) | Some(Object::Real(_)) => {
+                code = num(entry).unwrap_or(0.0).max(0.0) as u32;
+            }
+            Some(Object::Name(name)) => {
+                named.insert(code, String::from_utf8_lossy(name).to_string());
+                code += 1;
+            }
+            _ => {}
+        }
+    }
+    named
+}
+
+/// The encoding written inside an embedded Type 1 font program.
+///
+/// A font from TeX arrives with neither `/Encoding` nor `/ToUnicode`: the
+/// dictionary for `CMMI8` says `/FirstChar 58` and nothing else, and that code
+/// 58 is a full stop is written in exactly one place — the font program, as
+/// `dup 58 /period put`. Read as Latin-1 that code is a colon, which is how
+/// `85.01` in a table of results comes back as `85:01`.
+///
+/// Only the header is looked at. Everything after `eexec` is encrypted and
+/// holds the outlines, which this pass has no use for.
+fn builtin_encoding(program: &[u8]) -> HashMap<u32, String> {
+    let mut named = HashMap::new();
+    let clear = program
+        .windows(5)
+        .position(|w| w == b"eexec")
+        .unwrap_or(program.len());
+    let head = String::from_utf8_lossy(&program[..clear]);
+    let Some(from) = head.find("/Encoding") else {
+        return named;
+    };
+    // `readonly def` closes the array. A `dup` after it is putting something
+    // else into some other dictionary, and is none of this pass's business.
+    let region = &head[from..];
+    let end = region
+        .find("readonly def")
+        .or_else(|| region.find(" def"))
+        .unwrap_or(region.len());
+
+    for entry in region[..end].split("dup ").skip(1) {
+        let entry = entry.trim_start();
+        let digits: String = entry.chars().take_while(char::is_ascii_digit).collect();
+        let Ok(code) = digits.parse::<u32>() else {
+            continue;
+        };
+        // `dup 58 /period put` and `dup 58/period put` are both written.
+        let rest = entry[digits.len()..].trim_start();
+        let Some(name) = rest.strip_prefix('/') else {
+            continue;
+        };
+        let name: String = name
+            .chars()
+            .take_while(|c| !c.is_whitespace() && !"/()[]{}<>%".contains(*c))
+            .collect();
+        if !name.is_empty() {
+            named.insert(code, name);
+        }
+    }
+    named
+}
+
+/// What a glyph called `name` says when it is read rather than drawn.
+///
+/// Not the whole Adobe glyph list: the names a document actually uses are its
+/// letters and digits, the punctuation around them, the ligatures a typesetter
+/// substitutes, and — because this exists for papers — what mathematics is set
+/// in. A name outside all of that is left undecided rather than guessed, so
+/// the reading falls back to the character code.
+fn glyph_text(name: &str) -> Option<String> {
+    // `uni0041` and `u1F600`, the two escapes the format defines for a glyph
+    // that has no name of its own.
+    if let Some(hex) = name.strip_prefix("uni").filter(|h| h.len() >= 4) {
+        return u32::from_str_radix(&hex[..4], 16)
+            .ok()
+            .and_then(char::from_u32)
+            .map(String::from);
+    }
+    if let Some(hex) = name
+        .strip_prefix('u')
+        .filter(|h| (4..=6).contains(&h.len()))
+    {
+        if let Some(text) = u32::from_str_radix(hex, 16).ok().and_then(char::from_u32) {
+            return Some(text.to_string());
+        }
+    }
+    let mut letters = name.chars();
+    if let (Some(one), None) = (letters.next(), letters.next()) {
+        if one.is_ascii_alphanumeric() {
+            return Some(one.to_string());
+        }
+    }
+    let single = |c: char| Some(c.to_string());
+    match name {
+        "space" | "uni00A0" => single(' '),
+        "exclam" => single('!'),
+        "quotedbl" => single('"'),
+        "numbersign" => single('#'),
+        "dollar" => single('$'),
+        "percent" => single('%'),
+        "ampersand" => single('&'),
+        "quotesingle" | "quoteright" => single('\''),
+        "parenleft" => single('('),
+        "parenright" => single(')'),
+        "asterisk" => single('*'),
+        "plus" => single('+'),
+        "comma" => single(','),
+        "hyphen" => single('-'),
+        "period" => single('.'),
+        "slash" => single('/'),
+        "zero" => single('0'),
+        "one" => single('1'),
+        "two" => single('2'),
+        "three" => single('3'),
+        "four" => single('4'),
+        "five" => single('5'),
+        "six" => single('6'),
+        "seven" => single('7'),
+        "eight" => single('8'),
+        "nine" => single('9'),
+        "colon" => single(':'),
+        "semicolon" => single(';'),
+        "less" => single('<'),
+        "equal" => single('='),
+        "greater" => single('>'),
+        "question" => single('?'),
+        "at" => single('@'),
+        "bracketleft" => single('['),
+        "backslash" => single('\\'),
+        "bracketright" => single(']'),
+        "asciicircum" | "circumflex" => single('^'),
+        "underscore" => single('_'),
+        "grave" | "quoteleft" => single('`'),
+        "braceleft" => single('{'),
+        "bar" => single('|'),
+        "braceright" => single('}'),
+        "asciitilde" | "tilde" => single('~'),
+        // The ligatures a typesetter substitutes, written back as the letters
+        // they stand for so that a search for `find` finds one.
+        "ff" => Some("ff".to_string()),
+        "fi" => Some("fi".to_string()),
+        "fl" => Some("fl".to_string()),
+        "ffi" => Some("ffi".to_string()),
+        "ffl" => Some("ffl".to_string()),
+        "quotedblleft" => single('\u{201c}'),
+        "quotedblright" => single('\u{201d}'),
+        "quotedblbase" => single('\u{201e}'),
+        "endash" => single('\u{2013}'),
+        "emdash" => single('\u{2014}'),
+        "bullet" => single('\u{2022}'),
+        "ellipsis" => single('\u{2026}'),
+        "dagger" => single('\u{2020}'),
+        "daggerdbl" => single('\u{2021}'),
+        "section" => single('\u{a7}'),
+        "paragraph" => single('\u{b6}'),
+        "degree" => single('\u{b0}'),
+        "copyright" => single('\u{a9}'),
+        "registered" => single('\u{ae}'),
+        "germandbls" => single('\u{df}'),
+        "ae" => single('\u{e6}'),
+        "oe" => single('\u{153}'),
+        "oslash" => single('\u{f8}'),
+        "dotlessi" => single('\u{131}'),
+        // What mathematics is set in. The arrows and the set relations are
+        // here because a figure's caption cites them.
+        "minus" => single('\u{2212}'),
+        "plusminus" => single('\u{b1}'),
+        "multiply" | "times" => single('\u{d7}'),
+        "divide" => single('\u{f7}'),
+        "lessequal" => single('\u{2264}'),
+        "greaterequal" => single('\u{2265}'),
+        "notequal" => single('\u{2260}'),
+        "approxequal" => single('\u{2248}'),
+        "equivalence" => single('\u{2261}'),
+        "proportional" => single('\u{221d}'),
+        "infinity" => single('\u{221e}'),
+        "partialdiff" => single('\u{2202}'),
+        "gradient" => single('\u{2207}'),
+        "summation" => single('\u{2211}'),
+        "product" => single('\u{220f}'),
+        "integral" => single('\u{222b}'),
+        "radical" => single('\u{221a}'),
+        "element" => single('\u{2208}'),
+        "notelement" => single('\u{2209}'),
+        "union" => single('\u{222a}'),
+        "intersection" => single('\u{2229}'),
+        "arrowleft" => single('\u{2190}'),
+        "arrowup" => single('\u{2191}'),
+        "arrowright" => single('\u{2192}'),
+        "arrowdown" => single('\u{2193}'),
+        "arrowboth" => single('\u{2194}'),
+        "logicalnot" => single('\u{ac}'),
+        "asteriskmath" => single('\u{2217}'),
+        "periodcentered" => single('\u{b7}'),
+        "prime" => single('\u{2032}'),
+        "alpha" => single('\u{3b1}'),
+        "beta" => single('\u{3b2}'),
+        "gamma" => single('\u{3b3}'),
+        "delta" => single('\u{3b4}'),
+        "epsilon" => single('\u{3b5}'),
+        "zeta" => single('\u{3b6}'),
+        "eta" => single('\u{3b7}'),
+        "theta" => single('\u{3b8}'),
+        "iota" => single('\u{3b9}'),
+        "kappa" => single('\u{3ba}'),
+        "lambda" => single('\u{3bb}'),
+        "mu" => single('\u{3bc}'),
+        "nu" => single('\u{3bd}'),
+        "xi" => single('\u{3be}'),
+        "pi" => single('\u{3c0}'),
+        "rho" => single('\u{3c1}'),
+        "sigma" => single('\u{3c3}'),
+        "tau" => single('\u{3c4}'),
+        "phi" => single('\u{3c6}'),
+        "chi" => single('\u{3c7}'),
+        "psi" => single('\u{3c8}'),
+        "omega" => single('\u{3c9}'),
+        "Gamma" => single('\u{393}'),
+        "Delta" => single('\u{394}'),
+        "Theta" => single('\u{398}'),
+        "Lambda" => single('\u{39b}'),
+        "Xi" => single('\u{39e}'),
+        "Pi" => single('\u{3a0}'),
+        "Sigma" => single('\u{3a3}'),
+        "Phi" => single('\u{3a6}'),
+        "Psi" => single('\u{3a8}'),
+        "Omega" => single('\u{3a9}'),
+        _ => None,
     }
 }
 
@@ -913,7 +1191,13 @@ fn utf16be(bytes: &[u8]) -> String {
 /// set. By the bottom edge those runs are three separate lines, interleaved
 /// left to right, and the caption reads `OMPARISON OF … C UFOM AP`.
 fn baseline(run: &Run) -> f64 {
-    run.rect.y0 + run.size * DESCENT
+    baseline_of(&run.rect, run.size)
+}
+
+/// The same, for a line that has already been assembled: what a caller needs
+/// to put text back where the page had it.
+pub fn baseline_of(rect: &Rect, size: f64) -> f64 {
+    rect.y0 + size * DESCENT
 }
 
 /// Runs into lines.
@@ -1049,6 +1333,62 @@ mod tests {
             size,
             text: text.to_string(),
         }
+    }
+
+    #[test]
+    fn a_font_program_says_what_its_codes_mean() {
+        // The header of a Type 1 font, as TeX writes one: no `/Encoding` in
+        // the dictionary, and code 58 a full stop rather than a colon.
+        let program = b"%!PS-AdobeFont-1.0: CMMI8\n\
+            /Encoding 256 array\n\
+            0 1 255 {1 index exch /.notdef put} for\n\
+            dup 58 /period put\n\
+            dup 59 /comma put\n\
+            dup 100 /d put\n\
+            readonly def\n\
+            dup 12 /somethingelse put\n\
+            currentfile eexec \x80\x01\x02\x03";
+        let named = builtin_encoding(program);
+        assert_eq!(named.get(&58).map(String::as_str), Some("period"));
+        assert_eq!(named.get(&100).map(String::as_str), Some("d"));
+        assert_eq!(named.get(&12), None, "past the end of the array");
+    }
+
+    #[test]
+    fn a_glyph_name_reads_as_what_it_draws() {
+        let text = |name: &str| glyph_text(name);
+        assert_eq!(text("period").as_deref(), Some("."));
+        assert_eq!(text("d").as_deref(), Some("d"));
+        assert_eq!(text("seven").as_deref(), Some("7"));
+        assert_eq!(text("plusminus").as_deref(), Some("\u{b1}"));
+        assert_eq!(text("fi").as_deref(), Some("fi"), "a ligature, spelt out");
+        assert_eq!(text("uni0041").as_deref(), Some("A"));
+        assert_eq!(text("u01F600").as_deref(), Some("\u{1f600}"));
+        // Undecided rather than guessed: the code itself is the better answer.
+        assert_eq!(text("someonesownname"), None);
+    }
+
+    #[test]
+    fn the_pages_own_differences_win() {
+        let doc = Document::new();
+        let mut encoding = Dictionary::new();
+        encoding.set(
+            "Differences",
+            Object::Array(vec![
+                Object::Integer(58),
+                Object::Name(b"period".to_vec()),
+                Object::Name(b"comma".to_vec()),
+                Object::Integer(200),
+                Object::Name(b"endash".to_vec()),
+            ]),
+        );
+        let mut font = Dictionary::new();
+        font.set("Encoding", Object::Dictionary(encoding));
+
+        let named = differences(&doc, &font);
+        assert_eq!(named.get(&58).map(String::as_str), Some("period"));
+        assert_eq!(named.get(&59).map(String::as_str), Some("comma"));
+        assert_eq!(named.get(&200).map(String::as_str), Some("endash"));
     }
 
     #[test]

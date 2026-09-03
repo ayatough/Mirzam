@@ -166,7 +166,10 @@
     const group = (s) => (s && s.dataset.cont) || null;
     const cut = changed && group(from) !== null && group(from) === group(ss[idx]);
     const turn = play && !cut;
-    if (changed && turn) leave(from, backwards);
+    // A slide cannot leave itself: on a one-slide loop's wrap (and the
+    // restart that rides it) the leave animation's cleanup would land on the
+    // same section the arrival just armed, and reveal every step early.
+    if (changed && turn && from !== ss[idx]) leave(from, backwards);
     else if (changed && anim) anim.settle(from);
     cur = idx;
     const sec = ss[cur];
@@ -973,8 +976,10 @@
     const ss = slides();
     if (cur >= ss.length - 1 && step >= stepsOn(ss[cur])) {
       // Played through: wrap forwards, or rest until `A` starts it again.
+      // Resting is closure state, so the attribute is the outside world's
+      // window on it — `export video`'s recorder polls it to stop filming.
       if (auto.loop) show(0, { wrap: true });
-      else autoOn = false;
+      else { autoOn = false; deck.dataset.mzAutoplayDone = '1'; }
     } else {
       advance();
     }
@@ -996,6 +1001,20 @@
   watchers.push(armAuto);
   document.addEventListener('visibilitychange', armAuto);
   if (auto) DISPLAY.push([['A'], 'Pause / resume the autoplay']);
+  // Starts the autoplay from script, from the top, `detail` being anything
+  // `autoplay:` accepts. The restart rides the loop's own wrap, so slide 1
+  // enters at step 0 with its entrance playing — whatever state a warm-up
+  // walk left it in. `mirzam export video` films a deck through this: it
+  // walks every slide once to warm the caches, then dispatches this to play
+  // the deck for the camera. A tool's door, but an ordinary one — a kiosk
+  // page embedding a deck can start it the same way.
+  document.addEventListener('mz-autoplay', (e) => {
+    auto = parseAutoplay(String((e && e.detail) || ''));
+    autoOn = !!auto;
+    delete deck.dataset.mzAutoplayDone;
+    if (autoOn) show(0, { wrap: true });
+    armAuto();
+  });
 
   addEventListener('keydown', (e) => {
     // A modified key belongs to the browser: Cmd-R, Ctrl-F, Alt-Tab.
@@ -1037,7 +1056,11 @@
     }
     else if (e.key === 'd' || e.key === 'D') toggleMode();
     // Only in a deck that plays itself; elsewhere the key stays free.
-    else if ((e.key === 'a' || e.key === 'A') && auto) { autoOn = !autoOn; armAuto(); }
+    else if ((e.key === 'a' || e.key === 'A') && auto) {
+      autoOn = !autoOn;
+      if (autoOn) delete deck.dataset.mzAutoplayDone;
+      armAuto();
+    }
     else if (e.key === 'h' || e.key === 'H') {
       chromeOn = !chromeOn;
       try { localStorage.setItem(CHROME_KEY, chromeOn ? 'on' : 'off'); } catch (e) {}

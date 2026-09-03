@@ -26,6 +26,7 @@
 //! [hayro]: https://github.com/LaurenzV/hayro
 
 use hayro_interpret::{InterpreterSettings, InterpreterWarning};
+use mirzam_figure::Line;
 use std::sync::{Arc, Mutex};
 
 /// Converts a one-page crop into an SVG.
@@ -81,6 +82,58 @@ pub fn convert(pdf: &[u8]) -> Result<String, String> {
         });
     }
     Ok(scalable(&cull(&svg)))
+}
+
+/// Puts the figure's own words back on top of it, where they cannot be seen.
+///
+/// A converter draws every glyph as an outline path, because the reader does
+/// not have the paper's fonts and substituting one would change every width in
+/// a table. The picture is then exact and the text is gone: a table of results
+/// cannot be selected, copied, searched or read aloud.
+///
+/// So the words are laid over the picture a second time, from what the
+/// measuring pass already read off the page, at an alpha of one part in 255.
+/// Nothing is visible and nothing moves — `textLength` holds each line to the
+/// width it was drawn at, whatever font the viewer sets it in — but the
+/// characters are there for anything that looks for characters. It is the same
+/// arrangement a scanned page gets when it is put through OCR.
+///
+/// One part in 255 rather than none: `fill="none"`, `fill-opacity="0"` and
+/// `opacity="0"` are all dropped on the way into a PDF, and the exported deck
+/// is the place this matters most.
+pub fn with_text(svg: &str, lines: &[Line], crop: mirzam_figure::Rect) -> String {
+    let Some(close) = svg.rfind("</svg>") else {
+        return svg.to_string();
+    };
+    let mut layer = String::new();
+    for line in lines {
+        let text = line.text.trim();
+        // A code the fonts could not explain is worse than nothing: a reader
+        // who copies it gets a replacement character where a digit was.
+        if text.is_empty() || line.rect.width() <= 0.0 || text.contains('\u{fffd}') {
+            continue;
+        }
+        layer.push_str(&format!(
+            "    <text x=\"{:.2}\" y=\"{:.2}\" font-size=\"{:.2}\" textLength=\"{:.2}\" \
+             lengthAdjust=\"spacingAndGlyphs\" fill=\"#000000\" fill-opacity=\"0.004\">{}</text>\n",
+            line.rect.x0 - crop.x0,
+            crop.y1 - crate::pdfpage::baseline_of(&line.rect, line.size),
+            line.size,
+            line.rect.width(),
+            escape(text),
+        ));
+    }
+    if layer.is_empty() {
+        return svg.to_string();
+    }
+    format!("{}{layer}{}", &svg[..close], &svg[close..])
+}
+
+/// The three characters that cannot stand for themselves between two tags.
+fn escape(text: &str) -> String {
+    text.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }
 
 /// Takes the fixed size off the root element, leaving the `viewBox`.
@@ -539,6 +592,45 @@ fn map_rect(m: [f64; 6], r: Rect) -> Rect {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// One line, in the space the measuring pass leaves it: the page's own,
+    /// with y running up from the bottom of the sheet.
+    fn measured(x0: f64, baseline: f64, width: f64, size: f64, text: &str) -> Line {
+        Line {
+            rect: mirzam_figure::Rect::new(
+                x0,
+                baseline - size * 0.22,
+                x0 + width,
+                baseline + size * 0.78,
+            ),
+            size,
+            text: text.to_string(),
+        }
+    }
+
+    #[test]
+    fn the_words_are_placed_where_the_page_had_them() {
+        let crop = mirzam_figure::Rect::new(40.0, 300.0, 240.0, 380.0);
+        let lines = vec![measured(60.0, 328.0, 40.0, 8.0, "rows & columns")];
+
+        let out = with_text(r##"<svg viewBox="0 0 200 80"></svg>"##, &lines, crop);
+        // Twenty points in from the crop's left edge, and fifty-two down from
+        // its top: the same baseline, counted the way an SVG counts.
+        assert!(out.contains(r##"x="20.00" y="52.00""##), "{out}");
+        assert!(out.contains(r##"textLength="40.00""##), "{out}");
+        assert!(out.contains(">rows &amp; columns</text>"), "{out}");
+        assert!(out.ends_with("</svg>"), "the layer goes inside the root");
+    }
+
+    #[test]
+    fn a_code_no_font_explained_is_left_out() {
+        // A reader who copies a replacement character where a digit was is
+        // worse off than one who copies nothing.
+        let crop = mirzam_figure::Rect::new(0.0, 0.0, 100.0, 100.0);
+        let lines = vec![measured(10.0, 50.0, 20.0, 8.0, "8\u{fffd}5")];
+        let svg = r##"<svg viewBox="0 0 100 100"></svg>"##;
+        assert_eq!(with_text(svg, &lines, crop), svg);
+    }
 
     #[test]
     fn the_root_keeps_its_shape_and_loses_its_size() {

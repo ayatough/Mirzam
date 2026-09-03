@@ -849,6 +849,16 @@ fn video_html(src: &str, alt: &str, attrs: &Attrs, style_attr: &str) -> String {
         .get("poster")
         .map(|p| format!(" poster=\"{p}\""))
         .unwrap_or_default();
+    // The `muted` attribute cannot say who wanted it: autoplay implies it,
+    // so on an autoplay clip it is browser policy, not a choice. This marks
+    // the choice — `.muted` written out — for the one reader that behaves
+    // differently on it: the video export, which lays a clip's own sound
+    // under the film unless the author silenced the clip on purpose.
+    let chosen_muted = if flag("muted") {
+        " data-mz-muted=\"\""
+    } else {
+        ""
+    };
     // Drop the boolean-flag classes from the emitted class list.
     let mut carried = attrs.clone();
     carried.classes.retain(|c| {
@@ -858,7 +868,7 @@ fn video_html(src: &str, alt: &str, attrs: &Attrs, style_attr: &str) -> String {
         )
     });
     format!(
-        "<video src=\"{src}\" title=\"{alt}\"{}{poster}{flags} data-mz-play-on=\"{when}\"{style_attr}></video>",
+        "<video src=\"{src}\" title=\"{alt}\"{}{poster}{flags}{chosen_muted} data-mz-play-on=\"{when}\"{style_attr}></video>",
         carried.html_id_class(),
         when = play_on(flag)
     )
@@ -1505,6 +1515,11 @@ mod tests {
         assert!(out.contains("object-fit:contain"));
         // Flags must not leak into the class attribute.
         assert!(!out.contains("class=\"autoplay"));
+        // Implied muted is policy, not a choice: no marker. Writing `.muted`
+        // out is the choice, and gets one.
+        assert!(!out.contains("data-mz-muted"));
+        let chosen = preprocess("![demo](media/demo.mp4){.autoplay .muted}\n");
+        assert!(chosen.contains(" data-mz-muted=\"\""));
     }
 
     #[test]

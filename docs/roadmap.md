@@ -253,6 +253,14 @@ shapes the next paper would have hit too, all now fixed and each with the page
 geometry that found it written into a test. The [changelog](../CHANGELOG.md)
 lists them.
 
+The paper also settled what a figure carries. Outlines are what keep a table's
+columns where the paper set them, and they are also what leaves a quoted table
+with nothing to select; the figure now carries its own words a second time, at
+an alpha of one part in 255, so the exported PDF has the cells in it. That in
+turn wanted the reading fixed: a TeX font declares its encoding only inside the
+font program, and until that was parsed every decimal point in a table came
+back as a colon.
+
 **Still open here:** not emitting off-page geometry belongs upstream, not in a
 culling pass this project maintains for good; and the conversion is pure Rust,
 so the editor extension and the browser build could import a figure too — the
@@ -275,12 +283,19 @@ rough order of pull:
   separates "slides on a loop" from a screensaver made of photographs. It
   belongs to the `bg` attribute grammar, not to `anim`: the drift is a
   property of the image, repeated every time the slide comes round.
-- **Video export.** A deck driving itself is a deck a recording harness can
-  film with no script to write — `scripts/record-demo.mjs` already drives a
-  live tab for the README demo — so `mirzam export video deck.md` producing a
-  `.webm` is mostly plumbing that exists. That is the piece that turns the
-  telop-over-image pattern into simple video authoring: write Markdown, get a
-  clip.
+- **Video export** landed as of the next release: `mirzam export video
+  deck.md` films the live viewer playing the deck — click steps play out,
+  the `transition:` draws between pages, an embedded clip runs on screen,
+  dwells hold, `--interval` standing in where a deck names no pace — as a
+  1920px silent WebM any ffmpeg with VP8 can encode, the trimmed Playwright
+  build included (`--stills` keeps the faster photograph-per-slide mode).
+  That is the piece that turns the telop-over-image pattern into simple
+  video authoring: write Markdown, get a clip. Sound followed in the same
+  release: a clip's own audio is mixed in where the clip played, when the
+  found ffmpeg is a full one — the mixing needs audio codecs and filters
+  the trimmed build does not carry. What remains is the voice: a narration
+  track paced by the speaker notes, read by whatever TTS the machine has,
+  with the dwells stretched to fit what is being said.
 - **A progress hint** for the kiosk visitor: some quiet mark that the screen
   is a loop and where it is in it, in the chrome that `?controls=none`
   removes — so a display can choose between perfectly bare and legible.

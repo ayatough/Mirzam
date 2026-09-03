@@ -31,6 +31,43 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   406× at 100 — and the live screenshot agent paid 100× more on the
   feedback channel to reach the same clean deck two rounds slower.
 
+- **`mirzam export video` films the deck as a WebM.** The deck plays itself —
+  the built page, viewer and all, running under autoplay in a headless
+  Chromium — while the recorder films it at 1920px wide: click steps play
+  out, the deck's `transition:` draws between pages, an embedded clip runs
+  on screen, and a slide's `<!-- autoplay: 20s -->` dwell holds exactly as
+  it would on a kiosk. Pacing comes from the frontmatter's `autoplay:`
+  interval, `--interval` standing in from the command line, 5s when nothing
+  says otherwise; a `loop` deck is filmed for one pass. Filming is in real
+  time — `--stills` instead photographs each slide once and holds it, faster
+  than any playback, for the deck where nothing moves. The frames are
+  encoded as VP8 in WebM, which YouTube takes directly, by an ffmpeg found
+  rather than shipped — the bar is deliberately low: the trimmed build
+  Playwright keeps beside its browsers is enough, and is looked for
+  automatically after PATH, `--ffmpeg` and `MIRZAM_FFMPEG`. And where that
+  ffmpeg is a *full* one, the film has sound: each clip's own audio is laid
+  under the video exactly where the clip played in the take — a clip the
+  author wrote `.muted` on stays silent, `--mute` silences the whole film,
+  and with only the trimmed build the export says what it could not mix.
+  Narration is the next stage; the film itself is Opus in the same WebM.
+
+- **A quoted table can be selected, copied and searched.** `import pdf` draws a
+  figure's glyphs as outline paths, because substituting a font the reader has
+  for the paper's would move every column in a table. That is what a picture
+  needs and it leaves nothing to select: the numbers on the slide were shapes.
+
+  The measuring pass has already read every line off the page, so the converted
+  figure now carries them a second time as `<text>`, at an alpha of one part in
+  255 and held to the width they were drawn at. Nothing is visible, nothing
+  moves, and the exported PDF has the table's cells in it — the arrangement a
+  scanned page gets from OCR, except that the text is read rather than guessed.
+  In the deck itself the picture is an `<img>`, and nothing inside one of those
+  is selectable; the PDF is where this lands.
+
+  A line the fonts could not explain is left out rather than laid down, since a
+  reader who copies a replacement character where a digit was is worse off than
+  one who copies nothing.
+
 ### Changed
 - **A figure out of a paper needs nothing installed.** `mirzam import pdf`
   landed in 0.10 with one step that was not self-contained: a *drawn* figure —
@@ -114,6 +151,22 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   runs past a section heading, which is short, set at the body size, and starts
   where the column starts — a table crop used to reach down and take the
   `B. Insertion` under it.
+
+- **`85.01` no longer reads as `85:01`.** A font from TeX arrives with neither
+  `/ToUnicode` nor `/Encoding` — the dictionary for `CMMI8` says `/FirstChar
+  58` and nothing else — and that code 58 is a full stop is written in exactly
+  one place: the font program, as `dup 58 /period put`. Read as Latin-1 it is a
+  colon, which is what every decimal point in a table of results became, and
+  what a caption with mathematics in it would have become too. The header of an
+  embedded Type 1 font is now parsed for the encoding it declares, `/Encoding
+  /Differences` is read where the page gives one, and a glyph name is turned
+  into what it draws — including the ligatures a typesetter substitutes, so a
+  search for `find` finds one.
+- **A one-slide loop's wrap no longer un-arms the slide it re-enters.** The
+  leave animation's cleanup landed on the same section the arrival had just
+  armed, so every click step stood revealed before its click. A slide cannot
+  leave itself; the wrap now settles it and re-enters. Found by the video
+  export's restart, which rides the same wrap.
 
 ## [0.10.0] - 2026-08-25
 

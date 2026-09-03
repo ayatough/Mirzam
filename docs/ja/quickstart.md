@@ -94,6 +94,10 @@ mirzam import pdf paper.pdf --cite vaswani2017   # 論文の図をキャプシ�
 （poppler-utils）を使い、`--tool` か `MIRZAM_PDFTOOL` を指定すれば SVG もそちらに
 任せられます（Mirzam が描画を断った図のための逃げ道です）。
 
+図の中の文字も一緒に来ます。絵としては字形（アウトライン）で描かれます——表の桁が
+論文どおりに揃うのはそのためです——が、同じ文字を見えない層として重ねてあるので、
+スライドに引いた表は書き出した PDF で選択・コピー・検索ができます。
+
 ```bash
 mirzam import pdf paper.pdf --list                     # 何が入っているかを見る
 mirzam import pdf paper.pdf -o img --cite vaswani2017 >> talk.md

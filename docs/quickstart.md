@@ -74,6 +74,7 @@ mirzam serve deck.md                 # live preview at localhost:4321
 mirzam build deck.md -o out          # one self-contained HTML file
 mirzam export pdf deck.md -o deck.pdf
 mirzam export pptx deck.md           # PowerPoint: slide pictures + real notes
+mirzam export video deck.md          # the autoplay loop as a YouTube-ready WebM
 mirzam build notes.md --split h2     # any document becomes a deck, unedited
 mirzam export pdf notes.md --split h2 --theme mirzam -o notes.pdf
 mirzam check deck.md                 # clipped panes, unresolved connectors, and the rest
@@ -93,6 +94,25 @@ the notes pane where presenter view reads them. The slides are images —
 which is also where every other Markdown slide tool's PowerPoint export
 stops — so edit the Markdown and re-export rather than editing the `.pptx`.
 
+`export video` films the deck the way [autoplay](syntax.md#the-deck-playing-itself)
+plays it — literally: the built deck runs in a headless browser while the
+export records it, so click steps play out, the deck's `transition:` draws
+between pages, an embedded clip runs on screen, and each slide holds for the
+deck's `autoplay:` interval — a slide's own `<!-- autoplay: 20s -->` dwell
+honored, `--interval 8s` standing in from the command line, five seconds when
+nothing says otherwise. The result is a silent 1920px-wide WebM that YouTube
+takes as-is. Filming is in real time, so the export takes as long as the deck
+plays; `--stills` instead photographs each slide once and holds it — faster
+than any playback, and enough for a deck where nothing moves. Either way it
+needs an ffmpeg that encodes VP8: one on PATH, named by `--ffmpeg` or
+`MIRZAM_FFMPEG`, or the trimmed build Playwright installs beside its
+browsers, which is enough and is found automatically. With a *full* ffmpeg
+the film also has sound: each clip's own audio lands exactly where the clip
+played — a browser only forced the mute on autoplay, so the film does not —
+while a clip the author wrote `.muted` on stays silent, and `--mute`
+silences the whole film. With only the trimmed build, the export says what
+it could not mix and delivers the silent film.
+
 `import pdf` is for the slide that quotes a paper. It reads the PDF, finds the
 captioned figures and tables, cuts each one out, and prints the Markdown line
 that puts it on a slide — the caption taken from the paper, the credit written
@@ -107,6 +127,11 @@ rather than the screen's, and stays sharp on a projector and in the exported
 PDF. `--format png` still wants `mutool` (mupdf-tools) or `pdftocairo`
 (poppler-utils), and `--tool` or `MIRZAM_PDFTOOL` hands the SVG to one of those
 instead, for a figure Mirzam declines to draw.
+
+The words in a figure come with it. The picture draws them as shapes — that is
+what keeps a table's columns where the paper had them — so the same words are
+laid over it again where nothing can see them: a table quoted onto a slide can
+be selected, copied and searched in the exported PDF.
 
 ```bash
 mirzam import pdf paper.pdf --list                     # what is in there

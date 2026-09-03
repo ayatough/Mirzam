@@ -901,6 +901,12 @@ writes exactly this line for each one, caption and credit filled in from the
 paper — see [the quickstart](quickstart.md). It is the same markup either way;
 the command only saves the screenshot and the typing.
 
+A figure imported that way is a vector picture, so it stays sharp however large
+the pane is, and it carries the words that are in it: a table's cells can be
+selected and copied out of the exported PDF, and searched there, even though
+the picture draws them as shapes. What it cannot do is make them selectable in
+the *deck* — a picture on a slide is an `<img>`, and nothing inside one is.
+
 With `fit=contain` the picture takes its own shape inside the pane rather than
 filling it, so the caption sits against the picture's own bottom edge instead
 of an inch below a letterboxed one. Both lines are centred under the picture
@@ -1382,6 +1388,11 @@ media until the reader has interacted with the page. A recording set to autoplay
 on the opening slide may therefore stay silent until the first key or click,
 which is why `.autoplay` on a video implies `.muted` and why a hosted video is
 muted when it starts on arrival.
+
+That implied mute is browser policy, not the author's choice, and the video
+export knows the difference: in an exported film a clip's own sound plays
+where the clip played, and only a `.muted` the author wrote out keeps it
+silent there.
 
 ### The player and the deck's keys
 
@@ -2052,6 +2063,13 @@ countdown rather than parking the deck on it.
 deck: full-bleed photographs, captions entering on their own beat, a slow
 fade between pages, and `autoplay: 6s loop` driving it — open it and it is
 already playing, bare.
+
+The same playback is what `mirzam export video deck.md` films: the deck
+playing itself in a headless browser — captions entering, pages fading,
+dwells holding — as a silent WebM ready for YouTube or anywhere a deck
+cannot run. See the
+[quickstart](quickstart.md#2-on-the-command-line--the-whole-thing) for what
+it needs.
 
 ### The Markdown behind a slide
 
