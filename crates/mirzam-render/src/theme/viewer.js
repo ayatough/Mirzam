@@ -64,8 +64,13 @@
   const W = +deck.dataset.slideW, H = +deck.dataset.slideH;
   // Whether this browser can be asked for the whole screen at all. Read once,
   // here, because both the control that asks and the cheat sheet that explains
-  // the alternative are built from it.
-  const CAN_FULL = !!(html.requestFullscreen || html.webkitRequestFullscreen);
+  // the alternative are built from it. `fullscreenEnabled` is the question
+  // worth asking: the *method* exists in a frame that is forbidden fullscreen
+  // by permissions policy - an editor's preview pane, a page that embeds the
+  // deck without `allowfullscreen` - and there the button would be a control
+  // that quietly does nothing.
+  const CAN_FULL = !!((html.requestFullscreen || html.webkitRequestFullscreen)
+    && (document.fullscreenEnabled || document.webkitFullscreenEnabled));
   // Live updates replace DOM nodes, so re-query the slide list each time.
   const slides = () => Array.from(document.querySelectorAll('section.slide'));
   let cur = Math.min(Math.max(parseInt((location.hash || '').slice(1)) || 1, 1), slides().length) - 1;
@@ -1237,9 +1242,16 @@
   }
   // Turning the page while a widget is expanded leaves the reader looking at a
   // slide nobody is on. The page turn wins: it is the deliberate act.
+  //
+  // A *widget* is the only thing this closes. The deck filling the screen is
+  // the whole page in fullscreen, which no page turn ends - and the test that
+  // used to stand here ("not inside the active slide") called that a stray
+  // widget and shut it again on the next repaint, which is to say instantly:
+  // the deck went fullscreen and came straight back out.
   watchers.push(() => {
     const full = fullEl();
-    if (!full || !full.closest || full.closest('section.slide.active')) return;
+    if (!full || !full.closest || full.contains(deck)) return;
+    if (full.closest('section.slide.active')) return;
     const exit = document.exitFullscreen || document.webkitExitFullscreen;
     if (exit) { const p = exit.call(document); if (p && p.catch) p.catch(() => {}); }
   });

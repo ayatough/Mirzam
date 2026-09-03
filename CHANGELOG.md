@@ -24,6 +24,20 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   event (the address bar retracting, the screen turning) but not while a reader
   is pinch-zooming, and wraps the control cluster onto a second row rather than
   running it off a 320px-wide screen.
+
+### Fixed
+- **A deck went fullscreen and came straight back out.** The page turn that
+  closes an expanded widget — a chart blown up to the screen belongs to the
+  slide it was expanded on, and a page turn ends it — recognised that widget
+  as "the fullscreen element is not inside the active slide", which is also
+  true of the whole page in fullscreen. So `F` (and now the `⛶` button) entered
+  fullscreen and the next repaint shut it again, in Chrome and in every other
+  browser with a Fullscreen API. Only a widget is closed now; the deck filling
+  the screen survives every page turn. The `⛶` button also asks
+  `document.fullscreenEnabled` rather than merely whether the method exists, so
+  in a frame that is refused fullscreen by permissions policy — an editor's
+  preview pane, an embedding page without `allowfullscreen` — it stays hidden
+  instead of doing nothing when pressed.
 - **`mirzam export video` films the deck as a WebM.** The deck plays itself —
   the built page, viewer and all, running under autoplay in a headless
   Chromium — while the recorder films it at 1920px wide: click steps play
