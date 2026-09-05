@@ -42,19 +42,29 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   loopback — and the deck is all the server has to give, every other path
   being a 404 and a built deck carrying its assets inside it.
 
-### Fixed
-- **A deck went fullscreen and came straight back out.** The page turn that
-  closes an expanded widget — a chart blown up to the screen belongs to the
-  slide it was expanded on, and a page turn ends it — recognised that widget
-  as "the fullscreen element is not inside the active slide", which is also
-  true of the whole page in fullscreen. So `F` (and now the `⛶` button) entered
-  fullscreen and the next repaint shut it again, in Chrome and in every other
-  browser with a Fullscreen API. Only a widget is closed now; the deck filling
-  the screen survives every page turn. The `⛶` button also asks
-  `document.fullscreenEnabled` rather than merely whether the method exists, so
-  in a frame that is refused fullscreen by permissions policy — an editor's
-  preview pane, an embedding page without `allowfullscreen` — it stays hidden
-  instead of doing nothing when pressed.
+- **A label too long for its shape is now a finding.** A `shape` label is one
+  centred SVG text element and never wraps, so a label longer than its rect
+  or ellipse was drawn straight out of the box — nothing clipped, nothing
+  scrolled, and `mirzam check` passed the slide. The agent-context report
+  below surfaced the gap while probing what the checker cannot see, and this
+  member of the drawn-but-wrong family turned out to be checkable: the
+  in-page check now compares each label's rendered box against its shape's
+  and reports `layout.label`, an error like the rest of the layout family.
+  The sample decks all pass; a fitting label and a standalone `text` shape
+  (which has no box to overflow) are not reported.
+
+- **The agent's feedback loop, priced.** `scripts/bench-agent-context.py`
+  measures what a layout-fix loop costs an LLM agent in context tokens:
+  the real `mirzam check --format json` payload at every fix round against
+  one screenshot per slide under the published vision-token formula. The
+  first run, and a paired live run of two agents fixing the same seeded
+  deck through one channel each, are written up in
+  [docs/reports/2026-08-agent-context.md](docs/reports/2026-08-agent-context.md):
+  the JSON payload stays ~370 tokens per round whether the deck is 10
+  slides or 100, where a screenshot sweep is 41× that at 10 slides and
+  406× at 100 — and the live screenshot agent paid 100× more on the
+  feedback channel to reach the same clean deck two rounds slower.
+
 - **`mirzam export video` films the deck as a WebM.** The deck plays itself —
   the built page, viewer and all, running under autoplay in a headless
   Chromium — while the recorder films it at 1920px wide: click steps play
@@ -125,6 +135,18 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   [hayro]: https://github.com/LaurenzV/hayro
 
 ### Fixed
+- **A deck went fullscreen and came straight back out.** The page turn that
+  closes an expanded widget — a chart blown up to the screen belongs to the
+  slide it was expanded on, and a page turn ends it — recognised that widget
+  as "the fullscreen element is not inside the active slide", which is also
+  true of the whole page in fullscreen. So `F` (and now the `⛶` button) entered
+  fullscreen and the next repaint shut it again, in Chrome and in every other
+  browser with a Fullscreen API. Only a widget is closed now; the deck filling
+  the screen survives every page turn. The `⛶` button also asks
+  `document.fullscreenEnabled` rather than merely whether the method exists, so
+  in a frame that is refused fullscreen by permissions policy — an editor's
+  preview pane, an embedding page without `allowfullscreen` — it stays hidden
+  instead of doing nothing when pressed.
 - **`import pdf`, held against a real paper.** The command was written against
   a fixture and a handful of PDFs. Run over a two-column IEEE paper set in
   Type 1 fonts — 12 floats, half of them tables — it found 13 figures where
