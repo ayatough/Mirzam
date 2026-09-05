@@ -62,6 +62,15 @@
   const hud = document.getElementById('hud');
   const notesPanel = document.getElementById('notes-panel');
   const W = +deck.dataset.slideW, H = +deck.dataset.slideH;
+  // Whether this browser can be asked for the whole screen at all. Read once,
+  // here, because both the control that asks and the cheat sheet that explains
+  // the alternative are built from it. `fullscreenEnabled` is the question
+  // worth asking: the *method* exists in a frame that is forbidden fullscreen
+  // by permissions policy - an editor's preview pane, a page that embeds the
+  // deck without `allowfullscreen` - and there the button would be a control
+  // that quietly does nothing.
+  const CAN_FULL = !!((html.requestFullscreen || html.webkitRequestFullscreen)
+    && (document.fullscreenEnabled || document.webkitFullscreenEnabled));
   // Live updates replace DOM nodes, so re-query the slide list each time.
   const slides = () => Array.from(document.querySelectorAll('section.slide'));
   let cur = Math.min(Math.max(parseInt((location.hash || '').slice(1)) || 1, 1), slides().length) - 1;
@@ -119,6 +128,22 @@
   // preview built from an armed slide would show a slide with holes in it.
   let pristine = slides().map((s) => s.outerHTML);
 
+  // Full screen, or launched from a home screen: the deck *is* the page. The
+  // inset, the corner radius and the shadow are what make it read as a slide
+  // lying on a page, and with no page around it they are a frame around
+  // nothing - on a phone, a frame that costs the slide the few percent of
+  // height that decide whether the words are readable.
+  // Fullscreen on the *page*, and not on a widget inside a slide: an expanded
+  // chart covers the screen and the deck goes on being a deck behind it.
+  const pageFull = () => {
+    const fs = document.fullscreenElement || document.webkitFullscreenElement;
+    return !!fs && fs.contains(deck);
+  };
+  const bare = () =>
+    pageFull()
+    || matchMedia('(display-mode: standalone)').matches
+    || navigator.standalone === true;
+
   function fit() {
     // In the presenter window the deck lives inside a box, not the viewport.
     const host = deck.parentElement === document.body ? null : deck.parentElement;
@@ -134,7 +159,12 @@
     // it has to be told the same number in the only language it speaks.
     html.style.setProperty('--mz-src-x', taken.x + 'px');
     html.style.setProperty('--mz-src-y', taken.y + 'px');
-    const s = Math.min((box.width - taken.x) / (W + 40), (box.height - taken.y) / (H + 40));
+    // The margin is in slide pixels, so it shrinks with the deck: 40 of them
+    // is a comfortable inset on a desk and a hairline on a phone. Full screen
+    // is the one place it goes to nothing.
+    const edge = (host || !bare()) ? 40 : 0;
+    if (!host) html.classList.toggle('mz-bare', bare());
+    const s = Math.min((box.width - taken.x) / (W + edge), (box.height - taken.y) / (H + edge));
     deck.style.width = W + 'px';
     deck.style.height = H + 'px';
     deck.style.transform =
@@ -538,6 +568,18 @@
   // gestures instead. `pointer: coarse` is the primary pointer, so a laptop
   // with a touchscreen still gets the keyboard first.
   const COARSE = matchMedia('(pointer: coarse)').matches;
+  // Where the API is missing - Safari on an iPhone - the way to a deck with no
+  // address bar over it is the home screen, and the sheet is the only place a
+  // reader would ever be told so. A deck already launched from there has
+  // nothing to say about it.
+  const STANDALONE = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const FULL_ROW = CAN_FULL
+    ? [['⛶ button'], 'Fill the screen — and turn it sideways']
+    : [['Add to Home Screen'], 'Opens with no address bar at all'];
+  // The same question the stylesheet asks before collapsing the cluster. Read
+  // when the sheet is drawn rather than once at load, because a phone turned
+  // sideways answers it differently.
+  const NARROW = matchMedia('(pointer: coarse) and (max-width: 480px)');
   const TOUCH = ['Touch', [
     [['⊞ button'], 'All slides — tap one to go there'],
     [['Swipe ←', 'Swipe →'], 'Next / previous'],
@@ -546,6 +588,8 @@
     [['Tap left', 'Tap right'], 'Back / forward'],
     [['Long press'], 'Select text, as anywhere else'],
   ]];
+  if (!STANDALONE) TOUCH[1].push(FULL_ROW);
+  const MORE_ROW = [['⋯ button'], 'The controls the row has no room for'];
   const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
   const row = (keys, what) =>
     `<dt>${keys.map((k) => `<kbd>${esc(k)}</kbd>`).join('')}</dt><dd>${esc(what)}</dd>`;
@@ -565,7 +609,10 @@
   }
 
   function renderKeys() {
-    const groups = (COARSE ? [TOUCH, ...KEYS] : KEYS).map(([name, rows]) =>
+    // First on a narrow phone, because it is the row that says where the
+    // other buttons went.
+    const touch = [TOUCH[0], NARROW.matches ? [MORE_ROW, ...TOUCH[1]] : TOUCH[1]];
+    const groups = (COARSE ? [touch, ...KEYS] : KEYS).map(([name, rows]) =>
       `<h4>${name}</h4><dl>${rows.map(([k, w]) => row(k, w)).join('')}</dl>`).join('');
     const fx = effectRows(slides()[cur]);
     keysPanel.innerHTML = '<div class="mz-keys-card">' +
@@ -882,6 +929,85 @@
   document.getElementById('mz-next').addEventListener('click', advance);
   document.getElementById('mz-help').addEventListener('click', () => toggleKeys());
 
+  // ---- The whole screen ----
+  // `F` is a key, and the reader this matters most to has no keys: on a phone
+  // the browser's address bar and toolbar take a third of an already short
+  // screen, and the deck is fitted into what is left. So the cluster carries
+  // the button too - hidden where the API is missing, because Safari on an
+  // iPhone offers fullscreen to video and to nothing else, and a control that
+  // does nothing is worse than no control. The cheat sheet names the way in
+  // that does work there.
+  function toggleFull() {
+    if (!CAN_FULL) return;
+    if (pageFull()) {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen;
+      if (exit) { const p = exit.call(document); if (p && p.catch) p.catch(() => {}); }
+      // The lock came with the fullscreen and goes with it: a phone left
+      // pinned to landscape after the deck is closed is a bug in every other
+      // page the reader opens next.
+      try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (e) {}
+      return;
+    }
+    // A landscape slide on a portrait phone is the whole complaint: filling
+    // the screen still leaves the slide a strip across the middle. Asking for
+    // landscape is what hands the screen to the slide. Only a phone answers -
+    // every other rejection is somebody who was not holding one.
+    const turn = () => {
+      const so = screen.orientation;
+      if (!so || !so.lock || W <= H) return;
+      try { const q = so.lock('landscape'); if (q && q.catch) q.catch(() => {}); } catch (e) {}
+    };
+    const ask = html.requestFullscreen || html.webkitRequestFullscreen;
+    const p = ask.call(html);
+    if (p && p.then) p.then(turn, () => {}); else turn();
+  }
+  const fullBtn = document.getElementById('mz-full');
+  if (fullBtn && CAN_FULL) {
+    fullBtn.hidden = false;
+    fullBtn.addEventListener('click', toggleFull);
+  }
+  // A control that says "fullscreen" while the deck is fullscreen points the
+  // wrong way, and Escape leaves without ever passing through the handler.
+  for (const ev of ['fullscreenchange', 'webkitfullscreenchange']) {
+    document.addEventListener(ev, () => {
+      if (fullBtn) {
+        fullBtn.textContent = pageFull() ? '⤡' : '⛶';
+        fullBtn.title = pageFull() ? 'Leave fullscreen' : 'Fullscreen';
+        fullBtn.setAttribute('aria-label', fullBtn.title);
+      }
+      // The deck loses its inset on the way in and takes it back on the way
+      // out, and neither transition is guaranteed to fire a resize.
+      fit();
+      show(cur, { play: false });
+    });
+  }
+
+  // ---- The rest of the controls ----
+  // On a narrow phone the cluster is collapsed to the page turns and the
+  // screen, and `⋯` shows the rest (the CSS decides when; this only opens and
+  // closes it). Nothing is duplicated: the menu reveals the buttons where they
+  // already stand, so a control has one handler and one label whether it is on
+  // the row or behind the ellipsis.
+  const chromeBox = document.getElementById('chrome');
+  const moreBtn = document.getElementById('mz-more');
+  function setMore(on) {
+    if (!chromeBox) return;
+    chromeBox.classList.toggle('mz-more-open', on);
+    if (moreBtn) moreBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
+  }
+  if (moreBtn) {
+    moreBtn.addEventListener('click', () => setMore(!chromeBox.classList.contains('mz-more-open')));
+    // A menu is open until it has been used. Everything that uses it closes
+    // it: one of its own buttons, a tap anywhere else, a page turn.
+    for (const b of document.querySelectorAll('#mz-menu button')) {
+      b.addEventListener('click', () => setMore(false));
+    }
+    addEventListener('click', (e) => {
+      if (!e.target || !e.target.closest || !e.target.closest('#chrome')) setMore(false);
+    });
+    watchers.push(() => setMore(false));
+  }
+
   // ---- Colour mode ----
   // A button as well as the `D` key, because a phone has neither a keyboard
   // nor any other way in: the deck a reader opens from a share is the whole
@@ -1033,7 +1159,7 @@
     if (e.key === '/' || e.key === '?') { e.preventDefault(); toggleKeys(); return; }
     // Escape closes the sheet. It also clears effects, which `effects.js`
     // handles on its own listener, so this one only owns the overlay.
-    if (e.key === 'Escape') { toggleKeys(false); toggleSource(false); toggleOverview(false); return; }
+    if (e.key === 'Escape') { toggleKeys(false); toggleSource(false); toggleOverview(false); setMore(false); return; }
     if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); advance(); }
     else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); retreat(); }
     else if (e.key === 'Home') show(0);
@@ -1047,9 +1173,7 @@
     // Absent in a deck built without the presenter script; the key then does
     // nothing rather than throwing and taking navigation down with it.
     else if (e.key === 'p' || e.key === 'P') { if (window.MZPresenter) window.MZPresenter.open(); }
-    else if (e.key === 'f' || e.key === 'F') {
-      document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
-    }
+    else if (e.key === 'f' || e.key === 'F') toggleFull();
     else if (e.key === 'l' || e.key === 'L') {
       html.classList.toggle('mz-debug');
       notify();
@@ -1152,9 +1276,16 @@
   }
   // Turning the page while a widget is expanded leaves the reader looking at a
   // slide nobody is on. The page turn wins: it is the deliberate act.
+  //
+  // A *widget* is the only thing this closes. The deck filling the screen is
+  // the whole page in fullscreen, which no page turn ends - and the test that
+  // used to stand here ("not inside the active slide") called that a stray
+  // widget and shut it again on the next repaint, which is to say instantly:
+  // the deck went fullscreen and came straight back out.
   watchers.push(() => {
     const full = fullEl();
-    if (!full || !full.closest || full.closest('section.slide.active')) return;
+    if (!full || !full.closest || full.contains(deck)) return;
+    if (full.closest('section.slide.active')) return;
     const exit = document.exitFullscreen || document.webkitExitFullscreen;
     if (exit) { const p = exit.call(document); if (p && p.catch) p.catch(() => {}); }
   });
@@ -1226,7 +1357,20 @@
 
   // A repaint, not a page turn: keep the slide exactly where the presenter
   // left it, animations and all.
-  addEventListener('resize', () => { fit(); show(cur, { play: false }); });
+  const refit = () => { fit(); show(cur, { play: false }); };
+  addEventListener('resize', refit);
+  // A phone's viewport moves without a `resize`: the address bar retracts, a
+  // panel opens, the screen turns over. `visualViewport` reports all of it,
+  // and the deck is sized from `innerHeight`, so the refit is what turns those
+  // recovered pixels into a bigger slide. Pinch zoom moves the same viewport
+  // and must not: the reader is zooming in on the slide as it stands, and
+  // re-fitting under them would take the zoom back as fast as they gave it.
+  if (window.visualViewport) {
+    visualViewport.addEventListener('resize', () => { if (visualViewport.scale === 1) refit(); });
+  }
+  // iOS reports the new size a beat after the turn, so the fit happens twice:
+  // once now, once when the numbers have settled.
+  addEventListener('orientationchange', () => { refit(); setTimeout(refit, 300); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => show(cur, { play: false }));
   fit();
   show(cur, { first: true });

@@ -654,12 +654,22 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
     let transition = transition_attr(meta);
     let autoplay = autoplay_attr(meta);
     let (theme_name, mode_attr) = theme_attrs(meta);
+    // The head a phone reads. `viewport-fit=cover` lets the deck use the whole
+    // screen on a notched phone - the chrome cluster steps around the notch in
+    // `base.css` - and the three web-app lines are what "Add to Home Screen"
+    // reads: launched from the home screen the deck opens with no address bar
+    // at all, which on an iPhone is the only full screen there is. In a normal
+    // tab they do nothing.
     format!(
         r#"<!doctype html>
 <html lang="en" data-theme="{theme_name}"{mode_attr}{html_class}>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="{title}">
 <meta name="generator" content="mirzam 0.0.1">
 <title>{title}</title>
 <style>{css}</style>
@@ -675,9 +685,13 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <div id="controls">
 <button id="mz-prev" type="button" aria-label="Previous">‹</button>
 <button id="mz-next" type="button" aria-label="Next">›</button>
+<button id="mz-full" type="button" aria-label="Fullscreen" hidden>⛶</button>
+<button id="mz-more" type="button" aria-label="More controls" aria-expanded="false">⋯</button>
+<div id="mz-menu">
 <button id="mz-ov-btn" type="button" aria-label="All slides">⊞</button>
 <button id="mz-mode" type="button" aria-label="Switch colour mode"></button>{source_button}
 <button id="mz-help" type="button" aria-label="Keyboard shortcuts">?</button>
+</div>
 </div>
 </div>
 <div id="keys" hidden></div>
@@ -2338,6 +2352,23 @@ mod tests {
         assert!(out
             .html
             .contains("<html lang=\"en\" data-theme=\"mirzam\">"));
+    }
+
+    /// The head a phone reads. Without `viewport-fit=cover` the deck stops at
+    /// the notch; without the web-app lines "Add to Home Screen" makes a
+    /// bookmark rather than a deck that opens with no address bar over it —
+    /// which on an iPhone, where the Fullscreen API is offered to video and to
+    /// nothing else, is the only full screen there is.
+    #[test]
+    fn the_deck_head_asks_a_phone_for_the_whole_screen() {
+        let page = assemble_page(&DeckMeta::default(), &[], &PageOptions::default());
+        for meta in [
+            "width=device-width, initial-scale=1, viewport-fit=cover",
+            "name=\"mobile-web-app-capable\" content=\"yes\"",
+            "name=\"apple-mobile-web-app-capable\" content=\"yes\"",
+        ] {
+            assert!(page.contains(meta), "the deck head is missing {meta}");
+        }
     }
 
     /// A typo names no palette, so the pane keeps the one it inherits — and

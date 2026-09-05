@@ -913,7 +913,18 @@ mod tests {
             &[],
             &crate::PageOptions::default(),
         );
-        for id in ["mz-prev", "mz-next", "mz-mode", "mz-help"] {
+        // `mz-more` is the narrow-phone menu the last four sit in; it has to
+        // bind too, or the controls behind it are unreachable on the screen
+        // that put them there.
+        for id in [
+            "mz-prev",
+            "mz-next",
+            "mz-ov-btn",
+            "mz-mode",
+            "mz-full",
+            "mz-more",
+            "mz-help",
+        ] {
             assert!(
                 page.contains(&format!("id=\"{id}\"")),
                 "the control cluster is missing {id}"

@@ -488,7 +488,8 @@ between them. **Only one pane per slide may break.**
 mirzam check deck.md --format json
 ```
 
-Reports, per slide and pane: `clipped`, `overlap`, `nesting`, `connector`,
+Reports, per slide and pane: `clipped`, `overlap`, `nesting`, `label` (a
+shape label longer than its box — labels never wrap), `connector`,
 `annotation`, `animation`, `slack`, `debug`. Exits non-zero on any of them.
 The JSON schema — kinds, severities, `file`/`line` through transclusion — is in
 [agents.md](agents.md).

@@ -3,7 +3,7 @@
 //! Usage:
 //!   mirzam new <file.md> [--empty]
 //!   mirzam build <input.md> [-o <out_dir>]
-//!   mirzam serve <input.md> [-p <port>]
+//!   mirzam serve <input.md> [-p <port>] [--host <addr>]
 
 mod audio;
 mod cdp;
@@ -84,6 +84,10 @@ fn main() -> ExitCode {
         Some("serve") => {
             let mut input: Option<PathBuf> = None;
             let mut port: u16 = 4321;
+            // Loopback unless asked otherwise: a development server is for the
+            // machine it runs on, and `--host 0.0.0.0` is the deliberate act
+            // that puts the deck on the network for another device to open.
+            let mut host = String::from("127.0.0.1");
             let mut i = 1;
             while i < args.len() {
                 match args[i].as_str() {
@@ -94,6 +98,13 @@ fn main() -> ExitCode {
                             None => return usage("-p requires a port number"),
                         }
                     }
+                    "--host" => {
+                        i += 1;
+                        match args.get(i) {
+                            Some(h) => host = h.clone(),
+                            None => return usage("--host requires an address"),
+                        }
+                    }
                     other if input.is_none() => input = Some(PathBuf::from(other)),
                     other => return usage(&format!("unknown argument: {other}")),
                 }
@@ -102,7 +113,7 @@ fn main() -> ExitCode {
             let Some(input) = input else {
                 return usage("an input file is required");
             };
-            run(serve::serve(&input, port))
+            run(serve::serve(&input, &host, port))
         }
         Some("export") => {
             let format = args.get(1).map(String::as_str);
@@ -507,7 +518,7 @@ Usage:
                [--theme <name|file.css>]... [--fit shrink] [--mode light|dark]
                [--base-url <url>] [--embed-source] [--editor-url <url>]
                [--debug-layout] [--strict]
-  mirzam serve <input.md> [-p <port>]
+  mirzam serve <input.md> [-p <port>] [--host <addr>]
   mirzam export pdf <input.md> [-o <out.pdf>] [--handout] [--split h1|h2|h3]
                [--theme <name|file.css>]... [--fit shrink]
                [--mode light|dark] [--chromium <bin>]
@@ -534,7 +545,10 @@ Usage:
           installed - `mmdc` on PATH, or MIRZAM_MMDC pointing at it. Without
           one the fence stays a code block and the build says so; no browser
           is ever required for an ordinary build
-  serve   development server with hot reload (default port 4321)
+  serve   development server with hot reload (default port 4321), bound to
+          127.0.0.1. `--host 0.0.0.0` puts it on the network as well, which
+          is how another device - a phone - opens the deck while you edit it;
+          the address to type there is printed at startup
   export  render a PDF, a PowerPoint file or a video with headless Chromium
           (also honors MIRZAM_CHROMIUM). Takes a Markdown source, not a built
           `out/index.html` - re-parsing already-rendered HTML as Markdown

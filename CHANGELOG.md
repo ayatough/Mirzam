@@ -33,6 +33,63 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   opening machine has, so a box is given a little room for a wider face,
   a label that fit on one line is kept on one line, and the sample decks
   were checked in a substituted font.
+- **A deck fills a phone's screen.** The control cluster carries a `⛶` button
+  beside the others (`F` from a keyboard): the deck takes the whole screen,
+  drops the margin, corner radius and shadow it wears as a page on a desk, and
+  asks a phone to turn sideways with it — a landscape slide inside a portrait
+  screen being the whole reason a deck reads small there. A deck launched from
+  the home screen goes edge to edge for the same reason and by the same rule.
+  Where a browser has no full screen to give — Safari on an iPhone offers it to
+  video and to nothing else — the button stays hidden and the shortcut sheet
+  names the way that does work: *Add to Home Screen*, which the built page now
+  declares itself capable of, and which opens the deck with no address bar and
+  no toolbar over it. The page also asks for the screen past a notch
+  (`viewport-fit=cover`) with the controls stepping around the cutout and the
+  home indicator, refits itself when a mobile viewport moves without a resize
+  event (the address bar retracting, the screen turning) but not while a reader
+  is pinch-zooming.
+- **The control cluster collapses on a narrow phone.** Six touch-sized buttons
+  and a page counter are wider than a 320px screen — seven with
+  `--embed-source` — so held upright the row keeps what a reader reaches for
+  while reading, the page turns and `⛶`, and a `⋯` button opens the rest (all
+  slides, the colour mode, the Markdown panel, the shortcut sheet) in a column
+  above the cluster. Using one closes it, as does a tap anywhere else, a page
+  turn or `Escape`. They are the same buttons either way — only the menu
+  wrapper's `display` changes — so every handler, label and keyboard
+  equivalent is unchanged, and on any wider screen, a phone turned sideways
+  included, the whole row is on show and `⋯` is not there at all.
+- **`mirzam serve --host <addr>`.** The development server has always bound
+  `127.0.0.1`, which is right for the machine you are editing on and is why a
+  phone on the same network could not open the preview at all. `--host
+  0.0.0.0` puts it on the network as well and prints the address to type
+  there, along with what opening the port means: anyone who can reach it can
+  read the deck. Nothing changes without the flag — the default is still
+  loopback — and the deck is all the server has to give, every other path
+  being a 404 and a built deck carrying its assets inside it.
+
+- **A label too long for its shape is now a finding.** A `shape` label is one
+  centred SVG text element and never wraps, so a label longer than its rect
+  or ellipse was drawn straight out of the box — nothing clipped, nothing
+  scrolled, and `mirzam check` passed the slide. The agent-context report
+  below surfaced the gap while probing what the checker cannot see, and this
+  member of the drawn-but-wrong family turned out to be checkable: the
+  in-page check now compares each label's rendered box against its shape's
+  and reports `layout.label`, an error like the rest of the layout family.
+  The sample decks all pass; a fitting label and a standalone `text` shape
+  (which has no box to overflow) are not reported.
+
+- **The agent's feedback loop, priced.** `scripts/bench-agent-context.py`
+  measures what a layout-fix loop costs an LLM agent in context tokens:
+  the real `mirzam check --format json` payload at every fix round against
+  one screenshot per slide under the published vision-token formula. The
+  first run, and a paired live run of two agents fixing the same seeded
+  deck through one channel each, are written up in
+  [docs/reports/2026-08-agent-context.md](docs/reports/2026-08-agent-context.md):
+  the JSON payload stays ~370 tokens per round whether the deck is 10
+  slides or 100, where a screenshot sweep is 41× that at 10 slides and
+  406× at 100 — and the live screenshot agent paid 100× more on the
+  feedback channel to reach the same clean deck two rounds slower.
+
 - **`mirzam export video` films the deck as a WebM.** The deck plays itself —
   the built page, viewer and all, running under autoplay in a headless
   Chromium — while the recorder films it at 1920px wide: click steps play
@@ -103,6 +160,18 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   [hayro]: https://github.com/LaurenzV/hayro
 
 ### Fixed
+- **A deck went fullscreen and came straight back out.** The page turn that
+  closes an expanded widget — a chart blown up to the screen belongs to the
+  slide it was expanded on, and a page turn ends it — recognised that widget
+  as "the fullscreen element is not inside the active slide", which is also
+  true of the whole page in fullscreen. So `F` (and now the `⛶` button) entered
+  fullscreen and the next repaint shut it again, in Chrome and in every other
+  browser with a Fullscreen API. Only a widget is closed now; the deck filling
+  the screen survives every page turn. The `⛶` button also asks
+  `document.fullscreenEnabled` rather than merely whether the method exists, so
+  in a frame that is refused fullscreen by permissions policy — an editor's
+  preview pane, an embedding page without `allowfullscreen` — it stays hidden
+  instead of doing nothing when pressed.
 - **`import pdf`, held against a real paper.** The command was written against
   a fixture and a handful of PDFs. Run over a two-column IEEE paper set in
   Type 1 fonts — 12 floats, half of them tables — it found 13 figures where

@@ -71,6 +71,7 @@ your `PATH`.)
 ```bash
 mirzam new deck.md                   # a deck to start from
 mirzam serve deck.md                 # live preview at localhost:4321
+mirzam serve deck.md --host 0.0.0.0  # ...and on the network, for a phone to open
 mirzam build deck.md -o out          # one self-contained HTML file
 mirzam export pdf deck.md -o deck.pdf
 mirzam export pptx deck.md           # PowerPoint: editable text, shapes, tables, notes
@@ -271,6 +272,44 @@ away from your machine.
   the page, swipe up for notes, two-finger tap for the shortcut sheet.
 - **Presenting from it:** the deck is one file, so AirDrop or a cloud folder is
   the entire deployment step.
+
+### Making it readable
+
+A slide is a landscape rectangle and a phone held upright is not, so a deck
+opened in a tab is a strip across the middle of the screen with the address
+bar above it and the toolbar below. Three ways out, in the order they help:
+
+- **Tap ⛶ in the controls.** The deck takes the whole screen, drops the margin
+  and the shadow it wears on a desk, and — on a phone, where a landscape slide
+  in a portrait screen is the whole problem — asks the screen to turn sideways
+  with it. `F` does the same from a keyboard. The button is there when the
+  browser offers full screen at all; Safari on an iPhone does not, which is
+  what the next one is for.
+- **Turn the phone sideways.** Nothing to press, and it is most of the gain:
+  the slide's shape and the screen's finally agree. In landscape both mobile
+  browsers also shrink their own bars.
+- **Add it to the home screen** (iPhone: Share → *Add to Home Screen*). Opened
+  from there the deck runs with no address bar and no toolbar — the only full
+  screen an iPhone has. It needs the deck at an `http(s)` address rather than
+  as a file: publish it, put it behind any share link that opens in a browser,
+  or serve it from your own machine —
+
+  ```bash
+  mirzam serve deck.md --host 0.0.0.0
+  ```
+
+  which prints the address to type on the phone. Loopback is still the
+  default; `--host` is the deliberate act that puts the deck on the network,
+  and while it is up anyone who can reach that address can read the deck.
+  Hot reload comes with it, so the phone follows the edits.
+
+A phone held upright has room for the page turns and **⛶**; the rest of the
+controls — all slides, the colour mode, the shortcut sheet — sit behind **⋯**,
+which opens them in a column above the cluster. Sideways, or on anything
+wider, they are all on the row and **⋯** is not there at all.
+
+The shortcut sheet — two-finger tap, or the **?** button — names whichever of
+these the browser you are holding can do.
 
 ## 7. With a coding agent
 

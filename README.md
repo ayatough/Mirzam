@@ -156,6 +156,7 @@ mirzam new deck.md                   # a deck to start from (--empty for a blank
 mirzam build deck.md -o out          # single self-contained HTML
 mirzam build README.md --split h2    # any document becomes a deck, unedited
 mirzam serve deck.md                 # live preview at localhost:4321
+mirzam serve deck.md --host 0.0.0.0  # ...and on the network, for a phone to open
 mirzam export pdf deck.md -o deck.pdf
 mirzam export video deck.md          # the autoplay loop as a YouTube-ready WebM
 mirzam check deck.md                 # clipped panes, unresolved connectors, and the rest
@@ -183,7 +184,12 @@ any slide there is one keypress away.
 On a phone, swipe to turn the page, swipe up for notes, and two-finger tap for
 the same sheet — the long press is left alone, because that is how you select
 text. The controls below the bottom-right corner are the rest: page turns, the
-colour mode, that sheet, and `</>` for the Markdown behind the slide.
+colour mode, that sheet, `</>` for the Markdown behind the slide, and `⛶` for
+the whole screen — the deck fills it, sheds its margin, and asks a phone to
+turn sideways with it. Held upright, a phone has room for the page turns and
+`⛶`; `⋯` holds the rest. Where a browser has no full screen to give (Safari on an
+iPhone), add the deck to the home screen and open it from there instead:
+[quickstart](docs/quickstart.md#making-it-readable).
 
 A slide that doesn't fit, markup that shows up as literal text, or a build
 warning you don't recognise — see [docs/troubleshooting.md](docs/troubleshooting.md).

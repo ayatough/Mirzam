@@ -202,6 +202,45 @@ fn a_broken_deck_reports_both_passes_with_source_locations() {
     assert_eq!(clipped["pane"], "body");
 }
 
+/// A label is one centred SVG `<text>` and never wraps, so one longer than
+/// its shape is drawn straight out of the box - nothing clips, nothing
+/// scrolls, and only geometry comparison sees it. The fitting label on the
+/// second shape is the other half of the assertion: the check must not cry
+/// wolf on every labelled box.
+const LABEL_OVERFLOW: &str = r#"---
+title: Label overflow
+---
+
+# One slide
+
+```shape
+rect    #tight at(30%, 50%) size(12%, 10%) label="A label far too long for the little box it was asked to sit inside"
+ellipse #fits  at(70%, 50%) size(30%, 20%) label="Fits"
+text    #cap   at(50%, 90%) "a standalone text has no box to overflow"
+```
+"#;
+
+#[test]
+fn a_label_wider_than_its_shape_is_reported() {
+    if !chromium_available() {
+        eprintln!("skipping: no Chromium; set MIRZAM_CHROMIUM to run this test");
+        return;
+    }
+    let dir = TempDir::new("label");
+    let deck = dir.deck("label.md", LABEL_OVERFLOW);
+    let (report, ok) = check_json(&deck);
+
+    assert!(!ok, "an overflowing label fails the run");
+    assert_eq!(report["ok"], false);
+    let found = kinds(&report);
+    assert_eq!(
+        found.iter().filter(|k| *k == "layout.label").count(),
+        1,
+        "exactly one label overflows - the fitting one and the standalone \
+         text must not be reported: {found:?}"
+    );
+}
+
 #[test]
 fn a_clean_deck_still_writes_a_document() {
     if !chromium_available() {
