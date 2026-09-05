@@ -67,6 +67,7 @@ cargo install --path crates/mirzam-cli --bin mirzam   # ~/.cargo/bin へ
 ```bash
 mirzam new deck.md                   # 書き始めるためのデッキを 1 枚
 mirzam serve deck.md                 # localhost:4321 でライブプレビュー
+mirzam serve deck.md --host 0.0.0.0  # 同じネットワークからも見られる（スマホ用）
 mirzam build deck.md -o out          # 自己完結 HTML 1 枚
 mirzam export pdf deck.md -o deck.pdf
 mirzam build notes.md --split h2     # 普通の文書をそのままデッキに
@@ -155,7 +156,16 @@ Mirzam に Obsidian プラグインはありません。**書く**だけなら�
 - **ホーム画面に追加する**（iPhone: 共有 →「ホーム画面に追加」）。そこから開いた
   デッキはアドレスバーもツールバーもない状態で起動します——iPhone における唯一の
   フルスクリーンです。ファイルではなく `http(s)` の URL に置く必要があるので、公開
-  するか、ブラウザで開ける共有リンクを用意してください。
+  するか、ブラウザで開ける共有リンクを用意するか、手元のマシンから配ってください:
+
+  ```bash
+  mirzam serve deck.md --host 0.0.0.0
+  ```
+
+  起動時にスマホで入力するアドレスが表示されます。既定はこれまでどおりループ
+  バックのみで、`--host` を渡したときだけネットワークに出ます（その間、そのアドレス
+  に到達できる人は誰でもデッキを読めます）。ホットリロードも効くので、編集が
+  そのままスマホに反映されます。
 
 縦持ちのスマホに収まるのはページ送りと **⛶** までです。残り（全スライド一覧・
 配色の切り替え・ショートカット一覧）は **⋯** の中にあり、タップするとコントロールの

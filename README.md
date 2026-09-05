@@ -156,6 +156,7 @@ mirzam new deck.md                   # a deck to start from (--empty for a blank
 mirzam build deck.md -o out          # single self-contained HTML
 mirzam build README.md --split h2    # any document becomes a deck, unedited
 mirzam serve deck.md                 # live preview at localhost:4321
+mirzam serve deck.md --host 0.0.0.0  # ...and on the network, for a phone to open
 mirzam export pdf deck.md -o deck.pdf
 mirzam export video deck.md          # the autoplay loop as a YouTube-ready WebM
 mirzam check deck.md                 # clipped panes, unresolved connectors, and the rest

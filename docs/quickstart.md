@@ -71,6 +71,7 @@ your `PATH`.)
 ```bash
 mirzam new deck.md                   # a deck to start from
 mirzam serve deck.md                 # live preview at localhost:4321
+mirzam serve deck.md --host 0.0.0.0  # ...and on the network, for a phone to open
 mirzam build deck.md -o out          # one self-contained HTML file
 mirzam export pdf deck.md -o deck.pdf
 mirzam export pptx deck.md           # PowerPoint: slide pictures + real notes
@@ -284,8 +285,17 @@ bar above it and the toolbar below. Three ways out, in the order they help:
 - **Add it to the home screen** (iPhone: Share → *Add to Home Screen*). Opened
   from there the deck runs with no address bar and no toolbar — the only full
   screen an iPhone has. It needs the deck at an `http(s)` address rather than
-  as a file: publish it, or put it behind any share link that opens in a
-  browser.
+  as a file: publish it, put it behind any share link that opens in a browser,
+  or serve it from your own machine —
+
+  ```bash
+  mirzam serve deck.md --host 0.0.0.0
+  ```
+
+  which prints the address to type on the phone. Loopback is still the
+  default; `--host` is the deliberate act that puts the deck on the network,
+  and while it is up anyone who can reach that address can read the deck.
+  Hot reload comes with it, so the phone follows the edits.
 
 A phone held upright has room for the page turns and **⛶**; the rest of the
 controls — all slides, the colour mode, the shortcut sheet — sit behind **⋯**,

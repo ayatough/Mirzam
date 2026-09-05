@@ -61,8 +61,10 @@ in portrait that is a strip across the middle of the screen.
 On a phone held upright the row keeps the page turns and **⛶**; **⋯** opens the
 rest. The **⛶** button is only there when the browser offers full screen at all, so
 on an iPhone the third row is the answer; it needs the deck at an `http(s)`
-address rather than as a file. The shortcut sheet — two-finger tap, or **?** —
-names whichever of these the browser you are holding can do.
+address rather than as a file — publish it, or run
+`mirzam serve deck.md --host 0.0.0.0` and type the address it prints. The
+shortcut sheet — two-finger tap, or **?** — names whichever of these the
+browser you are holding can do.
 
 ## Something rendered as literal text instead of the feature you wrote
 

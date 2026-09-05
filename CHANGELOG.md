@@ -33,6 +33,14 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   wrapper's `display` changes — so every handler, label and keyboard
   equivalent is unchanged, and on any wider screen, a phone turned sideways
   included, the whole row is on show and `⋯` is not there at all.
+- **`mirzam serve --host <addr>`.** The development server has always bound
+  `127.0.0.1`, which is right for the machine you are editing on and is why a
+  phone on the same network could not open the preview at all. `--host
+  0.0.0.0` puts it on the network as well and prints the address to type
+  there, along with what opening the port means: anyone who can reach it can
+  read the deck. Nothing changes without the flag — the default is still
+  loopback — and the deck is all the server has to give, every other path
+  being a 404 and a built deck carrying its assets inside it.
 
 ### Fixed
 - **A deck went fullscreen and came straight back out.** The page turn that

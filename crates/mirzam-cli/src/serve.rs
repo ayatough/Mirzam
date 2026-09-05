@@ -11,6 +11,16 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 
+/// Whether an address keeps the server to this machine. Names are not resolved
+/// here: `localhost` is the one that matters and the rest are addresses, so a
+/// hostname that happens to point at loopback simply gets the louder message.
+fn is_loopback(host: &str) -> bool {
+    host == "localhost"
+        || host
+            .parse::<std::net::IpAddr>()
+            .is_ok_and(|ip| ip.is_loopback())
+}
+
 const POLL_INTERVAL: Duration = Duration::from_millis(200);
 const LONG_POLL_TIMEOUT: Duration = Duration::from_secs(25);
 const HISTORY_LIMIT: usize = 64;
@@ -31,7 +41,19 @@ struct Shared {
     changed: Condvar,
 }
 
-pub fn serve(input: &Path, port: u16) -> Result<(), String> {
+/// The address a phone on the same network would have to be told. No packet
+/// is sent: connecting a UDP socket only asks the kernel which interface would
+/// carry one, and the answer is the address that interface holds. A machine
+/// with no route out answers with an error, and the caller then names the
+/// bound address alone. The destination is from RFC 5737's documentation
+/// range, so it names no real host even in a routing table.
+fn network_address() -> Option<std::net::IpAddr> {
+    let sock = std::net::UdpSocket::bind(("0.0.0.0", 0)).ok()?;
+    sock.connect(("192.0.2.1", 80)).ok()?;
+    sock.local_addr().ok().map(|a| a.ip())
+}
+
+pub fn serve(input: &Path, host: &str, port: u16) -> Result<(), String> {
     let mut cache: RenderCache = HashMap::new();
     let first = build_deck(input, &mut cache)?;
     for w in &first.warnings {
@@ -80,9 +102,20 @@ pub fn serve(input: &Path, port: u16) -> Result<(), String> {
         });
     }
 
-    let server = tiny_http::Server::http(("127.0.0.1", port))
-        .map_err(|e| format!("cannot listen on port {port}: {e}"))?;
+    let server = tiny_http::Server::http((host, port))
+        .map_err(|e| format!("cannot listen on {host}:{port}: {e}"))?;
     println!("▶ serving http://localhost:{port} with hot reload (Ctrl-C to stop)");
+    // Bound past loopback on purpose - `--host` is the only way to get here -
+    // so the address another device would use is worth printing, along with
+    // what opening the port means. The deck is all this server has: every
+    // other path is a 404, and a built deck carries its assets inside it.
+    if !is_loopback(host) {
+        match network_address() {
+            Some(ip) => println!("  on this network: http://{ip}:{port}"),
+            None => println!("  on this network: port {port} on this machine's address"),
+        }
+        println!("  anyone who can reach it can read the deck");
+    }
 
     for request in server.incoming_requests() {
         let shared = Arc::clone(&shared);
@@ -242,4 +275,23 @@ fn json_response(body: String) -> tiny_http::Response<std::io::Cursor<Vec<u8>>> 
         tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..])
             .expect("static header"),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_loopback;
+
+    /// The quiet default and every spelling of it: bound to one of these, the
+    /// server is this machine's own and says nothing about the network. Get
+    /// this wrong in the other direction and `mirzam serve` starts announcing
+    /// a LAN address for a port nothing outside can reach.
+    #[test]
+    fn loopback_addresses_are_recognised() {
+        for host in ["127.0.0.1", "localhost", "127.0.0.53", "::1"] {
+            assert!(is_loopback(host), "{host} is loopback");
+        }
+        for host in ["0.0.0.0", "::", "192.168.1.23", "10.0.0.7", "example.test"] {
+            assert!(!is_loopback(host), "{host} is not loopback");
+        }
+    }
 }
