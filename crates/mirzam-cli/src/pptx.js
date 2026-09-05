@@ -681,7 +681,10 @@
     const st = cs(el);
     if (tag === 'ul' || tag === 'ol') { listParagraphs(el, entries, ctx, opts.level || 0); return; }
     if (!opts.skipPaint) emitPaint(el, st, paintOf(el, st), ctx);
+    // A link laid out as a block — a contents entry — carries its target
+    // down to its words the same as one in a line would.
     const inner = { ...ctx, op: ctx.op * px(st.opacity) };
+    if (tag === 'a' && el.getAttribute('href')) inner.href = el.getAttribute('href');
     let segment = [];
     let first = true;
     // A numbered code line: the counter its `::before` draws, padded to the
@@ -954,6 +957,7 @@
     if (hidden(el, st)) return;
     if (st.display === 'contents') { for (const n of kids(el)) if (n.nodeType === 1) visit(n, ctx); return; }
     const inner = { ...ctx, op: ctx.op * px(st.opacity) };
+    if (tag === 'a' && el.getAttribute('href')) inner.href = el.getAttribute('href');
     if (tag === 'img') { emitImage(el, inner); return; }
     if (RASTER_TAGS.has(tag)) { emitRaster(el, 'tree', inner, 'png'); return; }
     if (tag === 'table') { emitPaint(el, st, paintOf(el, st), inner); emitTable(el, inner); return; }

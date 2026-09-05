@@ -32,7 +32,10 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   What stays honest: the file is only as faithful as the fonts the
   opening machine has, so a box is given a little room for a wider face,
   a label that fit on one line is kept on one line, and the sample decks
-  were checked in a substituted font.
+  were checked in a substituted font. The limits that remain — fonts named
+  rather than embedded, formulas and charts as pictures, no motion, no
+  connectors — are written down in the quick start, with `--pictures` as
+  the way around all of them. A link to another slide jumps to it.
 - **A deck fills a phone's screen.** The control cluster carries a `⛶` button
   beside the others (`F` from a keyboard): the deck takes the whole screen,
   drops the margin, corner radius and shadow it wears as a page on a desk, and

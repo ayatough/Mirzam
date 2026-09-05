@@ -596,19 +596,29 @@ fn align_attr(a: Align) -> &'static str {
 }
 
 /// Hyperlinks a slide's runs point at, each given a relationship id once.
+/// A link to another slide of the deck (`#3`, as the table of contents and
+/// a citation write them) becomes a jump to that slide rather than a URL.
 #[derive(Default)]
 struct Links {
     ids: HashMap<String, String>,
     order: Vec<String>,
     next: usize,
+    slide_count: usize,
 }
 
 impl Links {
-    fn new(first_id: usize) -> Links {
+    fn new(first_id: usize, slide_count: usize) -> Links {
         Links {
             next: first_id,
+            slide_count,
             ..Default::default()
         }
+    }
+
+    /// The slide a `#n` link names, when the deck has one.
+    fn slide_target(&self, href: &str) -> Option<usize> {
+        let n: usize = href.strip_prefix('#')?.parse().ok()?;
+        (n >= 1 && n <= self.slide_count).then_some(n)
     }
 
     fn id_for(&mut self, href: &str) -> String {
@@ -665,7 +675,14 @@ fn run_props_xml(r: &TextRun, links: &mut Links) -> String {
     }
     if let Some(href) = r.href.as_deref().filter(|h| !h.is_empty()) {
         let id = links.id_for(href);
-        let _ = write!(s, "<a:hlinkClick r:id=\"{id}\"/>");
+        if links.slide_target(href).is_some() {
+            let _ = write!(
+                s,
+                "<a:hlinkClick r:id=\"{id}\" action=\"ppaction://hlinksldjump\"/>"
+            );
+        } else {
+            let _ = write!(s, "<a:hlinkClick r:id=\"{id}\"/>");
+        }
     }
     s.push_str("</a:rPr>");
     s
@@ -1031,6 +1048,7 @@ fn rels(entries: &[Rel]) -> String {
 fn slide_xml(
     slide: &Slide,
     number: usize,
+    slide_count: usize,
     media_rel: &HashMap<u32, (String, String)>,
 ) -> (String, Vec<Rel>) {
     let mut rels_out = vec![rel("rId1", REL_LAYOUT, "../slideLayouts/slideLayout1.xml")];
@@ -1059,7 +1077,7 @@ fn slide_xml(
             }
         }
     }
-    let mut links = Links::new(next_rel);
+    let mut links = Links::new(next_rel, slide_count);
     for node in &slide.nodes {
         match node {
             Node::Shape(sh) => {
@@ -1081,9 +1099,18 @@ fn slide_xml(
         }
     }
     for href in &links.order {
-        let mut r = rel(links.ids[href].clone(), REL_HYPERLINK, href.clone());
-        r.external = true;
-        rels_out.push(r);
+        match links.slide_target(href) {
+            Some(n) => rels_out.push(rel(
+                links.ids[href].clone(),
+                REL_SLIDE,
+                format!("slide{n}.xml"),
+            )),
+            None => {
+                let mut r = rel(links.ids[href].clone(), REL_HYPERLINK, href.clone());
+                r.external = true;
+                rels_out.push(r);
+            }
+        }
     }
     let bg = match &slide.background {
         Some(c) if c.alpha > 0.0 => format!(
@@ -1293,7 +1320,7 @@ pub fn package(w: u32, h: u32, slides: &[Slide], media: &HashMap<u32, Media>) ->
     // The slides, their pictures, and the notes beside them.
     for (i, slide) in slides.iter().enumerate() {
         let i = i + 1;
-        let (xml, slide_rels) = slide_xml(slide, i, &media_rel);
+        let (xml, slide_rels) = slide_xml(slide, i, n, &media_rel);
         files.push((format!("ppt/slides/slide{i}.xml"), text(xml)));
         files.push((
             format!("ppt/slides/_rels/slide{i}.xml.rels"),
@@ -1471,6 +1498,7 @@ mod tests {
                 ..Default::default()
             },
             1,
+            1,
             &HashMap::new(),
         );
         // 10px is 95250 EMU; 24px is 18pt, which is 1800 hundredths.
@@ -1507,7 +1535,7 @@ mod tests {
             radius: 12.0,
             ..Default::default()
         };
-        let xml = shape_xml(&sh, 2, &mut Links::new(1));
+        let xml = shape_xml(&sh, 2, &mut Links::new(1, 1));
         assert!(xml.contains("<a:srgbClr val=\"ABCDEF\"><a:alpha val=\"50000\"/></a:srgbClr>"));
         assert!(xml.contains("<a:ln w=\"19050\">"));
         // 12px of 100px short side: adj is 12000 of 100000.
@@ -1541,7 +1569,7 @@ mod tests {
             }),
             ..Default::default()
         };
-        let xml = shape_xml(&sh, 2, &mut Links::new(1));
+        let xml = shape_xml(&sh, 2, &mut Links::new(1, 1));
         assert!(xml.contains("<a:prstGeom prst=\"line\">"));
         assert!(xml.contains("<a:prstDash val=\"sysDot\"/>"));
         assert!(xml.contains("<a:ext cx=\"952500\" cy=\"0\"/>"));
@@ -1574,7 +1602,7 @@ mod tests {
             }),
             ..Default::default()
         };
-        let xml = shape_xml(&sh, 2, &mut Links::new(1));
+        let xml = shape_xml(&sh, 2, &mut Links::new(1, 1));
         // 90deg in CSS is left to right, which is DrawingML's angle zero.
         assert!(xml.contains("<a:lin ang=\"0\" scaled=\"0\"/>"));
         assert!(xml.contains("<a:gs pos=\"0\"><a:srgbClr val=\"6557D9\"/></a:gs>"));
@@ -1624,7 +1652,7 @@ mod tests {
             })],
             ..Default::default()
         };
-        let (xml, slide_rels) = slide_xml(&slide, 1, &HashMap::new());
+        let (xml, slide_rels) = slide_xml(&slide, 1, 1, &HashMap::new());
         assert!(xml.contains("marL=\"381000\" indent=\"-190500\" lvl=\"1\""));
         assert!(xml.contains("<a:buChar char=\"•\"/>"));
         assert!(xml.contains("<a:buClr><a:srgbClr val=\"FF0000\"/></a:buClr>"));
@@ -1644,6 +1672,42 @@ mod tests {
     }
 
     #[test]
+    fn a_link_to_another_slide_jumps_there() {
+        let jump = |href: &str, count: usize| {
+            let slide = Slide {
+                nodes: vec![Node::Shape(Shape {
+                    text: Some(TextBody {
+                        paragraphs: vec![Paragraph {
+                            runs: vec![Run::Text(TextRun {
+                                text: "contents".into(),
+                                href: Some(href.into()),
+                                ..Default::default()
+                            })],
+                            ..Default::default()
+                        }],
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                })],
+                ..Default::default()
+            };
+            slide_xml(&slide, 1, count, &HashMap::new())
+        };
+        let (xml, rels) = jump("#3", 5);
+        assert!(xml.contains("action=\"ppaction://hlinksldjump\""));
+        let r = rels.iter().find(|r| r.ty == REL_SLIDE).unwrap();
+        assert_eq!(r.target, "slide3.xml");
+        assert!(!r.external);
+        // A slide the deck does not have, or an anchor that is not a
+        // number, stays an ordinary link.
+        let (xml, rels) = jump("#9", 5);
+        assert!(!xml.contains("hlinksldjump"));
+        assert!(rels.iter().any(|r| r.ty == REL_HYPERLINK && r.external));
+        let (xml, _) = jump("#refs", 5);
+        assert!(!xml.contains("hlinksldjump"));
+    }
+
+    #[test]
     fn run_properties_cover_the_inline_marks() {
         let r = TextRun {
             text: "x".into(),
@@ -1658,7 +1722,7 @@ mod tests {
             highlight: Some(color("eeeeee")),
             ..Default::default()
         };
-        let xml = run_props_xml(&r, &mut Links::new(1));
+        let xml = run_props_xml(&r, &mut Links::new(1, 1));
         for attr in [
             "sz=\"1200\"",
             "b=\"1\"",
@@ -1728,7 +1792,7 @@ mod tests {
             ],
             ..Default::default()
         };
-        let xml = table_xml(&table, 2, &mut Links::new(1));
+        let xml = table_xml(&table, 2, &mut Links::new(1, 1));
         assert!(xml.contains("<a:gridCol w=\"952500\"/><a:gridCol w=\"952500\"/>"));
         assert_eq!(xml.matches("<a:tr h=\"285750\">").count(), 2);
         assert!(xml.contains("<a:tc gridSpan=\"2\">"));

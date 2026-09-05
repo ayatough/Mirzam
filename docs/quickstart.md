@@ -101,6 +101,47 @@ machine lacks wraps a little differently. `--pictures` writes the older
 form instead — one picture per slide, pixel-identical and uneditable — for
 the room that must see exactly what the browser drew.
 
+### What the PowerPoint file cannot carry
+
+The HTML deck is the deck; the `.pptx` is a translation, and a few things
+do not translate. These are limits of the format and of what a file can
+contain, not bugs to wait on — and `--pictures` sidesteps every one of them
+at the cost of editability.
+
+- **Fonts.** The file names the faces the theme asks for (Inter and Space
+  Grotesk for the built-in theme) and embeds none of them, as the HTML deck
+  itself does not. A machine without them substitutes, and a substituted
+  face is a little wider or narrower, so a line may wrap one word earlier or
+  later. The export gives every box some room and keeps a one-line label on
+  one line, but it cannot know which face will open the file. Installing
+  the theme's fonts on the presenting machine makes the two match.
+- **Formulas.** A block formula is a picture of the browser's rendering, in
+  the maths face, at twice the slide's resolution: it cannot be edited and
+  softens when zoomed. An inline formula simple enough to be words — a
+  subscript, a superscript, `χ = g²/Δ` — is written as words in the body
+  face, so it stays in the line and can be edited but no longer looks set in
+  a maths font. Anything with a fraction, a root or a matrix inline is a
+  picture too.
+- **Charts, shapes and diagrams.** A `chart`, a `shape` block, a Mermaid
+  graph and an imported figure are SVG on the slide and pictures in the
+  file: the bars cannot be recoloured and the marks have no ids. Elements
+  on top of them keep their place, since the layout is the browser's.
+- **Motion and media.** Nothing moves. Click steps, `anim` timelines,
+  effects, transitions and autoplay dwells are not in the file — every
+  slide shows its finished state. A video becomes its poster frame, an
+  audio player a picture of the player, an embedded page or a hosted video
+  its placeholder; an animated GIF goes in as a GIF, which PowerPoint plays.
+  A `connect` arrow is routed by the viewer at show time and is not drawn.
+- **Smaller things.** A box shadow is dropped; a gradient that is not a
+  plain linear one is photographed; text that a pane clips in the browser
+  is not clipped in the file; speaker notes arrive as plain text without
+  their emphasis; a link to another slide jumps to it, any other link opens
+  in the browser.
+
+Line placement follows the way PowerPoint and Impress set exact line
+spacing, and was checked against LibreOffice Impress; Google Slides and
+Keynote open the same OOXML but have not been checked.
+
 `export video` films the deck the way [autoplay](syntax.md#the-deck-playing-itself)
 plays it — literally: the built deck runs in a headless browser while the
 export records it, so click steps play out, the deck's `transition:` draws
