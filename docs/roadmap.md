@@ -100,6 +100,15 @@ of the page turn, does not read as the component travelling. It stays Next,
 with that as the bar. The reasoning behind the rest of the current queue is in
 the [post-v0.9 plan](reports/2026-08-v0.10-plan.md).
 
+What comes after that queue is argued in the
+[September 2026 roadmap review](reports/2026-09-roadmap-review.md): three
+research passes over the field a month on, the finding that the product is
+further along than its audience, and a proposed order — publish and reach
+first (marketplaces, an MCP server, SARIF and a GitHub Action, the comparison
+page); then the outputs institutions require (template-faithful PPTX, a
+tagged PDF, a poster) and a widened `check`; then a frozen markup for `1.0`.
+Nothing in the table above moves until that is decided.
+
 ### Measured performance
 
 Release build, from the standing benchmark, on the machine

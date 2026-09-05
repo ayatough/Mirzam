@@ -8,6 +8,14 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- **A roadmap review, a month in.**
+  [docs/reports/2026-09-roadmap-review.md](docs/reports/2026-09-roadmap-review.md)
+  reads the field again — the Markdown and Typst tools, the AI-native products
+  and the agent ecosystems, the Japanese and academic communities — and finds
+  the bet confirmed (measured layout is what the agent world converged on),
+  the moat narrowing (Marp's overflow diagnostic, Slidev's MCP server, PPTX
+  linters from the outside), and the reach at zero. It proposes the next
+  three releases in that order: findable, accepted, frozen.
 - **`mirzam export pptx` writes the words, not a picture of them.** Every
   heading, paragraph, list, code block and table on a slide is now a real
   PowerPoint object — text boxes in the font, size and colour the browser
