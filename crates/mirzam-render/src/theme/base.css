@@ -1140,6 +1140,32 @@ html.mz-no-chrome #chrome { display: none; }
   #controls { gap: 8px; opacity: 1; pointer-events: auto; }
   #controls button { width: 42px; height: 42px; font-size: 18px; }
 }
+/* Wide enough for the whole row: `⋯` has nothing to hold, and the menu is a
+   wrapper the layout does not see - its buttons sit in the row exactly as they
+   did before there was a menu to put them in. */
+#mz-more { display: none; }
+#mz-menu { display: contents; }
+/* A phone in portrait cannot hold the cluster. Six touch-sized buttons and a
+   page counter are wider than a 320px screen - seven with `--embed-source` -
+   and the row either ran off the screen or wrapped onto two, which is chrome
+   drawn over a slide that is already small. So the row keeps what a reader
+   reaches for while reading - the page turns and the screen - and `⋯` holds
+   the rest, in a column above the cluster.
+   The buttons in that column are the same buttons: only the wrapper's `display`
+   changes, so every handler, label and keyboard equivalent is the one that was
+   already there, and a control the deck has no use for stays `hidden` in the
+   menu exactly as it would in the row. */
+@media (pointer: coarse) and (max-width: 480px) {
+  #mz-more { display: inline-block; }
+  #mz-menu { display: none; }
+  #chrome.mz-more-open #mz-menu {
+    display: flex; flex-direction: column; gap: 8px;
+    position: absolute; right: 6px; bottom: calc(100% + 8px);
+    padding: 6px;
+    background: var(--mz-ui-chip);
+    border: 1px solid var(--mz-ui-line); border-radius: 12px;
+  }
+}
 #controls button:hover { background: var(--mz-ui-bg); }
 #controls button:active { transform: translateY(1px); }
 

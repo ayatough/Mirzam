@@ -287,6 +287,11 @@ bar above it and the toolbar below. Three ways out, in the order they help:
   as a file: publish it, or put it behind any share link that opens in a
   browser.
 
+A phone held upright has room for the page turns and **⛶**; the rest of the
+controls — all slides, the colour mode, the shortcut sheet — sit behind **⋯**,
+which opens them in a column above the cluster. Sideways, or on anything
+wider, they are all on the row and **⋯** is not there at all.
+
 The shortcut sheet — two-finger tap, or the **?** button — names whichever of
 these the browser you are holding can do.
 

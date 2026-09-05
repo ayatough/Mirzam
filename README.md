@@ -185,7 +185,8 @@ the same sheet — the long press is left alone, because that is how you select
 text. The controls below the bottom-right corner are the rest: page turns, the
 colour mode, that sheet, `</>` for the Markdown behind the slide, and `⛶` for
 the whole screen — the deck fills it, sheds its margin, and asks a phone to
-turn sideways with it. Where a browser has no full screen to give (Safari on an
+turn sideways with it. Held upright, a phone has room for the page turns and
+`⛶`; `⋯` holds the rest. Where a browser has no full screen to give (Safari on an
 iPhone), add the deck to the home screen and open it from there instead:
 [quickstart](docs/quickstart.md#making-it-readable).
 

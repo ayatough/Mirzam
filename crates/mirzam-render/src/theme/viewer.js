@@ -576,6 +576,10 @@
   const FULL_ROW = CAN_FULL
     ? [['⛶ button'], 'Fill the screen — and turn it sideways']
     : [['Add to Home Screen'], 'Opens with no address bar at all'];
+  // The same question the stylesheet asks before collapsing the cluster. Read
+  // when the sheet is drawn rather than once at load, because a phone turned
+  // sideways answers it differently.
+  const NARROW = matchMedia('(pointer: coarse) and (max-width: 480px)');
   const TOUCH = ['Touch', [
     [['⊞ button'], 'All slides — tap one to go there'],
     [['Swipe ←', 'Swipe →'], 'Next / previous'],
@@ -585,6 +589,7 @@
     [['Long press'], 'Select text, as anywhere else'],
   ]];
   if (!STANDALONE) TOUCH[1].push(FULL_ROW);
+  const MORE_ROW = [['⋯ button'], 'The controls the row has no room for'];
   const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
   const row = (keys, what) =>
     `<dt>${keys.map((k) => `<kbd>${esc(k)}</kbd>`).join('')}</dt><dd>${esc(what)}</dd>`;
@@ -604,7 +609,10 @@
   }
 
   function renderKeys() {
-    const groups = (COARSE ? [TOUCH, ...KEYS] : KEYS).map(([name, rows]) =>
+    // First on a narrow phone, because it is the row that says where the
+    // other buttons went.
+    const touch = [TOUCH[0], NARROW.matches ? [MORE_ROW, ...TOUCH[1]] : TOUCH[1]];
+    const groups = (COARSE ? [touch, ...KEYS] : KEYS).map(([name, rows]) =>
       `<h4>${name}</h4><dl>${rows.map(([k, w]) => row(k, w)).join('')}</dl>`).join('');
     const fx = effectRows(slides()[cur]);
     keysPanel.innerHTML = '<div class="mz-keys-card">' +
@@ -974,6 +982,32 @@
     });
   }
 
+  // ---- The rest of the controls ----
+  // On a narrow phone the cluster is collapsed to the page turns and the
+  // screen, and `⋯` shows the rest (the CSS decides when; this only opens and
+  // closes it). Nothing is duplicated: the menu reveals the buttons where they
+  // already stand, so a control has one handler and one label whether it is on
+  // the row or behind the ellipsis.
+  const chromeBox = document.getElementById('chrome');
+  const moreBtn = document.getElementById('mz-more');
+  function setMore(on) {
+    if (!chromeBox) return;
+    chromeBox.classList.toggle('mz-more-open', on);
+    if (moreBtn) moreBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
+  }
+  if (moreBtn) {
+    moreBtn.addEventListener('click', () => setMore(!chromeBox.classList.contains('mz-more-open')));
+    // A menu is open until it has been used. Everything that uses it closes
+    // it: one of its own buttons, a tap anywhere else, a page turn.
+    for (const b of document.querySelectorAll('#mz-menu button')) {
+      b.addEventListener('click', () => setMore(false));
+    }
+    addEventListener('click', (e) => {
+      if (!e.target || !e.target.closest || !e.target.closest('#chrome')) setMore(false);
+    });
+    watchers.push(() => setMore(false));
+  }
+
   // ---- Colour mode ----
   // A button as well as the `D` key, because a phone has neither a keyboard
   // nor any other way in: the deck a reader opens from a share is the whole
@@ -1125,7 +1159,7 @@
     if (e.key === '/' || e.key === '?') { e.preventDefault(); toggleKeys(); return; }
     // Escape closes the sheet. It also clears effects, which `effects.js`
     // handles on its own listener, so this one only owns the overlay.
-    if (e.key === 'Escape') { toggleKeys(false); toggleSource(false); toggleOverview(false); return; }
+    if (e.key === 'Escape') { toggleKeys(false); toggleSource(false); toggleOverview(false); setMore(false); return; }
     if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); advance(); }
     else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); retreat(); }
     else if (e.key === 'Home') show(0);

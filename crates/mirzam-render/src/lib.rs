@@ -685,10 +685,13 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <div id="controls">
 <button id="mz-prev" type="button" aria-label="Previous">‹</button>
 <button id="mz-next" type="button" aria-label="Next">›</button>
+<button id="mz-full" type="button" aria-label="Fullscreen" hidden>⛶</button>
+<button id="mz-more" type="button" aria-label="More controls" aria-expanded="false">⋯</button>
+<div id="mz-menu">
 <button id="mz-ov-btn" type="button" aria-label="All slides">⊞</button>
 <button id="mz-mode" type="button" aria-label="Switch colour mode"></button>{source_button}
-<button id="mz-full" type="button" aria-label="Fullscreen" hidden>⛶</button>
 <button id="mz-help" type="button" aria-label="Keyboard shortcuts">?</button>
+</div>
 </div>
 </div>
 <div id="keys" hidden></div>

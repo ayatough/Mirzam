@@ -22,8 +22,17 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   (`viewport-fit=cover`) with the controls stepping around the cutout and the
   home indicator, refits itself when a mobile viewport moves without a resize
   event (the address bar retracting, the screen turning) but not while a reader
-  is pinch-zooming, and wraps the control cluster onto a second row rather than
-  running it off a 320px-wide screen.
+  is pinch-zooming.
+- **The control cluster collapses on a narrow phone.** Six touch-sized buttons
+  and a page counter are wider than a 320px screen — seven with
+  `--embed-source` — so held upright the row keeps what a reader reaches for
+  while reading, the page turns and `⛶`, and a `⋯` button opens the rest (all
+  slides, the colour mode, the Markdown panel, the shortcut sheet) in a column
+  above the cluster. Using one closes it, as does a tap anywhere else, a page
+  turn or `Escape`. They are the same buttons either way — only the menu
+  wrapper's `display` changes — so every handler, label and keyboard
+  equivalent is unchanged, and on any wider screen, a phone turned sideways
+  included, the whole row is on show and `⋯` is not there at all.
 
 ### Fixed
 - **A deck went fullscreen and came straight back out.** The page turn that
