@@ -239,6 +239,49 @@ data: |
 ```pane
 +------------------------------------+
 |  head                              |
++------------------+-----------------+
+|                  |                 |
+|  note            |  src            |
+|                  |                 |
++------------------+-----------------+
+```
+
+::: pane head
+[Discussion]{.eyebrow}
+## What the survey actually says
+:::
+
+::: pane note {valign=middle}
+The limit on the last slide is the survey's finding, not ours:
+
+- [outside the fitted range the inverse matrix is an extrapolation, and the
+  coefficients are not linear there]{#q1}
+- within it the method holds to a few microstrain, as good as a packaged
+  grating
+
+The passage is cut from the page, and `mirzam check` looks the words up there.
+:::
+
+::: pane src {valign=middle}
+![p. 1](img/devi2022-p1.svg){#devi2022-p1 fit=contain credit="p. 1 of [@devi2022]"}
+:::
+
+```annotate
+target: #devi2022-p1
+source: @devi2022
+highlight #q1 : color=@accent1 step=1
+highlight 54.6,43.8 84.2x9.6 : color=@accent1 step=1 quote="Outside the range over which the coefficients were fitted, the inverse matrix is an extrapolation: the photo-elastic and thermo-optic coefficients are not linear there, and the recovered strain drifts with temperature." page=1
+highlight 48.3,56.3 93.3x9.6 : color=@accent1 step=1
+highlight 41.0,68.8 78.7x9.6 : color=@accent1 step=1
+```
+
+<!-- note: The picture and the block came out of one command: mirzam import pdf papers/devi2022.pdf --cite devi2022 --quote "..." - and check fails the deck if the quote is not on the page it names. -->
+
+---
+
+```pane
++------------------------------------+
+|  head                              |
 +------------------------------------+
 |                                    |
 |  refs                              |

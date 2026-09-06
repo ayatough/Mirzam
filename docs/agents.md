@@ -124,6 +124,13 @@ Two families, by the pass that found the problem.
 | `layout.slack` | A pane fits, but by less than `--min-slack <px>` asked for |
 | `layout.debug` | The pane overlay is baked into this build (`--debug-layout`) |
 
+**`source.*` — what the deck says a paper says, checked against the paper.**
+Needs no browser; runs beside the layout pass.
+
+| kind | what it means |
+|---|---|
+| `source.quote` | A `quote=` on an `annotate` mark. As an error: the words are not on the `page=` of the block's `source:`. As a warning: they are there a few letters off (both spellings are in the message), or the source could not be opened or resolved |
+
 **`build.*` — the build's own warnings**, the `⚠` lines the text form prints.
 They are `warning` severity: they do not fail the run here, and
 `mirzam build --strict` is what fails a build on them.

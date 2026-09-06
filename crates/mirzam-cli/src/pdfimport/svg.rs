@@ -27,6 +27,7 @@
 
 use hayro_interpret::{InterpreterSettings, InterpreterWarning};
 use mirzam_figure::Line;
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 /// Converts a one-page crop into an SVG.
@@ -81,7 +82,163 @@ pub fn convert(pdf: &[u8]) -> Result<String, String> {
             }
         });
     }
-    Ok(scalable(&cull(&svg)))
+    Ok(scalable(&share_glyphs(&cull(&svg))))
+}
+
+/// Draws each distinct glyph once.
+///
+/// hayro writes one outline per glyph *occurrence*, with the page position
+/// baked into the path: two hundred `e`s are two hundred paths that differ
+/// only by a translation. Ten lines of body text came to half a megabyte that
+/// way, and a deck quoting twenty passages would carry ten. So outlines that
+/// are the same shape are recognised - the same commands and the same
+/// coordinates once each is measured from its own first point - and every
+/// later occurrence points at the first, shifted by the difference between
+/// their origins through `x` and `y` on the `<use>`, which the SVG
+/// specification defines as a translation applied after the element's own
+/// `transform`.
+///
+/// Only paths written in absolute commands are considered; anything else, and
+/// anything that is not a glyph definition, is left exactly as it was.
+pub fn share_glyphs(svg: &str) -> String {
+    let elements = scan(svg);
+    let bytes = svg.as_bytes();
+
+    // The first outline of each shape, and where the others are relative to it.
+    let mut first_of: HashMap<String, (&str, (f64, f64))> = HashMap::new();
+    let mut alias: HashMap<&str, (&str, f64, f64)> = HashMap::new();
+    let mut drop = vec![false; elements.len()];
+    for (i, element) in elements.iter().enumerate() {
+        if element.name != "path" || !element.empty {
+            continue;
+        }
+        let (Some(id), Some(d)) = (id_of(element.text), attribute(element.text, "d")) else {
+            continue;
+        };
+        let Some((shape, origin)) = glyph_shape(d) else {
+            continue;
+        };
+        match first_of.get(&shape) {
+            None => {
+                first_of.insert(shape, (id, origin));
+            }
+            Some(&(keep, at)) => {
+                alias.insert(id, (keep, origin.0 - at.0, origin.1 - at.1));
+                drop[i] = true;
+            }
+        }
+    }
+    if alias.is_empty() {
+        return svg.to_string();
+    }
+
+    let mut out = String::with_capacity(svg.len());
+    let mut at = 0;
+    for (i, element) in elements.iter().enumerate() {
+        if element.start < at {
+            continue;
+        }
+        if drop[i] {
+            // The line goes with it, as in `cull`.
+            let mut from = element.start;
+            while from > at && matches!(bytes[from - 1], b' ' | b'\t') {
+                from -= 1;
+            }
+            if from > at && bytes[from - 1] == b'\n' {
+                from -= 1;
+            }
+            out.push_str(&svg[at..from]);
+            at = element.close_end;
+            continue;
+        }
+        if element.name == "use" {
+            if let Some((keep, dx, dy)) = href_of(element.text).and_then(|h| alias.get(h)) {
+                let from = href_of(element.text).unwrap_or_default();
+                let tag = element.text.replacen(
+                    &format!("href=\"#{from}\""),
+                    &format!(
+                        "href=\"#{keep}\" x=\"{}\" y=\"{}\"",
+                        trim_num(*dx),
+                        trim_num(*dy)
+                    ),
+                    1,
+                );
+                out.push_str(&svg[at..element.start]);
+                out.push_str(&tag);
+                at = element.end;
+            }
+        }
+    }
+    out.push_str(&svg[at..]);
+    out
+}
+
+/// A glyph outline reduced to its shape: the path with every coordinate
+/// measured from its first point, rounded to a hundredth of a point, and that
+/// first point. `None` for a path this does not dare to move - a relative
+/// command, an arc, anything but the `M`, `L`, `C`, `Q` and `Z` a converted
+/// glyph is made of.
+fn glyph_shape(d: &str) -> Option<(String, (f64, f64))> {
+    let mut shape = String::with_capacity(d.len());
+    let mut origin: Option<(f64, f64)> = None;
+    let mut pending: Option<f64> = None;
+    let mut number = String::new();
+    let flush = |number: &mut String,
+                 pending: &mut Option<f64>,
+                 origin: &mut Option<(f64, f64)>,
+                 shape: &mut String|
+     -> Option<()> {
+        if number.is_empty() {
+            return Some(());
+        }
+        let v: f64 = number.parse().ok()?;
+        number.clear();
+        match pending.take() {
+            None => *pending = Some(v),
+            Some(x) => {
+                let (ox, oy) = *origin.get_or_insert((x, v));
+                shape.push_str(&format!("{:.2},{:.2} ", x - ox, v - oy));
+            }
+        }
+        Some(())
+    };
+    for c in d.chars() {
+        match c {
+            'M' | 'L' | 'C' | 'Q' | 'Z' => {
+                flush(&mut number, &mut pending, &mut origin, &mut shape)?;
+                if pending.is_some() {
+                    return None;
+                }
+                shape.push(c);
+            }
+            '0'..='9' | '.' | '-' | 'e' | 'E' => {
+                // A minus sign starts a new number when one is already under
+                // way: hayro writes `1.5-2.5` with no separator.
+                if c == '-' && !number.is_empty() && !number.ends_with(['e', 'E']) {
+                    flush(&mut number, &mut pending, &mut origin, &mut shape)?;
+                }
+                number.push(c);
+            }
+            ' ' | ',' | '\n' | '\t' => flush(&mut number, &mut pending, &mut origin, &mut shape)?,
+            _ => return None,
+        }
+    }
+    flush(&mut number, &mut pending, &mut origin, &mut shape)?;
+    if pending.is_some() {
+        return None;
+    }
+    origin.map(|o| (shape, o))
+}
+
+/// A number the way the rest of the file writes them: no trailing zeros.
+fn trim_num(v: f64) -> String {
+    let s = format!("{v:.4}");
+    let s = s.trim_end_matches('0').trim_end_matches('.');
+    if s.is_empty() || s == "-0" {
+        "0".to_string()
+    } else {
+        s.to_string()
+    }
 }
 
 /// Puts the figure's own words back on top of it, where they cannot be seen.
@@ -779,5 +936,60 @@ mod tests {
             !culled.lines().any(|l| l.trim().is_empty()),
             "a dropped element leaves no blank line behind: {culled}"
         );
+    }
+
+    /// Two `e`s on a page are the same outline at two places; hayro writes
+    /// them as two paths. Afterwards there is one, and the second occurrence
+    /// points at it from where it was.
+    #[test]
+    fn a_repeated_glyph_is_drawn_once_and_pointed_at() {
+        let svg = "<svg viewBox=\"0 0 100 100\">\n\
+    <use xlink:href=\"#g0\" transform=\"matrix(1 0 0 -1 0 50)\" fill=\"#000000\"/>\n\
+    <use xlink:href=\"#g1\" transform=\"matrix(1 0 0 -1 0 50)\" fill=\"#000000\"/>\n\
+    <use xlink:href=\"#g2\" transform=\"matrix(1 0 0 -1 0 50)\" fill=\"#000000\"/>\n\
+    <defs id=\"outline-glyph\">\n\
+        <path id=\"g0\" d=\"M10,20 L14,20 C14,24 12,26 10,24 Z\"/>\n\
+        <path id=\"g1\" d=\"M30.5,20 L34.5,20 C34.5,24 32.5,26 30.5,24 Z\"/>\n\
+        <path id=\"g2\" d=\"M50,20 L54,20 L54,24 Z\"/>\n\
+    </defs>\n\
+</svg>";
+        let out = share_glyphs(svg);
+        assert!(
+            !out.contains("id=\"g1\""),
+            "the duplicate outline is gone: {out}"
+        );
+        assert!(
+            out.contains("id=\"g0\"") && out.contains("id=\"g2\""),
+            "{out}"
+        );
+        assert!(
+            out.contains("href=\"#g0\" x=\"20.5\" y=\"0\" transform=\"matrix(1 0 0 -1 0 50)\""),
+            "the second use points at the first, shifted by its own offset: {out}"
+        );
+        assert_eq!(
+            out.matches("<use").count(),
+            3,
+            "every occurrence is still drawn"
+        );
+        assert_eq!(
+            out.lines().count(),
+            svg.lines().count() - 1,
+            "one line gone, no blank left"
+        );
+    }
+
+    /// A path this cannot measure - relative commands, an arc - is left as
+    /// hayro wrote it, and so is a page with nothing repeated.
+    #[test]
+    fn a_shape_it_cannot_move_is_left_alone() {
+        assert!(glyph_shape("M10,20 l4,0 z").is_none());
+        assert!(glyph_shape("M10,20 A5,5 0 0 1 20,20").is_none());
+        assert!(glyph_shape("M10,20 L14").is_none(), "an odd coordinate");
+        let same = glyph_shape("M10,20 L14,20 Z").unwrap();
+        let moved = glyph_shape("M-3.25,-7 L0.75,-7 Z").unwrap();
+        assert_eq!(same.0, moved.0, "the shape is the same wherever it sits");
+        assert_eq!(moved.1, (-3.25, -7.0));
+        let svg = "<svg viewBox=\"0 0 9 9\"><use xlink:href=\"#g0\"/><defs><path id=\"g0\" d=\"M1,1 L2,2\"/></defs></svg>";
+        assert_eq!(share_glyphs(svg), svg);
     }
 }

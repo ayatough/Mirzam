@@ -901,6 +901,11 @@ writes exactly this line for each one, caption and credit filled in from the
 paper — see [the quickstart](quickstart.md). It is the same markup either way;
 the command only saves the screenshot and the typing.
 
+**Nor need a passage.** `--quote "…"` cuts out the paragraph the words are in
+and writes the figure line plus an `annotate` block that lights the quoted
+lines, with the words kept for `mirzam check` to verify against the page — see
+[quoting the words a slide stands on](#quoting-the-words-a-slide-stands-on).
+
 A figure imported that way is a vector picture, so it stays sharp however large
 the pane is, and it carries the words that are in it: a table's cells can be
 selected and copied out of the exported PDF, and searched there, even though
@@ -1828,9 +1833,11 @@ and nothing crosses the slide to say it.
 | `underline #id` | A rule under them |
 | `box #id` | A rounded outline around them; `pad=` gives it room |
 
-- These three take an **`#id` and nothing else**. Where the words are is the
-  browser's business; a percentage would be a guess that goes stale the moment
-  the sentence is edited.
+- On a sentence these take an **`#id` and nothing else**. Where the words are is
+  the browser's business; a percentage would be a guess that goes stale the
+  moment the sentence is edited. Words *in a picture* are the exception, below:
+  `highlight` and `underline` also take `x,y WxH` there, since a page cut out of
+  a paper never reflows.
 - **They follow the lines the words are on.** A phrase that wraps is two line
   boxes, not one rectangle with the middle of the sentence inside it.
 - A block whose items are *all* anchored needs no `target:` line — there are no
@@ -1844,6 +1851,66 @@ unlike everything else that runs there, the overlay is inlined into the PDF
 export too, so the marks survive the export. See
 [architecture.md](architecture.md#annotations-and-the-pdf) for why that is the
 one script the print page carries.
+
+### Quoting the words a slide stands on
+
+A slide that summarises a paper can show the sentence it stands on, in the
+paper's own type, beside the summary — and the build can check that the
+sentence is really there. Cut the passage out with `import pdf`:
+
+```bash
+mirzam import pdf papers/devi2022.pdf --cite devi2022 \
+  --quote "Outside the range over which the coefficients were fitted, ..."
+```
+
+It finds the words on the page, cuts out the paragraph they are in at the
+column's width with two lines of context (`--context` changes how many), writes
+the picture, and prints the figure line and the block that marks the lines:
+
+````markdown
+![p. 1](img/devi2022-p1.svg){#devi2022-p1 fit=contain credit="p. 1 of [@devi2022]"}
+
+```annotate
+target: #devi2022-p1
+source: @devi2022
+highlight #q1 : color=@accent1 step=1
+highlight 54.6,43.8 84.2x9.6 : color=@accent1 step=1 quote="Outside the range over which …" page=1
+highlight 48.3,56.3 93.3x9.6 : color=@accent1 step=1
+highlight 41.0,68.8 78.7x9.6 : color=@accent1 step=1
+```
+````
+
+- **A `highlight` or `underline` placed by coordinates** marks one line of the
+  cut-out, the way `rect` is placed: the centre and the size as percentages of
+  the picture. The command writes one per line the quote covers, trimmed on the
+  first and last to where the words start and stop.
+- **`highlight #q1`** is the phrase on the slide: write the sentence that
+  paraphrases the passage as `[…]{#q1}` and the two light together, in one
+  colour, on one click — the [pairing](#tying-a-phrase-to-a-figure) above. The
+  command prints this line commented out, since the phrase does not exist until
+  you write it.
+- **`quote=` and `page=`** on the first mark carry the words as the paper
+  prints them and the page they are on; **`source:`** on the block names the
+  paper — `@key` for a bibliography entry whose `file` field points at the PDF
+  (Zotero and JabRef write one), or a path relative to the deck. None of this
+  reaches the viewer; it is for the check.
+- **`mirzam check` looks the words up.** Every `quote=` is searched for on
+  `page=` of its `source:`. Found, nothing is said. A few letters off — the
+  paper's own typo, or yours — is a `source.quote` warning that shows both
+  spellings. Not there at all is a `source.quote` error, and the deck fails
+  the check: a claim about a source that the source does not make is the one
+  thing this exists to catch. A source that cannot be opened is a warning,
+  never a verdict.
+- **`--quote` may be repeated.** Every quote in one run has to be on one page;
+  the cut-out covers them all and each gets its own colour and click step. A
+  quote is matched word for word — case, hyphenation at a line end, ligatures
+  and curly quotes aside — so a passage inside a formula cannot be found this
+  way; quote the prose around it and let `--context` bring the formula in.
+- **A paper with no text layer** (a scan) has nothing to search. Write the
+  coordinates yourself, and leave `quote=` off: there is nothing to check.
+
+[`examples/research.md`](../examples/research.md) does this on its ninth slide,
+against a one-page paper invented for the purpose.
 
 ## Animations
 

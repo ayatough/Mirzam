@@ -327,6 +327,20 @@ fn main() -> ExitCode {
                         }
                     }
                     "--list" => opts.list = true,
+                    "--quote" => {
+                        i += 1;
+                        match args.get(i).filter(|q| !q.trim().is_empty()) {
+                            Some(q) => opts.quotes.push(q.clone()),
+                            None => return usage("--quote requires the words to find"),
+                        }
+                    }
+                    "--context" => {
+                        i += 1;
+                        match args.get(i).and_then(|v| v.parse().ok()) {
+                            Some(n) => opts.context = n,
+                            None => return usage("--context requires a number of lines"),
+                        }
+                    }
                     arg if input.is_none() => input = Some(PathBuf::from(arg)),
                     arg => return usage(&format!("unknown argument: {arg}")),
                 }
@@ -448,6 +462,9 @@ fn import_pdf(options: &pdfimport::Options) -> Result<(), String> {
         }
         if !options.list {
             println!("{}", figure.markdown(&import.credit));
+            if let Some(block) = &figure.annotate {
+                println!("\n{block}");
+            }
         }
     }
     eprintln!(
@@ -509,6 +526,7 @@ Usage:
   mirzam import pdf <paper.pdf> [-o <dir>] [--figure <n>] [--page <n>]
                [--format auto|svg|png|image|pdf] [--dpi <n>] [--cite <key>]
                [--tool <bin>] [--list]
+               [--quote "<words>"]... [--context <lines>]
   mirzam lsp
   mirzam skill install [--user] [--zip [<path>]] [--force]
 
@@ -554,6 +572,10 @@ Usage:
           cropped and drawn as a vector SVG, here, with nothing installed.
           --format png needs `mutool` or `pdftocairo`, and --tool or
           MIRZAM_PDFTOOL hands even the SVG to one of those.
+          --quote "<words>" cuts out the passage those words are in instead
+          (repeatable; one page per run, --context lines around it) and
+          prints an `annotate` block lighting its lines, with the words kept
+          in quote= for `check` to verify against the page.
           --list says what is in the file without writing anything
   check   build the deck, then render it with headless Chromium (also honors
           MIRZAM_CHROMIUM) and report every slide with content clipped by its

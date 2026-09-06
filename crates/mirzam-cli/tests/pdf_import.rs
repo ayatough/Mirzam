@@ -148,6 +148,109 @@ fn the_markdown_is_ready_to_paste() {
     );
 }
 
+/// `--quote`: the passage, not the figure. The fixture's prose is one sentence
+/// set twice on two lines each; a quote running off the end of the first line
+/// on to the second is the shape a real passage has.
+#[test]
+fn a_quoted_passage_is_cut_out_with_its_lines_marked() {
+    let dir = TempDir::new("quote");
+    let import = pdfimport::run(&Options {
+        quotes: vec!["over the lazy dog the quick brown".to_string()],
+        context: 1,
+        ..options(&dir, Format::Svg)
+    })
+    .expect("the passage is on page 1");
+    assert_eq!(import.figures.len(), 1, "one cut-out per run");
+    let cut = &import.figures[0];
+    assert_eq!(cut.page, 1);
+    assert_eq!(cut.label, "p. 1");
+
+    let line = cut.markdown(&import.credit);
+    assert!(
+        line.starts_with("![p. 1](") && line.contains("someone2026-p1.svg"),
+        "{line}"
+    );
+    assert!(
+        line.contains("{#someone2026-p1 fit=contain"),
+        "the block needs a target: {line}"
+    );
+    assert!(
+        !line.contains("caption="),
+        "a passage has no caption: {line}"
+    );
+    assert!(line.contains("credit=\"p. 1 of [@someone2026]\""), "{line}");
+
+    let block = cut
+        .annotate
+        .as_deref()
+        .expect("a quote comes with its marks");
+    assert!(
+        block.starts_with("```annotate\ntarget: #someone2026-p1\nsource: @someone2026\n"),
+        "{block}"
+    );
+    let marks: Vec<&str> = block
+        .lines()
+        .filter(|l| l.starts_with("highlight "))
+        .collect();
+    assert_eq!(
+        marks.len(),
+        2,
+        "one mark per line the quote covers: {block}"
+    );
+    assert!(
+        marks[0].contains("quote=\"over the lazy dog the quick brown\" page=1"),
+        "the words ride on the first mark: {block}"
+    );
+    assert!(!marks[1].contains("quote="), "and only the first: {block}");
+    assert!(
+        block.contains("// highlight #q1 : color=@accent1 step=1"),
+        "{block}"
+    );
+
+    // The cut-out is the two lines and one line of context either side - the
+    // caption above the first paragraph, and the picture is not text so
+    // nothing below - not the figure and not the page.
+    let svg = std::fs::read_to_string(cut.file.as_ref().unwrap()).expect("the svg");
+    assert!(
+        svg.contains("quick brown fox"),
+        "the passage's own words are in the text layer"
+    );
+    assert!(
+        !svg.contains(">rows &amp; columns</text>"),
+        "the figure's are not: {svg}"
+    );
+    assert!(cut.box_pt.height() < 60.0, "{:?}", cut.box_pt);
+}
+
+/// A quote that is not there is an error naming the file, and one that is
+/// nearly there says what the paper actually prints.
+#[test]
+fn a_quote_that_is_not_in_the_paper_is_refused() {
+    let dir = TempDir::new("noquote");
+    let error = pdfimport::run(&Options {
+        quotes: vec!["the quikc brown fox jumps".to_string()],
+        ..options(&dir, Format::Svg)
+    })
+    .expect_err("not in the fixture");
+    assert!(
+        error.contains("\"the quikc brown fox jumps\" is not in"),
+        "{error}"
+    );
+    assert!(
+        error.contains("nearest words"),
+        "a near miss is named: {error}"
+    );
+    assert!(error.contains("the quick brown fox jumps"), "{error}");
+
+    let error = pdfimport::run(&Options {
+        quotes: vec!["a sentence from another paper entirely".to_string()],
+        ..options(&dir, Format::Svg)
+    })
+    .expect_err("not in the fixture");
+    assert!(error.contains("is not in"), "{error}");
+    assert!(!error.contains("nearest"), "nothing is near: {error}");
+}
+
 #[test]
 fn a_pdf_with_no_captions_says_so_rather_than_guessing() {
     let dir = TempDir::new("empty");

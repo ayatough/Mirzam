@@ -1,0 +1,58 @@
+%PDF-1.7
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R /F2 6 0 R /F3 7 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 1832 >>
+stream
+BT /F2 14 Tf 72 720 Td (Temperature compensation in FBG sensing: a survey) Tj ET
+BT /F1 10 Tf 72 702 Td (Sunita Devi) Tj ET
+BT /F3 10 Tf 72 690 Td (Sensors Review, 2022 (an invented paper, written for the Mirzam sample deck)) Tj ET
+BT /F1 10 Tf 72 660 Td (Abstract. Fibre Bragg gratings answer to strain and to temperature alike, and) Tj ET
+BT /F1 10 Tf 72 647 Td (every sensing system has to tell the two apart. This survey collects the three) Tj ET
+BT /F1 10 Tf 72 634 Td (families of compensation in use: a reference grating kept free of strain, a) Tj ET
+BT /F1 10 Tf 72 621 Td (packaged athermal grating, and the dual-wavelength method that fits a) Tj ET
+BT /F1 10 Tf 72 608 Td (two-by-two matrix once and inverts it thereafter. Each is measured against the) Tj ET
+BT /F1 10 Tf 72 595 Td (same question: how far the recovered strain drifts over a day of weather.) Tj ET
+BT /F1 10 Tf 72 569 Td (The dual-wavelength method is the cheapest to install and the most often) Tj ET
+BT /F1 10 Tf 72 556 Td (misread. Outside the range over which the coefficients were fitted, the inverse) Tj ET
+BT /F1 10 Tf 72 543 Td (matrix is an extrapolation: the photo-elastic and thermo-optic coefficients are) Tj ET
+BT /F1 10 Tf 72 530 Td (not linear there, and the recovered strain drifts with temperature. Within the) Tj ET
+BT /F1 10 Tf 72 517 Td (fitted range the method holds to a few microstrain, which is as good as the) Tj ET
+BT /F1 10 Tf 72 504 Td (packaged gratings and an order of magnitude cheaper.) Tj ET
+BT /F1 10 Tf 72 478 Td (Fast transients are the second limit. A cold front moving across a span leaves) Tj ET
+BT /F1 10 Tf 72 465 Td (two gratings a few metres apart at different temperatures for some minutes,) Tj ET
+BT /F1 10 Tf 72 452 Td (and every method surveyed assumes they are not.) Tj ET
+BT /F1 8 Tf 72 60 Td (Page 1) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman >>
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold >>
+endobj
+7 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Times-Italic >>
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000261 00000 n 
+0000002145 00000 n 
+0000002217 00000 n 
+0000002288 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+2361
+%%EOF

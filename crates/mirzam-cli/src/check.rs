@@ -73,6 +73,9 @@ pub(crate) struct CheckArgs {
 
 struct Problem {
     slide: u64,
+    /// The namespace the kind is reported under: `layout` for what the
+    /// browser measured, `source` for a quote checked against its paper.
+    family: &'static str,
     kind: String,
     pane: String,
     detail: String,
@@ -124,10 +127,37 @@ pub(crate) fn check(input: &Path, args: &CheckArgs) -> Result<(), String> {
         .map_err(|e| format!("cannot write temporary file: {e}"))
         .and_then(|()| run_chromium(&tmp, args.chromium.as_deref()));
     let _ = std::fs::remove_dir_all(&dir);
-    let (count, problems, notes) = result?;
+    let (count, mut problems, notes) = result?;
+
+    // The other half of the check needs no browser: every `quote=` on the deck
+    // is looked for on the page of the paper its block names. A quote that is
+    // not there is a problem like a clipped pane is; one a few letters off is
+    // a warning, since the page and the slide disagree only on spelling.
+    let mut source_warnings: Vec<(usize, String)> = Vec::new();
+    for finding in mirzam_cli::quotes::verify(input, &out) {
+        if finding.error {
+            problems.push(Problem {
+                slide: finding.slide as u64,
+                family: "source",
+                kind: "quote".to_string(),
+                pane: "-".to_string(),
+                detail: finding.message,
+            });
+        } else {
+            source_warnings.push((finding.slide, finding.message));
+        }
+    }
+    if args.format == Format::Text {
+        for (slide, w) in &source_warnings {
+            println!("  ⚠ slide {slide}: {w}");
+        }
+    }
 
     if args.format == Format::Json {
-        println!("{}", json_report(input, &out, count, &problems, &notes));
+        println!(
+            "{}",
+            json_report(input, &out, count, &problems, &source_warnings, &notes)
+        );
         // The verdict is the exit code, exactly as it is for the text form:
         // the error text goes to stderr, so it cannot reach the document
         // stdout just carried.
@@ -167,11 +197,22 @@ fn verdict(problems: &[Problem]) -> Result<(), String> {
     if problems.is_empty() {
         return Ok(());
     }
-    Err(format!(
-        "{} problem(s). Widen the band in the pane block, shorten the text, \
-         or move the content to another pane. See docs/layout.md.",
-        problems.len()
-    ))
+    let layout = problems.iter().any(|p| p.family == "layout");
+    let source = problems.iter().any(|p| p.family == "source");
+    let mut advice = String::new();
+    if layout {
+        advice.push_str(
+            " Widen the band in the pane block, shorten the text, or move the content to \
+             another pane. See docs/layout.md.",
+        );
+    }
+    if source {
+        advice.push_str(
+            " A quote the page does not print: quote the paper as printed, point at the \
+             right page, or drop the claim.",
+        );
+    }
+    Err(format!("{} problem(s).{advice}", problems.len()))
 }
 
 /// The whole run as one JSON document: the build's own warnings and the
@@ -187,10 +228,21 @@ fn json_report(
     out: &BuildOutput,
     count: u64,
     problems: &[Problem],
+    source_warnings: &[(usize, String)],
     notes: &[String],
 ) -> String {
     let mut lines = LineIndex::default();
     let mut diagnostics: Vec<serde_json::Value> = Vec::new();
+
+    for (slide, message) in source_warnings {
+        let mut d = record("source.quote", "warning", message);
+        d.insert("slide".into(), (*slide as u64).into());
+        if let Some((file, offset)) = out.slide_origin(*slide) {
+            let file = file.to_path_buf();
+            locate(&mut d, &mut lines, &file, offset);
+        }
+        diagnostics.push(d.into());
+    }
 
     for (message, site) in out.warnings.iter().zip(&out.warning_sites) {
         let mut d = record(warning_kind(message), "warning", message);
@@ -208,7 +260,7 @@ fn json_report(
         // translation table: a table would have to be updated in step with
         // `check.js`, and the one that was not is how a new failure mode
         // arrives named `unknown`.
-        let mut d = record(&format!("layout.{}", p.kind), "error", &p.detail);
+        let mut d = record(&format!("{}.{}", p.family, p.kind), "error", &p.detail);
         d.insert("slide".into(), p.slide.into());
         // `-` is the in-page check's way of saying "no single pane", and `?`
         // its way of saying "a pane the class names did not spell out".
@@ -372,6 +424,7 @@ fn run_chromium(html_path: &Path, chromium: Option<&str>) -> Result<CheckResult,
         .into_iter()
         .map(|p| Problem {
             slide: p.get("slide").and_then(|v| v.as_u64()).unwrap_or(0),
+            family: "layout",
             kind: p
                 .get("kind")
                 .and_then(|v| v.as_str())

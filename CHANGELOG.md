@@ -8,6 +8,26 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- **A slide can show the sentence it stands on, and the build can check it
+  is really there.** `mirzam import pdf paper.pdf --quote "…"` finds the
+  words on the page, cuts out the paragraph they are in at the column's width
+  with two lines of context, and prints the figure line plus an `annotate`
+  block that lights the quoted lines — `highlight` and `underline` now take
+  coordinates over a picture, since a page cut out of a paper never reflows.
+  The words ride along in `quote=` with their `page=`, the block's `source:`
+  names the paper (a bibliography entry's `file` field, or a path), and
+  `mirzam check` looks them up: a quote the page does not print is a
+  `source.quote` error that fails the deck, one a few letters off is a warning
+  showing both spellings, and a paper that cannot be opened is a warning
+  rather than a verdict. Hyphenation at a line end, ligatures, curly quotes
+  and a drop cap are read past; a passage inside a formula is not found, and
+  the error says so. `examples/research.md` quotes a one-page paper invented
+  for it, and the check runs on it in CI.
+- **A converted figure draws each glyph once.** hayro writes one outline per
+  glyph *occurrence*; the same shape at two places is now one definition and
+  a second `<use>` shifted by `x` and `y`. Ten lines of quoted body text went
+  from about 550 KB to 100 KB, and every figure `import pdf` writes is
+  smaller by the same rule.
 - **A label too long for its shape is now a finding.** A `shape` label is one
   centred SVG text element and never wraps, so a label longer than its rect
   or ellipse was drawn straight out of the box — nothing clipped, nothing

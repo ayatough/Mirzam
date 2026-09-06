@@ -183,10 +183,18 @@
       let labelAt = { x: a.x + a.w / 2, y: a.y };
 
       if (item.kind === 'highlight' || item.kind === 'underline' || item.kind === 'box') {
-        const el = item.anchor && sec.querySelector('#' + CSS.escape(item.anchor));
-        if (!el) { missed++; continue; }
         const pad = item.pad || 0;
-        const rows = lineRects(el, m);
+        let rows;
+        if (item.anchor) {
+          const el = sec.querySelector('#' + CSS.escape(item.anchor));
+          if (!el) { missed++; continue; }
+          rows = lineRects(el, m);
+        } else {
+          // Words in a picture, placed by coordinates: `a` is already the
+          // box, and it is one line - a passage cut out of a paper is marked
+          // one item per line, the way `import pdf --quote` writes it.
+          rows = [{ x: a.x, y: a.y, w: a.w, h: a.h }];
+        }
         if (!rows.length) { missed++; continue; }
         for (const r of rows) {
           if (item.kind === 'highlight') {

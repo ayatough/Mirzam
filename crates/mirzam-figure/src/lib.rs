@@ -38,6 +38,8 @@
 //! on rather than a picture: a caller can print it, widen it, or let the author
 //! override it.
 
+pub mod quote;
+
 /// A rectangle in PDF user space, where **y grows upward** and the unit is a
 /// point.
 ///

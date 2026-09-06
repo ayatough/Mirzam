@@ -362,7 +362,7 @@ highlight #c-q3     : color=@accent2 step=1
 - `x,y` is the **centre** of a `rect`/`circle`, `WxH` its size, both as
   percentages of the target.
 - An anchored item (`circle #id`) needs no coordinates and survives a data
-  change. `highlight`, `underline` and `box` take an `#id` and nothing else.
+  change. `box` takes an `#id` and nothing else; `highlight` and `underline` take an `#id`, or `x,y WxH` over words in a picture (what `mirzam import pdf --quote` writes, with `quote=`/`page=` and a `source:` line for `check` to verify).
 - A block whose items are all anchored needs no `target:`.
 - Attributes come after ` : ` — `label=`, `color=`, `style=dashed`, `pad=`,
   `id=`, `step=N` (hold until the Nth click).

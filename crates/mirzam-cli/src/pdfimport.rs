@@ -83,6 +83,13 @@ pub struct Options {
     /// Say what is in the file and write nothing.
     pub list: bool,
     pub tool: Option<String>,
+    /// `--quote`, repeatable: passages to cut out of the page they are on
+    /// instead of captioned figures. All of them must be on one page; the
+    /// cut-out covers them all and each gets its lines marked.
+    pub quotes: Vec<String>,
+    /// `--context`: lines of the page kept above the first quote and below
+    /// the last, so the passage is read where it stands.
+    pub context: usize,
 }
 
 impl Default for Options {
@@ -97,6 +104,8 @@ impl Default for Options {
             cite: None,
             list: false,
             tool: None,
+            quotes: Vec::new(),
+            context: 2,
         }
     }
 }
@@ -124,6 +133,12 @@ pub struct Imported {
     /// Where the picture was written, and how. Empty while listing.
     pub file: Option<PathBuf>,
     pub how: String,
+    /// An `#id` for the picture, when something else in the output refers to
+    /// it: the `annotate` block a quote comes with names it as its target.
+    pub id: Option<String>,
+    /// For a quote, the `annotate` block that marks its lines on the picture
+    /// and carries the words for `mirzam check` to verify.
+    pub annotate: Option<String>,
 }
 
 impl Imported {
@@ -134,12 +149,19 @@ impl Imported {
             .as_ref()
             .map(|p| p.display().to_string())
             .unwrap_or_else(|| "…".to_string());
+        let mut attrs = String::new();
+        if let Some(id) = &self.id {
+            attrs.push_str(&format!("#{id} "));
+        }
+        attrs.push_str("fit=contain");
         // The attribute list has no escape for a quotation mark, so a caption
         // carrying one gets typographic quotes rather than a broken reference.
-        let caption = self.caption.replace('"', "”");
+        if !self.caption.is_empty() {
+            attrs.push_str(&format!(" caption=\"{}\"", self.caption.replace('"', "”")));
+        }
         format!(
-            "![{}]({}){{fit=contain caption=\"{}\" credit=\"{} of {}\"}}",
-            self.label, path, caption, self.label, credit
+            "![{}]({}){{{attrs} credit=\"{} of {}\"}}",
+            self.label, path, self.label, credit
         )
     }
 }
@@ -156,6 +178,9 @@ pub struct Import {
 pub fn run(options: &Options) -> Result<Import, String> {
     let doc = Document::load(&options.input)
         .map_err(|e| format!("cannot read {}: {e}", options.input.display()))?;
+    if !options.quotes.is_empty() {
+        return run_quotes(options, &doc);
+    }
 
     let mut seen = 0;
     let mut found = Vec::new();
@@ -211,6 +236,8 @@ pub fn run(options: &Options) -> Result<Import, String> {
             box_pt: one.art,
             file: None,
             how: String::new(),
+            id: None,
+            annotate: None,
         };
         if !options.list {
             let (file, how) = write_one(options, &doc, one, &stem)?;
@@ -222,6 +249,171 @@ pub fn run(options: &Options) -> Result<Import, String> {
     Ok(Import {
         figures: done,
         credit: credit(options, title(&doc)),
+    })
+}
+
+/// `--quote`: the passage a slide paraphrases, cut out of the page it is on
+/// with the lines it covers marked.
+///
+/// One cut-out per run, covering every quote given, so the passages are read
+/// in their own column with the context between them. The page is the one
+/// named by `--page`, or the first on which the first quote is found; every
+/// other quote has to be on the same page, and a run says so when one is not
+/// rather than cutting two pictures nobody asked for.
+fn run_quotes(options: &Options, doc: &Document) -> Result<Import, String> {
+    use mirzam_figure::quote::{Found as Hit, Text};
+
+    let first = &options.quotes[0];
+    let mut chosen: Option<(Page, Text)> = None;
+    let mut nearest: Option<(u32, String, usize)> = None;
+    for (number, id) in doc.get_pages() {
+        if options.page.is_some_and(|only| only != number) {
+            continue;
+        }
+        let Ok(page) = pdfpage::read(doc, number, id) else {
+            continue;
+        };
+        let text = Text::new(page.rect, &page.lines);
+        if options.page.is_some() {
+            chosen = Some((page, text));
+            break;
+        }
+        match text.find(first) {
+            Hit::Exact(_) => {
+                chosen = Some((page, text));
+                break;
+            }
+            Hit::Near {
+                text: near,
+                distance,
+            } if nearest.as_ref().is_none_or(|(_, _, d)| distance < *d) => {
+                nearest = Some((number, near, distance));
+            }
+            _ => {}
+        }
+    }
+    let Some((page, text)) = chosen else {
+        return Err(match (options.page, nearest) {
+            (Some(n), _) => format!("{}: no page {n}", options.input.display()),
+            (None, Some((n, near, d))) => format!(
+                "\"{first}\" is not in {}. The nearest words are on page {n}, {d} edit(s) away:\n  \
+                 \"{near}\"\nQuote the paper as it is printed - or, if the paper has the typo, quote the typo.",
+                options.input.display()
+            ),
+            (None, None) => format!(
+                "\"{first}\" is not in {}. A quote is matched word for word (case, hyphens \
+                 and ligatures aside), so check it against the paper; a passage inside a \
+                 formula cannot be found this way.",
+                options.input.display()
+            ),
+        });
+    };
+    let number = page.number;
+
+    let mut spans = Vec::new();
+    for quote in &options.quotes {
+        match text.find(quote) {
+            Hit::Exact(span) => spans.push(span),
+            Hit::Near {
+                text: near,
+                distance,
+            } => {
+                return Err(format!(
+                "page {number}: no exact match for \"{quote}\". The nearest words are {distance} \
+                     edit(s) away:\n  \"{near}\"\nQuote the paper as it is printed - or, if the \
+                     paper has the typo, quote the typo."
+            ))
+            }
+            Hit::Nothing if quote == first => {
+                return Err(format!(
+                    "\"{quote}\" is not on page {number} of {}",
+                    options.input.display()
+                ))
+            }
+            Hit::Nothing => {
+                return Err(format!(
+                    "\"{quote}\" is not on page {number}, where \"{first}\" is. One run of --quote \
+                     makes one cut-out, so quotes from two pages take two runs."
+                ))
+            }
+        }
+    }
+    let art = text
+        .crop(&spans, options.context)
+        .ok_or_else(|| "nothing to cut out".to_string())?;
+
+    let stem = format!("{}-p{number}", base_for(options));
+    let label = format!("p. {number}");
+    let figure = Figure {
+        kind: mirzam_figure::Kind::Figure,
+        number: number.to_string(),
+        label: label.clone(),
+        caption: String::new(),
+        art,
+        caption_box: art,
+    };
+    let found = Found {
+        page: number,
+        art,
+        images: images_in(&page, &figure),
+        text: text_in(&page, &art),
+        to_pdf: page.to_pdf,
+        figure,
+    };
+
+    // The block that marks the lines. One colour and one click step per
+    // quote, alternating between the two accents so neighbouring passages
+    // read as two. The phrase's own mark is left as a comment: it names an
+    // id the deck does not have yet, and a block naming a missing anchor is
+    // dropped whole with a warning - which would take the picture's marks
+    // with it until the author got round to the phrase.
+    let source = match &options.cite {
+        Some(key) => format!("@{key}"),
+        None => options.input.display().to_string(),
+    };
+    let mut block = format!("```annotate\ntarget: #{stem}\nsource: {source}\n");
+    for (i, (quote, span)) in options.quotes.iter().zip(&spans).enumerate() {
+        let step = i + 1;
+        let color = if i % 2 == 0 { "@accent1" } else { "@accent2" };
+        block.push_str(&format!(
+            "// highlight #q{step} : color={color} step={step}   <- put {{#q{step}}} on the phrase, then drop the //\n"
+        ));
+        for (j, m) in text.marks(span, &art).iter().enumerate() {
+            block.push_str(&format!(
+                "highlight {:.1},{:.1} {:.1}x{:.1} : color={color} step={step}",
+                m.x, m.y, m.w, m.h
+            ));
+            if j == 0 {
+                // The same rule as a caption: no escape for a quotation mark,
+                // so typographic ones stand in, and the check reads both alike.
+                block.push_str(&format!(
+                    " quote=\"{}\" page={number}",
+                    quote.replace('"', "”")
+                ));
+            }
+            block.push('\n');
+        }
+    }
+    block.push_str("```");
+
+    let mut imported = Imported {
+        page: number,
+        label,
+        caption: String::new(),
+        box_pt: art,
+        file: None,
+        how: String::new(),
+        id: Some(stem.clone()),
+        annotate: Some(block),
+    };
+    if !options.list {
+        let (file, how) = write_one(options, doc, &found, &stem)?;
+        imported.file = Some(file);
+        imported.how = how;
+    }
+    Ok(Import {
+        figures: vec![imported],
+        credit: credit(options, title(doc)),
     })
 }
 
@@ -333,6 +525,23 @@ fn distinct(stem: String, taken: &mut Vec<String>) -> String {
 }
 
 fn stem_for(options: &Options, figure: &Figure) -> String {
+    let number: String = figure
+        .number
+        .chars()
+        .filter(char::is_ascii_alphanumeric)
+        .collect();
+    format!(
+        "{}-{}{}",
+        base_for(options),
+        figure.kind.word(),
+        number.to_lowercase()
+    )
+}
+
+/// The first half of every file name this run writes: the citation key when
+/// there is one, since that is what the deck calls this paper, and the file's
+/// own name otherwise.
+fn base_for(options: &Options) -> String {
     let base = options.cite.clone().unwrap_or_else(|| {
         options
             .input
@@ -344,17 +553,7 @@ fn stem_for(options: &Options, figure: &Figure) -> String {
         .chars()
         .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
         .collect();
-    let number: String = figure
-        .number
-        .chars()
-        .filter(char::is_ascii_alphanumeric)
-        .collect();
-    format!(
-        "{}-{}{}",
-        base.trim_matches('-').to_lowercase(),
-        figure.kind.word(),
-        number.to_lowercase()
-    )
+    base.trim_matches('-').to_lowercase()
 }
 
 /// Writes one figure, in the best form this machine can produce.
@@ -732,6 +931,8 @@ mod tests {
             box_pt: Rect::new(0.0, 0.0, 10.0, 10.0),
             file: Some(PathBuf::from("img/vaswani2017-fig3.svg")),
             how: String::new(),
+            id: None,
+            annotate: None,
         };
         let line = imported.markdown("[@vaswani2017]");
         assert!(

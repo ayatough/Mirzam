@@ -133,9 +133,16 @@ what keeps a table's columns where the paper had them — so the same words are
 laid over it again where nothing can see them: a table quoted onto a slide can
 be selected, copied and searched in the exported PDF.
 
+`--quote "…"` cuts out a *passage* instead — the paragraph the words are in,
+with two lines of context — and prints, with the figure line, an `annotate`
+block that lights the quoted lines and carries the words for `mirzam check`
+to verify against the page. A summary slide can show the sentence it stands on,
+and the build can refuse a quote the paper does not print.
+
 ```bash
 mirzam import pdf paper.pdf --list                     # what is in there
 mirzam import pdf paper.pdf -o img --cite vaswani2017 >> talk.md
+mirzam import pdf paper.pdf -o img --cite vaswani2017 --quote "We propose a new" >> talk.md
 ```
 
 `check` builds the deck and renders it with headless Chromium to catch what a

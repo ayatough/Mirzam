@@ -84,7 +84,7 @@ there is. The model column follows from that:
 | W23 | Mermaid diagrams, rendered at build time | B | Opus | — | ✅ |
 | W24 | Autoplay: the deck turns its own pages | C | Fable | — | ✅ |
 | W25 | A language server: the editor understands the deck | B | Sonnet | W7, W21 | |
-| W26 | Quoting the source beside the summary | B | Opus | W6, W14, `import pdf` | |
+| W26 | Quoting the source beside the summary | B | Opus | W6, W14, `import pdf` | ✅ |
 | W27 | Imported figures follow the deck's mode | B | Sonnet | `import pdf`, W17 | |
 
 ### What is deferred, and why
@@ -1679,10 +1679,11 @@ rendered output, so it conflicts with no snapshot.
 
 ## W26 — Quoting the source beside the summary
 
-**Difficulty B · Opus · not started.** A prototype was built and looked at
-(September 2026, on two arXiv papers); its findings are recorded below so the
-implementation starts from what was measured rather than from what was
-guessed. Nothing from the prototype is in the tree.
+**Difficulty B · Opus · landed**, all four stages. A prototype was built and
+looked at first (September 2026, on two arXiv papers); its findings are recorded
+below because they are what the implementation was written from, and the
+tests are the corner cases it found. `share_glyphs` in `pdfimport/svg.rs` is
+the glyph deduplication the weight finding asked for.
 
 A reading-group deck summarises a paper. The audience — and, increasingly, the
 author checking a summary an agent wrote — wants to see the sentence the

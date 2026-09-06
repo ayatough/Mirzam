@@ -99,12 +99,23 @@ pub struct Item {
     /// start. A deck read without the viewer — the PDF included — shows every
     /// item regardless, the way an animated slide prints fully revealed.
     pub step: u32,
+    /// `quote=`: the words this mark lies over, as the source prints them.
+    /// Written by `mirzam import pdf --quote` and read by `mirzam check`,
+    /// which opens the block's `source:` and looks for them on `page`. The
+    /// viewer never sees it.
+    pub quote: Option<String>,
+    /// `page=`: the page of the source the quote is on.
+    pub page: Option<u32>,
 }
 
 #[derive(Debug, Default)]
 pub struct AnnotDoc {
     /// `#id`, or a bare pane name; the renderer resolves it to a selector.
     pub target: Option<String>,
+    /// `source:` — where the picture's words come from, for the check that
+    /// verifies a `quote=`: `@key` for an entry in the deck's bibliography
+    /// whose `file` field names the PDF, or a path to the PDF itself.
+    pub source: Option<String>,
     pub items: Vec<Item>,
     pub errors: Vec<String>,
 }
@@ -123,6 +134,16 @@ pub fn parse(src: &str) -> AnnotDoc {
                     .push(format!("annotate line {}: empty target", ln + 1));
             } else {
                 doc.target = Some(t.to_string());
+            }
+            continue;
+        }
+        if let Some(src) = line.strip_prefix("source:") {
+            let src = src.trim();
+            if src.is_empty() {
+                doc.errors
+                    .push(format!("annotate line {}: empty source", ln + 1));
+            } else {
+                doc.source = Some(src.to_string());
             }
             continue;
         }
@@ -184,30 +205,37 @@ fn parse_item(line: &str) -> Result<Item, String> {
         color: None,
         dashed: false,
         step: 0,
+        quote: None,
+        page: None,
     };
 
     match kind {
-        // A text mark names the phrase and nothing else: where the words are is
-        // the browser's business, and a percentage would be a guess that goes
+        // A box outlines a phrase and nothing else: where the words are is the
+        // browser's business, and a percentage would be a guess that goes
         // stale the moment the sentence is edited.
-        Kind::Highlight | Kind::Underline | Kind::Box => {
+        Kind::Box => {
             let mut parts = rest.split_whitespace();
-            let first = parts.next().ok_or_else(|| {
-                format!("`{}` marks a phrase, so it needs an `#id`", kind.as_str())
-            })?;
+            let first = parts
+                .next()
+                .ok_or("`box` marks a phrase, so it needs an `#id`")?;
             item.place = parse_place(first)?;
             if !matches!(item.place, Place::Anchor(_)) {
-                return Err(format!(
-                    "`{}` marks a phrase written `[like this]{{#id}}`, so it takes an `#id` \
-                     rather than coordinates",
-                    kind.as_str()
-                ));
+                return Err(
+                    "`box` marks a phrase written `[like this]{#id}`, so it takes an `#id` \
+                     rather than coordinates"
+                        .into(),
+                );
             }
             if parts.next().is_some() {
                 return Err("too many fields before `:`".into());
             }
         }
-        Kind::Rect | Kind::Circle => {
+        // A highlight or an underline marks a phrase the same way - and may
+        // also mark words *in a picture*, by coordinates: a passage cut out of
+        // a paper does not reflow when the sentence beside it is edited, so a
+        // percentage of the picture stays true. `mirzam import pdf --quote`
+        // writes these.
+        Kind::Highlight | Kind::Underline | Kind::Rect | Kind::Circle => {
             let mut parts = rest.split_whitespace();
             let first = parts.next().ok_or("missing position")?;
             item.place = parse_place(first)?;
@@ -276,11 +304,30 @@ fn parse_item(line: &str) -> Result<Item, String> {
             }
             "style" if v == "dashed" => item.dashed = true,
             "style" => return Err(format!("unknown style `{v}` (only `dashed`)")),
+            "quote" => {
+                if v.trim().is_empty() {
+                    return Err("quote= needs the words to look for".into());
+                }
+                item.quote = Some(v);
+            }
+            "page" => {
+                item.page = Some(
+                    v.parse::<u32>()
+                        .ok()
+                        .filter(|&p| p > 0)
+                        .ok_or_else(|| format!("page is a page number, got `{v}`"))?,
+                )
+            }
             other => return Err(format!("unknown attribute `{other}=`")),
         }
     }
     if item.pad.is_some() && !matches!(item.place, Place::Anchor(_)) {
         return Err("pad= only applies to an anchored item".into());
+    }
+    if item.quote.is_some() && !matches!(item.place, Place::At(..)) {
+        return Err(
+            "quote= names words in a picture, so it goes on a mark placed by coordinates".into(),
+        );
     }
     Ok(item)
 }
@@ -589,13 +636,55 @@ mod tests {
         assert_eq!(doc.items[1].pad, Some(6.0));
     }
 
-    /// Where the words are is the browser's business; a percentage would be a
-    /// guess that goes stale as soon as the sentence is edited.
+    /// Where the words of a *sentence* are is the browser's business; a
+    /// percentage would be a guess that goes stale as soon as the sentence is
+    /// edited. A box is only ever drawn round a sentence, so it refuses them.
     #[test]
-    fn a_text_mark_refuses_coordinates() {
-        let doc = parse("highlight 10,20 30x5\n");
+    fn a_box_refuses_coordinates() {
+        let doc = parse("target: t\nbox 10,20 30x5\n");
         assert_eq!(doc.items.len(), 0);
         assert!(doc.errors[0].contains("#id"), "{:?}", doc.errors);
+    }
+
+    /// Words in a picture do not reflow, so a highlight or an underline may be
+    /// placed over them by coordinates - which is how a passage cut out of a
+    /// paper gets its lines marked.
+    #[test]
+    fn a_highlight_or_underline_may_be_placed_by_coordinates() {
+        let doc = parse("target: p\nhighlight 50,32.1 95.5x8 : step=1\nunderline 10,20 30x5\n");
+        assert!(doc.errors.is_empty(), "{:?}", doc.errors);
+        assert_eq!(doc.items[0].place, Place::At(50.0, 32.1));
+        assert_eq!(doc.items[0].size, Some((95.5, 8.0)));
+        assert_eq!(doc.items[1].kind, Kind::Underline);
+        // Coordinates need a size, as they do on a rect.
+        let doc = parse("target: p\nhighlight 50,32\n");
+        assert!(doc.errors[0].contains("size"), "{:?}", doc.errors);
+    }
+
+    /// The words a mark lies over, and where the picture came from, ride
+    /// along for `mirzam check` and stay out of what the viewer is sent.
+    #[test]
+    fn a_quote_and_its_source_are_kept_for_the_check() {
+        let doc = parse(
+            "target: #p1\nsource: @duberg2020\n\
+             highlight 50,32 95x8 : step=1 quote=\"This gives, surprisingly, a more memory efficient representation.\" page=1\n\
+             highlight 50,41 95x8 : step=1\n",
+        );
+        assert!(doc.errors.is_empty(), "{:?}", doc.errors);
+        assert_eq!(doc.source.as_deref(), Some("@duberg2020"));
+        assert_eq!(
+            doc.items[0].quote.as_deref(),
+            Some("This gives, surprisingly, a more memory efficient representation.")
+        );
+        assert_eq!(doc.items[0].page, Some(1));
+        assert_eq!(doc.items[1].quote, None);
+        let json = to_json(&doc);
+        assert!(!json.contains("quote"), "not the viewer's business: {json}");
+
+        let doc = parse("highlight #t : quote=\"words\"\n");
+        assert!(doc.errors[0].contains("coordinates"), "{:?}", doc.errors);
+        let doc = parse("target: p\nhighlight 1,1 1x1 : page=0\n");
+        assert!(doc.errors[0].contains("page number"), "{:?}", doc.errors);
     }
 
     /// A block that pairs a phrase with a chart mark measures nothing against a

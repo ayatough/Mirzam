@@ -706,6 +706,8 @@ dependencies = [
  "jpeg-encoder",
  "lopdf",
  "mirzam-anim",
+ "mirzam-annot",
+ "mirzam-cite",
  "mirzam-core",
  "mirzam-figure",
  "mirzam-layout",
