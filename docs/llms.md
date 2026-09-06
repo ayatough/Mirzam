@@ -366,6 +366,11 @@ highlight #c-q3     : color=@accent2 step=1
 - A block whose items are all anchored needs no `target:`.
 - Attributes come after ` : ` — `label=`, `color=`, `style=dashed`, `pad=`,
   `id=`, `step=N` (hold until the Nth click).
+- `target: img/page.svg` (a picture's path, not on the slide) makes a *card*:
+  each anchored `highlight #id` becomes a chip after the phrase that opens the
+  picture, with its coordinate marks lit, on hover (click pins). `export pdf`
+  gathers the cards into Sources slides at the end. Same `quote=`/`source:`
+  check. No `arrow`/`text` in a card.
 
 ## `anim` — slide top level only
 

@@ -221,9 +221,9 @@ data: |
 :::
 
 ::: pane main
-- **Outside the calibrated range** the matrix is an extrapolation, and the
-  coefficients are not linear there — the same limit the survey
-  reports[@devi2022]
+- **Outside the calibrated range** [the matrix is an extrapolation, and the
+  coefficients are not linear there]{#lim} — the same limit the survey
+  reports
 - **Fast transients** beat the lag: a cold front moving over the span leaves
   the two gratings at different temperatures, and the model assumes they are
   not
@@ -232,7 +232,16 @@ data: |
   array[@castellani2021] rather than for a better fit on this one
 :::
 
-<!-- note: If asked about the transient case: we have four events on record and none of them are in this dataset. -->
+```annotate
+target: img/devi2022-p1.svg
+source: @devi2022
+highlight #lim : color=@accent1
+highlight 54.6,43.8 84.2x9.6 : color=@accent1 quote="Outside the range over which the coefficients were fitted, the inverse matrix is an extrapolation: the photo-elastic and thermo-optic coefficients are not linear there, and the recovered strain drifts with temperature." page=1
+highlight 48.3,56.3 93.3x9.6 : color=@accent1
+highlight 41.0,68.8 78.7x9.6 : color=@accent1
+```
+
+<!-- note: The chip after the first point opens the passage of the survey it stands on; the same block on the next slide puts the cut-out beside the summary instead. If asked about the transient case: we have four events on record and none of them are in this dataset. -->
 
 ---
 

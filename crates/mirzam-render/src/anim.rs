@@ -215,6 +215,15 @@ fn locate(html: &str, sel: &str) -> Option<(usize, usize)> {
     }
 }
 
+/// The byte offset just past the closing tag of the element with `id`, which
+/// is where something written *after* a phrase goes — the chip a card block
+/// hangs on it. `None` when no such element exists, or it has no closing tag
+/// to come after.
+pub(crate) fn after_element(html: &str, id: &str) -> Option<usize> {
+    let (_, close_at) = locate(html, &format!("#{id}"))?;
+    Some(close_at + html[close_at..].find('>')? + 1)
+}
+
 /// Finds the next `<name` that opens a tag (not merely a prefix of a longer
 /// tag name), from byte offset `from`.
 fn find_open_tag(html: &str, from: usize, name: &str) -> Option<usize> {

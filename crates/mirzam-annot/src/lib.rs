@@ -102,7 +102,7 @@ pub struct Item {
     /// `quote=`: the words this mark lies over, as the source prints them.
     /// Written by `mirzam import pdf --quote` and read by `mirzam check`,
     /// which opens the block's `source:` and looks for them on `page`. The
-    /// viewer never sees it.
+    /// overlay never sees it; a card block prints it under the picture.
     pub quote: Option<String>,
     /// `page=`: the page of the source the quote is on.
     pub page: Option<u32>,
@@ -110,7 +110,8 @@ pub struct Item {
 
 #[derive(Debug, Default)]
 pub struct AnnotDoc {
-    /// `#id`, or a bare pane name; the renderer resolves it to a selector.
+    /// `#id`, or a bare pane name; the renderer resolves it to a selector. Or
+    /// the path of a picture that is *not* on the slide — see [`AnnotDoc::picture`].
     pub target: Option<String>,
     /// `source:` — where the picture's words come from, for the check that
     /// verifies a `quote=`: `@key` for an entry in the deck's bibliography
@@ -118,6 +119,44 @@ pub struct AnnotDoc {
     pub source: Option<String>,
     pub items: Vec<Item>,
     pub errors: Vec<String>,
+}
+
+impl AnnotDoc {
+    /// The picture a *card* block shows: a `target:` that names an image file
+    /// rather than something on the slide.
+    ///
+    /// A cut-out of a source page need not sit beside the summary. Written
+    /// this way, the picture stays off the slide and each anchored mark
+    /// becomes a chip after its phrase; the chip opens the picture in a card
+    /// with the coordinate marks drawn on it, and the exported PDF collects
+    /// the cards in a generated "Sources" appendix. Same block, same marks,
+    /// same `quote=` for the check - only the presentation differs.
+    pub fn picture(&self) -> Option<&str> {
+        self.target.as_deref().filter(|t| is_picture(t))
+    }
+
+    /// The anchored marks of a card block, each of which becomes a chip.
+    pub fn chips(&self) -> impl Iterator<Item = &Item> {
+        self.items
+            .iter()
+            .filter(|i| matches!(i.place, Place::Anchor(_)))
+    }
+}
+
+/// Whether a `target:` names an image file. A pane name or an `#id` has no
+/// extension; a picture has one of the browser's.
+pub fn is_picture(target: &str) -> bool {
+    let ext = target
+        .rsplit('.')
+        .next()
+        .map(str::to_ascii_lowercase)
+        .unwrap_or_default();
+    target.contains('.')
+        && !target.starts_with('#')
+        && matches!(
+            ext.as_str(),
+            "svg" | "png" | "jpg" | "jpeg" | "gif" | "webp" | "avif"
+        )
 }
 
 pub fn parse(src: &str) -> AnnotDoc {
@@ -167,7 +206,41 @@ pub fn parse(src: &str) -> AnnotDoc {
                 .to_string(),
         );
     }
+    if doc.picture().is_some() {
+        check_card(&mut doc);
+    }
     doc
+}
+
+/// What a card block may hold. The picture is not on the slide, so the only
+/// things that can be drawn *on* it are the marks a card knows how to place by
+/// percentage, and the only way to open it is a chip on a phrase.
+fn check_card(doc: &mut AnnotDoc) {
+    if !doc.items.is_empty() && doc.chips().next().is_none() {
+        doc.errors.push(
+            "the target is a picture that is not on the slide, so the block needs a phrase \
+             to open it from: an anchored mark such as `highlight #q1`"
+                .to_string(),
+        );
+    }
+    for item in &doc.items {
+        let problem = match (&item.place, item.kind) {
+            (Place::Anchor(_), k) if !k.marks_text() => Some(format!(
+                "an anchored `{}` in a card block would mark something on the slide, but the \
+                 picture is not there; a chip is a `highlight`, `underline` or `box` on a phrase",
+                k.as_str()
+            )),
+            (Place::At(..), Kind::Arrow | Kind::Text) => Some(format!(
+                "`{}` cannot be drawn in a card; a card places highlights, underlines, rects \
+                 and circles on the picture",
+                item.kind.as_str()
+            )),
+            _ => None,
+        };
+        if let Some(p) = problem {
+            doc.errors.push(p);
+        }
+    }
 }
 
 fn parse_item(line: &str) -> Result<Item, String> {
@@ -390,7 +463,7 @@ fn parse_attrs(src: &str) -> Result<Vec<(&str, String)>, String> {
 
 /// Resolves `@token` colors to CSS variables; literals are sanitized the same
 /// way `shape` colors are.
-fn color_css(v: &str) -> String {
+pub fn color_css(v: &str) -> String {
     if let Some(name) = v.strip_prefix('@') {
         return format!("var(--mz-{name})");
     }
@@ -707,6 +780,44 @@ mod tests {
             "{:?}",
             doc.errors
         );
+    }
+
+    // ---- A card: the picture is not on the slide ----
+
+    /// A `target:` naming an image file is a picture the slide does not show;
+    /// the anchored marks are the chips that open it.
+    #[test]
+    fn a_picture_target_makes_a_card_block() {
+        let doc = parse(
+            "target: img/devi2022-p1.svg\nsource: @devi2022\n\
+             highlight #q1 : color=@accent1 step=1\n\
+             highlight 54.6,43.8 84.2x9.6 : color=@accent1 step=1 quote=\"words\" page=1\n",
+        );
+        assert!(doc.errors.is_empty(), "{:?}", doc.errors);
+        assert_eq!(doc.picture(), Some("img/devi2022-p1.svg"));
+        assert_eq!(doc.chips().count(), 1);
+        assert!(is_picture("shots/a.PNG"));
+        assert!(!is_picture("#fig"), "an id is not a file");
+        assert!(!is_picture("fig"), "a pane name is not a file");
+        assert!(!is_picture("notes.txt"), "not a picture the browser draws");
+        assert_eq!(parse("target: #fig\nrect 1,1 2x2\n").picture(), None);
+    }
+
+    /// Nothing on the slide can open a card but a chip, and nothing but a
+    /// percentage mark can be drawn on a picture that is not laid out.
+    #[test]
+    fn a_card_needs_a_chip_and_draws_only_marks() {
+        let doc = parse("target: p.svg\nhighlight 50,32 95x8 : step=1\n");
+        assert!(doc.errors[0].contains("phrase"), "{:?}", doc.errors);
+
+        let doc = parse("target: p.svg\nhighlight #q1\narrow 10,80 -> 38,30\n");
+        assert!(doc.errors[0].contains("arrow"), "{:?}", doc.errors);
+
+        let doc = parse("target: p.svg\nhighlight #q1\ncircle #mark : pad=4\n");
+        assert!(doc.errors[0].contains("chip"), "{:?}", doc.errors);
+
+        let doc = parse("target: p.svg\nbox #q1\nrect 10,10 20x10\ncircle 50,50 10x10\n");
+        assert!(doc.errors.is_empty(), "{:?}", doc.errors);
     }
 
     #[test]

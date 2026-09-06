@@ -371,7 +371,13 @@ fn run_quotes(options: &Options, doc: &Document) -> Result<Import, String> {
         Some(key) => format!("@{key}"),
         None => options.input.display().to_string(),
     };
-    let mut block = format!("```annotate\ntarget: #{stem}\nsource: {source}\n");
+    // The other presentation of the same block: no picture on the slide, and
+    // the phrase opens the cut-out in a card. Left as a comment beside the
+    // target it replaces, so the author finds it where the choice is made.
+    let mut block = format!(
+        "```annotate\ntarget: #{stem}\nsource: {source}\n\
+         // target: {{picture}}   <- instead: no picture on the slide, a chip on the phrase opens it in a card\n"
+    );
     for (i, (quote, span)) in options.quotes.iter().zip(&spans).enumerate() {
         let step = i + 1;
         let color = if i % 2 == 0 { "@accent1" } else { "@accent2" };
@@ -411,11 +417,21 @@ fn run_quotes(options: &Options, doc: &Document) -> Result<Import, String> {
         imported.file = Some(file);
         imported.how = how;
     }
+    // The card form names the picture by its path, known only once written.
+    let path = imported
+        .file
+        .as_ref()
+        .map(|p| p.display().to_string())
+        .unwrap_or_else(|| "…".to_string());
+    imported.annotate = imported.annotate.map(|b| b.replacen(PICTURE, &path, 1));
     Ok(Import {
         figures: vec![imported],
         credit: credit(options, title(doc)),
     })
 }
+
+/// Stands in for the picture's path in the block until the picture is written.
+const PICTURE: &str = "{picture}";
 
 /// The credit's source: the paper as a citation when its key is known, and the
 /// paper as a name when it is not.

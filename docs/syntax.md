@@ -1909,8 +1909,50 @@ highlight 41.0,68.8 78.7x9.6 : color=@accent1 step=1
 - **A paper with no text layer** (a scan) has nothing to search. Write the
   coordinates yourself, and leave `quote=` off: there is nothing to check.
 
-[`examples/research.md`](../examples/research.md) does this on its ninth slide,
-against a one-page paper invented for the purpose.
+**Or in a card on the phrase.** A slide that has no room for the cut-out
+beside the summary can keep it off the slide: name the picture's *path* as the
+target instead of an `#id`, and put nothing in a pane.
+
+````markdown
+- **Outside the calibrated range** [the matrix is an extrapolation]{#lim} — the
+  same limit the survey reports
+
+```annotate
+target: img/devi2022-p1.svg
+source: @devi2022
+highlight #lim : color=@accent1
+highlight 54.6,43.8 84.2x9.6 : color=@accent1 quote="Outside the range over which …" page=1
+highlight 48.3,56.3 93.3x9.6 : color=@accent1
+```
+````
+
+The block is the same block — the command prints this form as a comment in
+it — and only the presentation changes:
+
+- **The phrase gets a chip** after it, `p. 1`, in the block's colour. Hovering
+  the chip opens the cut-out in a card beside it with the quoted lines lit, the
+  words as the paper prints them under the picture, and the page and the
+  citation under that; the phrase itself is washed in the same colour while the
+  card is open. A click pins the card so it stays while you talk; `Esc`, a
+  click elsewhere, or the next click step lets it go. `label=` on the phrase's
+  mark replaces the `p. 1`.
+- **Several phrases may share one picture**: each anchored mark is a chip, and
+  it shows the marks that share its `step` — the same pairing rule as always.
+  A chip with a `step=` waits for that click like any other mark.
+- **The exported PDF keeps the evidence.** Paper has no hover, so `export pdf`
+  gathers every card into *Sources* slides at the end, four to a page, each
+  labelled with the slide it belongs to, and the chip becomes a link to its
+  card. The handout does the same. Nothing is generated on screen: the viewer
+  has the card where the chip is.
+- **The check does not care which form you chose.** `quote=`, `page=` and
+  `source:` are read the same way, and a claim the page does not make fails
+  the deck either way.
+- `rect` and `circle` may be placed on the picture too; `arrow` and `text`
+  cannot, since a card is not laid out until it opens.
+
+[`examples/research.md`](../examples/research.md) does both: its eighth slide
+opens the passage from a chip, and its ninth puts the same cut-out beside the
+summary — against a one-page paper invented for the purpose.
 
 ## Animations
 

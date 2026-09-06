@@ -23,6 +23,18 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   and a drop cap are read past; a passage inside a formula is not found, and
   the error says so. `examples/research.md` quotes a one-page paper invented
   for it, and the check runs on it in CI.
+- **The cut-out can stay off the slide and open from the phrase.** An
+  `annotate` block whose `target:` is the picture's path rather than an `#id`
+  puts a chip — `p. 4`, in the block's colour — after each phrase it anchors,
+  and hovering the chip opens the cut-out in a card beside it with the quoted
+  lines lit, the words under the picture, and the page and citation under
+  that; a click pins the card, `Esc` closes it. Several phrases may share one
+  picture and each chip shows the marks of its own `step`. `export pdf` and
+  `--handout` gather every card into *Sources* slides at the end, four to a
+  page, with the chip linking to its card, so the PDF keeps what the viewer
+  shows on hover. `import pdf --quote` prints the card form as a comment in the
+  block, and `check` reads `quote=` the same way in either
+  form. The eighth slide of `examples/research.md` does this.
 - **A converted figure draws each glyph once.** hayro writes one outline per
   glyph *occurrence*; the same shape at two places is now one definition and
   a second `<use>` shifted by `x` and `y`. Ten lines of quoted body text went

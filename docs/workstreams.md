@@ -1679,7 +1679,7 @@ rendered output, so it conflicts with no snapshot.
 
 ## W26 — Quoting the source beside the summary
 
-**Difficulty B · Opus · landed**, all four stages. A prototype was built and
+**Difficulty B · Opus · landed**, all five stages. A prototype was built and
 looked at first (September 2026, on two arXiv papers); its findings are recorded
 below because they are what the implementation was written from, and the
 tests are the corner cases it found. `share_glyphs` in `pdfimport/svg.rs` is
@@ -1795,13 +1795,23 @@ paper cannot be opened is a warning, not a failure. This lives in
 `mirzam-cli` and nowhere else: the core never opens a PDF, and the wasm build
 must not learn how.
 
-**Stops at:** the mark, the cut-out, the check.
+**5. The card.** The *other* presentation of the same block, added once the
+side-by-side form had been looked at: a NotebookLM-style chip on the sentence
+that opens the cut-out in a card. `target:` names the picture's *path* rather
+than an `#id`, which is the one signal that the picture is not on the slide;
+the renderer then writes a chip (`a.mz-chip`) after each anchored phrase and
+one hidden `aside.mz-card` per block, with the marks positioned in percent of
+the picture, so nothing has to be measured to draw them. `annot.js` only
+opens, places and closes the card (hover with a short grace, click to pin,
+Escape or the next step to let go); the same file narrows a tall picture in
+the appendix. The PDF half is `with_sources_appendix` in `mirzam-render`:
+`export pdf` and `--handout` move every card out of its slide into generated
+"Sources" slides, four to a page, and the chip - a link to its card - lands
+there. On screen nothing is generated. `import pdf --quote` prints the card
+form as a comment in the block.
 
-- **Popups.** A NotebookLM-style chip on the sentence, opening the cut-out in a
-  card, was mocked and reads well; it is the *other* presentation of the same
-  `quote=` and is deliberately a later stream. Its PDF half is a generated
-  "Sources" appendix, the way `bibliography` is generated, so the exported deck
-  keeps the evidence the viewer shows on click.
+**Stops at:** the mark, the cut-out, the check, the card.
+
 - **Sources that are not PDFs.** A web page has no fixed layout; the cut-out
   degrades to a `blockquote` and a link, while stage 4's check still verifies
   the words against the fetched text. Not this stream.
@@ -1812,8 +1822,10 @@ must not learn how.
 
 **Owns:** `crates/mirzam-figure/src/quote.rs` (new), `crates/mirzam-cli/src/pdfimport.rs`
 and `pdfimport/svg.rs` (the `--quote` path, glyph dedup), `crates/mirzam-annot`
-(coordinates on text marks), `crates/mirzam-render/src/theme/annot.js` (one
-branch), `crates/mirzam-cli/src/check.rs` (the quote check). Sample slide in
+(coordinates on text marks, the picture target), `crates/mirzam-render/src/annot.rs`
+(chips and cards) and `theme/annot.js` (one overlay branch, the card runtime),
+`with_sources_appendix` in `mirzam-render`, `crates/mirzam-cli/src/check.rs` (the
+quote check). Sample slide in
 `examples/research.md` — a talk that already quotes a paper — and the syntax
 in `docs/syntax.md` under annotations. Golden snapshots move only if the
 sample slide is added.

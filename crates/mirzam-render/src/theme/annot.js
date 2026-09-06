@@ -295,6 +295,185 @@
 
   const layers = [];
 
+  // ---- Cards: a picture the slide does not show, opened from a chip ----
+  //
+  // A block whose `target:` is an image file draws no overlay. The renderer
+  // wrote a chip (`a.mz-chip`) after each phrase the block anchors to and one
+  // hidden `aside.mz-card` per block, its marks already positioned in percent
+  // of the picture. All that is left to do at run time is open the card
+  // beside the chip, show the marks that belong to that chip, and close it.
+  //
+  // Hover opens, and leaving closes, with a short grace so a hand crossing a
+  // chip on its way somewhere else does not flash a card. A click pins the
+  // card - the presenter wants it to stay while they talk - and Escape, a
+  // click anywhere else, or the next click step lets it go. On a touch screen
+  // there is no hover, so the tap is the pin.
+  const OPEN_AFTER = 110, CLOSE_AFTER = 180;
+  const opened = new WeakMap();   // section -> { chip, pinned }
+  let timer = null;
+
+  const chipsIn = (sec) => Array.from(sec.querySelectorAll('a.mz-chip'));
+  const cardOf = (chip) => {
+    const sec = chip.closest('section.slide');
+    return sec && chip.dataset.card ? sec.querySelector('#' + CSS.escape(chip.dataset.card)) : null;
+  };
+  const phraseOf = (chip) => {
+    const sec = chip.closest('section.slide');
+    return sec && chip.dataset.for ? sec.querySelector('#' + CSS.escape(chip.dataset.for)) : null;
+  };
+
+  // Where the card goes, in slide pixels: to the right of the chip when it
+  // fits, else to the left of the phrase's first line, else under the chip.
+  // Never past the slide's edge in either direction.
+  function placeCard(chip, card) {
+    const sec = chip.closest('section.slide');
+    const m = metrics(sec);
+    const c = rectIn(chip, m);
+    const W = sec.offsetWidth, H = sec.offsetHeight;
+    const margin = 24, gap = 18;
+    const cw = card.offsetWidth, ch = card.offsetHeight;
+    let left, top = c.y - 10;
+    if (c.x + c.w + gap + cw <= W - margin) {
+      left = c.x + c.w + gap;
+    } else {
+      const phrase = phraseOf(chip);
+      const p = phrase ? lineRects(phrase, m) : [];
+      const start = p.length ? Math.min(c.x, ...p.map((r) => r.x)) : c.x;
+      if (start - gap - cw >= margin) {
+        left = start - gap - cw;
+      } else {
+        left = Math.min(W - margin - cw, c.x + c.w - cw);
+        top = c.y + c.h + gap;
+      }
+    }
+    left = Math.max(margin, Math.min(left, W - margin - cw));
+    top = Math.max(margin, Math.min(top, H - margin - ch));
+    card.style.left = left + 'px';
+    card.style.top = top + 'px';
+  }
+
+  function openCard(chip, pin) {
+    const sec = chip.closest('section.slide');
+    if (!sec) return;
+    const card = cardOf(chip);
+    if (!card) return;
+    const state = opened.get(sec);
+    if (state && state.chip !== chip) closeCard(sec, true);
+    // The marks, the quote and the source line that belong to this chip.
+    const group = chip.dataset.group || '';
+    for (const el of card.querySelectorAll('[data-group]')) {
+      el.hidden = el.dataset.group !== '' && el.dataset.group !== group;
+    }
+    const color = chip.style.getPropertyValue('--mz-chip');
+    card.style.setProperty('--mz-chip', color);
+    card.hidden = false;
+    placeCard(chip, card);
+    chip.classList.add('mz-chip-open');
+    const phrase = phraseOf(chip);
+    if (phrase) {
+      phrase.classList.add('mz-chip-lit');
+      phrase.style.setProperty('--mz-chip', color);
+    }
+    opened.set(sec, { chip, pinned: pin || (state && state.chip === chip && state.pinned) || false });
+    // The picture may not have decoded when the card was measured; a card
+    // placed for a picture of no height would be placed again when it has one.
+    const img = card.querySelector('img');
+    if (img && !img.complete) {
+      img.addEventListener('load', () => { if (!card.hidden) placeCard(chip, card); }, { once: true });
+    }
+  }
+
+  function closeCard(sec, force) {
+    const state = opened.get(sec);
+    if (!state || (state.pinned && !force)) return;
+    const card = cardOf(state.chip);
+    if (card) card.hidden = true;
+    state.chip.classList.remove('mz-chip-open');
+    const phrase = phraseOf(state.chip);
+    if (phrase) phrase.classList.remove('mz-chip-lit');
+    opened.delete(sec);
+  }
+
+  const later = (fn, ms) => { clearTimeout(timer); timer = setTimeout(fn, ms); };
+
+  function wireCards() {
+    if (!document.querySelector('a.mz-chip')) return;
+    document.addEventListener('mouseover', (e) => {
+      const chip = e.target.closest && e.target.closest('a.mz-chip');
+      if (chip) { later(() => openCard(chip, false), OPEN_AFTER); return; }
+      // Over an open card: reading it, not leaving it.
+      if (e.target.closest && e.target.closest('aside.mz-card')) clearTimeout(timer);
+    });
+    document.addEventListener('mouseout', (e) => {
+      const from = e.target.closest && (e.target.closest('a.mz-chip') || e.target.closest('aside.mz-card'));
+      if (!from) return;
+      const to = e.relatedTarget && e.relatedTarget.closest
+        && (e.relatedTarget.closest('a.mz-chip') || e.relatedTarget.closest('aside.mz-card'));
+      if (to) return;
+      const sec = from.closest('section.slide');
+      later(() => { if (sec) closeCard(sec, false); }, CLOSE_AFTER);
+    });
+    document.addEventListener('click', (e) => {
+      const chip = e.target.closest && e.target.closest('a.mz-chip');
+      if (chip) {
+        e.preventDefault();
+        e.stopPropagation();
+        clearTimeout(timer);
+        const sec = chip.closest('section.slide');
+        const state = opened.get(sec);
+        if (state && state.chip === chip && state.pinned) closeCard(sec, true);
+        else openCard(chip, true);
+        return;
+      }
+      if (e.target.closest && e.target.closest('aside.mz-card')) { e.stopPropagation(); return; }
+      const sec = e.target.closest && e.target.closest('section.slide');
+      if (sec && opened.get(sec)) { closeCard(sec, true); e.stopPropagation(); }
+    }, true);
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      for (const sec of document.querySelectorAll('section.slide')) {
+        if (opened.get(sec)) { closeCard(sec, true); e.stopPropagation(); }
+      }
+    }, true);
+    // Keyboard: a chip is a link, so it takes focus; focusing it is hovering.
+    document.addEventListener('focusin', (e) => {
+      const chip = e.target.closest && e.target.closest('a.mz-chip');
+      if (chip) openCard(chip, false);
+    });
+    document.addEventListener('focusout', (e) => {
+      const chip = e.target.closest && e.target.closest('a.mz-chip');
+      if (chip) later(() => closeCard(chip.closest('section.slide'), false), CLOSE_AFTER);
+    });
+    addEventListener('resize', () => {
+      for (const sec of document.querySelectorAll('section.slide')) {
+        const state = opened.get(sec);
+        if (state) placeCard(state.chip, cardOf(state.chip));
+      }
+    });
+  }
+
+  // The Sources appendix of an export: each card's picture is as wide as its
+  // column, and a picture too tall for its row is narrowed until it fits. The
+  // box stays the picture's own either way, which is what its marks - percent
+  // of that box - depend on. A cut-out is an SVG with a viewBox and no size,
+  // so only its aspect ratio, known once it has loaded, can say how wide a
+  // picture of a given height is.
+  function fitSources() {
+    for (const pic of document.querySelectorAll('figure.mz-source .mz-card-pic')) {
+      const img = pic.querySelector('img');
+      const fig = pic.closest('figure.mz-source');
+      if (!img || !fig) continue;
+      const fit = () => {
+        if (!img.naturalWidth || !img.naturalHeight) return;
+        const sec = fig.closest('.mz-sources');
+        const maxH = parseFloat(sec && getComputedStyle(sec).getPropertyValue('--mz-sources-pic')) || 168;
+        const width = Math.min(fig.clientWidth, maxH * img.naturalWidth / img.naturalHeight);
+        if (width > 0) pic.style.width = Math.floor(width) + 'px';
+      };
+      if (img.complete) fit(); else img.addEventListener('load', fit, { once: true });
+    }
+  }
+
   // How far through the slide's clicks we are. `Infinity` until a viewer says
   // otherwise, so a page with no viewer — the PDF export above all — shows
   // every mark. An annotation waits for a click; it does not depend on one.
@@ -313,6 +492,8 @@
   }
 
   function init() {
+    wireCards();
+    fitSources();
     for (const script of document.querySelectorAll('script.mz-annot')) {
       const l = mount(script);
       if (l) layers.push(l);
@@ -345,12 +526,18 @@
           }
         } catch (e) { /* a malformed block simply adds no steps */ }
       }
+      // A chip waits for its click like any other mark.
+      for (const chip of chipsIn(sec)) n = Math.max(n, Number(chip.dataset.step) || 0);
       return n;
     },
 
     show(sec, step) {
       if (steps.get(sec) === step) return;
       steps.set(sec, step);
+      // A click is the presenter moving on: whatever card was open goes, and
+      // the chips due by now are there for the next hover.
+      closeCard(sec, true);
+      for (const chip of chipsIn(sec)) chip.hidden = (Number(chip.dataset.step) || 0) > step;
       refresh(sec);
     },
 

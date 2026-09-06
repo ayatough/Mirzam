@@ -404,7 +404,9 @@ fn deck_has_anim(meta: &DeckMeta, sections: &[String]) -> bool {
 /// Whether the deck annotates anything, deciding if the annotation overlay is
 /// inlined — into the print page as well as the viewer.
 fn deck_has_annot(sections: &[String]) -> bool {
-    sections.iter().any(|s| s.contains("class=\"mz-annot\""))
+    sections
+        .iter()
+        .any(|s| s.contains("class=\"mz-annot\"") || s.contains("class=\"mz-chip\""))
 }
 
 /// Whether anything asks to be shrunk to fit, deciding if `fit.js` is inlined
@@ -899,6 +901,64 @@ fn print_links(section: &str, index: usize) -> String {
     )
 }
 
+/// How many cards a Sources slide holds.
+const CARDS_PER_SOURCES_SLIDE: usize = 4;
+
+/// The deck with its cards gathered into "Sources" slides at the end.
+///
+/// A card is what a chip opens on screen: the cut-out of the page a phrase
+/// stands on, hidden inside the slide until a hand reaches the chip. Paper
+/// has no hover, so the export takes every card out of the slide that holds
+/// it and lays them out, four to a page, after the last slide - the way a
+/// `bibliography` slide keeps what the citation marks point at. The card
+/// keeps its id, so the chip, which is a link to it, lands on it in the PDF.
+/// A deck with no cards is returned as it came.
+pub fn with_sources_appendix(sections: &[String]) -> Vec<String> {
+    const OPEN: &str = "<aside class=\"mz-card\" ";
+    const CLOSE: &str = "</aside>";
+    let mut out: Vec<String> = Vec::with_capacity(sections.len() + 1);
+    let mut cards: Vec<(usize, String)> = Vec::new();
+    for (i, section) in sections.iter().enumerate() {
+        let mut rest = section.as_str();
+        let mut kept = String::with_capacity(section.len());
+        while let Some(start) = rest.find(OPEN) {
+            let Some(end) = rest[start..].find(CLOSE) else {
+                break;
+            };
+            kept.push_str(&rest[..start]);
+            let card = &rest[start..start + end + CLOSE.len()];
+            cards.push((i + 1, card.replacen(" hidden>", ">", 1)));
+            rest = &rest[start + end + CLOSE.len()..];
+        }
+        kept.push_str(rest);
+        out.push(kept);
+    }
+    if cards.is_empty() {
+        return out;
+    }
+    let pages = cards.len().div_ceil(CARDS_PER_SOURCES_SLIDE);
+    for (n, page) in cards.chunks(CARDS_PER_SOURCES_SLIDE).enumerate() {
+        let figures: String = page
+            .iter()
+            .map(|(slide, card)| {
+                format!("<figure class=\"mz-source\">{card}<figcaption>Slide {slide}</figcaption></figure>\n")
+            })
+            .collect();
+        let title = if pages > 1 {
+            format!("Sources ({}/{pages})", n + 1)
+        } else {
+            "Sources".to_string()
+        };
+        out.push(format!(
+            "<section class=\"slide\" data-index=\"{}\">\n\
+             <div class=\"mz-sources\"><h2>{title}</h2>\
+             <div class=\"mz-sources-grid\">\n{figures}</div></div>\n</section>\n",
+            sections.len() + n
+        ));
+    }
+    out
+}
+
 /// Print page for PDF export: fixed-size slides stacked one per page.
 pub fn assemble_print_page(
     meta: &DeckMeta,
@@ -912,7 +972,7 @@ pub fn assemble_print_page(
     } else {
         ""
     };
-    let sections: Vec<String> = sections
+    let sections: Vec<String> = with_sources_appendix(sections)
         .iter()
         .enumerate()
         .map(|(i, s)| print_links(&videos_to_stills(s), i))
@@ -1011,7 +1071,9 @@ pub fn assemble_handout_page(
         ""
     };
     // The same per-section rewrites the plain print page applies: a video
-    // becomes its poster, and every slide carries the anchor its links name.
+    // becomes its poster, every slide carries the anchor its links name, and
+    // the cards go to the Sources pages at the end.
+    let sections = with_sources_appendix(sections);
     let total = sections.len();
     let pages: Vec<String> = sections
         .iter()
@@ -1345,7 +1407,9 @@ fn render_slide(
     let annot_html = annot::extract(
         index,
         &slide.annots,
-        &format!("{body}{shapes_html}"),
+        &mut body,
+        &shapes_html,
+        ctx.citations,
         warnings,
     );
 
@@ -2931,6 +2995,95 @@ mod tests {
         let html = assemble_print_page(&DeckMeta::default(), &annotated_section(), &[]);
         assert!(html.contains(ANNOT_MARKER));
         assert!(!html.contains("window.MZAnim = {"));
+    }
+
+    fn card_section() -> Vec<String> {
+        vec![
+            "<section class=\"slide\" data-index=\"0\">\n<p>Says <span id=\"q1\">this</span>\
+             <a class=\"mz-chip\" href=\"#mz-card-1-1\" data-card=\"mz-card-1-1\" data-for=\"q1\" \
+             data-group=\"0\" style=\"--mz-chip:var(--mz-accent1)\">p. 4</a>.</p>\
+             <aside class=\"mz-card\" id=\"mz-card-1-1\" hidden><div class=\"mz-card-pic\">\
+             <img src=\"p.svg\" alt=\"\"></div><p class=\"mz-card-src\">p. 4 of x</p></aside>\n\
+             <aside class=\"notes\"><p>a note</p></aside>\n</section>\n"
+                .to_string(),
+        ]
+    }
+
+    /// A chip is opened by the same script that draws the overlay, so a deck
+    /// whose only annotation is a card still ships it - and in the viewer the
+    /// card stays where it is, hidden in its slide until a hand reaches the chip.
+    #[test]
+    fn a_card_pulls_in_the_overlay_and_stays_in_its_slide_on_screen() {
+        let html = assemble_page(
+            &DeckMeta::default(),
+            &card_section(),
+            &PageOptions::default(),
+        );
+        assert!(html.contains(ANNOT_MARKER));
+        assert!(html.contains("<aside class=\"mz-card\" id=\"mz-card-1-1\" hidden>"));
+        assert!(!html.contains("class=\"mz-sources\""));
+    }
+
+    /// Paper has no hover, so the export moves every card out of its slide
+    /// into Sources pages at the end - four to a page - and the chip, a link
+    /// to its card, lands there. The card keeps its id and loses `hidden`.
+    #[test]
+    fn the_export_gathers_the_cards_into_a_sources_appendix() {
+        let out = with_sources_appendix(&card_section());
+        assert_eq!(out.len(), 2);
+        assert!(!out[0].contains("mz-card\""), "moved out: {}", out[0]);
+        assert!(
+            out[0].contains("<aside class=\"notes\">"),
+            "the notes stay: {}",
+            out[0]
+        );
+        assert!(
+            out[1].starts_with(
+                "<section class=\"slide\" data-index=\"1\">\n<div class=\"mz-sources\">"
+            ),
+            "{}",
+            out[1]
+        );
+        assert!(out[1].contains("<h2>Sources</h2>"), "{}", out[1]);
+        assert!(
+            out[1].contains(
+                "<figure class=\"mz-source\"><aside class=\"mz-card\" id=\"mz-card-1-1\">"
+            ),
+            "{}",
+            out[1]
+        );
+        assert!(
+            out[1].contains("<figcaption>Slide 1</figcaption>"),
+            "{}",
+            out[1]
+        );
+
+        // Five cards over two pages, titled as such.
+        let five: Vec<String> = (0..5).map(|_| card_section().remove(0)).collect();
+        let out = with_sources_appendix(&five);
+        assert_eq!(out.len(), 7);
+        assert!(out[5].contains("<h2>Sources (1/2)</h2>"), "{}", out[5]);
+        assert!(out[6].contains("<h2>Sources (2/2)</h2>"), "{}", out[6]);
+        assert_eq!(out[6].matches("<figure class=\"mz-source\">").count(), 1);
+
+        // A deck with no card is left as it came.
+        let plain = vec!["<section class=\"slide\"><p>x</p></section>".to_string()];
+        assert_eq!(with_sources_appendix(&plain), plain);
+
+        let print = assemble_print_page(&DeckMeta::default(), &card_section(), &[]);
+        assert!(
+            print.contains("id=\"slide-2\"") && print.contains("mz-sources"),
+            "{print}"
+        );
+        assert!(
+            print.contains(ANNOT_MARKER),
+            "the appendix is fitted by annot.js"
+        );
+        let handout = assemble_handout_page(&DeckMeta::default(), &card_section(), &[]);
+        assert!(
+            handout.contains("Slide 2 / 2") && handout.contains("mz-sources"),
+            "{handout}"
+        );
     }
 
     fn effects_section() -> Vec<String> {

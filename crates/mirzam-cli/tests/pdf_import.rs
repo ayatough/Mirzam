@@ -206,6 +206,10 @@ fn a_quoted_passage_is_cut_out_with_its_lines_marked() {
         block.contains("// highlight #q1 : color=@accent1 step=1"),
         "{block}"
     );
+    assert!(
+        block.contains("// target: ") && block.contains("someone2026-p1.svg   <- instead"),
+        "the card form is offered, with the picture's real path: {block}"
+    );
 
     // The cut-out is the two lines and one line of context either side - the
     // caption above the first paragraph, and the picture is not text so
