@@ -43,6 +43,7 @@ from a deck someone was actually trying to give.
 | 5 | W20, W21 | The [market survey](reports/2026-08-market-survey.md)'s P0: visible code, and a loop an agent can close |
 | 6 | W22, W23, W16 | The survey's P1. W22 first: it is what makes a theme an identity rather than a palette, which W16 then has something to exhibit. W23 develops alongside but lands after, because both move rendered output |
 | 6 | W22 | The last frontmatter key that asks the author to know how the CSS is assembled |
+| 7 | W26, W27 | The reading-group deck: a summary beside the words it stands on, and figures cut from a paper that survive a dark slide. Independent of each other; W27 is what W26's cut-outs need in dark mode |
 
 ## Assignment
 
@@ -83,6 +84,8 @@ there is. The model column follows from that:
 | W23 | Mermaid diagrams, rendered at build time | B | Opus | — | ✅ |
 | W24 | Autoplay: the deck turns its own pages | C | Fable | — | ✅ |
 | W25 | A language server: the editor understands the deck | B | Sonnet | W7, W21 | |
+| W26 | Quoting the source beside the summary | B | Opus | W6, W14, `import pdf` | |
+| W27 | Imported figures follow the deck's mode | B | Sonnet | `import pdf`, W17 | |
 
 ### What is deferred, and why
 
@@ -1673,6 +1676,248 @@ currently unserved by everyone.
 **Owns:** `crates/mirzam-cli/src/lsp.rs`, `crates/mirzam-cli/src/main.rs` (the
 subcommand), `editors/vscode/src/extension.js` (the client). Touches no
 rendered output, so it conflicts with no snapshot.
+
+## W26 — Quoting the source beside the summary
+
+**Difficulty B · Opus · not started.** A prototype was built and looked at
+(September 2026, on two arXiv papers); its findings are recorded below so the
+implementation starts from what was measured rather than from what was
+guessed. Nothing from the prototype is in the tree.
+
+A reading-group deck summarises a paper. The audience — and, increasingly, the
+author checking a summary an agent wrote — wants to see the sentence the
+summary stands on, in the paper's own words, at the place in the paper where it
+stands. The slide shape for that is the summary on one side and a cut-out of
+the source page on the other, with the quoted lines lit and tied to the
+sentence that paraphrases them. The same mechanism turns a claim with no
+source into something a build can refuse.
+
+**Most of this exists.** The prototype was assembled from parts already on
+`main`, which is what makes this a stream rather than a project:
+
+- `mirzam import pdf` reads a page into text lines with their boxes
+  (`pdfpage.rs`), cuts a rectangle out of the PDF and turns it into a vector
+  SVG with hayro, and lays the page's own words over the picture as invisible
+  text so the cut-out stays selectable and searchable. A quoted passage is the
+  same operation on a different rectangle.
+- `annotate` already pairs a phrase with a mark on a picture: same `step`,
+  same colour, no arrow (W14). A quote is that pairing with the mark placed on
+  the lines of the cut-out.
+- `credit="p. 4 of [@key]"` already puts the paper in the reference list.
+
+**What the stream adds** is the derivation nobody wants to do by hand — from
+"this sentence paraphrases these words" to a cut-out and its coordinates — and
+a check that the words are really there.
+
+### What the prototype showed
+
+The look was judged first, per the rule W18 taught (the invariants are easy;
+the feel is what gets a feature withdrawn). Three marks were tried for the
+lines of the cut-out: an outline `rect` per line reads as clutter; `highlight`
+(the same wash the phrase gets) reads as one pairing; `underline` is the quiet
+alternative. **Highlight is the mark, underline the option, no boxes.**
+
+- **The text search is line-based and mostly works.** Two-column pages,
+  ligatures (`ffi` → `ffi`), a word broken at a line end (`real-` / `time`) all
+  matched once the normalisation folded ligatures, dropped hyphens on both
+  sides and collapsed whitespace. Neighbouring quotes that share a line need
+  the match to be trimmed to where the quote starts and ends *within* the
+  line.
+- **Where inside the line is an estimate.** `mirzam_figure::Line` carries a
+  string and one box, so the start of a quote mid-line was placed by
+  character fraction — good enough for justified body text, and visibly off
+  by a glyph ("In this paper" lit from the "n"). Exact placement needs per-word
+  boxes out of `pdfpage`, which is a bounded change there: the pass already
+  walks every glyph to measure the line.
+- **The source's own typo is a match failure.** One paper spells "sturcture";
+  a summariser quoting the corrected spelling finds nothing. That is correct
+  for a verifier and unhelpful for an author, so the check should say "no
+  exact match; nearest is …" when the edit distance is small, and reserve the
+  failure for a quote with nothing near it.
+- **A drop cap is a separate line.** `T` at 29 pt and `HE state estimation` at
+  10 pt: the search has to join a one-letter line to the line it is set into.
+- **Maths is not searchable.** A displayed equation comes out as fragments —
+  subscripts, bars and the ∈ each on a line of their own. Quote the prose
+  around a theorem and let the context lines carry the maths, which hayro
+  draws exactly.
+- **Cut-out margins.** A passage plus two lines of context, at the full column
+  width (the column's most common left edge, not the union of every line — a
+  title or a rotated arXiv watermark otherwise widens it). Vertical padding
+  of a point or two; six points let the neighbours' descenders in.
+- **The SVG is heavy.** Ten lines of body text came out at about 0.55 MB:
+  hayro writes one `<path>` per glyph occurrence and shares nothing (594
+  `<use>`, 594 defs). A deck quoting twenty passages would carry 10 MB.
+  Deduplicating identical glyph outlines by their path data is the fix, and
+  it belongs in `pdfimport/svg.rs` where `cull` already parses the elements.
+- **A claim with no source is what the tool is for.** "UFOMap is ten times
+  faster than OctoMap" is in neither paper; the search refused it, and the
+  slide showed a sentence with no lit lines beside it. That is the shape of an
+  unsupported claim, and `check` should make it a finding rather than leaving
+  it to the eye.
+
+### Stages
+
+**1. Geometry, in `mirzam-figure`.** `locate(lines, quote) -> Vec<Span>`,
+where a span is the run of lines the quote covers with start and end
+fractions on its first and last line, plus `crop(lines, spans, context)` for
+the column rectangle. Pure functions over `Line`, tested against hand-written
+pages: two columns, a hyphenated break, a ligature, a drop cap, two quotes
+sharing a line, a quote that is not there. Normalisation lives here too, and
+its rules are the test names.
+
+**2. `import pdf --quote "…"`, repeatable.** One cut-out covering every quote
+given, `--context N` lines around them, `--page` to disambiguate. Writes the
+SVG (hidden text layer included, glyph defs deduplicated) and prints what the
+figure import prints — the `![](…){caption= credit=}` line — followed by an
+`annotate` block: `highlight #c1 : step=1` for the author to attach to a
+phrase, and `highlight x,y WxH : quote="…" page=N step=1` per line of the
+match. **The coordinates stay visible in the source** — that is what makes a
+deck's claim about where its words came from reviewable, and it is the same
+stance `import pdf` already takes for figures.
+
+**3. Coordinates on a text mark.** `mirzam-annot` currently refuses
+`highlight 10,20 30x5` on the grounds that a percentage goes stale when the
+sentence is edited. The reasoning holds for words on a slide and not for words
+in a picture, which never reflow; `a_text_mark_refuses_coordinates` becomes a
+test that an *anchored* mark refuses a size, and `highlight` and `underline`
+take `x,y WxH` like `rect` does. `annot.js` draws a coordinate row as one
+line box. `box` stays id-only: an outline is the mark this stream found it
+does not want.
+
+**4. `check` verifies the quote.** For every `highlight` carrying `quote=` and
+`page=`, open the paper and look for the words on that page. Found: nothing
+to say. Nearest match within a few edits: a warning naming both spellings.
+Nothing near: `source.quote`, an error, in the same JSON array W21 defined.
+The paper is found through the `.bib` entry the credit cites — the `file =`
+field Zotero and JabRef write — or a `source=` on the block; a quote whose
+paper cannot be opened is a warning, not a failure. This lives in
+`mirzam-cli` and nowhere else: the core never opens a PDF, and the wasm build
+must not learn how.
+
+**Stops at:** the mark, the cut-out, the check.
+
+- **Popups.** A NotebookLM-style chip on the sentence, opening the cut-out in a
+  card, was mocked and reads well; it is the *other* presentation of the same
+  `quote=` and is deliberately a later stream. Its PDF half is a generated
+  "Sources" appendix, the way `bibliography` is generated, so the exported deck
+  keeps the evidence the viewer shows on click.
+- **Sources that are not PDFs.** A web page has no fixed layout; the cut-out
+  degrades to a `blockquote` and a link, while stage 4's check still verifies
+  the words against the fetched text. Not this stream.
+- **Scanned PDFs** have no text layer; the author writes coordinates by hand
+  and `check` has nothing to verify. Say so in the docs rather than OCR.
+- **Word-exact placement** needs per-word boxes from `pdfpage`; stage 1 is
+  written so that arriving boxes tighten the spans without changing the API.
+
+**Owns:** `crates/mirzam-figure/src/quote.rs` (new), `crates/mirzam-cli/src/pdfimport.rs`
+and `pdfimport/svg.rs` (the `--quote` path, glyph dedup), `crates/mirzam-annot`
+(coordinates on text marks), `crates/mirzam-render/src/theme/annot.js` (one
+branch), `crates/mirzam-cli/src/check.rs` (the quote check). Sample slide in
+`examples/research.md` — a talk that already quotes a paper — and the syntax
+in `docs/syntax.md` under annotations. Golden snapshots move only if the
+sample slide is added.
+
+## W27 — Imported figures follow the deck's mode
+
+**Difficulty B · Sonnet · not started.** Found by W26's prototype and true of
+every figure `import pdf` has ever written: a cut-out is the paper's black ink
+on a transparent ground, so a dark deck — `mode: dark`, `D`, a dark phone —
+shows a dark rectangle where the words were.
+
+Three answers were built and looked at on the same four figures (a line
+drawing whose fills carry meaning, a coloured grid, a table, a plot embedded as
+a raster image) and on a text passage:
+
+| | Paper card under the cut-out | Invert luminance, keep hue (a PDF reader's dark mode) | Recolour the ink, keep the fills |
+|---|---|---|---|
+| Legible | yes | always | yes |
+| "Black means occupied" | true | **false** — the black node is now white, and the caption still says black | true |
+| Coloured lines | as printed | hue kept, saturation off | as printed |
+| A raster plot in the figure | white panel | dark panel | white panel |
+| A photograph | as is | a negative | as is |
+| Sits on the slide as | a pasted slip | a picture | part of the slide |
+| Cost | CSS | one CSS filter, works in PDF export | rewrite the SVG |
+
+**Recolouring the ink is the default.** It is the only one of the three that
+never contradicts a caption or turns a photograph into a negative, and it
+needs no judgement about what a picture is. The inversion filter is worth
+keeping as an opt-in — `dark=invert` — for the figure that is mostly raster
+plots; `dark=keep` for the figure that must stay as printed. Choosing between
+them automatically means telling a plot from a photograph inside an embedded
+image, which is a guess this stream does not make.
+
+### The rules
+
+Written against what the four figures actually contained, and each one earned
+by a picture that was wrong without it:
+
+1. **Words are ink.** Where the words are is known: the invisible text layer
+   the import already lays over the picture is the page's own text with its
+   line boxes. A dark path whose centre falls in a line box is a glyph and
+   takes the theme's foreground. This is what tells a glyph from a filled
+   shape — one figure drew its labels as plain `<path>`s, not `<use>`s, and
+   without the text layer they were indistinguishable from the black nodes
+   beside them. Glyph-sized paths in no line box (a rotated label) count too.
+2. **Words on a light fill stay as printed.** A number inside a white table
+   cell is read against the cell, not the slide; recolouring it made it
+   vanish.
+3. **Strokes are ink.** Achromatic dark strokes take the foreground; a dark
+   chromatic stroke keeps its hue and is lifted in lightness so pure blue
+   reads on a dark ground.
+4. **Fills are left alone** — a fill means something — **except that a dark,
+   achromatic fill with no stroke is given a hairline outline** in the
+   foreground, at the width the drawing itself uses most. Six black circles
+   and two black leaves in one figure had no outline and disappeared into the
+   slide until this rule; their squares survived only because they happened
+   to be stroked.
+5. **A white rectangle the size of the picture is the page, not the drawing**;
+   drop it. Embedded raster images are not touched.
+
+The hidden text layer is black at 0.4 % opacity and is left that way: it is
+not seen in either mode.
+
+### Where it lives
+
+The judgement needs the text layer, the paths' boxes and the page geometry,
+all of which `import pdf` has in hand when it writes the SVG and none of which
+the renderer has. So **the import marks and the renderer substitutes**:
+`pdfimport/svg.rs` writes `class="mz-ink"` on each attribute the rules select
+(and `mz-ink-outline` on the stroke it adds), and `mirzam-render` turns those
+into `var(--mz-fg)` when it embeds the picture. That keeps PDF knowledge out
+of the wasm build and keeps the renderer's part mechanical.
+
+For the substitution to work the SVG has to be **inlined as an `<svg>` element**
+rather than a base64 `<img>`: CSS variables do not reach into an image, so the
+`<img>` route needs two files per figure and the `<picture>` rewrite W22 gave
+logos — the prototype did exactly that, and it doubles the weight of every
+figure. Inlining follows `D` instantly, follows a per-pane theme (W17), and
+makes the text layer selectable in the HTML deck as well as the PDF. Two
+things it costs: hayro's glyph ids (`#g0`, `#g1` …) collide across two figures
+on one slide and need a per-figure prefix, and `annot.js`'s `paintTarget` must
+skip a hidden picture when a pane holds a light and a dark copy — a small
+fix worth making regardless. Any SVG without the marks embeds as it does
+today.
+
+The ink colour is the theme's foreground by default; a theme may set
+`--mz-ink` to something a step softer (the prototype used a slightly dimmed
+white against bold serif text, which glares at full foreground).
+
+**Stops at:** vector ink. A raster panel inside a figure stays white in dark
+mode and `dark=invert` is the author's answer; a figure with a photograph
+takes `dark=keep`. Neither is inferred.
+
+**Testing.** The rules are functions from an SVG string to an SVG string, so
+the suite is hand-written fixtures in `pdfimport/svg.rs`: a glyph as `<use>`, a
+glyph as `<path>` in a line box, a glyph over a white cell, an unstroked black
+circle, a page rectangle in transformed coordinates, an embedded `<image>`,
+a coloured stroke. Then the four figures, looked at in both modes.
+
+**Owns:** `crates/mirzam-cli/src/pdfimport/svg.rs` (the rules and the marks),
+`crates/mirzam-render/src/inline.rs` and `assets.rs` (inline embedding, id
+prefixing, the substitution), `crates/mirzam-render/src/theme/annot.js`
+(`paintTarget`), `docs/syntax.md` under figures (`dark=`). Every imported
+figure in `examples/research.md` changes its embedding, so the golden
+snapshots move; land after W26's sample slide or before it, not alongside.
 
 ## W5 — Typst-flavoured math ✅
 

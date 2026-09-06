@@ -63,6 +63,8 @@ changing.
 | PPTX export, stage one: slide pictures and real speaker notes | Done |
 | Quoting a figure out of a paper (`import pdf`) | Done |
 | That figure rendered to SVG with nothing installed | Done · unreleased |
+| Quoting a passage beside its summary, verified by `check` (`import pdf --quote`) | Next |
+| Imported figures that follow the deck's mode | Next |
 | Plugins, PPTX with native text boxes | Later |
 
 Each of those has a brief — what it is for, what is not free about it, and where
