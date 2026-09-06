@@ -326,7 +326,22 @@ fn image_attrs(line: &str) -> String {
         {
             return c[0].to_string();
         }
-        let attrs = parse_attrs(braces.map(|m| m.as_str()).unwrap_or(""));
+        let mut attrs = parse_attrs(braces.map(|m| m.as_str()).unwrap_or(""));
+        // W27: a figure `import pdf` cut from a paper is recoloured for a dark
+        // deck by default. `dark=invert` is the opt-in for a figure that is
+        // mostly a raster plot - one CSS filter, applied here rather than
+        // judged path by path; `dark=keep` is the figure that must stay
+        // exactly as printed, a photograph or a screenshot with its own
+        // chrome. Either one tells the asset pass below to leave the SVG's own
+        // marks alone rather than substituting them.
+        let dark_attr = match attrs.kv.get("dark").map(String::as_str) {
+            Some("invert") => {
+                attrs.classes.push("mz-dark-invert".to_string());
+                " data-mz-dark=\"invert\"".to_string()
+            }
+            Some("keep") => " data-mz-dark=\"keep\"".to_string(),
+            _ => String::new(),
+        };
         let mut style = String::new();
         match attrs.kv.get("fit").map(String::as_str) {
             // `contain` under a caption is the one that changes shape: filling
@@ -364,7 +379,7 @@ fn image_attrs(line: &str) -> String {
             html_frame(src, &alt, &attrs, &style_attr)
         } else {
             format!(
-                "<img src=\"{src}\" alt=\"{alt}\"{}{style_attr}>",
+                "<img src=\"{src}\" alt=\"{alt}\"{}{style_attr}{dark_attr}>",
                 attrs.html_id_class()
             )
         };
@@ -1309,6 +1324,24 @@ mod tests {
     fn a_plain_image_is_left_to_the_markdown_parser() {
         let src = "![alt](img/a.png)\n";
         assert_eq!(preprocess(src), src);
+    }
+
+    /// W27: `dark=invert` marks a figure for the CSS filter rather than the
+    /// per-path ink substitution, and tells `mirzam-render`'s asset pass
+    /// (`data-mz-dark`) to leave the SVG's own marks alone.
+    #[test]
+    fn dark_invert_adds_the_filter_class_and_marks_the_image() {
+        let out = preprocess("![A plot](fig.svg){dark=invert}\n");
+        assert!(out.contains("class=\"mz-dark-invert\""), "{out}");
+        assert!(out.contains("data-mz-dark=\"invert\""), "{out}");
+    }
+
+    /// `dark=keep` asks for neither: the figure stays exactly as printed.
+    #[test]
+    fn dark_keep_marks_the_image_without_a_filter() {
+        let out = preprocess("![A photo](fig.svg){dark=keep}\n");
+        assert!(!out.contains("mz-dark-invert"), "{out}");
+        assert!(out.contains("data-mz-dark=\"keep\""), "{out}");
     }
 
     #[test]

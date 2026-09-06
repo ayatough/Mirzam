@@ -248,6 +248,32 @@ fn the_words_inside_a_figure_come_back_as_text() {
     );
 }
 
+/// W27: Figure 1 is a filled black box with no stroke of its own, so a dark
+/// deck would otherwise show a black rectangle where the box was. `import
+/// pdf` marks it for the renderer to recolour.
+#[test]
+fn a_figure_is_marked_for_a_dark_deck() {
+    let dir = TempDir::new("ink");
+    let found = pdfimport::run(&Options {
+        only: Some("1".to_string()),
+        ..options(&dir, Format::Svg)
+    })
+    .expect("Figure 1")
+    .figures;
+    let svg = std::fs::read_to_string(found[0].file.as_ref().unwrap()).expect("the svg");
+
+    assert!(
+        svg.contains("mz-ink-outline"),
+        "the box's fill has no stroke to recolour, so it gets one: {svg}"
+    );
+    // The label is set in white on the black box, which already reads on a
+    // dark slide - recolouring it would be the one thing that breaks it.
+    assert!(
+        !svg.contains(r##"fill="#ffffff" class="mz-ink""##),
+        "white ink on the box is left exactly as printed: {svg}"
+    );
+}
+
 /// A snapshot, because an SVG that is subtly wrong still looks like an SVG.
 /// Reviewed by eye when hayro moves:
 ///   MIRZAM_UPDATE_SNAPSHOTS=1 cargo test -p mirzam-cli --test pdf_import

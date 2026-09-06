@@ -903,9 +903,10 @@ the command only saves the screenshot and the typing.
 
 A figure imported that way is a vector picture, so it stays sharp however large
 the pane is, and it carries the words that are in it: a table's cells can be
-selected and copied out of the exported PDF, and searched there, even though
-the picture draws them as shapes. What it cannot do is make them selectable in
-the *deck* — a picture on a slide is an `<img>`, and nothing inside one is.
+selected and copied out of the exported PDF and searched there, even though
+the picture draws them as shapes — and in the HTML deck too, since the SVG is
+inlined into the page rather than embedded as a picture nothing can reach
+into.
 
 With `fit=contain` the picture takes its own shape inside the pane rather than
 filling it, so the caption sits against the picture's own bottom edge instead
@@ -914,6 +915,35 @@ when they fit on one line, and read from their own left edge when they wrap.
 
 **`--mz-caption-size`** (default `.82em`) and **`--mz-credit-size`** (default
 `.72em`) set how large the two lines are, on the pane, the deck or a theme.
+
+#### A figure that follows the deck into the dark
+
+A figure `import pdf` cuts out of a paper is the paper's black ink on a
+transparent ground — legible on the white a printed page assumes, and a dark
+rectangle where the words were on a dark slide. `import pdf` marks exactly the
+ink in the figure it writes, and a dark deck (`mode: dark`, `D`, a dark phone)
+recolours only that: a glyph, a stroke, a filled shape that had no stroke of
+its own. A fill is never touched — it means something a caption may depend
+on — so "black means occupied" never turns white under a mode switch, and a
+coloured stroke keeps its hue, lightened rather than flattened, so a blue line
+still reads as blue.
+
+Two figures need something else, and say so on the reference:
+
+```markdown
+![Sensor sweep](img/plot.svg){dark=invert caption="Raw output, oversampled 4×"}
+![Rig photo](img/setup.svg){dark=keep caption="The bench as built"}
+```
+
+| `dark=` | For | Does |
+|---|---|---|
+| *(unset)* | most cut-outs: line art, diagrams, tables | recolours the marked ink, leaves every fill as printed |
+| `invert` | a figure that is mostly a raster plot | one CSS filter over the whole picture, which also survives the PDF export |
+| `keep` | a photograph, a screenshot with its own chrome | nothing — the figure stays exactly as printed in every mode |
+
+Neither is inferred: telling a plot from a photograph inside an embedded
+image is a guess `import pdf` does not make, so the two answers are the
+author's to choose.
 
 #### A `<picture>` that picks art by colour scheme
 

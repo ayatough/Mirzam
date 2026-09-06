@@ -762,7 +762,7 @@ figure.mz-figure {
   display: flex; flex-direction: column; gap: .4em;
   margin: 0; min-width: 0; min-height: 0; max-width: 100%;
 }
-figure.mz-figure > img, figure.mz-figure > video,
+figure.mz-figure > img, figure.mz-figure > video, figure.mz-figure > svg,
 figure.mz-figure > .mz-embed, figure.mz-figure > .mz-video-still {
   min-height: 0; flex-shrink: 1; margin-inline: auto;
 }
@@ -787,11 +787,40 @@ figcaption.mz-figcaption > span { max-width: 100%; }
 .mz-fig-credit a { color: inherit; overflow-wrap: anywhere; }
 /* An image alone in a paragraph is a figure, not a word. Laying it out as a
    block drops the baseline gap that otherwise pushes it past the pane. */
-p > img:only-child, p > video:only-child,
-.pane > img:only-child, .pane > video:only-child,
-.mz-bg-content > img:only-child, .mz-bg-content > video:only-child {
+p > img:only-child, p > video:only-child, p > svg:only-child,
+.pane > img:only-child, .pane > video:only-child, .pane > svg:only-child,
+.mz-bg-content > img:only-child, .mz-bg-content > video:only-child,
+.mz-bg-content > svg:only-child {
   display: block; margin: 0 auto;
 }
+
+/* W27: a figure `import pdf` cut from a paper is the paper's black ink on a
+   transparent ground, which is legible on the white a printed page assumes
+   and a dark rectangle on a dark slide. `pdfimport::svg` marks exactly the
+   ink - a glyph, an unstroked shape's added outline, an achromatic stroke -
+   with these classes when it writes the figure; a fill is never touched,
+   because a fill means something a caption may depend on.
+   Scoped to a real attribute value rather than a bare presence selector: a
+   glyph never carries a stroke and a stroked shape's own stroke should not
+   gain a phantom fill just because `.mz-ink` is also its class. */
+.mz-ink[fill]:not([fill="none"]) { fill: var(--mz-ink, var(--mz-fg)); }
+.mz-ink[stroke]:not([stroke="none"]) { stroke: var(--mz-ink, var(--mz-fg)); }
+.mz-ink-outline[stroke] { stroke: var(--mz-ink, var(--mz-fg)); }
+/* A coloured stroke keeps its hue rather than flattening to the foreground -
+   pure blue lightened, not replaced - so only a dark deck substitutes it,
+   using the lightened colour `pdfimport::svg` already computed. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-mode="light"]) .mz-ink-chroma[stroke] { stroke: var(--mz-ink-chroma, var(--mz-fg)); }
+}
+:root[data-mode="dark"] .mz-ink-chroma[stroke] { stroke: var(--mz-ink-chroma, var(--mz-fg)); }
+/* `dark=invert` is the opt-in for a figure that is mostly a raster plot: one
+   CSS filter, which also survives the PDF export, rather than judging every
+   path in it. `dark=keep` is the figure that must stay exactly as printed -
+   a photograph, a screenshot with its own chrome. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-mode="light"]) .mz-dark-invert { filter: invert(1) hue-rotate(180deg); }
+}
+:root[data-mode="dark"] .mz-dark-invert { filter: invert(1) hue-rotate(180deg); }
 video { background: #000; /* theme-independent: letterbox behind the frame */ border-radius: 6px; }
 
 /* A recording: the player plus the label the reference's alt text gave it,

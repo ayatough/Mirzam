@@ -130,6 +130,22 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   reader who copies a replacement character where a digit was is worse off than
   one who copies nothing.
 
+- **A figure cut from a paper follows the deck into the dark.** Every picture
+  `import pdf` has ever written is the paper's black ink on a transparent
+  ground, which a dark deck used to show as a dark rectangle where the words
+  and lines were. The import now marks the ink it drew — a glyph, a stroke, a
+  filled shape with no stroke to recolour — and the renderer recolours exactly
+  those to the theme's foreground, leaving every fill precisely as printed: a
+  caption that says "black means occupied" is never made to lie by its own
+  figure. A coloured stroke keeps its hue, lightened rather than flattened, so
+  a blue line still reads as blue on a dark slide. `dark=invert` asks for a
+  single CSS filter instead — the figure that is mostly a raster plot — and
+  `dark=keep` leaves a photograph exactly as it is; neither is guessed at. The
+  marked SVG is now inlined into the deck as a live element rather than a
+  base64 picture, which is what lets the theme reach it at all, and it also
+  makes the figure's hidden text layer selectable in the HTML deck, not only
+  the exported PDF.
+
 ### Changed
 - **A figure out of a paper needs nothing installed.** `mirzam import pdf`
   landed in 0.10 with one step that was not self-contained: a *drawn* figure —
