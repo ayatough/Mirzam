@@ -144,18 +144,20 @@ pub fn with_text(svg: &str, lines: &[Line], crop: mirzam_figure::Rect) -> String
 /// when it inlines the picture; see W27 in `docs/workstreams.md` for what each
 /// rule answers and the figure that needed it.
 ///
-/// Scoped to what [`cull`] already judges: an element hayro draws straight
-/// onto the page, one level under `<svg>`. A shape nested inside a `<g>` - a
-/// clipped drawing, a placed image - is left exactly as printed rather than
-/// guessed at, the same trade `cull` makes for the same reason. `with_text`'s
-/// own invisible layer is `<text>...</text>`, never self-closing, so it is
-/// never a candidate here.
+/// Judges an element wherever it sits, not only the ones directly under
+/// `<svg>`: hayro wraps a clipped drawing in a plain `<g>` two levels deep,
+/// which is most of what a real figure actually draws, and stopping at depth
+/// one - the trade [`cull`] makes, for occlusion, where it is the right one -
+/// would leave nearly every shape unjudged here. What it still leaves alone
+/// is a `<defs>`'s own children, painted only through a `<use>`, and anything
+/// under a transform this cannot read. `with_text`'s own invisible layer is
+/// `<text>...</text>`, never self-closing, so it is never a candidate here.
 pub fn mark_ink(svg: &str, lines: &[Line], crop: mirzam_figure::Rect) -> String {
     let Some(view) = view_box(svg) else {
         return svg.to_string();
     };
     let elements = scan(svg);
-    let boxes = measure(&elements);
+    let roots = root_boxes(&elements);
     let line_boxes: Vec<Rect> = lines
         .iter()
         .filter(|l| !l.text.trim().is_empty())
@@ -177,10 +179,7 @@ pub fn mark_ink(svg: &str, lines: &[Line], crop: mirzam_figure::Rect) -> String 
     let mut replace: Vec<Option<String>> = vec![None; elements.len()];
 
     for (i, element) in elements.iter().enumerate() {
-        if element.depth != 1 || !element.empty {
-            continue;
-        }
-        let Extent::Box(own) = boxes[i] else {
+        let Some(own) = roots[i] else {
             continue;
         };
         let fill = fill_of(element.text);
@@ -212,7 +211,7 @@ pub fn mark_ink(svg: &str, lines: &[Line], crop: mirzam_figure::Rect) -> String 
             // Rule 2: a word set against its own light fill - a table cell -
             // is read against that fill, not the slide, and recolouring it
             // made it vanish into the one the slide is now painted in.
-            if color.is_dark() && !covered_by_light_fill(i, &elements, &boxes, own, &view) {
+            if color.is_dark() && !covered_by_light_fill(i, &elements, &roots, own, &view) {
                 replace[i] = Some(with_class(element.text, "mz-ink"));
             }
             continue;
@@ -246,6 +245,93 @@ pub fn mark_ink(svg: &str, lines: &[Line], crop: mirzam_figure::Rect) -> String 
     }
 
     rewrite(svg, &elements, &kept, &replace)
+}
+
+/// Every element's own paint, mapped all the way to the root `<svg>`'s
+/// coordinates - not just by its own `transform`, but by every `<g
+/// transform=...>` it sits inside, composed in order. hayro wraps a clipped
+/// drawing in a plain `<g>` two levels deep, which is most of what a figure
+/// actually draws, so judging only what sits directly under `<svg>` (as
+/// [`cull`] does, and may: an occluded *group* is still occluded whatever it
+/// contains) would leave nearly every shape unjudged here.
+///
+/// `None` for a `<defs>`'s own children - never painted directly, only through
+/// a `<use>` - and for anything under a transform this cannot read, the same
+/// "leave it alone" [`cull`] takes for a shorthand it cannot measure.
+fn root_boxes(elements: &[Element]) -> Vec<Option<Rect>> {
+    const IDENTITY: [f64; 6] = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0];
+    let defs: Vec<(&str, usize)> = elements
+        .iter()
+        .enumerate()
+        .filter_map(|(i, e)| Some((id_of(e.text)?, i)))
+        .collect();
+
+    // One pass, in document order, with a stack of (depth, transform,
+    // in-a-defs) for whichever ancestors are still open - the same shape
+    // `scan` itself tracks nesting with.
+    let mut stack: Vec<(usize, Option<[f64; 6]>, bool)> = Vec::new();
+    let mut transforms: Vec<Option<[f64; 6]>> = Vec::with_capacity(elements.len());
+    let mut in_defs: Vec<bool> = Vec::with_capacity(elements.len());
+    for element in elements {
+        while stack
+            .last()
+            .is_some_and(|(depth, ..)| *depth >= element.depth)
+        {
+            stack.pop();
+        }
+        let (parent_tf, parent_defs) = stack
+            .last()
+            .map(|(_, t, d)| (*t, *d))
+            .unwrap_or((Some(IDENTITY), false));
+        let combined = match (parent_tf, transform_of(element.text)) {
+            (Some(p), Some(own)) => Some(compose(p, own)),
+            _ => None,
+        };
+        let defs_here = parent_defs || element.name == "defs";
+        transforms.push(combined);
+        in_defs.push(defs_here);
+        if !element.empty {
+            stack.push((element.depth, combined, defs_here));
+        }
+    }
+
+    elements
+        .iter()
+        .enumerate()
+        .map(|(i, element)| {
+            if !element.empty || in_defs[i] {
+                return None;
+            }
+            let local = match element.name {
+                "use" => href_of(element.text)
+                    .and_then(|id| defs.iter().find(|(d, _)| *d == id))
+                    .map(|(_, at)| extent(elements[*at].text))
+                    .unwrap_or(Extent::Unknown),
+                "image" => image_box(element.text),
+                _ => extent(element.text),
+            };
+            match (local, transforms[i]) {
+                (Extent::Box(b), Some(tf)) => Some(map_rect(tf, b)),
+                _ => None,
+            }
+        })
+        .collect()
+}
+
+/// Composes two `matrix(a b c d e f)`s: `inner` maps a point into the space
+/// `outer` already maps to the root, so a point local to `inner`'s element
+/// goes through `inner` first and `outer` second.
+fn compose(outer: [f64; 6], inner: [f64; 6]) -> [f64; 6] {
+    let [a1, b1, c1, d1, e1, f1] = outer;
+    let [a2, b2, c2, d2, e2, f2] = inner;
+    [
+        a1 * a2 + c1 * b2,
+        b1 * a2 + d1 * b2,
+        a1 * c2 + c1 * d2,
+        b1 * c2 + d1 * d2,
+        a1 * e2 + c1 * f2 + e1,
+        b1 * e2 + d1 * f2 + f1,
+    ]
 }
 
 /// A line's box (page space, y up) in the crop's own local space (y down),
@@ -282,16 +368,15 @@ fn in_any_line(own: Rect, lines: &[Rect]) -> bool {
 fn covered_by_light_fill(
     i: usize,
     elements: &[Element],
-    boxes: &[Extent],
+    roots: &[Option<Rect>],
     own: Rect,
     view: &Rect,
 ) -> bool {
     let cx = (own.x0 + own.x1) / 2.0;
     let cy = (own.y0 + own.y1) / 2.0;
-    elements[..i].iter().enumerate().any(|(j, e)| {
-        e.depth == 1
-            && matches!(fill_of(e.text), Some(Paint::Solid(c)) if c.is_light())
-            && matches!(boxes[j], Extent::Box(b) if !is_page_sized(b, view)
+    elements[..i].iter().zip(roots).any(|(e, root)| {
+        matches!(fill_of(e.text), Some(Paint::Solid(c)) if c.is_light())
+            && matches!(root, Some(b) if !is_page_sized(*b, view)
                 && cx >= b.x0 && cx <= b.x1 && cy >= b.y0 && cy <= b.y1)
     })
 }
@@ -1173,6 +1258,11 @@ mod tests {
     <path d="M20,60 L60,60 L60,90 L20,90 Z" fill="#000000"/>
     <path d="M20,60 L60,90" stroke="#0000ff" fill="none" stroke-width="0.8"/>
     <image transform="matrix(20 0 0 20 140 60)" xlink:href="data:image/png;base64,AAAA" width="1" height="1"/>
+    <g>
+        <g clip-path="url(#c0)">
+            <path d="M0,0 L20,0 L20,20 L0,20 Z" fill="#000000" transform="matrix(1 0 0 1 150 60)"/>
+        </g>
+    </g>
     <defs id="outline-glyph">
         <path id="g0" d="M10,10 L14,10 L14,20 Z"/>
     </defs>
@@ -1279,6 +1369,31 @@ mod tests {
         let out = marked(vec![]);
         assert!(
             out.contains(r##"<image transform="matrix(20 0 0 20 140 60)" xlink:href="data:image/png;base64,AAAA" width="1" height="1"/>"##),
+            "{out}"
+        );
+    }
+
+    /// hayro wraps a clipped drawing in a plain `<g>` two levels deep - a real
+    /// paper's occupancy-grid figure is built almost entirely this way - so a
+    /// pass that only judged what sits directly under `<svg>` would leave
+    /// nearly every shape in a real figure unmarked.
+    #[test]
+    fn an_unstroked_shape_two_groups_deep_still_gets_an_outline() {
+        let out = marked(vec![]);
+        assert!(
+            out.contains(r##"fill="#000000" transform="matrix(1 0 0 1 150 60)" stroke="#1a1a1a""##),
+            "{out}"
+        );
+    }
+
+    /// A `<defs>`'s own children are painted only through a `<use>` that
+    /// names them; judging one on its own would mark ink that is never drawn
+    /// where the `d` says it is.
+    #[test]
+    fn a_defs_own_child_is_left_alone() {
+        let out = marked(vec![line_over(0.0, 5.0, 20.0, 25.0)]);
+        assert!(
+            out.contains(r##"<path id="g0" d="M10,10 L14,10 L14,20 Z"/>"##),
             "{out}"
         );
     }
