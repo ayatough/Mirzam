@@ -137,8 +137,12 @@ impl Imported {
         // The attribute list has no escape for a quotation mark, so a caption
         // carrying one gets typographic quotes rather than a broken reference.
         let caption = self.caption.replace('"', "”");
+        // `.mz-pdf-figure` is the one signal a stored raster picture can
+        // carry at all - it has no comment the way a converted SVG does -
+        // so `dark-figures: invert` (`docs/syntax.md`) can tell this figure
+        // apart from a photograph the author added some other way.
         format!(
-            "![{}]({}){{fit=contain caption=\"{}\" credit=\"{} of {}\"}}",
+            "![{}]({}){{.mz-pdf-figure fit=contain caption=\"{}\" credit=\"{} of {}\"}}",
             self.label, path, caption, self.label, credit
         )
     }

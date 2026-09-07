@@ -1830,8 +1830,14 @@ size regardless. Inverting the whole figure - the same answer a PDF reader's
 own dark mode gives - sidesteps both and was plainly the more correct
 picture side by side. `dark=keep` replaces `dark=invert` as the only knob: it
 opts a figure *out* of the (now default) inversion, for the one whose fills
-must survive a mode switch. The rest of this brief - the rules, the measured
-findings - is kept as the record of what was tried and why it did not ship.
+must survive a mode switch. `dark-figures:` in frontmatter is the same choice
+made for the whole deck rather than one figure, and is what lets `invert`
+reach a stored raster picture too - a photograph `import pdf` lifted out of
+the page whole, which the per-figure default leaves alone since there is no
+comment to mark it with the way an SVG carries one; a class on the reference
+itself carries the mark there instead. The rest of this brief - the rules,
+the measured findings - is kept as the record of what was tried and why it
+did not ship.
 
 **Difficulty B · Sonnet · landed.** Found by W26's prototype and true of
 every figure `import pdf` has ever written: a cut-out is the paper's black ink

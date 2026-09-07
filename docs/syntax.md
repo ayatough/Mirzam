@@ -938,8 +938,26 @@ a photograph, a screenshot with its own chrome, where inverting would turn it
 into a negative. Whether an embedded picture is a photograph is a guess
 `import pdf` does not make, so this is the author's to say. A figure `import
 pdf` lifted out whole rather than converting — the stored image in the page,
-rather than a drawing — is never touched either way: only a converted SVG
-carries the mark that makes the default apply.
+rather than a drawing — is left exactly as printed by this default, the same
+as `dark=keep` would leave it, unless `dark-figures:` below says otherwise.
+
+**`dark-figures:` in frontmatter sets the deck-wide default**, for a deck that
+wants a different split than the usual one:
+
+```yaml
+dark-figures: invert   # every figure, raster included
+```
+
+| `dark-figures:` | Inverts |
+|---|---|
+| *(unset)*, `auto` | a converted vector figure; a stored raster one stays as printed |
+| `invert` | every figure `import pdf` produced, raster included |
+| `keep` | none of them; every figure stays exactly as printed |
+
+A figure's own `dark=` always overrides the deck's default for that one
+reference, in either direction — `dark=invert` on a photograph under
+`dark-figures: keep` still inverts it, and `dark=keep` on a diagram under
+`dark-figures: invert` still spares it.
 
 #### A `<picture>` that picks art by colour scheme
 

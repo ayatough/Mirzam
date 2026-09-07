@@ -42,6 +42,13 @@ pub struct DeckMeta {
     /// Which syntax `$...$` holds: `latex` (the default) or `typst`.
     /// Per deck, not per formula — a deck reads as one language.
     pub math: Option<String>,
+    /// How a dark deck treats a figure `import pdf` cut from a paper: `auto`
+    /// (the default) inverts a converted vector figure and leaves a stored
+    /// raster one alone, `invert` inverts both, `keep` inverts neither. A
+    /// single `dark=` on the reference (`docs/syntax.md`) overrides this for
+    /// that one figure.
+    #[serde(rename = "dark-figures", alias = "dark_figures")]
+    pub dark_figures: Option<String>,
     /// Named layouts a slide can be drawn on instead of carrying a `pane`
     /// block of its own. A slide picks one with `<!-- layout: name -->`.
     pub masters: Masters,
@@ -289,6 +296,20 @@ pub enum MathDialect {
     Typst,
 }
 
+/// What `dark-figures:` asks for, deck-wide - a figure's own `dark=`
+/// (`docs/syntax.md`) still overrides this for that one reference.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum DarkFigures {
+    /// Invert a converted vector figure, leave a stored raster one alone -
+    /// the same split the per-figure `dark=` default makes.
+    #[default]
+    Auto,
+    /// Invert every figure `import pdf` produced, raster included.
+    Invert,
+    /// Invert none of them; every figure stays exactly as printed.
+    Keep,
+}
+
 impl DeckMeta {
     /// Logical slide size (width, height) for the aspect ratio. Defaults to 16:9.
     pub fn slide_size(&self) -> (u32, u32) {
@@ -307,6 +328,21 @@ impl DeckMeta {
             Some(other) => Err(format!(
                 "math: unknown dialect `{other}`; `latex` and `typst` are supported, \
                  rendering as latex"
+            )),
+        }
+    }
+
+    /// The dark-mode default `dark-figures:` asks for. `Err` carries a
+    /// warning for an unrecognised value; the deck still renders, with the
+    /// default.
+    pub fn dark_figures(&self) -> Result<DarkFigures, String> {
+        match self.dark_figures.as_deref().map(str::trim) {
+            None | Some("auto") => Ok(DarkFigures::Auto),
+            Some("invert") => Ok(DarkFigures::Invert),
+            Some("keep") => Ok(DarkFigures::Keep),
+            Some(other) => Err(format!(
+                "dark-figures: unknown value `{other}`; `auto`, `invert` and `keep` are \
+                 supported, rendering as auto"
             )),
         }
     }
@@ -820,5 +856,27 @@ mod tests {
     fn unterminated_braces_kept() {
         let v = vars();
         assert_eq!(substitute_vars("a {{price", &v), "a {{price");
+    }
+
+    #[test]
+    fn dark_figures_defaults_to_auto() {
+        assert_eq!(DeckMeta::default().dark_figures(), Ok(DarkFigures::Auto));
+        let meta = parse_meta("dark-figures: auto\n").unwrap();
+        assert_eq!(meta.dark_figures(), Ok(DarkFigures::Auto));
+    }
+
+    #[test]
+    fn dark_figures_takes_invert_or_keep() {
+        let meta = parse_meta("dark-figures: invert\n").unwrap();
+        assert_eq!(meta.dark_figures(), Ok(DarkFigures::Invert));
+        let meta = parse_meta("dark-figures: keep\n").unwrap();
+        assert_eq!(meta.dark_figures(), Ok(DarkFigures::Keep));
+    }
+
+    #[test]
+    fn an_unknown_dark_figures_value_warns_and_falls_back_to_auto() {
+        let meta = parse_meta("dark-figures: sepia\n").unwrap();
+        let err = meta.dark_figures().unwrap_err();
+        assert!(err.contains("sepia"), "{err}");
     }
 }

@@ -141,6 +141,9 @@ fn the_markdown_is_ready_to_paste() {
 
     assert!(line.starts_with("![Figure 2]("), "{line}");
     assert!(line.contains("someone2026-fig2.png"), "{line}");
+    // W27: the only signal a stored raster picture can carry at all, since it
+    // has no comment the way a converted SVG does.
+    assert!(line.contains(".mz-pdf-figure"), "{line}");
     assert!(line.contains("caption=\"A stored picture.\""), "{line}");
     assert!(
         line.contains("credit=\"Figure 2 of [@someone2026]\""),

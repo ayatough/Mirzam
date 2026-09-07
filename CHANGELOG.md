@@ -140,11 +140,14 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   marker still reads as itself. `dark=keep` is the opt-out, for the figure
   that must stay exactly as printed — a photograph, a screenshot with its own
   chrome, where inverting would turn it into a negative; a figure lifted out
-  of the page whole, rather than converted, is never touched either way. The
-  converted SVG is inlined into the deck as a live element rather than a
-  base64 picture, which is what lets a dark deck reach it at all, and it also
-  makes the figure's hidden text layer selectable in the HTML deck, not only
-  the exported PDF.
+  of the page whole, rather than converted, is left exactly as printed by
+  this default too. `dark-figures: invert` in frontmatter is the deck-wide
+  version of the same choice — every figure inverts, raster included — for a
+  deck that wants a different split than the usual one; a figure's own
+  `dark=` still overrides it either way. The converted SVG is inlined into
+  the deck as a live element rather than a base64 picture, which is what lets
+  a dark deck reach it at all, and it also makes the figure's hidden text
+  layer selectable in the HTML deck, not only the exported PDF.
 
   An earlier build of this recoloured only the ink it could identify in each
   shape — a glyph, a stroke, a fill with no stroke to recolour — leaving

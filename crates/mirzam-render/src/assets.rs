@@ -40,14 +40,28 @@ impl AssetSource for FsAssets<'_> {
 /// Replaces local asset references with data URIs.
 /// Every referenced path is collected into `referenced` (including missing ones)
 /// so callers can validate caches and watch files.
+///
+/// `dark_figures` is the deck's `dark-figures:` (`DeckContext::dark_figures`,
+/// `mirzam_core::DeckMeta::dark_figures`) - the default a figure `import pdf`
+/// produced takes in a dark deck when its own reference writes no `dark=`.
 pub fn embed_assets(
     html: &str,
     source: &dyn AssetSource,
+    dark_figures: mirzam_core::DarkFigures,
     warnings: &mut Vec<String>,
     referenced: &mut Vec<PathBuf>,
 ) -> String {
     let mut next_id = 0usize;
-    embed_within(html, source, "", 0, warnings, referenced, &mut next_id)
+    embed_within(
+        html,
+        source,
+        "",
+        0,
+        dark_figures,
+        warnings,
+        referenced,
+        &mut next_id,
+    )
 }
 
 /// One document's references, resolved relative to the directory it lives in.
@@ -55,11 +69,13 @@ pub fn embed_assets(
 /// The deck itself is at the root, so `base` is empty and `depth` is zero. An
 /// HTML widget inlined into a slide is one level in: its own `src` attributes
 /// are written relative to the widget, which is what `base` carries.
+#[allow(clippy::too_many_arguments)]
 fn embed_within(
     html: &str,
     source: &dyn AssetSource,
     base: &str,
     depth: usize,
+    dark_figures: mirzam_core::DarkFigures,
     warnings: &mut Vec<String>,
     referenced: &mut Vec<PathBuf>,
     next_id: &mut usize,
@@ -67,7 +83,7 @@ fn embed_within(
     // A cut-out `import pdf` marked for a dark deck goes in as an `<svg>`
     // element before anything else touches it: once the generic pass below
     // has turned its `src` into a data URI, the file it pointed at is gone.
-    let html = inline_ink_figures(html, source, base, referenced, next_id);
+    let html = inline_ink_figures(html, source, base, dark_figures, referenced, next_id);
 
     // `srcset` is here because a `<picture>` is how a deck offers one image for
     // a light background and another for a dark one. Miss it and the deck looks
@@ -78,9 +94,27 @@ fn embed_within(
             let attr = &c[1];
             let value = &c[2];
             let embedded = if attr == "srcset" {
-                embed_srcset(value, source, base, depth, warnings, referenced, next_id)
+                embed_srcset(
+                    value,
+                    source,
+                    base,
+                    depth,
+                    dark_figures,
+                    warnings,
+                    referenced,
+                    next_id,
+                )
             } else {
-                embed_one(value, source, base, depth, warnings, referenced, next_id)
+                embed_one(
+                    value,
+                    source,
+                    base,
+                    depth,
+                    dark_figures,
+                    warnings,
+                    referenced,
+                    next_id,
+                )
             };
             format!("{attr}=\"{embedded}\"")
         })
@@ -97,7 +131,16 @@ fn embed_within(
         format!(
             "{}{}{}",
             &c[1],
-            embed_one(&c[2], source, base, depth, warnings, referenced, next_id),
+            embed_one(
+                &c[2],
+                source,
+                base,
+                depth,
+                dark_figures,
+                warnings,
+                referenced,
+                next_id
+            ),
             &c[3]
         )
     })
@@ -112,6 +155,14 @@ fn embed_within(
 /// would be the wrong direction for that boundary to point.
 const IMPORT_PDF_MARK: &str = "<!--mirzam:import-pdf-->";
 
+/// The class `pdfimport::Imported::markdown` puts on every reference it
+/// writes, vector or raster alike - the one signal a stored raster picture
+/// can carry at all, since it has no comment the way an SVG does. Read here
+/// only to decide whether `dark-figures: invert` may recolour a raster
+/// figure; an SVG's own [`IMPORT_PDF_MARK`] is the more durable of the two,
+/// since editing the reference cannot lose it.
+const IMPORT_PDF_CLASS: &str = "mz-pdf-figure";
+
 /// A figure `import pdf` cut out of a paper is inlined as a live `<svg>`
 /// element rather than a base64 `<img>`. Two things need that: a dark deck
 /// inverts the figure by default (`--mz-dark-invert`'s `filter` reaches an
@@ -121,10 +172,17 @@ const IMPORT_PDF_MARK: &str = "<!--mirzam:import-pdf-->";
 /// laid over the picture so a table's cells can be searched, becomes
 /// selectable in the HTML deck rather than only the exported PDF.
 ///
+/// A raster figure - a photograph or diagram `import pdf` lifted out of the
+/// page whole rather than converting - is never inlined, having no text
+/// layer and no internal ids to collide; `dark-figures: invert` reaches it by
+/// adding the filter class to the `<img>` in place, which is enough since
+/// `filter` works on a replaced element as well as an inlined one.
+///
 /// `dark=keep` (`inline.rs`) is how the author says a particular figure must
-/// stay exactly as printed; it is still inlined, for the text layer, but
-/// gets no filter. An SVG carrying no mark - every picture that is not a PDF
-/// cut-out - is untouched here and embeds exactly as it always has.
+/// stay exactly as printed. A vector figure is still inlined for it, for the
+/// text layer, but gets no filter; a raster one is left untouched outright.
+/// A picture carrying no mark at all - every one that is not a PDF cut-out -
+/// is never touched here and embeds exactly as it always has.
 ///
 /// Each figure's own ids are prefixed, because hayro numbers a page's glyph
 /// outlines from `g0` and two figures on one slide would otherwise collide -
@@ -133,16 +191,24 @@ fn inline_ink_figures(
     html: &str,
     source: &dyn AssetSource,
     base: &str,
+    dark_figures: mirzam_core::DarkFigures,
     referenced: &mut Vec<PathBuf>,
     next_id: &mut usize,
 ) -> String {
     static IMG: OnceLock<Regex> = OnceLock::new();
-    let img = IMG.get_or_init(|| Regex::new(r#"<img\b[^>]*\bsrc="([^"]+\.svg)"[^>]*>"#).unwrap());
+    let img = IMG.get_or_init(|| Regex::new(r#"<img\b[^>]*\bsrc="([^"]+)"[^>]*>"#).unwrap());
     img.replace_all(html, |c: &regex::Captures| {
         let tag = &c[0];
         let src = &c[1];
         if src.starts_with("data:") || src.contains("://") {
             return tag.to_string();
+        }
+        let is_svg = src
+            .rsplit('.')
+            .next()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("svg"));
+        if !is_svg {
+            return mark_raster_figure(tag, dark_figures);
         }
         let rel = join_rel(base, src);
         // Not recorded yet: the ordinary embedding pass below runs over
@@ -160,14 +226,67 @@ fn inline_ink_figures(
             referenced.push(p);
         }
         *next_id += 1;
-        // The default is to invert; `dark=keep` is the one thing that turns
-        // it off. `dark=invert` (also `inline.rs`) already carries the class
-        // on the `<img>` this replaces, so this is a no-op for it, not a
-        // second filter.
-        let invert = img_attr(tag, "data-mz-dark").as_deref() != Some("keep");
-        inline_svg(tag, &svg, *next_id, invert)
+        inline_svg(tag, &svg, *next_id, resolve_invert(tag, dark_figures, true))
     })
     .into_owned()
+}
+
+/// Whether a marked figure is inverted by default: a per-figure `dark=`
+/// (`data-mz-dark` on the `<img>`, from `inline.rs`) always wins; short of
+/// that, the deck's `dark-figures:` decides, `auto` being the split `dark=`
+/// itself defaults to - invert a converted vector figure, leave a stored
+/// raster one alone.
+fn resolve_invert(tag: &str, dark_figures: mirzam_core::DarkFigures, is_svg: bool) -> bool {
+    use mirzam_core::DarkFigures;
+    match img_attr(tag, "data-mz-dark").as_deref() {
+        Some("keep") => false,
+        Some("invert") => true,
+        _ => match dark_figures {
+            DarkFigures::Keep => false,
+            DarkFigures::Invert => true,
+            DarkFigures::Auto => is_svg,
+        },
+    }
+}
+
+/// A stored raster picture `import pdf` lifted out of the page: touched only
+/// when it carries [`IMPORT_PDF_CLASS`] and [`resolve_invert`] says to invert
+/// it, in which case the filter class is added in place - there is nothing
+/// here to inline, so this is the whole of the raster half of the deck-level
+/// default.
+fn mark_raster_figure(tag: &str, dark_figures: mirzam_core::DarkFigures) -> String {
+    let class = img_attr(tag, "class").unwrap_or_default();
+    if !class.split_whitespace().any(|c| c == IMPORT_PDF_CLASS) {
+        return tag.to_string();
+    }
+    if !resolve_invert(tag, dark_figures, false) {
+        return tag.to_string();
+    }
+    add_class(tag, "mz-dark-invert")
+}
+
+/// Adds a class to an existing tag, joining its `class=` attribute if it
+/// already has one rather than writing a second.
+fn add_class(tag: &str, class: &str) -> String {
+    match img_attr(tag, "class") {
+        Some(existing) if existing.split_whitespace().any(|c| c == class) => tag.to_string(),
+        Some(existing) => set_attr(tag, "class", &format!("{existing} {class}")),
+        None => set_attr(tag, "class", class),
+    }
+}
+
+/// Sets one attribute on a tag, replacing its value if it is already there.
+fn set_attr(tag: &str, name: &str, value: &str) -> String {
+    if let Some(existing) = img_attr(tag, name) {
+        tag.replacen(
+            &format!("{name}=\"{existing}\""),
+            &format!("{name}=\"{value}\""),
+            1,
+        )
+    } else {
+        let at = tag.rfind('>').unwrap_or(tag.len());
+        format!("{} {name}=\"{value}\"{}", &tag[..at], &tag[at..])
+    }
 }
 
 /// The text of an `image/svg+xml` data URI, or `None` for anything else -
@@ -296,11 +415,13 @@ fn join_rel(base: &str, src: &str) -> String {
 /// module exists to keep — and nothing else in a build said so. A hosted video
 /// is the exception the syntax documents, and it arrives here as a player URL
 /// Mirzam wrote itself, so that one is silent.
+#[allow(clippy::too_many_arguments)]
 fn embed_one(
     src: &str,
     source: &dyn AssetSource,
     base: &str,
     depth: usize,
+    dark_figures: mirzam_core::DarkFigures,
     warnings: &mut Vec<String>,
     referenced: &mut Vec<PathBuf>,
     next_id: &mut usize,
@@ -322,7 +443,16 @@ fn embed_one(
         referenced.push(p);
     }
     match result {
-        Ok(uri) => nested(uri, source, &rel, depth, warnings, referenced, next_id),
+        Ok(uri) => nested(
+            uri,
+            source,
+            &rel,
+            depth,
+            dark_figures,
+            warnings,
+            referenced,
+            next_id,
+        ),
         Err(e) => {
             warnings.push(format!("{rel}: {e}"));
             placeholder_uri(&rel)
@@ -336,11 +466,13 @@ fn embed_one(
 /// does, and they are relative to the widget, so this is where the walk goes
 /// one level in — and where it stops, because a document deep enough to hit
 /// [`MAX_EMBED_DEPTH`] is a loop rather than a widget.
+#[allow(clippy::too_many_arguments)]
 fn nested(
     uri: String,
     source: &dyn AssetSource,
     rel: &str,
     depth: usize,
+    dark_figures: mirzam_core::DarkFigures,
     warnings: &mut Vec<String>,
     referenced: &mut Vec<PathBuf>,
     next_id: &mut usize,
@@ -373,6 +505,7 @@ fn nested(
         source,
         dir_of(rel),
         depth + 1,
+        dark_figures,
         warnings,
         referenced,
         next_id,
@@ -386,11 +519,13 @@ fn nested(
 /// A `srcset` is candidates separated by commas, each one a URL and an optional
 /// width or density descriptor. Every URL is inlined; the descriptors are passed
 /// through untouched, because they describe the image rather than locate it.
+#[allow(clippy::too_many_arguments)]
 fn embed_srcset(
     value: &str,
     source: &dyn AssetSource,
     base: &str,
     depth: usize,
+    dark_figures: mirzam_core::DarkFigures,
     warnings: &mut Vec<String>,
     referenced: &mut Vec<PathBuf>,
     next_id: &mut usize,
@@ -405,7 +540,16 @@ fn embed_srcset(
             Some((u, d)) => (u, d.trim()),
             None => (candidate, ""),
         };
-        let embedded = embed_one(url, source, base, depth, warnings, referenced, next_id);
+        let embedded = embed_one(
+            url,
+            source,
+            base,
+            depth,
+            dark_figures,
+            warnings,
+            referenced,
+            next_id,
+        );
         out.push(if descriptor.is_empty() {
             embedded
         } else {
@@ -558,7 +702,13 @@ mod tests {
     fn embed(html: &str) -> (String, Vec<String>, Vec<PathBuf>) {
         let mut warnings = Vec::new();
         let mut referenced = Vec::new();
-        let out = embed_assets(html, &Fake, &mut warnings, &mut referenced);
+        let out = embed_assets(
+            html,
+            &Fake,
+            mirzam_core::DarkFigures::Auto,
+            &mut warnings,
+            &mut referenced,
+        );
         (out, warnings, referenced)
     }
 
@@ -662,6 +812,7 @@ mod tests {
         let out = embed_assets(
             r#"<div class="mz-embed mz-html"><iframe src="media/widget.html"></iframe></div>"#,
             &files,
+            mirzam_core::DarkFigures::Auto,
             &mut warnings,
             &mut referenced,
         );
@@ -712,6 +863,7 @@ mod tests {
         let out = embed_assets(
             r#"<iframe src="loop.html"></iframe>"#,
             &files,
+            mirzam_core::DarkFigures::Auto,
             &mut warnings,
             &mut referenced,
         );
@@ -748,6 +900,7 @@ mod tests {
         let out = embed_assets(
             r#"<iframe src="w.html"></iframe>"#,
             &Terse,
+            mirzam_core::DarkFigures::Auto,
             &mut warnings,
             &mut referenced,
         );
@@ -867,6 +1020,84 @@ mod tests {
         assert_eq!(out.matches("mz-dark-invert").count(), 1, "{out}");
     }
 
+    /// A stored raster figure `import pdf` lifted out of the page whole
+    /// carries `mz-pdf-figure` (`pdfimport::Imported::markdown`) but no
+    /// file-content mark - a PNG has no comment the way an SVG does - so
+    /// `dark-figures: auto`, the split `dark=` itself defaults to, leaves it
+    /// exactly as printed.
+    #[test]
+    fn auto_leaves_a_raster_figure_untouched() {
+        let (out, _, _) = embed_with_mode(
+            r#"<img class="mz-pdf-figure" src="photo.png">"#,
+            &Svgs(&[("photo.png", "")]),
+            mirzam_core::DarkFigures::Auto,
+        );
+        assert!(!out.contains("mz-dark-invert"), "{out}");
+    }
+
+    /// `dark-figures: invert` is the one setting that reaches a raster
+    /// figure too - the same picture a Zotero-style "invert colours" reader
+    /// setting would show for a photograph, which is exactly what the author
+    /// asked this deck for by writing the key.
+    #[test]
+    fn invert_reaches_a_raster_figure() {
+        let (out, _, _) = embed_with_mode(
+            r#"<img class="mz-pdf-figure" src="photo.png">"#,
+            &Svgs(&[("photo.png", "")]),
+            mirzam_core::DarkFigures::Invert,
+        );
+        assert!(out.contains("mz-dark-invert"), "{out}");
+    }
+
+    /// `dark-figures: invert` does not reach a picture that never carried
+    /// `mz-pdf-figure` at all - the author's own photograph, not one `import
+    /// pdf` produced - which would be a surprising thing for a deck-wide
+    /// setting about paper cut-outs to do.
+    #[test]
+    fn invert_does_not_reach_an_unmarked_picture() {
+        let (out, _, _) = embed_with_mode(
+            r#"<img src="photo.png">"#,
+            &Svgs(&[("photo.png", "")]),
+            mirzam_core::DarkFigures::Invert,
+        );
+        assert!(!out.contains("mz-dark-invert"), "{out}");
+    }
+
+    /// `dark-figures: keep` turns the default off for a vector figure too -
+    /// still inlined, for the text layer, but with no filter.
+    #[test]
+    fn keep_turns_off_the_default_for_a_vector_figure() {
+        let (out, _, _) = embed_with_mode(
+            "<img src=\"fig.svg\">",
+            &Svgs(&[("fig.svg", MARKED)]),
+            mirzam_core::DarkFigures::Keep,
+        );
+        assert!(out.contains("<svg"), "{out}");
+        assert!(!out.contains("mz-dark-invert"), "{out}");
+    }
+
+    /// A figure's own `dark=` (`inline.rs`'s `data-mz-dark`) always wins over
+    /// the deck's default, in both directions: `dark=invert` on a raster
+    /// figure inverts it even under `dark-figures: keep`, and `dark=keep` on
+    /// a vector figure spares it even under `dark-figures: invert`.
+    #[test]
+    fn a_figures_own_dark_always_overrides_the_deck_default() {
+        let (out, _, _) = embed_with_mode(
+            r#"<img class="mz-pdf-figure mz-dark-invert" data-mz-dark="invert" src="photo.png">"#,
+            &Svgs(&[("photo.png", "")]),
+            mirzam_core::DarkFigures::Keep,
+        );
+        assert!(out.contains("mz-dark-invert"), "{out}");
+
+        let (out, _, _) = embed_with_mode(
+            r#"<img data-mz-dark="keep" src="fig.svg">"#,
+            &Svgs(&[("fig.svg", MARKED)]),
+            mirzam_core::DarkFigures::Invert,
+        );
+        assert!(out.contains("<svg"), "{out}");
+        assert!(!out.contains("mz-dark-invert"), "{out}");
+    }
+
     /// hayro numbers a page's glyphs from `g0`, so two marked figures on one
     /// slide would collide without this - the second one finding the first
     /// figure's outline.
@@ -899,9 +1130,17 @@ mod tests {
     }
 
     fn embed_with(html: &str, source: &dyn AssetSource) -> (String, Vec<String>, Vec<PathBuf>) {
+        embed_with_mode(html, source, mirzam_core::DarkFigures::Auto)
+    }
+
+    fn embed_with_mode(
+        html: &str,
+        source: &dyn AssetSource,
+        dark_figures: mirzam_core::DarkFigures,
+    ) -> (String, Vec<String>, Vec<PathBuf>) {
         let mut warnings = Vec::new();
         let mut referenced = Vec::new();
-        let out = embed_assets(html, source, &mut warnings, &mut referenced);
+        let out = embed_assets(html, source, dark_figures, &mut warnings, &mut referenced);
         (out, warnings, referenced)
     }
 }
