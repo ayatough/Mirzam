@@ -1819,6 +1819,20 @@ sample slide is added.
 
 ## W27 — Imported figures follow the deck's mode ✅
 
+**Shipped as invert-by-default, not the per-shape recolouring this brief
+originally specced.** The two were built and checked against a real paper's
+own figures (Duberg & Jensfelt, *UFOMap*, 2020) rather than only the
+prototype's: the per-shape judgement below needs a shape's full chain of
+transforms to reach it correctly, which is easy to get wrong against how
+hayro actually nests a clipped drawing, and even judged correctly a marker a
+few pixels across blends its fill and its added outline at normal viewing
+size regardless. Inverting the whole figure - the same answer a PDF reader's
+own dark mode gives - sidesteps both and was plainly the more correct
+picture side by side. `dark=keep` replaces `dark=invert` as the only knob: it
+opts a figure *out* of the (now default) inversion, for the one whose fills
+must survive a mode switch. The rest of this brief - the rules, the measured
+findings - is kept as the record of what was tried and why it did not ship.
+
 **Difficulty B · Sonnet · landed.** Found by W26's prototype and true of
 every figure `import pdf` has ever written: a cut-out is the paper's black ink
 on a transparent ground, so a dark deck — `mode: dark`, `D`, a dark phone —

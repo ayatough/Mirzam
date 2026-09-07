@@ -248,9 +248,10 @@ fn the_words_inside_a_figure_come_back_as_text() {
     );
 }
 
-/// W27: Figure 1 is a filled black box with no stroke of its own, so a dark
-/// deck would otherwise show a black rectangle where the box was. `import
-/// pdf` marks it for the renderer to recolour.
+/// W27: `import pdf` marks every SVG it converts as its own, so a dark deck
+/// knows it may invert the figure by default - the same answer a PDF
+/// reader's own dark mode gives - without touching an SVG the author drew or
+/// imported themselves.
 #[test]
 fn a_figure_is_marked_for_a_dark_deck() {
     let dir = TempDir::new("ink");
@@ -262,16 +263,7 @@ fn a_figure_is_marked_for_a_dark_deck() {
     .figures;
     let svg = std::fs::read_to_string(found[0].file.as_ref().unwrap()).expect("the svg");
 
-    assert!(
-        svg.contains("mz-ink-outline"),
-        "the box's fill has no stroke to recolour, so it gets one: {svg}"
-    );
-    // The label is set in white on the black box, which already reads on a
-    // dark slide - recolouring it would be the one thing that breaks it.
-    assert!(
-        !svg.contains(r##"fill="#ffffff" class="mz-ink""##),
-        "white ink on the box is left exactly as printed: {svg}"
-    );
+    assert!(svg.contains(pdfimport::svg::IMPORT_PDF_MARK), "{svg}");
 }
 
 /// A snapshot, because an SVG that is subtly wrong still looks like an SVG.

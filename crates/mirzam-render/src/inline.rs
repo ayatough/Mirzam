@@ -327,13 +327,16 @@ fn image_attrs(line: &str) -> String {
             return c[0].to_string();
         }
         let mut attrs = parse_attrs(braces.map(|m| m.as_str()).unwrap_or(""));
-        // W27: a figure `import pdf` cut from a paper is recoloured for a dark
-        // deck by default. `dark=invert` is the opt-in for a figure that is
-        // mostly a raster plot - one CSS filter, applied here rather than
-        // judged path by path; `dark=keep` is the figure that must stay
-        // exactly as printed, a photograph or a screenshot with its own
-        // chrome. Either one tells the asset pass below to leave the SVG's own
-        // marks alone rather than substituting them.
+        // W27: a figure `import pdf` cut from a paper is inverted for a dark
+        // deck by default - the asset pass adds the filter class itself, once
+        // it has read the file and found the mark `import pdf` writes, since
+        // only there is a converted figure told apart from one the author
+        // drew or imported themselves. `dark=invert` writes the same class
+        // here, which is a no-op once the default is already doing it, kept
+        // for a deck written before the default changed. `dark=keep` is the
+        // one thing that turns the filter off, for a figure that must stay
+        // exactly as printed - a photograph, a screenshot with its own
+        // chrome.
         let dark_attr = match attrs.kv.get("dark").map(String::as_str) {
             Some("invert") => {
                 attrs.classes.push("mz-dark-invert".to_string());

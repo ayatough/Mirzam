@@ -796,27 +796,15 @@ p > img:only-child, p > video:only-child, p > svg:only-child,
 
 /* W27: a figure `import pdf` cut from a paper is the paper's black ink on a
    transparent ground, which is legible on the white a printed page assumes
-   and a dark rectangle on a dark slide. `pdfimport::svg` marks exactly the
-   ink - a glyph, an unstroked shape's added outline, an achromatic stroke -
-   with these classes when it writes the figure; a fill is never touched,
-   because a fill means something a caption may depend on.
-   Scoped to a real attribute value rather than a bare presence selector: a
-   glyph never carries a stroke and a stroked shape's own stroke should not
-   gain a phantom fill just because `.mz-ink` is also its class. */
-.mz-ink[fill]:not([fill="none"]) { fill: var(--mz-ink, var(--mz-fg)); }
-.mz-ink[stroke]:not([stroke="none"]) { stroke: var(--mz-ink, var(--mz-fg)); }
-.mz-ink-outline[stroke] { stroke: var(--mz-ink, var(--mz-fg)); }
-/* A coloured stroke keeps its hue rather than flattening to the foreground -
-   pure blue lightened, not replaced - so only a dark deck substitutes it,
-   using the lightened colour `pdfimport::svg` already computed. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-mode="light"]) .mz-ink-chroma[stroke] { stroke: var(--mz-ink-chroma, var(--mz-fg)); }
-}
-:root[data-mode="dark"] .mz-ink-chroma[stroke] { stroke: var(--mz-ink-chroma, var(--mz-fg)); }
-/* `dark=invert` is the opt-in for a figure that is mostly a raster plot: one
-   CSS filter, which also survives the PDF export, rather than judging every
-   path in it. `dark=keep` is the figure that must stay exactly as printed -
-   a photograph, a screenshot with its own chrome. */
+   and a dark rectangle on a dark slide. Every figure `import pdf` converts is
+   marked (`pdfimport::svg::mark_as_import`) and, by default, gets this filter
+   in a dark deck - the same answer a PDF reader's own dark mode gives, and
+   the one that survives the PDF export too, since it is one CSS property
+   rather than a judgement made path by path.
+   `dark=keep` (`inline.rs`) is the opt-out, for the figure that must stay
+   exactly as printed - a photograph, a screenshot with its own chrome. An
+   SVG with no mark - every picture that is not a PDF cut-out - never carries
+   this class and is never touched. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-mode="light"]) .mz-dark-invert { filter: invert(1) hue-rotate(180deg); }
 }

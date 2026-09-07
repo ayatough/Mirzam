@@ -920,30 +920,26 @@ when they fit on one line, and read from their own left edge when they wrap.
 
 A figure `import pdf` cuts out of a paper is the paper's black ink on a
 transparent ground — legible on the white a printed page assumes, and a dark
-rectangle where the words were on a dark slide. `import pdf` marks exactly the
-ink in the figure it writes, and a dark deck (`mode: dark`, `D`, a dark phone)
-recolours only that: a glyph, a stroke, a filled shape that had no stroke of
-its own. A fill is never touched — it means something a caption may depend
-on — so "black means occupied" never turns white under a mode switch, and a
-coloured stroke keeps its hue, lightened rather than flattened, so a blue line
-still reads as blue.
+rectangle where the words were on a dark slide. Every figure `import pdf`
+converts is inverted by default in a dark deck (`mode: dark`, `D`, a dark
+phone) — the same answer a PDF reader's own dark mode gives: black grid lines
+turn white, a white table cell turns black, and a coloured line or marker
+keeps its hue, lightened rather than flattened, so a red ray or a blue marker
+still reads as itself.
 
-Two figures need something else, and say so on the reference:
+One figure needs something else, and says so on the reference:
 
 ```markdown
-![Sensor sweep](img/plot.svg){dark=invert caption="Raw output, oversampled 4×"}
 ![Rig photo](img/setup.svg){dark=keep caption="The bench as built"}
 ```
 
-| `dark=` | For | Does |
-|---|---|---|
-| *(unset)* | most cut-outs: line art, diagrams, tables | recolours the marked ink, leaves every fill as printed |
-| `invert` | a figure that is mostly a raster plot | one CSS filter over the whole picture, which also survives the PDF export |
-| `keep` | a photograph, a screenshot with its own chrome | nothing — the figure stays exactly as printed in every mode |
-
-Neither is inferred: telling a plot from a photograph inside an embedded
-image is a guess `import pdf` does not make, so the two answers are the
-author's to choose.
+`dark=keep` is the opt-out, for the figure that must stay exactly as printed —
+a photograph, a screenshot with its own chrome, where inverting would turn it
+into a negative. Whether an embedded picture is a photograph is a guess
+`import pdf` does not make, so this is the author's to say. A figure `import
+pdf` lifted out whole rather than converting — the stored image in the page,
+rather than a drawing — is never touched either way: only a converted SVG
+carries the mark that makes the default apply.
 
 #### A `<picture>` that picks art by colour scheme
 

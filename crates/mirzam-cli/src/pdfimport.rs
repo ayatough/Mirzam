@@ -430,10 +430,7 @@ fn write_one(
             Ok(drawing) => {
                 let file = options.out_dir.join(format!("{stem}.svg"));
                 let drawing = svg::with_text(&drawing, text, *art);
-                // The judgement rests on hayro's own shapes - a `<use>` onto a
-                // glyph outline, a fill with no stroke - which a tool this
-                // process merely called would not have written the same way.
-                let drawing = svg::mark_ink(&drawing, text, *art);
+                let drawing = svg::mark_as_import(&drawing);
                 std::fs::write(&file, drawing)
                     .map_err(|e| format!("cannot write {}: {e}", file.display()))?;
                 let _ = std::fs::remove_file(&crop);

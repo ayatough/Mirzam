@@ -133,18 +133,27 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 - **A figure cut from a paper follows the deck into the dark.** Every picture
   `import pdf` has ever written is the paper's black ink on a transparent
   ground, which a dark deck used to show as a dark rectangle where the words
-  and lines were. The import now marks the ink it drew — a glyph, a stroke, a
-  filled shape with no stroke to recolour — and the renderer recolours exactly
-  those to the theme's foreground, leaving every fill precisely as printed: a
-  caption that says "black means occupied" is never made to lie by its own
-  figure. A coloured stroke keeps its hue, lightened rather than flattened, so
-  a blue line still reads as blue on a dark slide. `dark=invert` asks for a
-  single CSS filter instead — the figure that is mostly a raster plot — and
-  `dark=keep` leaves a photograph exactly as it is; neither is guessed at. The
-  marked SVG is now inlined into the deck as a live element rather than a
-  base64 picture, which is what lets the theme reach it at all, and it also
+  and lines were. Every converted figure is now inverted by default in a dark
+  deck — the same answer a PDF reader's own dark mode gives: a black grid line
+  turns white, a white table cell turns black, and a coloured line or marker
+  keeps its hue, lightened rather than flattened, so a red ray or a blue
+  marker still reads as itself. `dark=keep` is the opt-out, for the figure
+  that must stay exactly as printed — a photograph, a screenshot with its own
+  chrome, where inverting would turn it into a negative; a figure lifted out
+  of the page whole, rather than converted, is never touched either way. The
+  converted SVG is inlined into the deck as a live element rather than a
+  base64 picture, which is what lets a dark deck reach it at all, and it also
   makes the figure's hidden text layer selectable in the HTML deck, not only
   the exported PDF.
+
+  An earlier build of this recoloured only the ink it could identify in each
+  shape — a glyph, a stroke, a fill with no stroke to recolour — leaving
+  every fill untouched so a caption could not be made to lie by its own
+  figure turning white. Checked against a real paper's own figures, that
+  judgement needed more care than it had, and inverting the whole figure is
+  both simpler to trust and what every reader already expects from a PDF's
+  dark mode; the per-shape approach is written up in `docs/workstreams.md`
+  (W27) for the figure whose fills really do need to survive a mode switch.
 
 ### Changed
 - **A figure out of a paper needs nothing installed.** `mirzam import pdf`

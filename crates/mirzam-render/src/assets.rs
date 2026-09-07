@@ -104,15 +104,27 @@ fn embed_within(
     .into_owned()
 }
 
-/// A cut-out `import pdf` marked for a dark deck - `class="mz-ink"` or
-/// `"mz-ink-outline"` somewhere in it, written by W27's rules in
-/// `mirzam-cli`'s `pdfimport::svg` - is inlined as an `<svg>` element rather
-/// than a base64 `<img>`. `var(--mz-fg)` is a CSS custom property, and a
-/// custom property does not reach through an `<img>`'s opaque bitmap: only a
-/// picture that is part of the document itself can be recoloured by the
-/// theme it is shown in. An SVG carrying no marks - every picture from before
-/// this stream, every figure that is not a PDF cut-out - is untouched here
-/// and embeds exactly as it always has.
+/// The comment `mirzam-cli`'s `pdfimport::svg::mark_as_import` writes into
+/// every SVG it converts - see [`IMPORT_PDF_MARK`] there for the reasoning.
+/// Duplicated as a literal rather than shared through a dependency: the two
+/// crates already meet at [`crate::inline::is_player_url`]'s counterpart in
+/// `pdfimport`, and pulling in a CLI crate from the renderer for one string
+/// would be the wrong direction for that boundary to point.
+const IMPORT_PDF_MARK: &str = "<!--mirzam:import-pdf-->";
+
+/// A figure `import pdf` cut out of a paper is inlined as a live `<svg>`
+/// element rather than a base64 `<img>`. Two things need that: a dark deck
+/// inverts the figure by default (`--mz-dark-invert`'s `filter` reaches an
+/// `<img>` too, but the *class* has to be added here, since only here is the
+/// picture's own file read to tell a converted figure apart from one the
+/// author drew or imported themselves), and the figure's hidden text layer,
+/// laid over the picture so a table's cells can be searched, becomes
+/// selectable in the HTML deck rather than only the exported PDF.
+///
+/// `dark=keep` (`inline.rs`) is how the author says a particular figure must
+/// stay exactly as printed; it is still inlined, for the text layer, but
+/// gets no filter. An SVG carrying no mark - every picture that is not a PDF
+/// cut-out - is untouched here and embeds exactly as it always has.
 ///
 /// Each figure's own ids are prefixed, because hayro numbers a page's glyph
 /// outlines from `g0` and two figures on one slide would otherwise collide -
@@ -132,12 +144,6 @@ fn inline_ink_figures(
         if src.starts_with("data:") || src.contains("://") {
             return tag.to_string();
         }
-        // `dark=invert` and `dark=keep` (`inline.rs`) both ask that the SVG's
-        // own marks be left alone: an inverted figure gets there by a CSS
-        // filter on the plain `<img>`, and a kept one is not touched at all.
-        if img_attr(tag, "data-mz-dark").is_some() {
-            return tag.to_string();
-        }
         let rel = join_rel(base, src);
         // Not recorded yet: the ordinary embedding pass below runs over
         // whatever `src` this leaves untouched, and it is the one that
@@ -147,14 +153,19 @@ fn inline_ink_figures(
         let Some(svg) = result.ok().and_then(|uri| decode_svg(&uri)) else {
             return tag.to_string();
         };
-        if !svg.contains("mz-ink") {
+        if !svg.contains(IMPORT_PDF_MARK) {
             return tag.to_string();
         }
         if let Some(p) = path {
             referenced.push(p);
         }
         *next_id += 1;
-        inline_svg(tag, &svg, *next_id)
+        // The default is to invert; `dark=keep` is the one thing that turns
+        // it off. `dark=invert` (also `inline.rs`) already carries the class
+        // on the `<img>` this replaces, so this is a no-op for it, not a
+        // second filter.
+        let invert = img_attr(tag, "data-mz-dark").as_deref() != Some("keep");
+        inline_svg(tag, &svg, *next_id, invert)
     })
     .into_owned()
 }
@@ -171,23 +182,39 @@ fn decode_svg(uri: &str) -> Option<String> {
 }
 
 /// Moves the `<img>`'s own `id`, `class`, `style` and `alt` onto the root of
-/// the SVG it becomes, and prefixes every id inside the SVG so it cannot
+/// the SVG it becomes, adding `mz-dark-invert` when `invert` asks for it and
+/// the `<img>` did not already carry the class (`dark=invert` in `inline.rs`
+/// puts it there itself), and prefixes every id inside the SVG so it cannot
 /// collide with another figure's.
 ///
 /// `alt` becomes `aria-label` rather than staying `alt`, which an `<svg>` does
 /// not have; a screen reader is told what the picture is exactly as it would
 /// have been for the `<img>` this replaces.
-fn inline_svg(img_tag: &str, svg: &str, id: usize) -> String {
+fn inline_svg(img_tag: &str, svg: &str, id: usize, invert: bool) -> String {
     let svg = prefix_ids(svg, &format!("mz-fig{id}-"));
     let Some(end) = svg.find('>') else {
         return svg;
     };
     let (head, rest) = svg.split_at(end);
     let mut attrs = String::new();
-    for name in ["id", "class", "style"] {
-        if let Some(value) = img_attr(img_tag, name) {
-            attrs.push_str(&format!(" {name}=\"{value}\""));
+    if let Some(id) = img_attr(img_tag, "id") {
+        attrs.push_str(&format!(" id=\"{id}\""));
+    }
+    let class = img_attr(img_tag, "class").unwrap_or_default();
+    let wants_invert = invert && !class.split_whitespace().any(|c| c == "mz-dark-invert");
+    if !class.is_empty() || wants_invert {
+        attrs.push_str(" class=\"");
+        attrs.push_str(&class);
+        if wants_invert {
+            if !class.is_empty() {
+                attrs.push(' ');
+            }
+            attrs.push_str("mz-dark-invert");
         }
+        attrs.push('"');
+    }
+    if let Some(style) = img_attr(img_tag, "style") {
+        attrs.push_str(&format!(" style=\"{style}\""));
     }
     if let Some(alt) = img_attr(img_tag, "alt").filter(|a| !a.is_empty()) {
         attrs.push_str(&format!(" role=\"img\" aria-label=\"{alt}\""));
@@ -783,14 +810,16 @@ mod tests {
         }
     }
 
-    const MARKED: &str = r##"<svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg">
-<use xlink:href="#g0" class="mz-ink"/><defs><path id="g0" d="M0,0 L1,1"/></defs></svg>"##;
+    const MARKED: &str = "<svg viewBox=\"0 0 10 10\" xmlns=\"http://www.w3.org/2000/svg\">\
+<!--mirzam:import-pdf--><use xlink:href=\"#g0\"/><defs><path id=\"g0\" d=\"M0,0 L1,1\"/></defs></svg>";
 
     /// W27: a figure `import pdf` marked goes in as a live `<svg>`, not a
-    /// base64 `<img>` - a custom property cannot reach through the latter to
-    /// recolour anything.
+    /// base64 `<img>` - the theme's text layer stays selectable in the HTML
+    /// deck that way, not only in the exported PDF - and picks up the
+    /// dark-mode invert filter by default, the same answer a PDF reader's own
+    /// dark mode gives.
     #[test]
-    fn a_marked_figure_is_inlined_as_an_element() {
+    fn a_marked_figure_is_inlined_and_inverted_by_default() {
         let (out, warnings, referenced) = embed_with(
             r#"<img id="fig1" class="mz-figure-art" alt="A diagram" src="fig.svg">"#,
             &Svgs(&[("fig.svg", MARKED)]),
@@ -802,8 +831,8 @@ mod tests {
             "the img's own id carries over: {out}"
         );
         assert!(
-            out.contains(r#"class="mz-figure-art""#),
-            "and its class: {out}"
+            out.contains(r#"class="mz-figure-art mz-dark-invert""#),
+            "its own class joins the default filter: {out}"
         );
         assert!(
             out.contains(r#"role="img" aria-label="A diagram""#),
@@ -811,6 +840,31 @@ mod tests {
         );
         assert!(warnings.is_empty(), "{warnings:?}");
         assert_eq!(referenced, vec![PathBuf::from("fig.svg")]);
+    }
+
+    /// `dark=keep` (`inline.rs`) is how the author says a figure must stay
+    /// exactly as printed: still inlined, for the text layer, but with no
+    /// filter added.
+    #[test]
+    fn dark_keep_is_still_inlined_but_not_inverted() {
+        let (out, _, _) = embed_with(
+            r#"<img data-mz-dark="keep" src="fig.svg">"#,
+            &Svgs(&[("fig.svg", MARKED)]),
+        );
+        assert!(out.contains("<svg"), "{out}");
+        assert!(!out.contains("mz-dark-invert"), "{out}");
+    }
+
+    /// `dark=invert`, written by the author, already carries the filter class
+    /// on the `<img>` this replaces - this must not double it.
+    #[test]
+    fn dark_invert_is_not_applied_twice() {
+        let (out, _, _) = embed_with(
+            r#"<img class="mz-dark-invert" data-mz-dark="invert" src="fig.svg">"#,
+            &Svgs(&[("fig.svg", MARKED)]),
+        );
+        assert!(out.contains("<svg"), "{out}");
+        assert_eq!(out.matches("mz-dark-invert").count(), 1, "{out}");
     }
 
     /// hayro numbers a page's glyphs from `g0`, so two marked figures on one
@@ -830,34 +884,18 @@ mod tests {
         );
     }
 
-    /// An SVG with none of the marks `import pdf` writes is untouched: this
-    /// path is for a PDF cut-out in a dark deck, not every picture in one.
+    /// An SVG with no mark `import pdf` writes is untouched: this path is for
+    /// a PDF cut-out, not every picture in a deck - a chart the author drew,
+    /// a logo, must not be silently inverted in the dark.
     #[test]
     fn an_unmarked_svg_still_embeds_as_an_image() {
         const PLAIN: &str = r#"<svg viewBox="0 0 4 4"><rect width="4" height="4"/></svg>"#;
         let (out, warnings, referenced) =
             embed_with(r#"<img src="plain.svg">"#, &Svgs(&[("plain.svg", PLAIN)]));
         assert!(out.contains(r#"src="data:image/svg+xml;base64,"#), "{out}");
+        assert!(!out.contains("mz-dark-invert"), "{out}");
         assert!(warnings.is_empty(), "{warnings:?}");
         assert_eq!(referenced, vec![PathBuf::from("plain.svg")]);
-    }
-
-    /// `dark=invert`/`dark=keep` (`inline.rs`) leave `data-mz-dark` on the
-    /// `<img>`, which asks this pass to leave the figure's own marks alone -
-    /// an inverted figure gets there by a CSS filter, and a kept one is not
-    /// touched at all - even though the file itself still carries them.
-    #[test]
-    fn a_dark_marked_image_keeps_its_marks_unsubstituted() {
-        let (out, _, _) = embed_with(
-            r#"<img class="mz-dark-invert" data-mz-dark="invert" src="fig.svg">"#,
-            &Svgs(&[("fig.svg", MARKED)]),
-        );
-        assert!(!out.contains("<svg"), "{out}");
-        assert!(out.contains(r#"src="data:image/svg+xml;base64,"#), "{out}");
-        assert!(
-            out.contains("mz-dark-invert"),
-            "the filter class survives: {out}"
-        );
     }
 
     fn embed_with(html: &str, source: &dyn AssetSource) -> (String, Vec<String>, Vec<PathBuf>) {
