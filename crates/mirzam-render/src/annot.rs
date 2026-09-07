@@ -55,7 +55,7 @@ pub fn extract(
                 ));
             }
         }
-        if doc.picture().is_some() && problems.is_empty() {
+        if doc.is_card() && problems.is_empty() {
             // A chip goes after the phrase, so the phrase has to be in the
             // slide's text - an id on a shape or a chart mark is somewhere a
             // chip cannot follow.
@@ -80,10 +80,10 @@ pub fn extract(
         if doc.items.is_empty() {
             continue;
         }
-        if let Some(picture) = doc.picture() {
+        if doc.is_card() {
             cards += 1;
             let id = format!("mz-card-{}-{cards}", slide_index + 1);
-            out.push_str(&card(&doc, picture, &id, citations, body));
+            out.push_str(&card(&doc, &id, citations, body));
             continue;
         }
         // A block whose items are all anchored measures nothing against a box,
@@ -103,11 +103,13 @@ pub fn extract(
 /// The group a card item belongs to: which chip shows it. Marks arrive with
 /// the chip whose `step` they share, the pairing rule every `annotate` block
 /// uses; a block with one chip shows that chip everything, whatever the
-/// steps say, since there is nothing to tell apart.
+/// steps say, since there is nothing to tell apart. A card with no picture
+/// has nothing to pair: each chip is its own group and shows its own words.
 fn group_of(doc: &AnnotDoc, item: &Item) -> String {
     let mut chips = doc.chips();
-    match (chips.next(), chips.next()) {
-        (Some(only), None) => only.step.to_string(),
+    match (chips.next(), chips.next(), &item.place) {
+        (Some(only), None, _) => only.step.to_string(),
+        (_, _, Place::Anchor(id)) if doc.picture().is_none() => id.clone(),
         _ => item.step.to_string(),
     }
 }
@@ -119,7 +121,12 @@ fn group_of(doc: &AnnotDoc, item: &Item) -> String {
 /// percent inside the picture's own box and need no layout to be measured -
 /// which is what lets the same element print, in the appendix the export
 /// gathers the cards into, with no script at all.
-fn card(doc: &AnnotDoc, picture: &str, id: &str, citations: bool, body: &mut String) -> String {
+///
+/// A block with no picture makes a card of the words and the source alone.
+/// That is what a hand-written quote is to a build that cannot open the PDF
+/// (the editor's preview, a machine without the paper), and it is still a
+/// chip that opens on the passage and the page.
+fn card(doc: &AnnotDoc, id: &str, citations: bool, body: &mut String) -> String {
     let color = |item: &Item| {
         item.color
             .as_deref()
@@ -127,13 +134,11 @@ fn card(doc: &AnnotDoc, picture: &str, id: &str, citations: bool, body: &mut Str
             .unwrap_or_else(|| "var(--mz-accent1)".to_string())
     };
     // The page a group quotes from, for the chip's label: the first `page=`
-    // among its marks, else the first in the block.
+    // among its items.
     let page_of = |group: &str| {
         doc.items
             .iter()
-            .filter(|i| i.page.is_some() && group_of(doc, i) == group)
-            .chain(doc.items.iter().filter(|i| i.page.is_some()))
-            .next()
+            .find(|i| i.page.is_some() && group_of(doc, i) == group)
             .and_then(|i| i.page)
     };
 
@@ -191,13 +196,17 @@ fn card(doc: &AnnotDoc, picture: &str, id: &str, citations: bool, body: &mut Str
             y - h / 2.0,
             inline::html_escape(&color(item))
         );
-        if let Some(q) = &item.quote {
-            let _ = write!(
-                quotes,
-                "<blockquote class=\"mz-card-quote\" data-group=\"{group}\">{}</blockquote>",
-                inline::html_escape(q)
-            );
-        }
+    }
+    // The words, wherever the block keeps them: on the first mark of a
+    // passage `import` cut out, or on the phrase's own mark when the author
+    // wrote them there.
+    for item in doc.items.iter().filter(|i| i.quote.is_some()) {
+        let _ = write!(
+            quotes,
+            "<blockquote class=\"mz-card-quote\" data-group=\"{}\">{}</blockquote>",
+            group_of(doc, item),
+            inline::html_escape(item.quote.as_deref().unwrap_or_default())
+        );
     }
 
     // Where the words come from: a citation when the deck can resolve one,
@@ -226,13 +235,15 @@ fn card(doc: &AnnotDoc, picture: &str, id: &str, citations: bool, body: &mut Str
             "<p class=\"mz-card-src\" data-group=\"{group}\">{line}</p>"
         );
     }
-    format!(
-        "<aside class=\"mz-card\" id=\"{id}\" hidden>\
-         <div class=\"mz-card-pic\"><img src=\"{}\" \
-         alt=\"The source, cut out at the quoted passage\">{marks}</div>\
-         {quotes}{lines}</aside>\n",
-        inline::html_escape(picture),
-    )
+    let pic = match doc.picture() {
+        Some(picture) => format!(
+            "<div class=\"mz-card-pic\"><img src=\"{}\" \
+             alt=\"The source, cut out at the quoted passage\">{marks}</div>",
+            inline::html_escape(picture)
+        ),
+        None => String::new(),
+    };
+    format!("<aside class=\"mz-card\" id=\"{id}\" hidden>{pic}{quotes}{lines}</aside>\n")
 }
 
 /// A `target:` is either a `#id` written as such, or a bare pane name.
@@ -449,6 +460,49 @@ mod tests {
         );
         assert!(
             out.contains("data-group=\"1\">p. 1 of") && out.contains("data-group=\"2\">p. 2 of"),
+            "{out}"
+        );
+    }
+
+    /// The hand-written form: no picture, the words on the phrase's mark. The
+    /// chip opens on the words and the source, and two such phrases in one
+    /// block each open on their own.
+    #[test]
+    fn a_quote_on_the_phrase_makes_a_card_of_the_words() {
+        let mut w = Vec::new();
+        let mut body = "<span id=\"a\">a</span> <span id=\"b\">b</span>".to_string();
+        let block = "source: @devi2022\n\
+                     highlight #a : quote=\"one\" page=3\n\
+                     underline #b : quote=\"two\" color=@accent2\n";
+        let out = extract(0, &[block.to_string()], &mut body, "", true, &mut w);
+        assert!(w.is_empty(), "{w:?}");
+        assert!(!out.contains("mz-card-pic"), "nothing to picture: {out}");
+        assert!(!out.contains("mz-card-mark"), "{out}");
+        assert!(
+            body.contains(
+                "data-for=\"a\" data-group=\"a\" style=\"--mz-chip:var(--mz-accent1)\">p. 3</a>"
+            ),
+            "{body}"
+        );
+        assert!(
+            body.contains(
+                "data-for=\"b\" data-group=\"b\" style=\"--mz-chip:var(--mz-accent2)\">¶</a>"
+            ),
+            "no page yet, so no page on the chip: {body}"
+        );
+        assert!(
+            out.contains("<blockquote class=\"mz-card-quote\" data-group=\"a\">one</blockquote>"),
+            "{out}"
+        );
+        assert!(out.contains("data-group=\"b\">two</blockquote>"), "{out}");
+        assert!(
+            out.contains(
+                "<p class=\"mz-card-src\" data-group=\"a\">p. 3 of <!--mz-cite:devi2022--></p>"
+            ),
+            "{out}"
+        );
+        assert!(
+            out.contains("<p class=\"mz-card-src\" data-group=\"b\"><!--mz-cite:devi2022--></p>"),
             "{out}"
         );
     }

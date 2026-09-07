@@ -513,7 +513,7 @@ fn images_in(page: &Page, figure: &Figure) -> Vec<(lopdf::ObjectId, Rect)> {
 ///
 /// Judged by where most of a line is: one clipped by the crop's edge is a
 /// fragment of the page around the figure, not part of it.
-fn text_in(page: &Page, art: &Rect) -> Vec<mirzam_figure::Line> {
+pub(crate) fn text_in(page: &Page, art: &Rect) -> Vec<mirzam_figure::Line> {
     page.lines
         .iter()
         .filter(|line| line.rect.share_inside(art) > 0.8)
@@ -639,12 +639,10 @@ fn write_one(
     let named = Tool::named(options.tool.as_deref());
     let mut refused = None;
     if wanted == "svg" && named.is_none() {
-        let bytes =
-            std::fs::read(&crop).map_err(|e| format!("cannot read {}: {e}", crop.display()))?;
-        match svg::convert(&bytes) {
+        match svg_from_crop(&crop, text, *art) {
             Ok(drawing) => {
                 let file = options.out_dir.join(format!("{stem}.svg"));
-                std::fs::write(&file, svg::with_text(&drawing, text, *art))
+                std::fs::write(&file, drawing)
                     .map_err(|e| format!("cannot write {}: {e}", file.display()))?;
                 let _ = std::fs::remove_file(&crop);
                 return Ok((file, "svg".to_string()));
@@ -698,8 +696,21 @@ fn write_one(
     }
 }
 
+/// The crop as an SVG, converted in this process, with the crop's words laid
+/// over it as text that is there to be found and not seen. The error is a
+/// sentence saying why hayro would not take the page.
+pub(crate) fn svg_from_crop(
+    crop: &Path,
+    text: &[mirzam_figure::Line],
+    art: Rect,
+) -> Result<String, String> {
+    let bytes = std::fs::read(crop).map_err(|e| format!("cannot read {}: {e}", crop.display()))?;
+    let drawing = svg::convert(&bytes)?;
+    Ok(svg::with_text(&drawing, text, art))
+}
+
 /// The crop: the page on its own, with the box narrowed to the figure.
-fn crop_to(input: &Path, number: u32, box_pt: Rect, out: &Path) -> Result<(), String> {
+pub(crate) fn crop_to(input: &Path, number: u32, box_pt: Rect, out: &Path) -> Result<(), String> {
     let mut doc = Document::load(input).map_err(|e| format!("cannot read {input:?}: {e}"))?;
     let others: Vec<u32> = doc
         .get_pages()

@@ -1909,6 +1909,47 @@ highlight 41.0,68.8 78.7x9.6 : color=@accent1 step=1
 - **A paper with no text layer** (a scan) has nothing to search. Write the
   coordinates yourself, and leave `quote=` off: there is nothing to check.
 
+**Or written by hand, from the quote alone.** None of the above has to come
+out of a command. Put the words on the phrase's own mark and name the paper,
+and that is the whole block:
+
+````markdown
+- **Outside the calibrated range** [the matrix is an extrapolation]{#lim} — the
+  same limit the survey reports
+
+```annotate
+source: @devi2022
+highlight #lim : quote="Outside the range over which the coefficients were fitted, the inverse matrix is an extrapolation: the photo-elastic and thermo-optic coefficients are not linear there, and the recovered strain drifts with temperature."
+```
+````
+
+The build does the rest. It opens the paper the `source:` names, finds the
+words — on `page=` if you wrote one, on whichever page prints them if you did
+not — cuts the column out around them with two lines of context, marks the
+lines the words are on, and gives the phrase a chip, `p. 1`, that opens the
+cut-out in a card (the card is described next). No coordinates are ever
+typed; there is nothing in the block a person has to measure.
+
+- **The cut-out is a file** under `.mirzam/cutouts/` beside the deck, named for
+  the paper and for what was asked, so the same quote makes the same file on
+  any machine and the next build finds it there without opening the paper. A
+  paper newer than its cut-out is cut again. Keep the directory out of version
+  control; a clone remakes it from the paper.
+- **The words are still checked.** `mirzam check` looks a hand-written quote up
+  the same way, page named or not, and fails the deck on words the paper does
+  not print.
+- **Without the paper, the chip still works.** A machine that cannot open the
+  PDF — the editor's preview, a colleague without the file — shows a card of
+  the words and the source, and the build says the cut-out could not be made.
+  Words the paper does not print get the same card and the same warning.
+- **Several phrases in one block** each get their own cut-out and their own
+  card, and may be on different pages; `color=` on the phrase's mark colours
+  its chip and its marks, `underline` instead of `highlight` underlines the
+  lines. `page=` narrows the search when a paper prints the words twice.
+- **`import pdf --quote` is still there** for the beside-the-summary form,
+  for a picture you want to keep in `img/`, and for adjusting the coordinates
+  yourself.
+
 **Or in a card on the phrase.** A slide that has no room for the cut-out
 beside the summary can keep it off the slide: name the picture's *path* as the
 target instead of an `#id`, and put nothing in a pane.
@@ -1927,7 +1968,8 @@ highlight 48.3,56.3 93.3x9.6 : color=@accent1
 ````
 
 The block is the same block — the command prints this form as a comment in
-it — and only the presentation changes:
+it, and it is the block the build writes for a hand-written quote — and only
+the presentation changes:
 
 - **The phrase gets a chip** after it, `p. 1`, in the block's colour. Hovering
   the chip opens the cut-out in a card beside it with the quoted lines lit, the

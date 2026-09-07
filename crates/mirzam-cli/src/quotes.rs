@@ -10,17 +10,95 @@
 //! `source.quote`, an error; a claim a few letters off is the same kind, a
 //! warning, with what the page prints beside what the slide says.
 //!
-//! This is the one place outside `import` that opens a PDF, and it is in the
-//! CLI on purpose: the core never touches a file, and the WebAssembly build
-//! must not learn how.
+//! A quote written on the phrase's own mark may leave `page=` out: the words
+//! are then looked for on every page, and the build's cut-out (see `cutouts`)
+//! finds the page the same way.
+//!
+//! Opening a PDF happens here, in `import` and in `cutouts`, and in the CLI on
+//! purpose: the core never touches a file, and the WebAssembly build must not
+//! learn how.
 
-use crate::pdfpage;
+use crate::pdfpage::{self, Page};
 use crate::pipeline::BuildOutput;
 use lopdf::Document;
 use mirzam_cite::Bibliography;
-use mirzam_figure::quote::{Found, Text};
+use mirzam_figure::quote::{Found, Span, Text};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+
+/// Where a quote was found: the page, its text in reading order, and the
+/// lines the words cover.
+pub struct Located {
+    pub page: Page,
+    pub text: Text,
+    pub span: Span,
+}
+
+/// Why a quote was not found.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Miss {
+    /// The paper has no page of that number.
+    NoPage(u32),
+    /// No exact match, but a run of words on `page` this many edits away.
+    Near {
+        page: u32,
+        text: String,
+        distance: usize,
+    },
+    Nothing,
+    /// A page whose text could not be read.
+    Unreadable(String),
+}
+
+/// Looks for the words on one page, or on every page when none is named: the
+/// first exact match wins, and failing that the nearest words anywhere.
+pub fn locate(paper: &Document, quote: &str, page: Option<u32>) -> Result<Located, Miss> {
+    let pages = paper.get_pages();
+    if let Some(n) = page {
+        if !pages.contains_key(&n) {
+            return Err(Miss::NoPage(n));
+        }
+    }
+    let mut nearest: Option<(u32, String, usize)> = None;
+    let mut unreadable = None;
+    for (number, id) in pages {
+        if page.is_some_and(|only| only != number) {
+            continue;
+        }
+        let read = match pdfpage::read(paper, number, id) {
+            Ok(p) => p,
+            Err(e) => {
+                unreadable.get_or_insert(e);
+                continue;
+            }
+        };
+        let text = Text::new(read.rect, &read.lines);
+        match text.find(quote) {
+            Found::Exact(span) => {
+                return Ok(Located {
+                    page: read,
+                    text,
+                    span,
+                })
+            }
+            Found::Near { text, distance }
+                if nearest.as_ref().is_none_or(|(_, _, d)| distance < *d) =>
+            {
+                nearest = Some((number, text, distance));
+            }
+            _ => {}
+        }
+    }
+    Err(match (nearest, unreadable) {
+        (Some((page, text, distance)), _) => Miss::Near {
+            page,
+            text,
+            distance,
+        },
+        (None, Some(e)) => Miss::Unreadable(e),
+        (None, None) => Miss::Nothing,
+    })
+}
 
 /// One thing the check has to say. Every finding is of kind `source.quote`;
 /// the severity says whether it stops a build.
@@ -90,30 +168,23 @@ pub fn verify(input: &Path, out: &BuildOutput) -> Vec<Finding> {
             };
             for item in quoted {
                 let quote = item.quote.as_deref().unwrap_or_default();
-                let Some(page) = item.page else {
-                    findings.push(warn(
-                        n,
-                        format!("quote \"{}\" names no page= to look on", short(quote)),
-                    ));
-                    continue;
+                // Where the slide says the words are, or the whole paper
+                // when it does not say.
+                let place = match item.page {
+                    Some(p) => format!("on p. {p} of {name}"),
+                    None => format!("in {name}"),
                 };
-                let Some(id) = paper.get_pages().get(&page).copied() else {
-                    findings.push(warn(n, format!("{name} has no page {page}")));
-                    continue;
-                };
-                let text = match pdfpage::read(paper, page, id) {
-                    Ok(p) => Text::new(p.rect, &p.lines),
-                    Err(e) => {
-                        findings.push(warn(n, format!("{name}, page {page}: {e}")));
-                        continue;
+                match locate(paper, quote, item.page) {
+                    Ok(_) => {}
+                    Err(Miss::NoPage(p)) => {
+                        findings.push(warn(n, format!("{name} has no page {p}")))
                     }
-                };
-                match text.find(quote) {
-                    Found::Exact(_) => {}
-                    Found::Near {
+                    Err(Miss::Unreadable(e)) => findings.push(warn(n, format!("{place}: {e}"))),
+                    Err(Miss::Near {
+                        page,
                         text: printed,
                         distance,
-                    } => findings.push(warn(
+                    }) => findings.push(warn(
                         n,
                         format!(
                             "quote differs from p. {page} of {name} by {distance} edit(s): the \
@@ -122,13 +193,10 @@ pub fn verify(input: &Path, out: &BuildOutput) -> Vec<Finding> {
                             short(&printed)
                         ),
                     )),
-                    Found::Nothing => findings.push(Finding {
+                    Err(Miss::Nothing) => findings.push(Finding {
                         slide: n,
                         error: true,
-                        message: format!(
-                            "quote is not on p. {page} of {name}: \"{}\"",
-                            short(quote)
-                        ),
+                        message: format!("quote is not {place}: \"{}\"", short(quote)),
                     }),
                 }
             }
@@ -188,7 +256,7 @@ pub fn annotate_blocks(slide: &str) -> Vec<String> {
 
 /// Where a block's `source:` points: a bibliography entry's `file`, or a path,
 /// either way resolved to the PDF to open.
-fn resolve(
+pub fn resolve(
     source: &str,
     bib: &Bibliography,
     bib_dir: &Path,

@@ -176,3 +176,152 @@ fn paper() -> Vec<u8> {
     );
     out
 }
+
+/// The form a person writes: the words on the phrase's own mark, no page,
+/// no picture. The build finds the page, cuts the passage out under
+/// `.mirzam/cutouts`, marks its lines and renders the card with the picture;
+/// the check finds the words without being told the page; a second build
+/// finds the cut-out already written and does not cut again.
+#[test]
+fn a_quote_on_the_phrase_is_cut_out_by_the_build_and_found_by_the_check() {
+    let dir = TempDir::new("cutout");
+    dir.write("papers/fox.pdf", &paper());
+    dir.write("refs.bib", BIB.as_bytes());
+    let deck = dir.write(
+        "deck.md",
+        "---\ntitle: t\nbibliography: refs.bib\n---\n\n# One\n\n---\n\n\
+         The fox [jumps]{#j} and the dog [sleeps]{#s}.\n\n\
+         ```annotate\nsource: @fox2020\n\
+         highlight #j : quote=\"jumps over the lazy dog\"\n\
+         underline #s : color=@accent2 quote=\"the lazy dog\" page=1\n```\n"
+            .as_bytes(),
+    );
+
+    let mut cache = std::collections::HashMap::new();
+    let out = mirzam_cli::pipeline::build_deck_with(&deck, &mut cache, None, None)
+        .expect("the deck builds");
+    // The deck lists no `bibliography` block, which is a warning of its own.
+    let annotate: Vec<&String> = out
+        .warnings
+        .iter()
+        .filter(|w| w.contains("annotate"))
+        .collect();
+    assert!(annotate.is_empty(), "{annotate:?}");
+    let slide = &out.sections[1];
+    assert_eq!(
+        slide.matches("<aside class=\"mz-card\"").count(),
+        2,
+        "{slide}"
+    );
+    assert_eq!(slide.matches("mz-card-pic").count(), 2, "{slide}");
+    assert!(slide.contains("mz-card-highlight"), "{slide}");
+    assert!(slide.contains("mz-card-underline"), "{slide}");
+    assert!(
+        slide.contains(
+            "data-for=\"j\" data-group=\"0\" style=\"--mz-chip:var(--mz-accent1)\">p. 1</a>"
+        ),
+        "the page the build found labels the chip: {slide}"
+    );
+    assert!(
+        slide.contains("data-group=\"0\">jumps over the lazy dog</blockquote>"),
+        "{slide}"
+    );
+    let cutouts = dir.0.join(".mirzam/cutouts");
+    let mut made: Vec<PathBuf> = std::fs::read_dir(&cutouts)
+        .expect("the cut-outs directory")
+        .map(|e| e.expect("entry").path())
+        .collect();
+    made.sort();
+    assert_eq!(made.len(), 2, "{made:?}");
+    for file in &made {
+        let name = file.file_name().unwrap().to_string_lossy().to_string();
+        assert!(
+            name.starts_with("fox2020-") && name.ends_with(".svg"),
+            "{name}"
+        );
+        let svg = std::fs::read_to_string(file).expect("read");
+        assert!(
+            svg.starts_with("<!--mirzam cut-out: page=1 marks="),
+            "{svg}"
+        );
+        assert!(svg.contains("<svg"), "{svg}");
+    }
+    assert!(
+        out.files.contains(&dir.0.join("papers/fox.pdf")),
+        "the paper is watched"
+    );
+
+    // Found without a page named, and found again on the page named.
+    assert!(verify(&deck, &out).is_empty());
+
+    // The second build reuses the files: nothing is rewritten.
+    let before: Vec<_> = made
+        .iter()
+        .map(|f| std::fs::metadata(f).unwrap().modified().unwrap())
+        .collect();
+    let again = mirzam_cli::pipeline::build_deck_with(
+        &deck,
+        &mut std::collections::HashMap::new(),
+        None,
+        None,
+    )
+    .expect("builds again");
+    assert_eq!(again.sections[1], slide.clone());
+    let after: Vec<_> = made
+        .iter()
+        .map(|f| std::fs::metadata(f).unwrap().modified().unwrap())
+        .collect();
+    assert_eq!(before, after);
+}
+
+/// Words the paper does not print: the build says so and keeps the chip,
+/// which opens on the words alone; the check reports the claim as it would
+/// any other.
+#[test]
+fn a_quote_the_paper_does_not_print_stays_a_card_of_words() {
+    let dir = TempDir::new("cutout-miss");
+    dir.write("papers/fox.pdf", &paper());
+    dir.write("refs.bib", BIB.as_bytes());
+    let deck = dir.write(
+        "deck.md",
+        "---\ntitle: t\nbibliography: refs.bib\n---\n\n# One\n\n---\n\n\
+         The fox [flies]{#f}.\n\n\
+         ```annotate\nsource: @fox2020\nhighlight #f : quote=\"the fox flies away\"\n```\n"
+            .as_bytes(),
+    );
+    let mut cache = std::collections::HashMap::new();
+    let out = mirzam_cli::pipeline::build_deck_with(&deck, &mut cache, None, None)
+        .expect("the deck builds");
+    let annotate: Vec<&String> = out
+        .warnings
+        .iter()
+        .filter(|w| w.contains("annotate"))
+        .collect();
+    assert_eq!(annotate.len(), 1, "{:?}", out.warnings);
+    assert!(
+        annotate[0]
+            .starts_with("slide 2: annotate: no cut-out for #f: the words are not in fox.pdf"),
+        "{annotate:?}"
+    );
+    assert_eq!(
+        mirzam_cli::pipeline::warning_kind(annotate[0]),
+        "build.annotate"
+    );
+    let slide = &out.sections[1];
+    assert!(slide.contains("class=\"mz-chip\""), "{slide}");
+    assert!(!slide.contains("mz-card-pic"), "{slide}");
+    assert!(
+        slide.contains(">the fox flies away</blockquote>"),
+        "{slide}"
+    );
+    assert!(!dir.0.join(".mirzam").exists(), "nothing was written");
+
+    let findings = verify(&deck, &out);
+    assert_eq!(findings.len(), 1, "{findings:#?}");
+    assert!(findings[0].error);
+    assert!(
+        findings[0].message.contains("not in fox.pdf"),
+        "{:?}",
+        findings[0]
+    );
+}

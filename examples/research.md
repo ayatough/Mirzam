@@ -233,15 +233,11 @@ data: |
 :::
 
 ```annotate
-target: img/devi2022-p1.svg
 source: @devi2022
-highlight #lim : color=@accent1
-highlight 54.6,43.8 84.2x9.6 : color=@accent1 quote="Outside the range over which the coefficients were fitted, the inverse matrix is an extrapolation: the photo-elastic and thermo-optic coefficients are not linear there, and the recovered strain drifts with temperature." page=1
-highlight 48.3,56.3 93.3x9.6 : color=@accent1
-highlight 41.0,68.8 78.7x9.6 : color=@accent1
+highlight #lim : quote="Outside the range over which the coefficients were fitted, the inverse matrix is an extrapolation: the photo-elastic and thermo-optic coefficients are not linear there, and the recovered strain drifts with temperature."
 ```
 
-<!-- note: The chip after the first point opens the passage of the survey it stands on; the same block on the next slide puts the cut-out beside the summary instead. If asked about the transient case: we have four events on record and none of them are in this dataset. -->
+<!-- note: The chip after the first point opens the passage of the survey it stands on. Two lines, written by hand: the build finds the words in the paper, cuts the passage out and marks its lines. The next slide has the same passage cut out by `import pdf --quote`, beside the summary. If asked about the transient case: we have four events on record and none of them are in this dataset. -->
 
 ---
 

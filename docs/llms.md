@@ -371,6 +371,11 @@ highlight #c-q3     : color=@accent2 step=1
   picture, with its coordinate marks lit, on hover (click pins). `export pdf`
   gathers the cards into Sources slides at the end. Same `quote=`/`source:`
   check. No `arrow`/`text` in a card.
+- **The form to write by hand**: no `target:`, `source: @key` (or a PDF path),
+  and `highlight #id : quote="the words as printed"` (`page=N` optional). The
+  build finds the words in the PDF, cuts the passage out under
+  `.mirzam/cutouts/`, marks the lines and makes the card; `check` verifies the
+  words. Never type coordinates for a quote.
 
 ## `anim` — slide top level only
 

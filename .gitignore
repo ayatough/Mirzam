@@ -1,6 +1,9 @@
 /target
 /out
 /site
+# The cut-outs a build makes for a quote written on a phrase: named for what
+# was asked, so a clone makes the same files again from the paper.
+.mirzam/
 # No trailing slash: `playwright-core` is not a dependency here, so the
 # screenshot and layout scripts get it linked in from outside the repo, and a
 # symlink is not a directory as far as a trailing slash is concerned.

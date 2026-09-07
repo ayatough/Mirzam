@@ -106,6 +106,7 @@ pub fn warning_kind(message: &str) -> &'static str {
         ("cannot split", "build.anim"),
         ("a target is split", "build.anim"),
         ("annotate ", "build.annotate"),
+        ("annotate:", "build.annotate"),
         ("effects line ", "build.effects"),
         ("connect ", "build.connect"),
         ("chart", "build.chart"),
@@ -603,8 +604,28 @@ pub fn build_source(
     let diagrams = crate::mermaid::Mmdc::discover();
     let ctx_key = ctx.fingerprint() ^ diagram_key(diagrams.as_ref());
 
+    // A quote written on a phrase asks the build for the passage it names.
+    // Answered here, on the slide's text and before anything is parsed, for
+    // the reason `<!-- next -->` is: the core never opens a file, and the
+    // block the build writes is the block `import` would have printed, so
+    // nothing after this point knows the picture was not always there.
+    let bib_dir = meta
+        .bibliography_file()
+        .and_then(|rel| base_dir.join(rel).parent().map(Path::to_path_buf))
+        .unwrap_or_else(|| base_dir.clone());
+    let mut cutouts = crate::cutouts::Resolver::new(&base_dir, &bib, bib_dir);
+    let mut resolved: Vec<String> = Vec::with_capacity(parts.len());
     for (i, part) in parts.iter().enumerate() {
-        let slide_src = &part.text;
+        let mut cut_warnings = Vec::new();
+        resolved.push(cutouts.slide(&part.text, &mut files, &mut cut_warnings));
+        for w in cut_warnings {
+            sites.insert(warnings.len(), site(part.from, i + 1));
+            warnings.push(format!("slide {}: {w}{}", i + 1, origin(part.from)));
+        }
+    }
+
+    for (i, part) in parts.iter().enumerate() {
+        let slide_src: &str = &resolved[i];
         // The cache key includes the slide index, since data-index is baked
         // into the HTML — and the deck context, since the same source renders
         // differently under a different frontmatter `math:`, `masters:` or
@@ -681,10 +702,10 @@ pub fn build_source(
 
     // Keep the cache from growing without bound during a long editing session.
     if cache.len() > 4096 {
-        let live_keys: std::collections::HashSet<u64> = parts
+        let live_keys: std::collections::HashSet<u64> = resolved
             .iter()
             .enumerate()
-            .map(|(i, p)| slide_hash(&p.text, i, ctx_key))
+            .map(|(i, text)| slide_hash(text, i, ctx_key))
             .collect();
         cache.retain(|k, _| live_keys.contains(k));
     }

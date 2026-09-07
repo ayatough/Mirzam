@@ -100,11 +100,15 @@ pub struct Item {
     /// item regardless, the way an animated slide prints fully revealed.
     pub step: u32,
     /// `quote=`: the words this mark lies over, as the source prints them.
-    /// Written by `mirzam import pdf --quote` and read by `mirzam check`,
-    /// which opens the block's `source:` and looks for them on `page`. The
-    /// overlay never sees it; a card block prints it under the picture.
+    /// Read by `mirzam check`, which opens the block's `source:` and looks
+    /// for them on `page`. On a mark placed by coordinates it is what
+    /// `mirzam import pdf --quote` wrote; on the phrase's own mark it is what
+    /// the author typed, and the build then cuts the passage out of the
+    /// source and marks it - see [`AnnotDoc::is_card`]. The overlay never
+    /// sees it; a card prints it under the picture.
     pub quote: Option<String>,
-    /// `page=`: the page of the source the quote is on.
+    /// `page=`: the page of the source the quote is on. Optional on a phrase's
+    /// mark, where the build finds the page and the check searches for it.
     pub page: Option<u32>,
 }
 
@@ -133,6 +137,29 @@ impl AnnotDoc {
     /// same `quote=` for the check - only the presentation differs.
     pub fn picture(&self) -> Option<&str> {
         self.target.as_deref().filter(|t| is_picture(t))
+    }
+
+    /// Whether the block is a *card*: nothing drawn on the slide, and a chip
+    /// after each phrase that opens the source in a card.
+    ///
+    /// Two shapes of block say so. One names a picture as its `target:` and
+    /// places marks on it by coordinates - the block `mirzam import pdf
+    /// --quote` prints. The other names no target at all and puts the
+    /// `quote=` on the phrase's own mark:
+    ///
+    /// ```text
+    /// source: @devi2022
+    /// highlight #lim : quote="Outside the range over which …"
+    /// ```
+    ///
+    /// which is the whole of what a person has to write. On its own it is a
+    /// card holding the words and the source; a build that can open the PDF
+    /// cuts the passage out, marks its lines and adds the picture - the same
+    /// block as the first shape, written for the author by the build instead
+    /// of by a command.
+    pub fn is_card(&self) -> bool {
+        self.picture().is_some()
+            || (self.target.is_none() && self.chips().any(|c| c.quote.is_some()))
     }
 
     /// The anchored marks of a card block, each of which becomes a chip.
@@ -206,7 +233,7 @@ pub fn parse(src: &str) -> AnnotDoc {
                 .to_string(),
         );
     }
-    if doc.picture().is_some() {
+    if doc.is_card() {
         check_card(&mut doc);
     }
     doc
@@ -222,6 +249,32 @@ fn check_card(doc: &mut AnnotDoc) {
              to open it from: an anchored mark such as `highlight #q1`"
                 .to_string(),
         );
+    }
+    // Without a picture, the quote is all a chip has to show, so a chip
+    // without one would open on nothing.
+    if doc.picture().is_none() {
+        if doc.source.is_none() {
+            doc.errors.push(
+                "a quote on a phrase says the phrase quotes a source, but the block names \
+                 none: `source: @key` for a bibliography entry whose `file` field names the \
+                 PDF, or `source: path/to/paper.pdf`"
+                    .to_string(),
+            );
+        }
+        let silent: Vec<String> = doc
+            .chips()
+            .filter(|c| c.quote.is_none())
+            .filter_map(|c| match &c.place {
+                Place::Anchor(id) => Some(id.clone()),
+                Place::At(..) => None,
+            })
+            .collect();
+        for id in silent {
+            doc.errors.push(format!(
+                "the block is a card with no picture, so `#{id}` needs the words it quotes: \
+                 `quote=\"…\"` on its mark, or a `target:` naming a picture of them"
+            ));
+        }
     }
     for item in &doc.items {
         let problem = match (&item.place, item.kind) {
@@ -396,11 +449,6 @@ fn parse_item(line: &str) -> Result<Item, String> {
     }
     if item.pad.is_some() && !matches!(item.place, Place::Anchor(_)) {
         return Err("pad= only applies to an anchored item".into());
-    }
-    if item.quote.is_some() && !matches!(item.place, Place::At(..)) {
-        return Err(
-            "quote= names words in a picture, so it goes on a mark placed by coordinates".into(),
-        );
     }
     Ok(item)
 }
@@ -755,7 +803,7 @@ mod tests {
         assert!(!json.contains("quote"), "not the viewer's business: {json}");
 
         let doc = parse("highlight #t : quote=\"words\"\n");
-        assert!(doc.errors[0].contains("coordinates"), "{:?}", doc.errors);
+        assert!(doc.errors[0].contains("source:"), "{:?}", doc.errors);
         let doc = parse("target: p\nhighlight 1,1 1x1 : page=0\n");
         assert!(doc.errors[0].contains("page number"), "{:?}", doc.errors);
     }
@@ -818,6 +866,29 @@ mod tests {
 
         let doc = parse("target: p.svg\nbox #q1\nrect 10,10 20x10\ncircle 50,50 10x10\n");
         assert!(doc.errors.is_empty(), "{:?}", doc.errors);
+    }
+
+    /// The form a person writes: no target, the words on the phrase's own
+    /// mark. It is a card - and a chip beside it that quotes nothing has
+    /// nothing to open on.
+    #[test]
+    fn a_quote_on_the_phrase_makes_a_card_with_no_picture() {
+        let doc = parse("source: @devi2022\nhighlight #lim : quote=\"Outside the range\"\n");
+        assert!(doc.errors.is_empty(), "{:?}", doc.errors);
+        assert!(doc.is_card());
+        assert_eq!(doc.picture(), None);
+        assert_eq!(doc.chips().count(), 1);
+
+        let doc = parse("source: @devi2022\nhighlight #lim : quote=\"words\"\nunderline #other\n");
+        assert!(doc.is_card());
+        assert!(doc.errors[0].contains("#other"), "{:?}", doc.errors);
+
+        // The same lines with a target are an overlay on the slide, as ever.
+        let doc = parse("target: #chart\nhighlight #lim : quote=\"words\"\n");
+        assert!(!doc.is_card());
+        assert!(doc.errors.is_empty(), "{:?}", doc.errors);
+        let doc = parse("highlight #lim : color=@accent1\n");
+        assert!(!doc.is_card());
     }
 
     #[test]

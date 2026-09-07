@@ -1810,7 +1810,26 @@ the appendix. The PDF half is `with_sources_appendix` in `mirzam-render`:
 there. On screen nothing is generated. `import pdf --quote` prints the card
 form as a comment in the block.
 
-**Stops at:** the mark, the cut-out, the check, the card.
+**6. The block a person writes.** Asked of stage 5 the moment it landed: is
+the block human-writable, or does it demand coordinates? It demanded them -
+the command wrote them, but a quote could not be added without leaving the
+editor. So the coordinates became optional. A block with a `source:`, no
+`target:` and `quote=` on the phrase's own mark is a card (`AnnotDoc::is_card`),
+and the core renders it as it stands: a chip that opens on the words and the
+source, which is what the editor's preview shows. `crates/mirzam-cli/src/cutouts.rs`
+completes it before the slide is parsed: `quotes::locate` finds the words
+(on `page=`, or on every page), `Text::crop` and `Text::marks` do what they
+did for `--quote`, hayro makes the SVG, and the block is rewritten into the
+stage-5 form - `target:` naming the picture, one mark per line. The picture
+goes under `.mirzam/cutouts/` named by an FNV hash of the request, with its
+page and marks in a comment on its first line, so the next build reads one
+line and opens no PDF; a paper newer than its cut-out is cut again. The
+language server builds on every keystroke, so a quote the paper does not
+print is remembered as a miss for as long as the paper is unchanged. `check`
+searches page by page when `page=` is absent. `import pdf --quote` stays for
+the beside-the-summary form and for anyone who wants the coordinates in hand.
+
+**Stops at:** the mark, the cut-out, the check, the card, the two-line block.
 
 - **Sources that are not PDFs.** A web page has no fixed layout; the cut-out
   degrades to a `blockquote` and a link, while stage 4's check still verifies
@@ -1825,7 +1844,8 @@ and `pdfimport/svg.rs` (the `--quote` path, glyph dedup), `crates/mirzam-annot`
 (coordinates on text marks, the picture target), `crates/mirzam-render/src/annot.rs`
 (chips and cards) and `theme/annot.js` (one overlay branch, the card runtime),
 `with_sources_appendix` in `mirzam-render`, `crates/mirzam-cli/src/check.rs` (the
-quote check). Sample slide in
+quote check), `crates/mirzam-cli/src/quotes.rs` (`locate`, `verify`),
+`crates/mirzam-cli/src/cutouts.rs` (the build-time cut-out). Sample slide in
 `examples/research.md` — a talk that already quotes a paper — and the syntax
 in `docs/syntax.md` under annotations. Golden snapshots move only if the
 sample slide is added.

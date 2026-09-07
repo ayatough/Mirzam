@@ -8,6 +8,21 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Added
+- **A quote is two lines, and the build makes the picture.** The `annotate`
+  block that puts a paper's words beside a phrase no longer needs a command
+  or a coordinate: `source: @key` and `highlight #id : quote="the words"` is
+  the whole of it. The build opens the paper, finds the words (on `page=` when
+  written, on whichever page prints them when not), cuts the column out
+  around them, marks the lines and gives the phrase a chip that opens the
+  cut-out in a card. The picture lives under `.mirzam/cutouts/` beside the
+  deck, named for the paper and the request so the same quote is the same
+  file on any machine and a later build reads its first line instead of the
+  PDF; a paper newer than its cut-out is cut again. Where the paper cannot be
+  opened - the editor's preview, a machine without the file, words the paper
+  does not print - the chip opens on the words and the source alone, and the
+  build says so. `mirzam check` verifies a hand-written quote the same way,
+  page named or not. `import pdf --quote` is unchanged, for the
+  beside-the-summary form and for anyone who wants the coordinates in hand.
 - **A slide can show the sentence it stands on, and the build can check it
   is really there.** `mirzam import pdf paper.pdf --quote "…"` finds the
   words on the page, cuts out the paragraph they are in at the column's width
