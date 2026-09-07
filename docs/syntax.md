@@ -903,9 +903,10 @@ the command only saves the screenshot and the typing.
 
 A figure imported that way is a vector picture, so it stays sharp however large
 the pane is, and it carries the words that are in it: a table's cells can be
-selected and copied out of the exported PDF, and searched there, even though
-the picture draws them as shapes. What it cannot do is make them selectable in
-the *deck* — a picture on a slide is an `<img>`, and nothing inside one is.
+selected and copied out of the exported PDF and searched there, even though
+the picture draws them as shapes — and in the HTML deck too, since the SVG is
+inlined into the page rather than embedded as a picture nothing can reach
+into.
 
 With `fit=contain` the picture takes its own shape inside the pane rather than
 filling it, so the caption sits against the picture's own bottom edge instead
@@ -914,6 +915,49 @@ when they fit on one line, and read from their own left edge when they wrap.
 
 **`--mz-caption-size`** (default `.82em`) and **`--mz-credit-size`** (default
 `.72em`) set how large the two lines are, on the pane, the deck or a theme.
+
+#### A figure that follows the deck into the dark
+
+A figure `import pdf` cuts out of a paper is the paper's black ink on a
+transparent ground — legible on the white a printed page assumes, and a dark
+rectangle where the words were on a dark slide. Every figure `import pdf`
+converts is inverted by default in a dark deck (`mode: dark`, `D`, a dark
+phone) — the same answer a PDF reader's own dark mode gives: black grid lines
+turn white, a white table cell turns black, and a coloured line or marker
+keeps its hue, lightened rather than flattened, so a red ray or a blue marker
+still reads as itself.
+
+One figure needs something else, and says so on the reference:
+
+```markdown
+![Rig photo](img/setup.svg){dark=keep caption="The bench as built"}
+```
+
+`dark=keep` is the opt-out, for the figure that must stay exactly as printed —
+a photograph, a screenshot with its own chrome, where inverting would turn it
+into a negative. Whether an embedded picture is a photograph is a guess
+`import pdf` does not make, so this is the author's to say. A figure `import
+pdf` lifted out whole rather than converting — the stored image in the page,
+rather than a drawing — is left exactly as printed by this default, the same
+as `dark=keep` would leave it, unless `dark-figures:` below says otherwise.
+
+**`dark-figures:` in frontmatter sets the deck-wide default**, for a deck that
+wants a different split than the usual one:
+
+```yaml
+dark-figures: invert   # every figure, raster included
+```
+
+| `dark-figures:` | Inverts |
+|---|---|
+| *(unset)*, `auto` | a converted vector figure; a stored raster one stays as printed |
+| `invert` | every figure `import pdf` produced, raster included |
+| `keep` | none of them; every figure stays exactly as printed |
+
+A figure's own `dark=` always overrides the deck's default for that one
+reference, in either direction — `dark=invert` on a photograph under
+`dark-figures: keep` still inverts it, and `dark=keep` on a diagram under
+`dark-figures: invert` still spares it.
 
 #### A `<picture>` that picks art by colour scheme
 

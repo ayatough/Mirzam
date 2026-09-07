@@ -137,8 +137,12 @@ impl Imported {
         // The attribute list has no escape for a quotation mark, so a caption
         // carrying one gets typographic quotes rather than a broken reference.
         let caption = self.caption.replace('"', "”");
+        // `.mz-pdf-figure` is the one signal a stored raster picture can
+        // carry at all - it has no comment the way a converted SVG does -
+        // so `dark-figures: invert` (`docs/syntax.md`) can tell this figure
+        // apart from a photograph the author added some other way.
         format!(
-            "![{}]({}){{fit=contain caption=\"{}\" credit=\"{} of {}\"}}",
+            "![{}]({}){{.mz-pdf-figure fit=contain caption=\"{}\" credit=\"{} of {}\"}}",
             self.label, path, caption, self.label, credit
         )
     }
@@ -429,7 +433,9 @@ fn write_one(
         match svg::convert(&bytes) {
             Ok(drawing) => {
                 let file = options.out_dir.join(format!("{stem}.svg"));
-                std::fs::write(&file, svg::with_text(&drawing, text, *art))
+                let drawing = svg::with_text(&drawing, text, *art);
+                let drawing = svg::mark_as_import(&drawing);
+                std::fs::write(&file, drawing)
                     .map_err(|e| format!("cannot write {}: {e}", file.display()))?;
                 let _ = std::fs::remove_file(&crop);
                 return Ok((file, "svg".to_string()));

@@ -34,10 +34,21 @@
   // holding one picture is a way of saying "that picture": annotating the
   // pane's box would measure its padding and whatever whitespace the
   // alignment left, and put every mark somewhere the author did not point.
+  //
+  // A pane can hold two pictures and still mean one: `<picture>`'s light and
+  // dark copies (`mz-only-light`/`mz-only-dark`, `base.css`) are both in the
+  // DOM so the mode switch is instant, with `display:none` hiding whichever
+  // one the reader is not looking at. A mark belongs on the copy that is
+  // actually painting something, so a hidden one does not count as a second
+  // picture and does not win as the only one either.
   function paintTarget(el) {
     if (el.matches(PICTURES)) return el;
-    const inner = el.querySelectorAll(PICTURES);
+    const inner = Array.from(el.querySelectorAll(PICTURES)).filter(isPainted);
     return inner.length === 1 ? inner[0] : el;
+  }
+
+  function isPainted(el) {
+    return el.getClientRects().length > 0;
   }
 
   // A picture's natural size, and how it is fitted into its element box.

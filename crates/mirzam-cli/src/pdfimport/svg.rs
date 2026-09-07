@@ -129,6 +129,50 @@ pub fn with_text(svg: &str, lines: &[Line], crop: mirzam_figure::Rect) -> String
     format!("{}{layer}{}", &svg[..close], &svg[close..])
 }
 
+/// The comment `mirzam-render`'s asset pass looks for to tell a figure
+/// `import pdf` cut from a paper apart from an SVG the author drew or
+/// imported themselves - the only two things that decide whether a dark
+/// deck may invert it by default. See [`IMPORT_PDF_MARK`] for what the
+/// renderer does with it.
+///
+/// A first cut of this stream judged the ink shape by shape - a glyph, a
+/// stroke, a fill with no stroke to recolour - so a fill could stay exactly
+/// as printed and a caption like "black means occupied" was never made to
+/// lie by its own figure. Against a real paper's figures that judgement
+/// turned out to need more care than it had: a shape hayro draws nested two
+/// groups deep, which is most of what a figure actually draws, needs its own
+/// full chain of transforms composed correctly, and a marker only a few
+/// pixels across blends its fill and its added outline into one colour at
+/// normal viewing size regardless. Inverting the whole figure - the same
+/// answer a PDF reader's own dark mode gives, and plainly correct against
+/// the same paper's figures - both sidesteps that and is simpler to trust.
+/// The per-shape judgement stays useful background (`docs/workstreams.md`,
+/// W27) for the figure whose fills really do need to survive a mode switch;
+/// `dark=keep` is how the author says this one is that figure.
+pub const IMPORT_PDF_MARK: &str = "<!--mirzam:import-pdf-->";
+
+/// Marks a converted figure as one `import pdf` wrote, so a dark deck may
+/// invert it by default. See [`IMPORT_PDF_MARK`].
+pub fn mark_as_import(svg: &str) -> String {
+    let Some(at) = svg.find('>') else {
+        return svg.to_string();
+    };
+    format!("{}{IMPORT_PDF_MARK}{}", &svg[..=at], &svg[at + 1..])
+}
+
+/// Where a removed element's own line starts, so the line goes with it
+/// rather than leaving a blank line for every element [`cull`] drops.
+fn trim_removed(svg: &str, at: usize, start: usize) -> usize {
+    let mut from = start;
+    while from > at && matches!(svg.as_bytes()[from - 1], b' ' | b'\t') {
+        from -= 1;
+    }
+    if from > at && svg.as_bytes()[from - 1] == b'\n' {
+        from -= 1;
+    }
+    from
+}
+
 /// The three characters that cannot stand for themselves between two tags.
 fn escape(text: &str) -> String {
     text.replace('&', "&amp;")
@@ -239,20 +283,13 @@ pub fn cull(svg: &str) -> String {
         if kept[i] {
             continue;
         }
-        // The line goes with it. Three thousand dropped glyphs otherwise leave
-        // three thousand blank lines, which cost more than the glyphs did.
-        let mut from = element.start;
-        while from > at && matches!(svg.as_bytes()[from - 1], b' ' | b'\t') {
-            from -= 1;
-        }
-        if from > at && svg.as_bytes()[from - 1] == b'\n' {
-            from -= 1;
-        }
         if element.start < at {
             // Already inside something dropped.
             continue;
         }
-        out.push_str(&svg[at..from]);
+        // The line goes with it. Three thousand dropped glyphs otherwise leave
+        // three thousand blank lines, which cost more than the glyphs did.
+        out.push_str(&svg[at..trim_removed(svg, at, element.start)]);
         at = element.close_end;
     }
     out.push_str(&svg[at..]);
@@ -779,5 +816,23 @@ mod tests {
             !culled.lines().any(|l| l.trim().is_empty()),
             "a dropped element leaves no blank line behind: {culled}"
         );
+    }
+
+    /// W27: `import pdf` marks every SVG it converts as its own, so
+    /// `mirzam-render` knows it may invert the figure by default in a dark
+    /// deck - and knows not to touch an SVG the author drew or imported
+    /// themselves.
+    #[test]
+    fn a_converted_figure_is_marked_as_one() {
+        let svg = r#"<svg viewBox="0 0 4 2"><path d="M0,0 L1,1"/></svg>"#;
+        let marked = mark_as_import(svg);
+        assert!(marked.contains(IMPORT_PDF_MARK), "{marked}");
+        assert!(marked.contains(r#"<path d="M0,0 L1,1"/>"#), "{marked}");
+    }
+
+    #[test]
+    fn a_root_with_nothing_to_mark_is_left_alone() {
+        let odd = "not an svg at all";
+        assert_eq!(mark_as_import(odd), odd);
     }
 }

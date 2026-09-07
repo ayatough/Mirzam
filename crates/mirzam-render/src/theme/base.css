@@ -762,7 +762,7 @@ figure.mz-figure {
   display: flex; flex-direction: column; gap: .4em;
   margin: 0; min-width: 0; min-height: 0; max-width: 100%;
 }
-figure.mz-figure > img, figure.mz-figure > video,
+figure.mz-figure > img, figure.mz-figure > video, figure.mz-figure > svg,
 figure.mz-figure > .mz-embed, figure.mz-figure > .mz-video-still {
   min-height: 0; flex-shrink: 1; margin-inline: auto;
 }
@@ -787,11 +787,28 @@ figcaption.mz-figcaption > span { max-width: 100%; }
 .mz-fig-credit a { color: inherit; overflow-wrap: anywhere; }
 /* An image alone in a paragraph is a figure, not a word. Laying it out as a
    block drops the baseline gap that otherwise pushes it past the pane. */
-p > img:only-child, p > video:only-child,
-.pane > img:only-child, .pane > video:only-child,
-.mz-bg-content > img:only-child, .mz-bg-content > video:only-child {
+p > img:only-child, p > video:only-child, p > svg:only-child,
+.pane > img:only-child, .pane > video:only-child, .pane > svg:only-child,
+.mz-bg-content > img:only-child, .mz-bg-content > video:only-child,
+.mz-bg-content > svg:only-child {
   display: block; margin: 0 auto;
 }
+
+/* W27: a figure `import pdf` cut from a paper is the paper's black ink on a
+   transparent ground, which is legible on the white a printed page assumes
+   and a dark rectangle on a dark slide. Every figure `import pdf` converts is
+   marked (`pdfimport::svg::mark_as_import`) and, by default, gets this filter
+   in a dark deck - the same answer a PDF reader's own dark mode gives, and
+   the one that survives the PDF export too, since it is one CSS property
+   rather than a judgement made path by path.
+   `dark=keep` (`inline.rs`) is the opt-out, for the figure that must stay
+   exactly as printed - a photograph, a screenshot with its own chrome. An
+   SVG with no mark - every picture that is not a PDF cut-out - never carries
+   this class and is never touched. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-mode="light"]) .mz-dark-invert { filter: invert(1) hue-rotate(180deg); }
+}
+:root[data-mode="dark"] .mz-dark-invert { filter: invert(1) hue-rotate(180deg); }
 video { background: #000; /* theme-independent: letterbox behind the frame */ border-radius: 6px; }
 
 /* A recording: the player plus the label the reference's alt text gave it,

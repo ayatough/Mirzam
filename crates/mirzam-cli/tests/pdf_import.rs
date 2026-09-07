@@ -141,6 +141,9 @@ fn the_markdown_is_ready_to_paste() {
 
     assert!(line.starts_with("![Figure 2]("), "{line}");
     assert!(line.contains("someone2026-fig2.png"), "{line}");
+    // W27: the only signal a stored raster picture can carry at all, since it
+    // has no comment the way a converted SVG does.
+    assert!(line.contains(".mz-pdf-figure"), "{line}");
     assert!(line.contains("caption=\"A stored picture.\""), "{line}");
     assert!(
         line.contains("credit=\"Figure 2 of [@someone2026]\""),
@@ -246,6 +249,24 @@ fn the_words_inside_a_figure_come_back_as_text() {
         !svg.contains("quick brown fox"),
         "the page's own prose came along"
     );
+}
+
+/// W27: `import pdf` marks every SVG it converts as its own, so a dark deck
+/// knows it may invert the figure by default - the same answer a PDF
+/// reader's own dark mode gives - without touching an SVG the author drew or
+/// imported themselves.
+#[test]
+fn a_figure_is_marked_for_a_dark_deck() {
+    let dir = TempDir::new("ink");
+    let found = pdfimport::run(&Options {
+        only: Some("1".to_string()),
+        ..options(&dir, Format::Svg)
+    })
+    .expect("Figure 1")
+    .figures;
+    let svg = std::fs::read_to_string(found[0].file.as_ref().unwrap()).expect("the svg");
+
+    assert!(svg.contains(pdfimport::svg::IMPORT_PDF_MARK), "{svg}");
 }
 
 /// A snapshot, because an SVG that is subtly wrong still looks like an SVG.

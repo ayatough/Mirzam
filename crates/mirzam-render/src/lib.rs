@@ -25,7 +25,7 @@ pub use code::{highlight as highlight_code, TOKEN_CLASSES};
 pub use inline::{parse_attrs, preprocess, preprocess_math, render_markdown, render_math};
 pub use mermaid::DiagramRenderer;
 pub use mirzam_cite::{Bibliography, CiteStyle};
-pub use mirzam_core::MathDialect;
+pub use mirzam_core::{DarkFigures, MathDialect};
 pub use source::DeckSource;
 pub use theme::{
     contrast_ratio, file_theme_warnings, mode_warning, theme_warnings, FileTheme, THEME_NAMES,
@@ -56,6 +56,11 @@ pub struct RenderResult {
 pub struct DeckContext {
     /// Which syntax `$...$` holds, from frontmatter `math:`.
     pub math: MathDialect,
+    /// How a dark deck treats a figure `import pdf` cut from a paper, from
+    /// frontmatter `dark-figures:`. Reaches the asset pass, not a slide's own
+    /// markup, which is why it is read here rather than left to CSS the way
+    /// `mode:` is.
+    pub dark_figures: DarkFigures,
     /// Logical slide size from frontmatter `aspect:`. The shape layer's
     /// viewBox and every pane rectangle are computed in this space.
     pub slide_size: (u32, u32),
@@ -113,6 +118,9 @@ impl DeckContext {
             // A bad dialect renders as LaTeX and is reported where the
             // frontmatter was parsed; there is no warning channel here.
             math: meta.math_dialect().unwrap_or_default(),
+            // Bad value keeps `auto` and is reported where the frontmatter
+            // was parsed, like `math:`.
+            dark_figures: meta.dark_figures().unwrap_or_default(),
             slide_size: meta.slide_size(),
             // Bad pixel values keep the defaults and are reported where the
             // frontmatter was parsed, like `math:`.
@@ -187,6 +195,7 @@ impl DeckContext {
     pub fn fingerprint(&self) -> u64 {
         let mut h = std::collections::hash_map::DefaultHasher::new();
         self.math.hash(&mut h);
+        self.dark_figures.hash(&mut h);
         self.slide_size.hash(&mut h);
         for v in [self.grid.pad_x, self.grid.pad_y, self.grid.gap] {
             v.to_bits().hash(&mut h);
@@ -356,7 +365,13 @@ pub fn render_slide_html_with(
     // Charts are rendered first: they may pull in CSV data through the same
     // asset source, and their SVG output must not be scanned for asset URLs.
     let html = render_slide(slide, index, &mut warnings, host, &mut assets_used, ctx);
-    let html = assets::embed_assets(&html, asset_source, &mut warnings, &mut assets_used);
+    let html = assets::embed_assets(
+        &html,
+        asset_source,
+        ctx.dark_figures,
+        &mut warnings,
+        &mut assets_used,
+    );
     RenderedSlide {
         html,
         warnings,
@@ -1165,6 +1180,9 @@ pub fn render_deck(meta: &DeckMeta, slides: &[SlideSource], asset_dir: &Path) ->
     warnings.extend(theme_warnings(meta));
     warnings.extend(mode_warning(meta.mode.as_deref()));
     if let Err(w) = meta.math_dialect() {
+        warnings.push(w);
+    }
+    if let Err(w) = meta.dark_figures() {
         warnings.push(w);
     }
     warnings.extend(meta.grid_metrics().1);

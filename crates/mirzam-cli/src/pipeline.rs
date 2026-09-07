@@ -305,6 +305,12 @@ pub fn build_source(
         warnings.push(w);
     }
 
+    // Same rule for `dark-figures:`: a typo keeps the `auto` default rather
+    // than failing the build.
+    if let Err(w) = meta.dark_figures() {
+        warnings.push(w);
+    }
+
     // Same rule for the grid keys: a value that is not a pixel length keeps
     // the stylesheet default, and the warning says which key to fix.
     warnings.extend(meta.grid_metrics().1);

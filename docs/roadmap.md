@@ -64,6 +64,8 @@ changing.
 | PPTX export, stage two: native text boxes, shapes and tables | Done · unreleased |
 | Quoting a figure out of a paper (`import pdf`) | Done |
 | That figure rendered to SVG with nothing installed | Done · unreleased |
+| Imported figures that follow the deck's mode | Done · unreleased |
+| Quoting a passage beside its summary, verified by `check` (`import pdf --quote`) | Next |
 | Plugins | Later |
 
 Each of those has a brief — what it is for, what is not free about it, and where
