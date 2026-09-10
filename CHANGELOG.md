@@ -7,35 +7,44 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.11.0] - 2026-09-10
+
 ### Added
-- **`mirzam export pptx` writes the words, not a picture of them.** Every
-  heading, paragraph, list, code block and table on a slide is now a real
-  PowerPoint object — text boxes in the font, size and colour the browser
-  resolved, at the box the browser laid out; cards and code blocks as filled
-  shapes; tables as tables, with their borders and header fill; links that
-  click; the theme's rule under a heading as a gradient shape. The reader
-  can select, search and edit, which is what every Markdown slide tool's
-  PowerPoint export — including the first stage of this one — refused them.
-  What has no PowerPoint equivalent is photographed *per element*, with the
-  rest of the slide hidden while the shot is taken: a chart, a shape
-  diagram, a Mermaid graph, a block formula, a WebP or SVG picture, a
-  gradient scrim. An inline formula simple enough to be words (`T₁`,
-  `χ = g²/Δ`) is written as words. The old form survives as `--pictures`,
-  for the room that must see exactly the browser's pixels and will never
-  edit. How it works: each slide is opened in a headless Chromium over
-  DevTools, an extractor reads the laid-out DOM back as a scene, and the
-  new `mirzam-pptx` crate writes that scene as hand-written OOXML — the
-  browser keeps doing the typography, as everywhere else in Mirzam. Line
-  placement is corrected for the way PowerPoint and Impress set exact line
-  spacing (the leading goes above the line, where a browser splits it),
-  verified against LibreOffice Impress renderings of every sample deck.
-  What stays honest: the file is only as faithful as the fonts the
-  opening machine has, so a box is given a little room for a wider face,
-  a label that fit on one line is kept on one line, and the sample decks
-  were checked in a substituted font. The limits that remain — fonts named
-  rather than embedded, formulas and charts as pictures, no motion, no
-  connectors — are written down in the quick start, with `--pictures` as
-  the way around all of them. A link to another slide jumps to it.
+- **`mirzam export pptx`: the deck as a PowerPoint file, with the words in
+  it.** For the room that requires one. Every heading, paragraph, list, code
+  block and table is a real PowerPoint object: text boxes in the font, size
+  and colour the browser resolved, at the box the browser laid out; cards and
+  code blocks as filled shapes; tables as tables, borders and header fill and
+  all; links that click; the theme's rule under a heading as a gradient
+  shape. The reader can select, search and edit — which is what every
+  Markdown slide tool's PowerPoint export refuses them, Marp, Slidev and
+  Touying all stopping at a picture per slide. What has no PowerPoint
+  equivalent is photographed *per element*, with the rest of the slide hidden
+  while the shot is taken: a chart, a shape diagram, a Mermaid graph, a block
+  formula, a WebP or SVG picture, a gradient scrim. An inline formula simple
+  enough to be words (`T₁`, `χ = g²/Δ`) is written as words; the speaker
+  notes are in the notes pane, where presenter view reads them; a link to
+  another slide jumps to it. `--pictures` writes one photograph per slide
+  instead, for the room that must see exactly the browser's pixels and will
+  never edit. How it works: each slide is opened in a headless Chromium over
+  DevTools, an extractor reads the laid-out DOM back as a scene, and the new
+  `mirzam-pptx` crate writes that scene as OOXML — so the browser keeps doing
+  the typography, as everywhere else in Mirzam, and the part that decides
+  what a scene means is a crate with no browser in it. No new dependency: the
+  OOXML is hand-written, into the ZIP writer `skill install --zip` already
+  carried. Line placement is corrected for the way PowerPoint and Impress set
+  exact line spacing — the leading goes above the line, where a browser
+  splits it either side — and every sample deck was checked by rendering it
+  through LibreOffice Impress beside the browser's own pixels, English and
+  CJK both. What stays honest: the file is only as faithful as the fonts the
+  opening machine has, so a box is given a little room for a wider face and a
+  label that fit on one line is kept on one line. The limits that remain —
+  fonts named rather than embedded, formulas and charts as pictures, no
+  motion, no connector arrows — are written down for the reader in the quick
+  start, with `--pictures` as the way around all of them, and for whoever
+  picks them up next as W28 in `docs/workstreams.md`.
 - **A deck fills a phone's screen.** The control cluster carries a `⛶` button
   beside the others (`F` from a keyboard): the deck takes the whole screen,
   drops the margin, corner radius and shadow it wears as a page on a desk, and
@@ -386,21 +395,6 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   No new syntax: `caption=`, `credit=` and `[@key]` already existed, and this
   writes them. New crate `mirzam-figure` holds the part worth testing on its
   own — which line is a caption, and which ink belongs to it.
-- **`mirzam export pptx`: the deck as a PowerPoint file.** For the room that
-  requires one: one picture per slide, photographed by the same headless
-  Chromium the PDF export drives, at twice the deck's pixel size and its
-  exact aspect — and the speaker notes in the notes pane, where presenter
-  view reads them. The slides are images, which is where Marp, Slidev and
-  Touying's PowerPoint exports all stop too; what an image-only export
-  usually throws away is the notes, and those are real here. No new
-  dependency: the package is hand-written OOXML in the ZIP writer
-  `skill install --zip` already carries. Verified by round-tripping through
-  python-pptx and LibreOffice Impress, English and CJK decks both. One
-  mechanical find worth recording: current headless builds keep browser
-  chrome's height in `--window-size`'s arithmetic even though nothing draws
-  it, so the shot is taken oversized and the package crops the blank strip
-  by the slide's own aspect. Native text boxes stay on the roadmap as the
-  stage nobody ships.
 - **A code block can light its lines, and number them.** ```` ```js {2,4-5
   lines} ```` washes lines 2, 4 and 5 across the block's full width — how a
   talk walks a room through a listing without a laser pointer — and `lines`

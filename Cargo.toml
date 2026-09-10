@@ -19,7 +19,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.10.0"
+version = "0.11.0"
 edition = "2021"
 # Set by the dependency graph, not by us: `hayro`, which turns a figure into an
 # SVG, needs 1.92 (`math-core` needs 1.91). CI builds the workspace on exactly
