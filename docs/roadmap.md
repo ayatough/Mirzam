@@ -66,6 +66,7 @@ changing.
 | That figure rendered to SVG with nothing installed | Done · unreleased |
 | Imported figures that follow the deck's mode | Done · unreleased |
 | Quoting a passage beside its summary, verified by `check` (`import pdf --quote`) | Next |
+| What the PowerPoint file still cannot carry: arrows, embedded fonts, Office math | Next |
 | Plugins | Later |
 
 Each of those has a brief — what it is for, what is not free about it, and where
@@ -207,9 +208,13 @@ stop; the second is the stage none of them ships and the market survey found
 to be the loudest unmet ask across every Markdown slide tool — native text
 boxes, shapes and tables read back off the browser's layout, with elements
 that have no OOXML equivalent photographed one by one rather than dropped.
-What is left is refinement rather than a stage: SVG shapes and chart marks
-as DrawingML instead of pictures, and block formulas as Office math. Google
-Slides comes through the same path. Direct PDF generation without Chromium
+What is left is a list rather than a stage, and it is written down as
+[W28](workstreams.md): connector arrows — which turn out to be missing from
+the PDF as well, since the viewer routes them at show time and neither export
+runs it — then fonts embedded on request, block formulas as Office math, and
+chart marks as DrawingML instead of pictures. Motion and video are
+deliberately not on that list; the reasoning is with it. Google Slides comes
+through the same path. Direct PDF generation without Chromium
 is a separate, larger question that depends on adopting a text layout
 engine.
 

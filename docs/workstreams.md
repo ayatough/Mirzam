@@ -44,6 +44,7 @@ from a deck someone was actually trying to give.
 | 6 | W22, W23, W16 | The survey's P1. W22 first: it is what makes a theme an identity rather than a palette, which W16 then has something to exhibit. W23 develops alongside but lands after, because both move rendered output |
 | 6 | W22 | The last frontmatter key that asks the author to know how the CSS is assembled |
 | 7 | W26, W27 | The reading-group deck: a summary beside the words it stands on, and figures cut from a paper that survive a dark slide. Independent of each other; W27 is what W26's cut-outs need in dark mode |
+| 8 | W28 | The PowerPoint export's remaining gaps, each a stage of its own. Its first stage — connector arrows, missing from the PDF too — is the one that reaches outside `pptx` |
 
 ## Assignment
 
@@ -86,6 +87,7 @@ there is. The model column follows from that:
 | W25 | A language server: the editor understands the deck | B | Sonnet | W7, W21 | |
 | W26 | Quoting the source beside the summary | B | Opus | W6, W14, `import pdf` | |
 | W27 | Imported figures follow the deck's mode | B | Sonnet | `import pdf`, W17 | ✅ |
+| W28 | What the PowerPoint export still cannot carry | B | Opus | `export pptx` | |
 
 ### What is deferred, and why
 
@@ -1938,6 +1940,172 @@ prefixing, the substitution), `crates/mirzam-render/src/theme/annot.js`
 (`paintTarget`), `docs/syntax.md` under figures (`dark=`). Every imported
 figure in `examples/research.md` changes its embedding, so the golden
 snapshots move; land after W26's sample slide or before it, not alongside.
+
+## W28 — What the PowerPoint export still cannot carry
+
+**Difficulty B · Opus for stage 1, Sonnet after · not started.** `export pptx`
+landed in two stages: pictures plus real speaker notes, then the words as
+words — text boxes, shapes, tables and links, read off the browser's layout by
+`crates/mirzam-cli/src/pptx.js` and written as OOXML by the `mirzam-pptx`
+crate. What does not survive that translation is listed for the reader in
+[quickstart.md](quickstart.md), under *What the PowerPoint file cannot carry*.
+This stream is that list, ordered by what a reader loses most, and each stage
+below is mergeable on its own.
+
+**The architecture is not in question here.** The browser lays the slide out
+and a script reads it back; `mirzam-pptx` never sees a browser and is tested
+against scenes written by hand. Every stage below is a new kind of node in
+that scene, or a new part in the package — none of them needs the split
+reopened.
+
+### 1. The arrows are missing — from the PDF as well
+
+A `connect` arrow is routed by `viewer.js` after the browser has laid the
+slide out, and neither the shot page nor the print page runs the viewer. So
+the arrows are missing from the PowerPoint file **and from `export pdf`**,
+which nothing in the docs says and which was found while writing the pptx
+limits down: `mirzam export pdf examples/pitch.md`, slide 4, has no arrow
+between the sentence and the chart's last point, and the same slide in a
+browser draws one.
+
+That makes this one fix for two exports, and it has a precedent to copy.
+`theme/annot.js` is exactly this: an overlay the viewer used to own, pulled
+out into a script that stands alone — it never reaches for the viewer, the
+active slide or the animation runtime, and a unit test enforces that — so the
+print page can run it and the marks land in the PDF. The reasoning is written
+down in [architecture.md](architecture.md) under *Annotations and the PDF*,
+and it applies to a connector word for word: an arrow is drawn over the slide
+and hides nothing, so a scriptless read is the deck minus its arrows, not a
+deck with something missing from the middle of it.
+
+**Stages.** Lift the routing out of `viewer.js` into `theme/connect.js` with
+the same standing-alone test; run it in `assemble_print_page`,
+`assemble_handout_page` and `assemble_shot_page` beside `annot.js`. That much
+puts arrows in the PDF and, because the pptx extractor photographs SVG it
+cannot draw, in the PowerPoint file too. Writing them as DrawingML lines
+instead — `a:prstGeom prst="line"` with an `a:tailEnd` arrowhead, which the
+scene model already has the shape for (`Shape { kind: "line", line.dash }`) —
+is a second, optional step: worth it for a straight arrow, not worth it for a
+curved one, which stays a picture.
+
+**Watch out for:** the viewer redraws connectors on every show, resize and hot
+reload, so the extracted routing has to run *once* after layout has settled
+and not install listeners the shot page will never fire. `check.js` already
+calls `window.__mirzamConnectors()` directly for the same reason and is the
+model for how to drive it.
+
+### 2. Fonts, embedded when asked
+
+The file names the faces the theme asks for and embeds none, so a machine
+without Inter substitutes and the wrapping moves. OOXML can carry them:
+`embeddedFontLst` in `presentation.xml`, one `ppt/fonts/fontN.fntdata` part
+per face and weight. **Confirm the wrapper against a file PowerPoint itself
+wrote before writing the writer** — the parts are understood to be
+EOT-wrapped, with the uncompressed form legal, but that is the one claim here
+nobody in this repository has checked.
+
+Four things make this bigger than the packaging:
+
+- **Which font, not which name.** The extractor reads the CSS stack; what is
+  needed is the face Chromium actually resolved, which `CSS.getPlatformFonts`
+  over DevTools answers per node.
+- **Licence.** Inter, Space Grotesk and Noto are OFL and may be embedded; the
+  default stack also names Helvetica Neue, Hiragino and Yu Gothic, which are
+  an operating system's and are not ours to move. Read `fsType` out of the
+  font's OS/2 table and refuse anything it does not permit — with a warning
+  naming the face, not silently.
+- **Size.** A CJK face is 16 MB and up per weight, against a deck with a
+  20 MB ceiling, so subsetting is not optional. `subsetter` (pure Rust,
+  MIT/Apache, the typst ecosystem hayro came from) does it.
+- **Who reads it.** PowerPoint on Windows and recent macOS do; Google Slides
+  and Keynote ignore the parts; LibreOffice needs a build with libeot, which
+  Ubuntu's package is not — so this cannot be verified the way the rest of the
+  export was, and the check has to be someone opening the file in PowerPoint.
+
+Behind `--embed-fonts`, off by default: a flag that quietly triples a file and
+carries someone's font into a repository should be asked for.
+
+### 3. A block formula as Office math
+
+A block formula is a picture of the browser's MathML: it cannot be edited, and
+it softens when a projector scales it up. PowerPoint's own model is OMML
+(`m:oMath`), and the conversion from MathML is mechanical and testable —
+`mirzam-tmath` already holds an AST and a printer, so the pass belongs beside
+it or in `mirzam-pptx`, taking MathML in and OMML out, with the picture staying
+as the fallback for what will not convert.
+
+The inline half already works: a formula simple enough to be words — a
+subscript, a superscript, `χ = g²/Δ` — is written as runs by `mathRuns` in
+`pptx.js`, and anything with a fraction, a root or a matrix falls back to a
+picture. That fallback is where OMML picks up, and the two should agree on
+which is which rather than each deciding for itself.
+
+### 4. Charts and shapes as DrawingML
+
+A `chart`, a `shape` block and a Mermaid graph are SVG on the slide and a
+picture in the file, so a reader cannot recolour a bar or move a box. Bars,
+lines, axes and text are a straight walk of the marks `mirzam-chart` already
+assigns stable ids to, and the scene model needs one more node kind (a path,
+or a run of them) to carry them. Do the chart first and stop there if the
+shape layer's arcs and curves look like a project: a picture of a diagram is
+a nuisance, a wrong diagram is a lie.
+
+### 5. The cheap ones
+
+Small enough that one agent could take the lot in an afternoon, and each is
+visible to a reader:
+
+- **A box shadow is dropped**, and the extractor already parses the first one
+  (`shadowOf` in `pptx.js` fills `paint.shadow`, and nothing writes it). The
+  OOXML is `a:effectLst` with `a:outerShdw`. Finish it or delete the parse;
+  leaving a value nobody reads is the worst of the three.
+- **Speaker notes lose their emphasis.** `notes_text` flattens the rendered
+  HTML to lines, so bold in a note comes out plain. The notes part takes the
+  same runs a slide's text box does.
+- **A pane clips in the browser and not in the file.** The extractor already
+  intersects every box with the pane's clip; what it cannot do is clip a
+  *line* of text. `bodyPr`'s `spAutoFit` off plus the box's real height is
+  most of it, and the honest answer for the rest is that `mirzam check`
+  reports the overflow before anyone exports.
+- **A gradient that is not a plain linear one is photographed.** `gradientOf`
+  reads angles and stops and gives up on radial and on a pixel position;
+  DrawingML has `a:path` gradients for the radial case.
+
+### What is deliberately not here
+
+- **Motion.** Click steps, `anim` timelines, transitions and autoplay dwells
+  are not in the file and are not planned to be. PowerPoint's animation model
+  is a different machine — its own timing tree, its own easing — and a
+  half-translated animation is worse than a slide that simply shows its
+  finished state, which is what an export is for. `export video` is the answer
+  for a deck whose point is that it moves.
+- **Video.** PowerPoint takes an embedded clip (`a:videoFile` and a media
+  part), and the bytes are already in the deck as a data URI, so the packaging
+  is easy. What stops it is the codec: the decks ship WebM, which PowerPoint
+  does not play, and transcoding to MP4 needs an ffmpeg with H.264 — exactly
+  the dependency `export video` was built to avoid. The poster frame stays
+  until someone wants this enough to accept that.
+
+**Owns:** `crates/mirzam-pptx/`, `crates/mirzam-cli/src/pptx.js`,
+`crates/mirzam-cli/src/pptx.rs`, `crates/mirzam-cli/tests/pptx.rs`, and the
+*What the PowerPoint file cannot carry* section of `docs/quickstart.md` —
+which is the definition of done for every stage above: a stage that lands and
+leaves its own bullet standing in that list is not finished.
+
+**Contention:** stage 1 alone reaches outside, into
+`crates/mirzam-render/src/theme/viewer.js` and the page assembly in
+`crates/mirzam-render/src/lib.rs` — both hotspots — and it moves the PDF's
+output, so the golden snapshots go with it. Land it on its own.
+
+**Verifying.** The export is checked by rendering, like everything else here:
+write the deck out both ways (`--pictures` is the reference — it is the
+browser's own pixels), convert the real one through LibreOffice Impress
+(`soffice --headless --convert-to pdf`), and put the pages side by side. That
+is how the second stage was checked across every sample deck, and it is what
+catches a box a unit test says is in the right place and a reader sees in the
+wrong one. Impress is not PowerPoint: it renders the OOXML faithfully enough
+to catch geometry, and says nothing about fonts (stage 2) or Office math
+(stage 3), which need someone with PowerPoint open.
 
 ## W5 — Typst-flavoured math ✅
 
