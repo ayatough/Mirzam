@@ -66,7 +66,8 @@ changing.
 | That figure rendered to SVG with nothing installed | Done · unreleased |
 | Imported figures that follow the deck's mode | Done · unreleased |
 | Quoting a passage beside its summary, verified by `check` (`import pdf --quote`) | Next |
-| What the PowerPoint file still cannot carry: arrows, embedded fonts, Office math | Next |
+| Arrows in the PDF and the PowerPoint file, not only on screen | Done · unreleased |
+| What the PowerPoint file still cannot carry: embedded fonts, Office math | Next |
 | Plugins | Later |
 
 Each of those has a brief — what it is for, what is not free about it, and where
@@ -167,7 +168,10 @@ Two constraints shape where it lives:
 
 So the router should be a **standalone dependency-free JavaScript module** under
 `web/router/`, unit-tested in isolation and inlined into a deck only when it has
-connectors — not a Rust crate. If the algorithm grows past what is comfortable to
+connectors — not a Rust crate. Half of that shape now exists: the routing left
+`viewer.js` for `theme/connect.js` so the exports could draw arrows at all, and
+it is already the standalone, inlined-only-when-needed module this paragraph
+asks for. A real router replaces the curve inside it and nothing around it. If the algorithm grows past what is comfortable to
 test in JS, the fallback is a routing-only WASM module, kept separate from the
 core so decks without connectors pay nothing.
 
@@ -209,10 +213,15 @@ to be the loudest unmet ask across every Markdown slide tool — native text
 boxes, shapes and tables read back off the browser's layout, with elements
 that have no OOXML equivalent photographed one by one rather than dropped.
 What is left is a list rather than a stage, and it is written down as
-[W28](workstreams.md): connector arrows — which turn out to be missing from
-the PDF as well, since the viewer routes them at show time and neither export
-runs it — then fonts embedded on request, block formulas as Office math, and
-chart marks as DrawingML instead of pictures. Motion and video are
+[W28](workstreams.md). Its first item has now gone: connector arrows, which
+turned out to be missing from the PDF as well — the viewer routed them at show
+time and neither export runs the viewer, so a printed `connect` drew nothing
+and nothing in the docs said so. The routing is its own file now, standing
+alone the way the annotation overlay already did, and it runs on the print,
+handout and shot pages; the PowerPoint file gets the arrows as a transparent
+picture over the slide. What remains on the list is fonts embedded on request,
+block formulas as Office math, and chart marks as DrawingML instead of
+pictures. Motion and video are
 deliberately not on that list; the reasoning is with it. Google Slides comes
 through the same path. Direct PDF generation without Chromium
 is a separate, larger question that depends on adopting a text layout

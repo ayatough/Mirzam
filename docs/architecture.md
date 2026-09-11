@@ -217,10 +217,29 @@ land in the PDF at exactly the coordinates the viewer shows.
 viewer, the active slide or the animation runtime, and a unit test enforces
 that.
 
+**A connector is the same argument, and it took a while to notice.** A route is
+computed from the live boxes of the two elements it joins, so it is drawn at
+runtime for the same reason a mark is — and for most of the project it was
+drawn by the viewer, which no export page runs. The arrows were therefore
+missing from the PDF and from the PowerPoint file, and nothing said so. An
+arrow is also drawn *over* the slide and hides nothing, so the rule the print
+page protects survives it word for word. The routing now lives in
+`theme/connect.js`, held to the same standing-alone test, and ships into the
+print, handout and shot pages beside the overlay. The PowerPoint export gets
+the arrows through the shot page: its extractor photographs SVG it cannot
+write as shapes, so a slide's connector layer arrives as one transparent
+picture over the slide.
+
+The two overlays are ordered rather than independent: a connector may point at
+a mark that does not exist until the overlay has laid it out, so `annot.js`
+asks for a re-route once it has drawn. That handshake is a single window
+function, and it is the only thing either file knows about the other.
+
 ## Runtime
 
-The viewer shipped inside each deck handles navigation, scaling, speaker notes,
-video and connector routing. It is deliberately small and framework-free.
+The viewer shipped inside each deck handles navigation, scaling, speaker notes
+and video. Connector routing used to live here too; it is now its own file, for
+the reason above. The viewer is deliberately small and framework-free.
 
 `serve` adds a hot-reload client: it long-polls for a diff and replaces only the
 `<section>` elements that changed. The VS Code extension does the same thing

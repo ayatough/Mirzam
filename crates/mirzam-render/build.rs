@@ -19,6 +19,7 @@ const ASSETS: &[(&str, Lang)] = &[
     ("viewer.js", Lang::Js),
     ("anim.js", Lang::Js),
     ("annot.js", Lang::Js),
+    ("connect.js", Lang::Js),
     ("effects.js", Lang::Js),
     ("fit.js", Lang::Js),
     ("presenter.js", Lang::Js),

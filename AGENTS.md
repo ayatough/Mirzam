@@ -123,16 +123,21 @@ acceptable here.
 | `mirzam-layout` | ASCII grid → proportional grid | Pane sizing and merging rules |
 | `mirzam-shape` | Shape DSL → SVG | Shape kinds, shape attributes |
 | `mirzam-chart` | Chart DSL + CSV → SVG | Chart types, data parsing |
-| `mirzam-connect` | Connector DSL → JSON | Connector syntax (routing is in the viewer) |
+| `mirzam-connect` | Connector DSL → JSON | Connector syntax (routing is in `theme/connect.js`) |
 | `mirzam-figure` | Captioned figures on a laid-out page | Which line is a caption, which ink is the picture |
 | `mirzam-pptx` | A slide's scene → `.pptx` (OOXML) | What a text box, shape, table or picture is written as |
 | `mirzam-render` | HTML assembly, theme, viewer runtime | Output structure, CSS, viewer behaviour |
 | `mirzam-cli` | `build`/`serve`/`export`/`import`, build cache, benchmark | Commands, caching, watching, reading a PDF |
 | `mirzam-wasm` | Browser/editor bindings | Anything the editor extension needs |
 
-The viewer runtime (navigation, connector drawing) is the JavaScript string in
+The viewer runtime (navigation, scaling, media) is the JavaScript string in
 `crates/mirzam-render/src/theme/viewer.js`. It ships inside every deck, so keep
-it small and dependency-free.
+it small and dependency-free. Two overlays sit beside it in the same directory
+and are **not** the viewer's: `annot.js` and `connect.js` also run on the
+print, handout and shot pages, which never load the viewer, so neither may
+reach for it, for the active slide, or for the animation runtime — a unit test
+per file enforces that. Anything drawn from the *rendered* geometry belongs in
+one of those rather than in `viewer.js`, or the export loses it silently.
 
 ### The sample decks
 

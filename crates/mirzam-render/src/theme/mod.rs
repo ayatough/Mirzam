@@ -23,6 +23,8 @@
 //! - `print.css` — overrides applied for PDF export
 //! - `viewer.js` — the runtime shipped inside every deck
 //! - `anim.js` — the animation runtime, shipped only when a deck animates
+//! - `connect.js` — connector routing, shipped only when a deck connects
+//!   something, and into the print page too
 //! - `presenter.js` — the presenter window, and the link between two windows
 //!
 //! [C3]: ../../../docs/workstreams.md#c3-theme-tokens
@@ -67,6 +69,13 @@ pub const EFFECTS_JS: &str = concat!("\n", shipped!("effects.js"));
 /// annotation is additive, so drawing it cannot hide content, and the PDF
 /// would otherwise lose the marks the deck exists to point at.
 pub const ANNOT_JS: &str = concat!("\n", shipped!("annot.js"));
+
+/// The connector layer. Inlined only into decks that connect something — and,
+/// like [`ANNOT_JS`] and for the same reason, into the print, handout and shot
+/// pages as well: a connector is drawn over the slide and hides nothing, so a
+/// route resolved from the laid-out page is the one way the PDF and the
+/// PowerPoint file get the arrows the deck exists to draw.
+pub const CONNECT_JS: &str = concat!("\n", shipped!("connect.js"));
 
 /// Shrink-to-fit for panes that ask for it. Inlined into the print page too:
 /// it only ever makes content smaller than a box it is already overflowing, so
@@ -1026,6 +1035,25 @@ mod tests {
         }
     }
 
+    /// The routing ships into the print, handout and shot pages, so — exactly
+    /// like the overlay above — it may not depend on the viewer being there.
+    /// It may not depend on the *active* slide either: the export pages lay
+    /// every slide out at once and none of them is `.active`.
+    #[test]
+    fn the_connector_routing_stands_alone() {
+        assert!(CONNECT_JS.contains("mz-connect"));
+        for viewer_only in ["MZAnim", "__mirzamGoto", "getElementById('hud')", ".active"] {
+            assert!(
+                !CONNECT_JS.contains(viewer_only),
+                "connect.js reaches for `{viewer_only}`, which an export page does not have"
+            );
+        }
+        // And the viewer degrades without it, the way it does without the
+        // animation runtime: a deck that connects nothing carries no routing,
+        // so every reference to it has to be guarded.
+        assert!(!VIEWER_JS.contains("window.MZConnect."));
+    }
+
     /// `crates/mirzam-cli/src/check.js` is the only thing that can see a mark
     /// that was not drawn or an element left in its entrance state, and it can
     /// only see them by asking the runtime. Both `scripts/check-layout.mjs`
@@ -1052,6 +1080,18 @@ mod tests {
         assert!(
             checker.contains("MZAnim.armed("),
             "the checker stopped asking"
+        );
+        // The checker routes the connectors itself rather than waiting for a
+        // frame it cannot see, and then counts the paths. Both halves of that
+        // are a name: the hook used to be the viewer's and is now
+        // `connect.js`'s, so the move has to keep the name the checker calls.
+        assert!(
+            CONNECT_JS.contains("window.__mirzamConnectors"),
+            "connect.js no longer answers to the name the checker calls it by"
+        );
+        assert!(
+            checker.contains("window.__mirzamConnectors"),
+            "the checker stopped routing the connectors before counting them"
         );
     }
 }

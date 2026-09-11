@@ -1943,8 +1943,8 @@ snapshots move; land after W26's sample slide or before it, not alongside.
 
 ## W28 — What the PowerPoint export still cannot carry
 
-**Difficulty B · Opus for stage 1, Sonnet after · not started.** `export pptx`
-landed in two stages: pictures plus real speaker notes, then the words as
+**Difficulty B · Opus for stage 1, Sonnet after · stage 1 shipped, the rest
+not started.** `export pptx` landed in two stages: pictures plus real speaker notes, then the words as
 words — text boxes, shapes, tables and links, read off the browser's layout by
 `crates/mirzam-cli/src/pptx.js` and written as OOXML by the `mirzam-pptx`
 crate. What does not survive that translation is listed for the reader in
@@ -1958,7 +1958,21 @@ against scenes written by hand. Every stage below is a new kind of node in
 that scene, or a new part in the package — none of them needs the split
 reopened.
 
-### 1. The arrows are missing — from the PDF as well
+### 1. The arrows are missing — from the PDF as well ✅
+
+**Shipped as specified, and the picture step was skipped deliberately.** The
+routing is `crates/mirzam-render/src/theme/connect.js`, held to the same
+standing-alone test as `annot.js`, inlined into the viewer and into all three
+export pages. The arrows are in the PDF, in the handout, and — through the
+shot page, one transparent full-slide picture the extractor photographs — in
+the PowerPoint file. Writing a straight arrow as DrawingML instead was the
+optional second step and is not worth opening: every Mirzam connector is a
+cubic Bézier, because the route leaves and arrives along the edge normals, so
+the "straight arrow" case the step was for does not arise. What is written
+down below as a watch-out held: the routing runs once after layout has
+settled, on a frame and on `document.fonts.ready`, and installs no listener —
+a resize only rescales the slide, and the route is already in the slide's own
+coordinates. The paragraph below is kept as the reasoning.
 
 A `connect` arrow is routed by `viewer.js` after the browser has laid the
 slide out, and neither the shot page nor the print page runs the viewer. So
@@ -2092,10 +2106,14 @@ visible to a reader:
 which is the definition of done for every stage above: a stage that lands and
 leaves its own bullet standing in that list is not finished.
 
-**Contention:** stage 1 alone reaches outside, into
+**Contention:** stage 1 alone reached outside, into
 `crates/mirzam-render/src/theme/viewer.js` and the page assembly in
-`crates/mirzam-render/src/lib.rs` — both hotspots — and it moves the PDF's
-output, so the golden snapshots go with it. Land it on its own.
+`crates/mirzam-render/src/lib.rs` — both hotspots — and it moved the PDF's
+output. It landed on its own, as this said it should. The golden snapshots
+turned out not to go with it: they hold rendered *sections*, and
+`data-connectors` was already on the section — what changed is which scripts
+the assembled page carries, which no snapshot covers. Stages 2 to 5 are
+`mirzam-pptx` and `pptx.js` only, and do not collide with each other.
 
 **Verifying.** The export is checked by rendering, like everything else here:
 write the deck out both ways (`--pictures` is the reference — it is the

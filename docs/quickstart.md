@@ -126,12 +126,15 @@ at the cost of editability.
   graph and an imported figure are SVG on the slide and pictures in the
   file: the bars cannot be recoloured and the marks have no ids. Elements
   on top of them keep their place, since the layout is the browser's.
+  A `connect` arrow is in the file, on a picture of its own over the slide:
+  it is routed from the laid-out page, so it points where the browser points
+  it, but it cannot be dragged to a new anchor — move the anchor in the
+  Markdown and export again.
 - **Motion and media.** Nothing moves. Click steps, `anim` timelines,
   effects, transitions and autoplay dwells are not in the file — every
   slide shows its finished state. A video becomes its poster frame, an
   audio player a picture of the player, an embedded page or a hosted video
   its placeholder; an animated GIF goes in as a GIF, which PowerPoint plays.
-  A `connect` arrow is routed by the viewer at show time and is not drawn.
 - **Smaller things.** A box shadow is dropped; a gradient that is not a
   plain linear one is photographed; text that a pane clips in the browser
   is not clipped in the file; speaker notes arrive as plain text without

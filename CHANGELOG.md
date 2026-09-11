@@ -7,7 +7,27 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+- **A `connect` arrow is in the PDF and in the PowerPoint file, not only on
+  screen.** A connector is routed from the laid-out page — that is what lets
+  it point at a chart's last data point rather than at where the point used
+  to be — and the routing lived in the viewer, which no export runs. So every
+  `connect` drew nothing once the deck left the browser: `export pdf`,
+  `--handout` and `export pptx` all printed the slide with the arrow missing,
+  and nothing in the docs said so. The routing is now its own file,
+  `theme/connect.js`, inlined into the export pages beside the annotation
+  overlay and held to the same rule that lets it be there: an arrow is drawn
+  *over* the slide and hides nothing, so a deck read without JavaScript is
+  the deck minus its arrows rather than a deck with a hole in it. The arrows
+  land at exactly the coordinates the browser puts them at, to the pixel,
+  because it is the same routing running on the same layout. In the
+  PowerPoint file each slide's arrows arrive as one transparent picture over
+  the slide — they can be moved and deleted as a layer, but not re-anchored,
+  which is the limit the quick start now states. A deck that connects nothing
+  carries none of this — the script is inlined only where a `connect` block
+  put declarations on a slide — so splitting the routing out of the viewer
+  takes 3.2 KB off every deck that draws no arrows and costs the ones that do
+  about 700 bytes.
 
 ## [0.11.0] - 2026-09-10
 

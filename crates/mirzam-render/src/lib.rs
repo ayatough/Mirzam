@@ -422,6 +422,16 @@ fn deck_has_annot(sections: &[String]) -> bool {
     sections.iter().any(|s| s.contains("class=\"mz-annot\""))
 }
 
+/// Whether anything on the deck draws a connector, deciding if `connect.js` is
+/// inlined — into the print, handout and shot pages too, since a route only
+/// exists once the browser has laid the slide out and neither export runs the
+/// viewer. The declarations are what to look for rather than the fence: a
+/// slide whose every endpoint was a typo still carries the attribute, and the
+/// script is what reports that nothing was drawn.
+fn deck_has_connect(sections: &[String]) -> bool {
+    sections.iter().any(|s| s.contains("data-connectors="))
+}
+
 /// Whether anything asks to be shrunk to fit, deciding if `fit.js` is inlined
 /// — into the print page too, since it only ever reveals content a clipped
 /// pane would have swallowed.
@@ -575,6 +585,7 @@ pub fn page_fingerprint(meta: &DeckMeta, sections: &[String], opts: &PageOptions
     sections_have_math(sections).hash(&mut h);
     deck_has_anim(meta, sections).hash(&mut h);
     deck_has_annot(sections).hash(&mut h);
+    deck_has_connect(sections).hash(&mut h);
     deck_has_fit(meta, sections).hash(&mut h);
     effects::deck_has_effects(sections).hash(&mut h);
     opts.file_themes.hash(&mut h);
@@ -648,6 +659,11 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
     } else {
         String::new()
     };
+    let connect_js = if deck_has_connect(sections) {
+        format!("<script>{}</script>\n", theme::CONNECT_JS)
+    } else {
+        String::new()
+    };
     let effects_js = if effects::deck_has_effects(sections) {
         format!("<script>{}</script>\n", theme::EFFECTS_JS)
     } else {
@@ -713,7 +729,7 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <div id="notes-panel" hidden></div>
 <div id="source-panel" hidden></div>
 <div id="overview" hidden></div>
-{source_script}{fit_js}{anim_js}{annot_js}<script>{js}</script>
+{source_script}{fit_js}{anim_js}{connect_js}{annot_js}<script>{js}</script>
 <script>{presenter_js}</script>
 {effects_js}{live_js}</body>
 </html>
@@ -947,12 +963,19 @@ pub fn assemble_print_page(
         .map(|(i, s)| print_links(&videos_to_stills(s), i))
         .collect();
     let sections = &sections;
-    // The one script the print page carries. An annotation is drawn *over*
-    // the deck and hides nothing, so running it cannot break the guarantee
-    // that a scriptless read shows every slide in full — and without it the
-    // PDF would lose the marks the annotated slide exists to make.
+    // Two of the three scripts the print page carries — the overlay and the
+    // connector layer. Both are drawn *over* the deck and hide nothing, so
+    // running them cannot break the guarantee that a scriptless read shows
+    // every slide in full; and without them the PDF loses the marks and the
+    // arrows the annotated slide exists to make. A connector's route is
+    // resolved from the laid-out page, so there is no other way to print one.
     let annot_js = if deck_has_annot(sections) {
         format!("<script>{}</script>\n", theme::ANNOT_JS)
+    } else {
+        String::new()
+    };
+    let connect_js = if deck_has_connect(sections) {
+        format!("<script>{}</script>\n", theme::CONNECT_JS)
     } else {
         String::new()
     };
@@ -981,7 +1004,7 @@ section.slide {{ width: {w}px; height: {h}px; }}
 <body{body_theme}>
 <div id="deck"{fit}>
 {sections}</div>
-{fit_js}{annot_js}</body>
+{fit_js}{connect_js}{annot_js}</body>
 </html>
 "#,
         title = inline::html_escape(title),
@@ -1065,6 +1088,11 @@ pub fn assemble_handout_page(
     } else {
         String::new()
     };
+    let connect_js = if deck_has_connect(pages) {
+        format!("<script>{}</script>\n", theme::CONNECT_JS)
+    } else {
+        String::new()
+    };
     let fit_js = if deck_has_fit(meta, pages) {
         format!("<script>{}</script>\n", theme::FIT_JS)
     } else {
@@ -1100,7 +1128,7 @@ section.slide {{ width: {w}px; height: {h}px; transform: scale({scale}); }}
 <body{body_theme}>
 <div id="deck"{fit}>
 {pages}</div>
-{fit_js}{annot_js}</body>
+{fit_js}{connect_js}{annot_js}</body>
 </html>
 "#,
         title = inline::html_escape(title),
@@ -1134,6 +1162,11 @@ pub fn assemble_shot_page(meta: &DeckMeta, section: &str, file_themes: &[FileThe
     } else {
         String::new()
     };
+    let connect_js = if deck_has_connect(sections) {
+        format!("<script>{}</script>\n", theme::CONNECT_JS)
+    } else {
+        String::new()
+    };
     let fit_js = if deck_has_fit(meta, sections) {
         format!("<script>{}</script>\n", theme::FIT_JS)
     } else {
@@ -1157,7 +1190,7 @@ section.slide {{ width: {w}px; height: {h}px; break-after: auto; page-break-afte
 <body{body_theme}>
 <div id="deck"{fit}>
 {section}</div>
-{fit_js}{annot_js}</body>
+{fit_js}{connect_js}{annot_js}</body>
 </html>
 "#,
         css = theme::theme_css_for(&themes_used(meta, sections, false)),
@@ -2972,7 +3005,7 @@ mod tests {
         assert!(html.contains(ANNOT_MARKER));
     }
 
-    /// The one script the print page carries, and deliberately so: an
+    /// One of the two overlays the print page carries, and deliberately so: an
     /// annotation is drawn *over* the slide and hides nothing, so the PDF
     /// would otherwise lose the marks the slide exists to make.
     #[test]
@@ -2980,6 +3013,88 @@ mod tests {
         let html = assemble_print_page(&DeckMeta::default(), &annotated_section(), &[]);
         assert!(html.contains(ANNOT_MARKER));
         assert!(!html.contains("window.MZAnim = {"));
+    }
+
+    fn connected_section() -> Vec<String> {
+        vec![
+            "<section class=\"slide\" data-connectors=\"[{&quot;from&quot;:&quot;a&quot;,\
+             &quot;to&quot;:&quot;b&quot;,&quot;arrow&quot;:&quot;end&quot;}]\">\
+             <span id=\"a\">a</span><span id=\"b\">b</span></section>"
+                .to_string(),
+        ]
+    }
+
+    /// `svg.mz-connect` is styled in `base.css` whether or not the routing
+    /// ships, and the viewer names `window.MZConnect` to ask whether it is
+    /// there — so the marker is the assignment, which only the script itself
+    /// makes.
+    const CONNECT_MARKER: &str = "window.MZConnect = {";
+
+    #[test]
+    fn a_deck_without_connectors_carries_no_routing() {
+        let html = assemble_page(&DeckMeta::default(), &[], &PageOptions::default());
+        assert!(!html.contains(CONNECT_MARKER));
+        assert!(!assemble_print_page(&DeckMeta::default(), &[], &[]).contains(CONNECT_MARKER));
+    }
+
+    #[test]
+    fn a_connect_block_pulls_in_the_routing() {
+        let html = assemble_page(
+            &DeckMeta::default(),
+            &connected_section(),
+            &PageOptions::default(),
+        );
+        assert!(html.contains(CONNECT_MARKER));
+    }
+
+    /// The other overlay the print page carries. A connector's route exists
+    /// only once the browser has laid the slide out, and neither the print
+    /// page nor the shot page runs the viewer — so without this the arrows are
+    /// missing from the PDF and from the PowerPoint file, which is what W28's
+    /// first stage was opened to fix.
+    #[test]
+    fn every_export_page_ships_the_connector_routing() {
+        let sections = connected_section();
+        for (what, html) in [
+            (
+                "the print page",
+                assemble_print_page(&DeckMeta::default(), &sections, &[]),
+            ),
+            (
+                "the handout page",
+                assemble_handout_page(&DeckMeta::default(), &sections, &[]),
+            ),
+            (
+                "the shot page",
+                assemble_shot_page(&DeckMeta::default(), &sections[0], &[]),
+            ),
+        ] {
+            assert!(
+                html.contains(CONNECT_MARKER),
+                "{what} would print a slide with no arrows"
+            );
+            // Still no viewer: the routing stands alone, and carrying it must
+            // not have dragged the runtime in behind it.
+            assert!(
+                !html.contains("window.MZAnim = {"),
+                "{what} gained the runtime"
+            );
+            assert!(
+                !html.contains("window.MZPresenter"),
+                "{what} gained a presenter"
+            );
+        }
+    }
+
+    /// Whether the arrows are drawn is part of how the page looks, so a host
+    /// that patches sections into a page it assembled earlier has to be told
+    /// when a deck gains or loses its first connector.
+    #[test]
+    fn the_fingerprint_notices_a_connector_arriving() {
+        let opts = PageOptions::default();
+        let bare = page_fingerprint(&DeckMeta::default(), &[], &opts);
+        let wired = page_fingerprint(&DeckMeta::default(), &connected_section(), &opts);
+        assert_ne!(bare, wired);
     }
 
     fn effects_section() -> Vec<String> {
