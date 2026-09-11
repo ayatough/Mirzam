@@ -67,6 +67,7 @@ changing.
 | Imported figures that follow the deck's mode | Done · unreleased |
 | Quoting a passage beside its summary, verified by `check` (`import pdf --quote`) | Next |
 | Arrows in the PDF and the PowerPoint file, not only on screen | Done · unreleased |
+| A speaker note keeps its markup in the PowerPoint notes pane | Done · unreleased |
 | What the PowerPoint file still cannot carry: embedded fonts, Office math | Next |
 | Plugins | Later |
 

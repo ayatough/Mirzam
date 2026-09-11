@@ -83,8 +83,8 @@ pub(crate) fn export_pptx(input: &Path, out_path: &Path, args: &PptxArgs) -> Res
         let mut slide = result.map_err(|e| format!("slide {}: {e}", i + 1))?;
         photographed += slide.rasters.iter().filter(|r| r.kind != "data").count();
         slide.notes = notes
-            .map(|n| mirzam_pptx::notes_text(&n))
-            .filter(|t| !t.is_empty());
+            .map(|n| mirzam_pptx::note_paragraphs(&n))
+            .filter(|paras| !paras.is_empty());
         slides.push(slide);
     }
 

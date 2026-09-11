@@ -8,6 +8,17 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Fixed
+- **A speaker note keeps the markup it was written in.** A note is Markdown
+  like everything else on the slide, so it has bold in it, and lists, and the
+  occasional code span — and the PowerPoint export flattened it to lines of
+  plain text, which is the half of a note the presenter reading from the pane
+  would actually notice. The notes pane now gets the same paragraphs and runs
+  a slide's text box is built from: bold, italics, strikethrough, sub- and
+  superscripts, code spans in a monospace face, and lists with their nesting,
+  hollow second-level bullet and numbering intact. Sizes and colours are
+  deliberately left to the notes master, since a note is never laid out by
+  the browser and there is nothing to measure. A link in a note keeps its
+  words but not the link, which the quick start now says.
 - **A `connect` arrow is in the PDF and in the PowerPoint file, not only on
   screen.** A connector is routed from the laid-out page — that is what lets
   it point at a chart's last data point rather than at where the point used

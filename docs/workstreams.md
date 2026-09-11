@@ -2073,9 +2073,20 @@ visible to a reader:
   (`shadowOf` in `pptx.js` fills `paint.shadow`, and nothing writes it). The
   OOXML is `a:effectLst` with `a:outerShdw`. Finish it or delete the parse;
   leaving a value nobody reads is the worst of the three.
-- **Speaker notes lose their emphasis.** `notes_text` flattens the rendered
-  HTML to lines, so bold in a note comes out plain. The notes part takes the
-  same runs a slide's text box does.
+- ~~**Speaker notes lose their emphasis.**~~ ✅ `notes_text` flattened the
+  rendered HTML to lines, so bold in a note came out plain. It is
+  `note_paragraphs` now, returning the same `Paragraph` a slide's text box is
+  built from, so the notes part goes through `paragraph_xml` and the note
+  keeps its bold, italics, strike, sub/superscripts, code spans (in
+  `Courier New`, the one monospace face that is everywhere PowerPoint is) and
+  its lists, nested bullet and numbering and all. Size, colour and family are
+  deliberately left unset: a note is stripped out of the slide before the
+  shot page is assembled, so there is no browser layout to read them off, and
+  unset is what lets the notes master style the pane. A link keeps its words
+  and loses the link — the notes part's relationships are fixed at the master
+  and the slide, so an `hlinkClick` would point at an rId nobody wrote, and
+  carrying it is a change to the package rather than to a run. That is the
+  one thing left in this bullet.
 - **A pane clips in the browser and not in the file.** The extractor already
   intersects every box with the pane's clip; what it cannot do is clip a
   *line* of text. `bodyPr`'s `spAutoFit` off plus the box's real height is

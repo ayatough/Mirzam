@@ -384,9 +384,10 @@ pub struct Slide {
     pub nodes: Vec<Node>,
     #[serde(default)]
     pub rasters: Vec<Raster>,
-    /// Speaker notes, as text; not part of the extractor's output.
+    /// Speaker notes, as the paragraphs the notes pane shows; not part of the
+    /// extractor's output. See [`note_paragraphs`].
     #[serde(default)]
-    pub notes: Option<String>,
+    pub notes: Option<Vec<Paragraph>>,
 }
 
 impl Slide {
@@ -1127,20 +1128,18 @@ fn slide_xml(
     (xml, rels_out)
 }
 
-/// A notes page: the note text in the body placeholder, one paragraph per
-/// line the author wrote.
-fn notes_xml(text: &str) -> String {
-    let paragraphs: String = text
-        .lines()
-        .map(|l| {
-            let l = l.trim_end();
-            if l.is_empty() {
-                "<a:p/>".to_string()
-            } else {
-                format!("<a:p><a:r><a:t>{}</a:t></a:r></a:p>", xml_escape(l))
-            }
-        })
-        .collect();
+/// A notes page: the note in the body placeholder, written through the same
+/// paragraph and run code a slide's text box uses, so a note keeps the bold,
+/// the lists and the code spans the author wrote.
+///
+/// The `Links` it is given can never hand out an id, because
+/// [`note_paragraphs`] sets no `href` on a note's runs: this part's
+/// relationships are fixed (the notes master and the slide), and a run
+/// pointing at an rId nobody wrote would be a broken file rather than a
+/// missing link. A test holds that.
+fn notes_xml(paras: &[Paragraph]) -> String {
+    let mut links = Links::new(3, 0);
+    let paragraphs: String = paras.iter().map(|p| paragraph_xml(p, &mut links)).collect();
     format!(
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n\
          <p:notes {NS}><p:cSld><p:spTree>{EMPTY_TREE_HEAD}\
@@ -1345,35 +1344,269 @@ pub fn package(w: u32, h: u32, slides: &[Slide], media: &HashMap<u32, Media>) ->
     zip::archive_bytes(&files)
 }
 
-/// Speaker notes arrive as rendered HTML; PowerPoint's notes pane wants text.
-/// Paragraphs and `<br>` become line breaks, tags go, entities come back.
-pub fn notes_text(html: &str) -> String {
-    let mut out = String::with_capacity(html.len());
+/// Speaker notes arrive as rendered HTML; PowerPoint's notes pane wants runs.
+///
+/// A note is written in Markdown like everything else on the slide, so it has
+/// bold in it, and lists, and the occasional code span — and flattening it to
+/// lines of text threw all of that away, which is the half of a note a
+/// presenter reading from the pane would actually notice. What comes back
+/// instead is the same [`Paragraph`] a slide's text box is built from, so the
+/// notes part is written by the same code and gains whatever that gains.
+///
+/// What is deliberately *not* carried is size, colour and family. A note is
+/// never laid out by a browser — it is stripped out of the slide before the
+/// page is even assembled — so there is nothing to read them off, and leaving
+/// them unset is what lets the notes master style the pane. `<code>` is the
+/// exception, a monospace face being the whole point of it, and `Courier New`
+/// is the one that exists everywhere PowerPoint does.
+///
+/// A link's words survive; the link does not. This part's relationships are
+/// fixed — the notes master and the slide — and a run pointing at an rId
+/// nobody wrote is a file PowerPoint refuses, so carrying the href is a
+/// change to the package rather than to a run, and it is not this one.
+pub fn note_paragraphs(html: &str) -> Vec<Paragraph> {
+    let mut w = NoteWalk::default();
     let mut rest = html;
     while let Some(at) = rest.find('<') {
-        out.push_str(&rest[..at]);
+        w.text(&rest[..at]);
         let Some(end) = rest[at..].find('>') else {
             break;
         };
-        let tag = &rest[at + 1..at + end];
-        let name = tag
-            .trim_start_matches('/')
-            .split([' ', '/'])
-            .next()
-            .unwrap_or("");
-        if matches!(name, "p" | "br" | "li" | "div") && !out.ends_with('\n') && !out.is_empty() {
-            out.push('\n');
-        }
+        w.tag(&rest[at + 1..at + end]);
         rest = &rest[at + end + 1..];
     }
+    w.text(rest);
+    w.finish()
+}
+
+/// The character emphasis in force at one point in a note's HTML. Counted
+/// rather than flagged, so the inner `<em>` of `**a *b* c**` closes without
+/// taking the bold around it with it.
+#[derive(Clone, Copy, Default)]
+struct NoteStyle {
+    bold: u32,
+    italic: u32,
+    underline: u32,
+    strike: u32,
+    code: u32,
+    sup: u32,
+    sub: u32,
+}
+
+#[derive(Default)]
+struct NoteWalk {
+    out: Vec<Paragraph>,
+    runs: Vec<Run>,
+    style: NoteStyle,
+    /// One entry per open `<ul>`/`<ol>`, each saying whether it numbers. The
+    /// depth is the nesting level and the innermost entry picks the bullet.
+    lists: Vec<bool>,
+    /// Set by `<li>`, so a `<p>` *inside* a list item stays part of the item
+    /// instead of starting an unbulleted paragraph: a list with a blank line
+    /// in it is rendered `<li><p>…</p></li>`.
+    in_item: bool,
+}
+
+/// The hanging indent a bulleted note is given, in CSS pixels. A slide's
+/// paragraphs take theirs from the browser; a note has no layout to measure,
+/// so the bullet needs somewhere to hang or PowerPoint sets it over the first
+/// word.
+const NOTE_BULLET_HANG: f64 = 18.0;
+const NOTE_LIST_INDENT: f64 = 24.0;
+
+impl NoteWalk {
+    fn text(&mut self, raw: &str) {
+        if raw.is_empty() {
+            return;
+        }
+        // A newline in the HTML is either the renderer's indentation between
+        // two block tags or a soft break inside a paragraph, and a note reads
+        // as prose either way.
+        let text = unescape_entities(raw).replace(['\n', '\r'], " ");
+        // Whitespace between two block tags is not a run; whitespace between
+        // two words is, which is why this only drops it at the start.
+        if self.runs.is_empty() && text.trim().is_empty() {
+            return;
+        }
+        let s = self.style;
+        self.runs.push(Run::Text(TextRun {
+            text,
+            bold: s.bold > 0,
+            italic: s.italic > 0,
+            underline: s.underline > 0,
+            strike: s.strike > 0,
+            font: if s.code > 0 {
+                "Courier New".into()
+            } else {
+                String::new()
+            },
+            baseline: if s.sup > 0 {
+                30000
+            } else if s.sub > 0 {
+                -25000
+            } else {
+                0
+            },
+            ..TextRun::default()
+        }));
+    }
+
+    fn tag(&mut self, tag: &str) {
+        let closing = tag.starts_with('/');
+        let name = tag
+            .trim_start_matches('/')
+            .split([' ', '/', '\t', '\n'])
+            .next()
+            .unwrap_or("")
+            .to_ascii_lowercase();
+        let bump = |n: &mut u32| {
+            if closing {
+                *n = n.saturating_sub(1);
+            } else {
+                *n += 1;
+            }
+        };
+        match name.as_str() {
+            "strong" | "b" => bump(&mut self.style.bold),
+            "em" | "i" | "cite" | "var" => bump(&mut self.style.italic),
+            "u" | "ins" => bump(&mut self.style.underline),
+            "del" | "s" | "strike" => bump(&mut self.style.strike),
+            "code" | "kbd" | "samp" => bump(&mut self.style.code),
+            "sup" => bump(&mut self.style.sup),
+            "sub" => bump(&mut self.style.sub),
+            // A break inside a paragraph, never one that opens it.
+            "br" => {
+                if !closing && !self.runs.is_empty() {
+                    self.runs.push(Run::Break { br: true });
+                }
+            }
+            "ul" | "ol" => {
+                self.flush();
+                if closing {
+                    self.lists.pop();
+                } else {
+                    self.lists.push(name == "ol");
+                }
+                self.in_item = false;
+            }
+            "li" => {
+                self.flush();
+                self.in_item = !closing;
+            }
+            "p" | "div" | "blockquote" | "pre" | "figcaption" | "tr" | "h1" | "h2" | "h3"
+            | "h4" | "h5" | "h6" => self.flush(),
+            _ => {}
+        }
+    }
+
+    /// Ends the paragraph being built. One with nothing in it is dropped
+    /// rather than written, so the pane does not open on a blank line because
+    /// the HTML had a newline between two tags.
+    fn flush(&mut self) {
+        let blank = self.runs.iter().all(|r| match r {
+            Run::Text(t) => t.text.trim().is_empty(),
+            Run::Break { .. } => true,
+        });
+        if blank {
+            self.runs.clear();
+            return;
+        }
+        // The space either side of a paragraph's words is the HTML's
+        // indentation, not the author's.
+        if let Some(Run::Text(first)) = self.runs.first_mut() {
+            first.text = first.text.trim_start().to_string();
+        }
+        if let Some(Run::Text(last)) = self.runs.last_mut() {
+            last.text = last.text.trim_end().to_string();
+        }
+        let depth = self.lists.len();
+        let bullet = match (self.in_item, self.lists.last()) {
+            (true, Some(true)) => Some(Bullet::Auto {
+                scheme: "arabicPeriod".into(),
+                start: 1,
+                color: None,
+            }),
+            // The second level takes the hollow bullet, the way the slide's
+            // own nested lists do.
+            (true, Some(false)) => Some(Bullet::Char {
+                text: if depth > 1 {
+                    "◦".into()
+                } else {
+                    "•".into()
+                },
+                color: None,
+            }),
+            _ => None,
+        };
+        let listed = bullet.is_some();
+        self.out.push(Paragraph {
+            level: u8::try_from(depth.saturating_sub(1).min(8)).unwrap_or(0),
+            margin_left: if listed {
+                NOTE_LIST_INDENT * depth as f64
+            } else {
+                0.0
+            },
+            indent: if listed { -NOTE_BULLET_HANG } else { 0.0 },
+            bullet,
+            runs: std::mem::take(&mut self.runs),
+            ..Paragraph::default()
+        });
+    }
+
+    fn finish(mut self) -> Vec<Paragraph> {
+        self.flush();
+        self.out
+    }
+}
+
+/// Turns a rendered note's entities back into the characters the author
+/// typed: the five a Markdown renderer writes, `&nbsp;`, and numeric ones in
+/// either base. Anything else is left as the `&` it starts with, because a
+/// note saying `&foo` means `&foo`.
+fn unescape_entities(s: &str) -> String {
+    if !s.contains('&') {
+        return s.to_string();
+    }
+    let mut out = String::with_capacity(s.len());
+    let mut rest = s;
+    while let Some(at) = rest.find('&') {
+        out.push_str(&rest[..at]);
+        let after = &rest[at..];
+        // An entity is short. Looking further than this would let an `&` and
+        // a distant `;` swallow the words between them.
+        let window = &after[..after.len().min(12)];
+        let replacement = window.find(';').and_then(|semi| {
+            let name = &after[1..semi];
+            match name {
+                "amp" => Some(('&', semi)),
+                "lt" => Some(('<', semi)),
+                "gt" => Some(('>', semi)),
+                "quot" => Some(('"', semi)),
+                "apos" => Some(('\'', semi)),
+                "nbsp" => Some(('\u{a0}', semi)),
+                _ => name
+                    .strip_prefix('#')
+                    .and_then(|n| match n.strip_prefix(['x', 'X']) {
+                        Some(hex) => u32::from_str_radix(hex, 16).ok(),
+                        None => n.parse::<u32>().ok(),
+                    })
+                    .and_then(char::from_u32)
+                    .map(|c| (c, semi)),
+            }
+        });
+        match replacement {
+            Some((c, semi)) => {
+                out.push(c);
+                rest = &after[semi + 1..];
+            }
+            None => {
+                out.push('&');
+                rest = &rest[at + 1..];
+            }
+        }
+    }
     out.push_str(rest);
-    let out = out
-        .replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&#39;", "'");
-    out.trim().to_string()
+    out
 }
 
 #[cfg(test)]
@@ -1453,7 +1686,7 @@ mod tests {
                         ..Default::default()
                     }),
                 ],
-                notes: Some("a note".into()),
+                notes: Some(note_paragraphs("<p>a note</p>")),
                 ..Default::default()
             },
             Slide::default(),
@@ -1872,20 +2105,160 @@ mod tests {
         assert!(data_uri_media("data:image/png,notbase64").is_none());
     }
 
+    /// A note's HTML has the author's own `<` and `&` as entities; the XML
+    /// wants them as entities again, and the round trip has to end where it
+    /// started rather than one unescaping short.
     #[test]
     fn note_text_is_escaped_into_the_xml() {
-        let xml = notes_xml("a < b & \"c\"\nsecond");
-        assert!(xml.contains("a &lt; b &amp; &quot;c&quot;"));
+        let xml = notes_xml(&note_paragraphs(
+            "<p>a &lt; b &amp; &quot;c&quot;</p><p>second</p>",
+        ));
+        assert!(xml.contains("a &lt; b &amp; &quot;c&quot;"), "{xml}");
         assert_eq!(xml.matches("<a:p>").count(), 2);
     }
 
+    fn note_runs(html: &str) -> Vec<(String, bool, bool)> {
+        note_paragraphs(html)
+            .into_iter()
+            .flat_map(|p| p.runs)
+            .filter_map(|r| match r {
+                Run::Text(t) => Some((t.text, t.bold, t.italic)),
+                Run::Break { .. } => None,
+            })
+            .collect()
+    }
+
     #[test]
-    fn notes_html_becomes_lines_of_text() {
+    fn a_note_keeps_the_emphasis_the_author_wrote() {
         assert_eq!(
-            notes_text("<p>One &amp; two</p><p>Three<br>four</p>"),
-            "One & two\nThree\nfour"
+            note_runs("<p>Say <strong>this</strong> slowly</p>"),
+            vec![
+                ("Say ".to_string(), false, false),
+                ("this".to_string(), true, false),
+                (" slowly".to_string(), false, false),
+            ]
         );
-        assert_eq!(notes_text("plain"), "plain");
+        // The inner mark closes without taking the outer one with it.
+        assert_eq!(
+            note_runs("<p><strong>a <em>b</em> c</strong></p>"),
+            vec![
+                ("a ".to_string(), true, false),
+                ("b".to_string(), true, true),
+                (" c".to_string(), true, false),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_code_span_in_a_note_gets_a_monospace_face() {
+        let paras = note_paragraphs("<p>run <code>mirzam serve</code> first</p>");
+        let fonts: Vec<String> = paras[0]
+            .runs
+            .iter()
+            .filter_map(|r| match r {
+                Run::Text(t) => Some(t.font.clone()),
+                Run::Break { .. } => None,
+            })
+            .collect();
+        assert_eq!(fonts, vec!["", "Courier New", ""]);
+        // Nothing else is named, so the notes master styles the rest of the
+        // pane: a note has no browser layout to read a size or a colour off.
+        assert!(paras[0].runs.iter().all(|r| match r {
+            Run::Text(t) => t.size == 0.0 && t.color.is_none(),
+            Run::Break { .. } => true,
+        }));
+    }
+
+    #[test]
+    fn a_list_in_a_note_is_a_list_in_the_pane() {
+        let paras = note_paragraphs("<ul><li>one</li><li>two<ul><li>deeper</li></ul></li></ul>");
+        assert_eq!(paras.len(), 3);
+        assert!(matches!(
+            paras[0].bullet,
+            Some(Bullet::Char { ref text, .. }) if text == "\u{2022}"
+        ));
+        assert_eq!(paras[0].level, 0);
+        // The nested item takes the hollow bullet and the next level in.
+        assert!(matches!(
+            paras[2].bullet,
+            Some(Bullet::Char { ref text, .. }) if text == "\u{25e6}"
+        ));
+        assert_eq!(paras[2].level, 1);
+        // A bullet needs somewhere to hang or PowerPoint sets it over the
+        // first word: a note has no measured layout to take that from.
+        assert!(paras[0].indent < 0.0 && paras[0].margin_left > 0.0);
+
+        let numbered = note_paragraphs("<ol><li>first</li><li>second</li></ol>");
+        assert!(matches!(
+            numbered[0].bullet,
+            Some(Bullet::Auto { ref scheme, .. }) if scheme == "arabicPeriod"
+        ));
+    }
+
+    /// A list item with a blank line in it is `<li><p>…</p></li>`, and the
+    /// inner paragraph must not become an unbulleted line of its own.
+    #[test]
+    fn a_loose_list_item_stays_one_bullet() {
+        let paras = note_paragraphs("<ul><li><p>only</p></li></ul>");
+        assert_eq!(paras.len(), 1);
+        assert!(paras[0].bullet.is_some());
+    }
+
+    #[test]
+    fn a_note_paragraph_is_one_line_however_the_html_is_wrapped() {
+        // The renderer's own newlines are indentation, not the author's.
+        assert_eq!(
+            note_runs("<p>One\ntwo</p>\n<p>three</p>\n"),
+            vec![
+                ("One two".to_string(), false, false),
+                ("three".to_string(), false, false),
+            ]
+        );
+        assert_eq!(note_paragraphs("<p>a</p>\n\n<p>b</p>").len(), 2);
+        // Text with no tags around it is still a note.
+        assert_eq!(
+            note_runs("plain"),
+            vec![("plain".to_string(), false, false)]
+        );
+        assert!(note_paragraphs("").is_empty());
+        assert!(note_paragraphs("<p></p>\n").is_empty());
+    }
+
+    #[test]
+    fn a_br_breaks_the_line_without_starting_a_paragraph() {
+        let paras = note_paragraphs("<p>Three<br>four</p>");
+        assert_eq!(paras.len(), 1);
+        assert!(matches!(paras[0].runs[1], Run::Break { .. }));
+        assert!(notes_xml(&paras).contains("<a:br/>"));
+        // A `<br>` where a paragraph has nothing in it yet is not a break.
+        assert!(matches!(
+            note_paragraphs("<p><br>after</p>")[0].runs[0],
+            Run::Text(_)
+        ));
+    }
+
+    /// The notes part's relationships are fixed, so a run that asked for an
+    /// rId would point at one nobody wrote — a file PowerPoint refuses.
+    #[test]
+    fn a_link_in_a_note_keeps_its_words_and_not_its_rel() {
+        let xml = notes_xml(&note_paragraphs(
+            "<p>see <a href=\"https://example.com\">the paper</a></p>",
+        ));
+        assert!(xml.contains("the paper"));
+        assert!(!xml.contains("hlinkClick"), "{xml}");
+    }
+
+    #[test]
+    fn numeric_and_named_entities_come_back_as_characters() {
+        assert_eq!(
+            note_runs("<p>&#8212; &#x2014; &nbsp;end</p>")[0].0,
+            "\u{2014} \u{2014} \u{a0}end"
+        );
+        // An ampersand that opens nothing is an ampersand.
+        assert_eq!(
+            note_runs("<p>Tom &amp; Jerry &foo and &</p>")[0].0,
+            "Tom & Jerry &foo and &"
+        );
     }
 
     #[test]
