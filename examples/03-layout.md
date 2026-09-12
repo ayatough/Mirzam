@@ -22,7 +22,9 @@ Each slide states one rule and demonstrates it. Read it beside `examples/03-layo
 +------------------+-----------------+
 |                  |                 |
 |                  |                 |
+|                  |                 |
 |  src             |  out            |
+|                  |                 |
 |                  |                 |
 |                  |                 |
 +------------------+-----------------+
@@ -371,7 +373,9 @@ This deck passes it in CI, which is the only reason to trust the rules above.
 +------------------+-----------------+
 |                  |                 |
 |                  |                 |
+|                  |                 |
 |  src             |  out            |
+|                  |                 |
 |                  |                 |
 |                  |                 |
 +------------------+-----------------+
@@ -410,8 +414,7 @@ under it is the drawing.
 A slide's own block always wins, so an exception needs no opt-out — and
 `<!-- layout: none -->` gives a title slide the whole surface back.
 
-The catch is names: the master fixes them, so `bad` and `good` are what every
-slide using it calls its panes.
+The catch is names: the master fixes `bad` and `good` for every slide.
 :::
 
 <!-- note: The deck renders identically to the version that drew all three grids by hand. That is the test: a master is a shape moved, not a shape changed. -->

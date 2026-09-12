@@ -41,6 +41,21 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   corner of a slide. A tap immediately after a two-finger tap is no longer
   swallowed, which is what closing the sheet had become.
 
+- **CI is green again, and the sample decks have room to breathe.** Two jobs
+  had been failing on `main` since before the viewer work, which is why the
+  site stopped publishing: Pages waits for a green CI run and had been
+  skipping every deploy. The language-server probe spawned `cargo run` and
+  gave the server thirty seconds to answer `initialize` — on a cold cache the
+  compiler was still running when the clock ran out, and the job's cleanup
+  killed `rustc` to prove it; the probe now builds first, so the thirty
+  seconds measure the server and not the compiler. The layout check found
+  five clipped panes across `02-writing`, `03-layout` and `06-theming`: a
+  runner's fonts are not the author's, and those panes had been sitting on one
+  to three pixels, so a fallback face a hair wider than Inter pushed the last
+  line out of the box. They were widened by a band or shortened by a line, and
+  every deck now clears the check both with the fonts its themes name and with
+  none of them installed.
+
 ## [0.11.0] - 2026-09-10
 
 ### Added

@@ -24,7 +24,9 @@ Nothing here needs a layout. That is the next deck.
 +------------------+-----------------+
 |                  |                 |
 |                  |                 |
+|                  |                 |
 |  src             |  out            |
+|                  |                 |
 |                  |                 |
 |                  |                 |
 +------------------+-----------------+
@@ -65,7 +67,9 @@ current: true
 +------------------+-----------------+
 |                  |                 |
 |                  |                 |
+|                  |                 |
 |  src             |  out            |
+|                  |                 |
 |                  |                 |
 |                  |                 |
 +------------------+-----------------+
@@ -107,7 +111,9 @@ not, so wrap the source where your editor likes.
 +------------------+-----------------+
 |                  |                 |
 |                  |                 |
+|                  |                 |
 |  src             |  out            |
+|                  |                 |
 |                  |                 |
 |                  |                 |
 +------------------+-----------------+
@@ -150,7 +156,9 @@ And [a link](https://example.com), which stays clickable.
 +------------------+-----------------+
 |                  |                 |
 |                  |                 |
+|                  |                 |
 |  src             |  out            |
+|                  |                 |
 |                  |                 |
 |                  |                 |
 +------------------+-----------------+
@@ -190,7 +198,9 @@ mode. Every class here is a theme token.
 +------------------+-----------------+
 |                  |                 |
 |                  |                 |
+|                  |                 |
 |  src             |  out            |
+|                  |                 |
 |                  |                 |
 |                  |                 |
 +------------------+-----------------+
@@ -214,9 +224,9 @@ fn main() { ... }
 ```
 ````
 
-Name the language after the fence and the block is coloured; add
-`{2 lines}` after it and line 2 is lit, with every line numbered. A
-horizontal rule is `***` — three hyphens would end the slide.
+Name the language after the fence and the block is coloured; `{2 lines}`
+after it lights line 2 and numbers them all. A horizontal rule is `***` —
+three hyphens would end the slide.
 :::
 
 ::: pane out {valign=middle}
@@ -249,7 +259,9 @@ def greet(name):  # 36 languages
 +------------------+-----------------+
 |                  |                 |
 |                  |                 |
+|                  |                 |
 |  src             |  out            |
+|                  |                 |
 |                  |                 |
 |                  |                 |
 +------------------+-----------------+
@@ -397,7 +409,9 @@ $$
 +------------------+-----------------+
 |                  |                 |
 |                  |                 |
+|                  |                 |
 |  src             |  out            |
+|                  |                 |
 |                  |                 |
 |                  |                 |
 +------------------+-----------------+

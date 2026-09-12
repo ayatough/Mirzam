@@ -164,46 +164,36 @@ The same theme drawn again for dark, rather than inverted.
 ```
 
 ::: pane head
-[Gallery]{.eyebrow} **Every theme, in the deck's own mode** — no pane below
-names a mode, so `D` flips all five along with the slide around them.
+[Gallery]{.eyebrow} **Every theme, in the deck's own mode** — no pane names
+one, so `D` flips all five at once.
 :::
 
 ::: pane one {theme=mirzam valign=middle}
-[mirzam]{.eyebrow}
-
-Ink on paper, [a link](https://example.com), **bold**.
+[mirzam]{.eyebrow} Ink on paper, [a link](https://example.com), **bold**.
 
 [Ours, and what naming nothing gets.]{.small}
 :::
 
 ::: pane two {theme=nord valign=middle}
-[nord]{.eyebrow}
-
-Cool blues, [a link](https://example.com), **bold**.
+[nord]{.eyebrow} Cool blues, [a link](https://example.com), **bold**.
 
 [Arctic and even, from Nord.]{.small}
 :::
 
 ::: pane three {theme=solarized valign=middle}
-[solarized]{.eyebrow}
-
-Low glare, [a link](https://example.com), **bold**.
+[solarized]{.eyebrow} Low glare, [a link](https://example.com), **bold**.
 
 [Tuned for reading for a long time.]{.small}
 :::
 
 ::: pane four {theme=vscode valign=middle}
-[vscode]{.eyebrow}
+[vscode]{.eyebrow} Editor colours, [a link](https://example.com), **bold**.
 
-Editor colours, [a link](https://example.com), **bold**.
-
-[Light+ and Dark+, for a deck about code.]{.small}
+[Light+ and Dark+, for code decks.]{.small}
 :::
 
 ::: pane five {theme=wuwei valign=middle}
-[wuwei]{.eyebrow}
-
-Warm greys in roman, [a link](https://example.com), **bold**.
+[wuwei]{.eyebrow} Warm greys, [a link](https://example.com), **bold**.
 
 [A serif; quiet on purpose.]{.small}
 :::
@@ -253,11 +243,11 @@ vars:
 
 ::: pane what {valign=middle}
 - All optional; a deck with no frontmatter builds
-- `theme:` takes a built-in name, a `.css` path **relative to the deck file**,
-  or a list of both in cascade order
+- `theme:` a built-in name, or a `.css` path **relative to the deck file**;
+  a list of both cascades
 - `split:` starts a slide at every heading of that level
 - `transition:` is the deck-wide page turn; a slide can override its half
-- `math:` picks the formula syntax, `latex` (the default) or `typst`
+- `math:` picks `latex` (the default) or `typst`
 - `vars:` are substituted with `{{ }}`, and arithmetic works: `{{ seats * 12 }}`
 :::
 
@@ -357,8 +347,8 @@ pairs.
 - `.center`, `.right`, `.small`, `.u`, `.box`, `.card`, `.eyebrow` and
   `.metric` come with the renderer; anything else is yours to define
 
-*In a plain Markdown reader the braces are literal text — that is the price,
-and the reason the syntax is this quiet.*
+*In a plain Markdown reader the braces are literal text: the price of a
+syntax this quiet.*
 :::
 
 ---
@@ -499,8 +489,8 @@ Set every token in both blocks, or set none and let the theme do it.
 
 ::: pane out {valign=middle}
 Six tokens set a deck's margins, the gap between panes, and the padding,
-border and radius of a pane. Every one carries its built-in value as a
-fallback, so a deck that sets none renders exactly as it always did.
+border and radius of a pane. Each falls back to its built-in value, so a deck
+that sets none renders as it always did.
 
 These are **not** palette tokens — no built-in theme defines one, and `theme:`
 stays a choice of colour.
@@ -660,10 +650,9 @@ mirzam build long.md --fit shrink
 Without it, a pane that overflows is **clipped** — the last line simply is not
 there, and nothing on screen says so.
 
-`fit: shrink` scales the pane's text down until it fits instead. It is the
-right default for a document you converted rather than wrote, and the wrong
-one for a deck you are still editing, where you want to see the overflow and
-cut something.
+`fit: shrink` scales the pane's text down to fit instead. It is the right
+default for a document you converted rather than wrote, and the wrong one for
+a deck you are still editing.
 
 *`node scripts/check-layout.mjs` finds them either way.*
 :::
