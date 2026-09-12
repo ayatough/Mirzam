@@ -128,6 +128,27 @@ frontmatter (or pass `--mode dark`): the PDF has no reader to ask, so it
 follows the deck's declared mode and falls back to light, pairing a
 dark-resting stylesheet's own colours with a `bg-light=` image otherwise.
 
+## `mirzam check` does not come back
+
+`check` renders the deck with headless Chromium, so a browser that starts but
+never finishes starting is a check that never finishes either. The command
+bounds the wait at 120 seconds and then says which browser it launched and
+where that path came from:
+
+```
+error: the browser did not answer in 120s: `/opt/chromium/chrome` (from MIRZAM_CHROMIUM).
+```
+
+The quickest way to confirm the browser is the problem is to ask it to do the
+same thing by hand — `<path> --headless --dump-dom about:blank` should print a
+page and exit. If it hangs there too, the browser is what needs fixing, not
+the deck. A distribution's Chromium that is only a snap stub, and a binary
+lifted out of another package without the libraries it links against, both
+fail this way.
+
+If instead the deck is genuinely a long one and the ceiling is what is wrong,
+`--timeout <seconds>` raises it and `--timeout 0` removes it.
+
 ## Build warnings, and what they mean
 
 `mirzam build`, `mirzam export pdf` and `mirzam check` all print every

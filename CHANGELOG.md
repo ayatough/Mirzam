@@ -7,7 +7,46 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+- **`--help` is answered by every command, not only by `mirzam` itself.**
+  `mirzam import pdf --help` read the flag as the PDF to open and failed with
+  `cannot read --help: No such file or directory`; so did `build`, `check`,
+  `export` and `serve`, each naming a file the reader never asked for. It is
+  the first thing anyone types when a command surprises them — which is how
+  this was found — and it was the only way to discover what flags a
+  subcommand takes. Help now goes to stdout and exits `0` wherever it is
+  asked, `mirzam import --help` included, which used to print the usage to
+  *stderr* and exit `1`. A path that genuinely reads `--help` is still a path:
+  the flag is answered where it stands on its own, not wherever those six
+  characters appear, so `--chromium --help` still means a browser of that
+  name.
+- **`mirzam check` gives up on a browser that never starts, and says which
+  browser.** `check` renders the deck in headless Chromium and waited on it
+  with no ceiling, so a browser that starts and then wedges — one missing a
+  library, one that cannot lock its profile, a distribution's snap stub —
+  produced nothing at all: no stdout, no stderr, no exit, for as long as the
+  caller was prepared to wait. That is worse than failing, because `check` is
+  the command an agent runs after every edit and then blocks on, and a silent
+  run is indistinguishable from one still working on a hundred slides. The
+  browser now gets 120 seconds — far above every deck this was measured on,
+  which finish in under two — and a run that exceeds them fails naming the
+  binary *and* which of `--chromium`, `MIRZAM_CHROMIUM` or `PATH` produced
+  that path, since the next question is always which knob to turn.
+  `--timeout <seconds>` moves the ceiling and `--timeout 0` removes it. The
+  browser search is bounded for the same reason: a candidate on `PATH` that
+  hung on `--version` used to hang the search for one that works.
+- **`scripts/install.sh` survives a spent GitHub API budget.** The installer
+  asked `api.github.com` for the latest tag, and that API allows 60
+  unauthenticated requests an hour *per IP* — a budget that on CI, a container
+  host or any NAT'd address is routinely spent by somebody else. The script
+  then died before downloading anything, telling a first-time installer to set
+  `MIRZAM_VERSION` to a tag they have no way to know. It now falls back to the
+  redirect on the releases page, which is served from `github.com` with no
+  budget attached. The API is still asked first, and the fallback is chosen by
+  whether a tag came back rather than by an exit status: `curl | sed` reports
+  `sed`'s status, so a rate-limited API — whose body is a JSON error carrying
+  no `tag_name` — ends the pipeline *successfully* with nothing in it, and the
+  obvious `||` would never have run.
 
 ## [0.11.0] - 2026-09-10
 

@@ -56,7 +56,7 @@ pub(crate) fn export_pptx(input: &Path, out_path: &Path, args: &PptxArgs) -> Res
     let bin = find_chromium(args.chromium.as_deref())?;
     let (w, h) = out.meta.slide_size();
 
-    let browser = cdp::Browser::launch(&bin, w + 100, h + 400)?;
+    let browser = cdp::Browser::launch(&bin.bin, w + 100, h + 400)?;
     let cdp = &browser.cdp;
     cdp.attach()?;
     cdp.call("Page.enable", json!({}))?;

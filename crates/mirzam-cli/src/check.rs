@@ -22,12 +22,12 @@
 //! needs none of that) see the same thing. Verified by running both against
 //! every example deck, and a deliberately broken one, before this landed.
 
-use crate::{apply_deck_overrides, find_chromium, DeckArgs};
+use crate::{apply_deck_overrides, find_chromium, proc, DeckArgs};
 use mirzam_cli::pipeline::warning_kind;
 use mirzam_cli::pipeline::BuildOutput;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 const CHECK_JS: &str = include_str!("check.js");
 
@@ -42,6 +42,18 @@ const SCHEMA_VERSION: u32 = 1;
 /// budget, for every deck measured while this was written. The ceiling only
 /// matters for a deck animating far longer than any of them.
 const VIRTUAL_TIME_BUDGET_MS: &str = "60000";
+
+/// How long the browser has, in wall-clock seconds, before the check gives up
+/// on it.
+///
+/// The budget above is *virtual* time, which a browser that never starts never
+/// spends: nothing in it bounds a Chromium wedged before the first frame, and
+/// `check` is the command an agent runs after every edit and then waits on. A
+/// caller cannot tell "still working on a hundred slides" from "will never
+/// answer", so this draws the line on their behalf - far above any deck
+/// measured while it was written, and `--timeout 0` for the caller who knows
+/// their deck is the exception.
+const DEFAULT_TIMEOUT_SECS: u64 = 120;
 
 /// How the result is written. `Text` is what a person reads and is the
 /// default; `Json` is the same run's findings as records, for the caller that
@@ -69,6 +81,19 @@ pub(crate) struct CheckArgs {
     /// margin that machine's fonts left it; asking for a margin is how a deck
     /// that has to survive a font substitution says so.
     pub(crate) min_slack: Option<u32>,
+    /// `--timeout <seconds>`: how long to wait for the browser. `None` is the
+    /// default ceiling; `Some(0)` is the caller taking the ceiling off.
+    pub(crate) timeout_secs: Option<u64>,
+}
+
+impl CheckArgs {
+    /// The ceiling as a duration, or `None` for "wait as long as it takes".
+    fn timeout(&self) -> Option<Duration> {
+        match self.timeout_secs.unwrap_or(DEFAULT_TIMEOUT_SECS) {
+            0 => None,
+            secs => Some(Duration::from_secs(secs)),
+        }
+    }
 }
 
 struct Problem {
@@ -122,7 +147,7 @@ pub(crate) fn check(input: &Path, args: &CheckArgs) -> Result<(), String> {
     let tmp = dir.join("index.html");
     let result = std::fs::write(&tmp, &html)
         .map_err(|e| format!("cannot write temporary file: {e}"))
-        .and_then(|()| run_chromium(&tmp, args.chromium.as_deref()));
+        .and_then(|()| run_chromium(&tmp, args.chromium.as_deref(), args.timeout()));
     let _ = std::fs::remove_dir_all(&dir);
     let (count, problems, notes) = result?;
 
@@ -335,23 +360,42 @@ fn inject_before_closing_body(html: &str, script: &str) -> String {
 
 type CheckResult = (u64, Vec<Problem>, Vec<String>);
 
-fn run_chromium(html_path: &Path, chromium: Option<&str>) -> Result<CheckResult, String> {
+fn run_chromium(
+    html_path: &Path,
+    chromium: Option<&str>,
+    timeout: Option<Duration>,
+) -> Result<CheckResult, String> {
     let bin = find_chromium(chromium)?;
-    let output = std::process::Command::new(&bin)
-        .args([
-            "--headless",
-            "--disable-gpu",
-            "--no-sandbox",
-            &format!("--virtual-time-budget={VIRTUAL_TIME_BUDGET_MS}"),
-            "--dump-dom",
-            &format!("file://{}", html_path.display()),
-        ])
-        .stderr(std::process::Stdio::null())
-        .output()
-        .map_err(|e| format!("cannot run {bin}: {e}"))?;
+    let mut cmd = std::process::Command::new(&bin.bin);
+    cmd.args([
+        "--headless",
+        "--disable-gpu",
+        "--no-sandbox",
+        &format!("--virtual-time-budget={VIRTUAL_TIME_BUDGET_MS}"),
+        "--dump-dom",
+        &format!("file://{}", html_path.display()),
+    ])
+    .stderr(std::process::Stdio::null());
+    let finished =
+        proc::output_within(&mut cmd, timeout).map_err(|e| format!("cannot run {bin}: {e}"))?;
+    // Naming the browser and where it came from, because this is the failure
+    // where the browser itself is the problem and the caller has three places
+    // it could have come from.
+    let Some(output) = finished else {
+        // Only reachable with a ceiling set: without one there is nothing to
+        // give up at, and the wait is the caller's own choice.
+        let secs = timeout.map(|t| t.as_secs()).unwrap_or_default();
+        return Err(format!(
+            "the browser did not answer in {secs}s: {bin}.\n\
+             Check that it runs at all - `{} --headless --dump-dom about:blank` should \
+             print a page and exit - or raise the ceiling with `--timeout <seconds>` \
+             (`--timeout 0` waits as long as it takes).",
+            bin.bin
+        ));
+    };
     if !output.status.success() {
         return Err(format!(
-            "Chromium failed to check the deck ({})",
+            "Chromium failed to check the deck ({}): {bin}",
             output.status
         ));
     }
