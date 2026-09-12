@@ -2210,6 +2210,7 @@ There is no keyboard, so every control has a gesture:
 |---|---|
 | Swipe left / right | Next / previous |
 | Swipe up / down | Show / hide speaker notes |
+| Pinch | Zoom in on the slide — the page turns wait |
 | Two-finger tap | The cheat sheet |
 | Tap left third / elsewhere | Back / forward |
 | Long press | Select text, as anywhere else |
@@ -2217,6 +2218,20 @@ There is no keyboard, so every control has a gesture:
 The deck claims horizontal swipes from the browser, so swiping right turns the
 page instead of navigating away from the deck. On a touch device the cheat
 sheet leads with these gestures rather than with the keys.
+
+**A pinch is the browser's own zoom**, which is what makes the small print on a
+slide — an axis label, a citation, a figure's caption — readable on a screen
+the width of a hand. While the reader is zoomed in, the deck stops answering
+swipes and taps: a drag across a magnified slide is them travelling around it,
+and re-fitting the deck under them would take the zoom straight back. Pinch out
+and the page turns come back. The two-finger tap is decided when the fingers
+lift, so a pinch never opens the cheat sheet on its way past.
+
+The control cluster is never over the slide. Where the deck would otherwise
+reach it — a phone held sideways, where the deck is as tall as the screen, and
+the cluster stays visible because those buttons are the only controls a
+touchscreen has — the deck gives up whichever of width or height costs the
+slide less and sits clear of the row.
 
 **The long press is not bound to anything**, because on a phone that gesture is
 how you select text, and a deck a reader cannot quote from is a worse deck. For

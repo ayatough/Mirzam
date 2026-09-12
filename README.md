@@ -182,9 +182,9 @@ deck in the browser editor at that slide — which is how every deck on
 [the site](https://ayatough.github.io/Mirzam/) is built, so the markup behind
 any slide there is one keypress away.
 
-On a phone, swipe to turn the page, swipe up for notes, and two-finger tap for
-the same sheet — the long press is left alone, because that is how you select
-text. The controls below the bottom-right corner are the rest: page turns, the
+On a phone, swipe to turn the page, swipe up for notes, pinch to zoom in on
+whatever is too small to read, and two-finger tap for the same sheet — the long
+press is left alone, because that is how you select text. The controls below the bottom-right corner are the rest: page turns, the
 colour mode, that sheet, `</>` for the Markdown behind the slide, and `⛶` for
 the whole screen — the deck fills it, sheds its margin, and asks a phone to
 turn sideways with it. Held upright, a phone has room for the page turns and

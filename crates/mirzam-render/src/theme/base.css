@@ -4,9 +4,13 @@ html, body {
   overflow: hidden;
   /* A horizontal swipe is a page turn, so claim it before the browser reads it
      as back/forward. Without this, swiping right on a phone leaves the deck.
-     `pan-y` keeps vertical scrolling in the notes panel and the cheat sheet,
-     and keeps pinch zoom. */
-  touch-action: pan-y;
+     `pan-y` keeps vertical scrolling in the notes panel and the cheat sheet.
+     `pinch-zoom` has to be named: a `touch-action` that lists any pan at all
+     drops every gesture it does not list, so `pan-y` alone took pinch zoom
+     with it and a phone reader could not magnify a slide at all — which on a
+     small screen is the difference between reading an axis label and guessing
+     at it. */
+  touch-action: pan-y pinch-zoom;
   overscroll-behavior: none;
   /* The deck's text face. A theme sets `--mz-font`; the fallback is what every
      deck rendered before the token existed, so a deck whose theme names no
@@ -21,6 +25,14 @@ html, body {
     'Hiragino Sans', 'Noto Sans CJK JP', 'Noto Sans JP', 'Yu Gothic Medium', 'Yu Gothic',
     Meiryo, sans-serif);
 }
+/* Pinched in, the deck belongs to the reader and not to the page turns. The
+   browser needs both axes to move a magnified viewport around — reaching the
+   right-hand half of a zoomed slide is a horizontal drag, which `pan-y` above
+   hands to the deck — and the viewer stops answering swipes and taps for as
+   long as this class is on. It is written from `visualViewport.scale` and
+   comes off the moment the reader pinches back out, which is also when the
+   deck starts re-fitting itself to the screen again. */
+html.mz-zoomed, html.mz-zoomed body { touch-action: pan-x pan-y pinch-zoom; }
 /* The page's own paper, declared on `body` and not on `html`: with `html`
    transparent the browser propagates this to the canvas, so one element decides
    the colour behind the slide. It matters for a deck wearing a theme of its

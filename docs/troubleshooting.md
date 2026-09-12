@@ -58,6 +58,11 @@ in portrait that is a strip across the middle of the screen.
 | Turn the phone sideways | The slide's shape and the screen's agree, and both mobile browsers shrink their own bars in landscape |
 | Add the deck to the home screen and open it from there | No address bar, no toolbar — the only full screen Safari on an iPhone has |
 
+Something on the slide too small to read is a pinch: the deck leaves the
+browser's own zoom alone, draws the text sharp at whatever scale you take it
+to, and stops turning pages until you pinch back out — so a drag moves you
+around the slide instead of off it.
+
 On a phone held upright the row keeps the page turns and **⛶**; **⋯** opens the
 rest. The **⛶** button is only there when the browser offers full screen at all, so
 on an iPhone the third row is the answer; it needs the deck at an `http(s)`

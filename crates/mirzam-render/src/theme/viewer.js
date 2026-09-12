@@ -60,6 +60,10 @@
 
   const deck = document.getElementById('deck');
   const hud = document.getElementById('hud');
+  // The page counter and the control cluster, in one row. `fit` measures it:
+  // on a touchscreen the row is always there, so the deck has to know how much
+  // of the screen it is standing on.
+  const chromeBox = document.getElementById('chrome');
   const notesPanel = document.getElementById('notes-panel');
   const W = +deck.dataset.slideW, H = +deck.dataset.slideH;
   // Whether this browser can be asked for the whole screen at all. Read once,
@@ -144,6 +148,53 @@
     || matchMedia('(display-mode: standalone)').matches
     || navigator.standalone === true;
 
+  /**
+   * The room the deck keeps off, as `{x, y}` pixels of the right edge and the
+   * bottom — the open source panel's, and the control cluster's where that
+   * would otherwise be standing on the slide.
+   *
+   * On a desk the cluster costs the slide nothing: a window is taller than a
+   * 16:9 deck, and where it is not, the cluster fades out between questions.
+   * Neither holds on a phone. A slide is read sideways, where the deck is as
+   * tall as the screen, and on a touchscreen the cluster never fades, because
+   * those buttons are the only controls there are — so the bottom-right corner
+   * of every slide sat under them, and a reader who wanted to see it had
+   * nothing to press. The deck steps aside instead, exactly as it does for the
+   * source panel.
+   *
+   * It steps aside *once*: giving up width and height together costs the slide
+   * twice over for one cluster, so the two are tried and the one that leaves
+   * the slide bigger is taken. Sideways that is usually the strip along the
+   * bottom; a window with room beside the deck gives up the margin instead and
+   * keeps every pixel of height.
+   *
+   * The cluster is measured rather than assumed: the row wraps onto two on a
+   * narrow phone, `env(safe-area-inset-*)` moves it again on a notched one,
+   * and `H` or `?controls=none` takes it away altogether. A deck that already
+   * clears it gives up nothing, which is every window on a desk and a phone
+   * held upright. The cluster sits *above* a docked panel rather than beside
+   * it, so its reserve already contains the panel's: the larger of the two is
+   * the answer on each axis, never their sum.
+   */
+  function chromeReserve(box, taken, edge) {
+    if (!chromeBox || !matchMedia('(pointer: coarse)').matches) return taken;
+    const r = chromeBox.getBoundingClientRect();
+    if (!r.height) return taken;
+    const scale = (t) => Math.min((box.width - t.x) / (W + edge), (box.height - t.y) / (H + edge));
+    const s = scale(taken);
+    // What the fit that has not heard of the cluster leaves free around the
+    // deck, against the strip of screen the cluster stands on.
+    const want = { x: innerWidth - r.left, y: innerHeight - r.top };
+    const free = {
+      x: (box.width + taken.x - W * s) / 2,
+      y: (box.height + taken.y - H * s) / 2,
+    };
+    if (free.x >= want.x || free.y >= want.y) return taken;
+    const wide = { x: Math.max(taken.x, want.x), y: taken.y };
+    const tall = { x: taken.x, y: Math.max(taken.y, want.y) };
+    return scale(wide) >= scale(tall) ? wide : tall;
+  }
+
   function fit() {
     // In the presenter window the deck lives inside a box, not the viewport.
     const host = deck.parentElement === document.body ? null : deck.parentElement;
@@ -156,7 +207,9 @@
     // would be the wrong half of the point.
     const taken = host ? { x: 0, y: 0 } : panelReserve();
     // The control cluster is fixed to the viewport rather than to the deck, so
-    // it has to be told the same number in the only language it speaks.
+    // it has to be told the same number in the only language it speaks. The
+    // panel's reserve and nothing else: the cluster stepping around the deck
+    // would be the deck stepping around itself.
     html.style.setProperty('--mz-src-x', taken.x + 'px');
     html.style.setProperty('--mz-src-y', taken.y + 'px');
     // The margin is in slide pixels, so it shrinks with the deck: 40 of them
@@ -164,11 +217,12 @@
     // is the one place it goes to nothing.
     const edge = (host || !bare()) ? 40 : 0;
     if (!host) html.classList.toggle('mz-bare', bare());
-    const s = Math.min((box.width - taken.x) / (W + edge), (box.height - taken.y) / (H + edge));
+    const keep = host ? taken : chromeReserve(box, taken, edge);
+    const s = Math.min((box.width - keep.x) / (W + edge), (box.height - keep.y) / (H + edge));
     deck.style.width = W + 'px';
     deck.style.height = H + 'px';
     deck.style.transform =
-      `translate(calc(-50% - ${taken.x / 2}px), calc(-50% - ${taken.y / 2}px)) scale(${s})`;
+      `translate(calc(-50% - ${keep.x / 2}px), calc(-50% - ${keep.y / 2}px)) scale(${s})`;
   }
 
   // `play` is what separates a page turn from a repaint: a resize, a font
@@ -584,6 +638,7 @@
     [['⊞ button'], 'All slides — tap one to go there'],
     [['Swipe ←', 'Swipe →'], 'Next / previous'],
     [['Swipe ↑', 'Swipe ↓'], 'Show / hide notes'],
+    [['Pinch'], 'Zoom in — the page turns wait'],
     [['Two-finger tap'], 'This sheet'],
     [['Tap left', 'Tap right'], 'Back / forward'],
     [['Long press'], 'Select text, as anywhere else'],
@@ -988,7 +1043,6 @@
   // closes it). Nothing is duplicated: the menu reveals the buttons where they
   // already stand, so a control has one handler and one label whether it is on
   // the row or behind the ellipsis.
-  const chromeBox = document.getElementById('chrome');
   const moreBtn = document.getElementById('mz-more');
   function setMore(on) {
     if (!chromeBox) return;
@@ -1192,10 +1246,31 @@
     }
   });
 
+  // ---- Pinched in ----
+  // A slide is a landscape rectangle on a screen the width of a hand, so the
+  // smallest thing on it — an axis label, a citation, a figure's caption — can
+  // be below what the reader's eyes can do. Pinch zoom is the answer every
+  // other page on the phone already gives them (`base.css` names `pinch-zoom`
+  // so the browser keeps the gesture), and the deck's job is to stay out of
+  // its way once they have used it: a drag across a magnified slide is the
+  // reader travelling around it and a tap is them steadying it, neither a page
+  // turn, and `refit` re-fitting the deck under them would hand the zoom
+  // straight back. So navigation waits until they pinch out again.
+  const vv = window.visualViewport || null;
+  let zoomed = false;
+  // Not `> 1`: a pinch that settles a hair off its starting scale is a reader
+  // who changed their mind, not one who wants the deck to stop turning pages.
+  const markZoom = () => {
+    const on = !!vv && vv.scale > 1.01;
+    if (on === zoomed) return;
+    zoomed = on;
+    html.classList.toggle('mz-zoomed', on);
+  };
+
   // ---- Touch: a phone has no keyboard ----
   // Swipe to turn the page, swipe up for notes, a two-finger tap for the cheat
-  // sheet. The click zones stay, because that is what a presenter with a
-  // clicker or a trackpad is using.
+  // sheet, a pinch to look closer. The click zones stay, because that is what
+  // a presenter with a clicker or a trackpad is using.
   //
   // There is deliberately no long-press binding. On a phone the long press is
   // how you select text, and taking it for the cheat sheet took the reader's
@@ -1203,8 +1278,24 @@
   // button — which touch wakes like a pointer does — cover the same ground and
   // collide with nothing.
   const SWIPE = 45;      // px before a drag counts as a swipe rather than a tap
+  const TWO_MS = 400;    // how long two fingers may rest before they are not a tap
+  const SPREAD = 20;     // px two fingers may travel before they are a pinch
   let touch = null;
+  // A two-finger gesture, until it turns out to be a pinch. The sheet used to
+  // open the instant the second finger landed, which meant every attempt to
+  // zoom in on a slide opened the cheat sheet over it instead — the one
+  // gesture a reader reaches for when the detail is too small to read was
+  // bound to the overlay that covers it. So nothing is decided until the
+  // fingers lift, and a pair that spread, closed or travelled on the way is a
+  // pinch or a two-finger scroll and never a tap.
+  let two = null;
   const selecting = () => (getSelection()?.toString() || '').trim() !== '';
+  /** The gap between two touches and the point half way between them. */
+  const pair = (t) => ({
+    gap: Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY),
+    x: (t[0].clientX + t[1].clientX) / 2,
+    y: (t[0].clientY + t[1].clientY) / 2,
+  });
   // A panel is a thing to read, not a page to turn. The source panel scrolls
   // sideways — a pane drawing is wider than a phone and must not reflow — so a
   // swipe that starts inside one belongs to it: without this, dragging a long
@@ -1215,21 +1306,52 @@
 
   addEventListener('touchstart', (e) => {
     wake();
-    if (e.touches.length > 1) { touch = null; handled = true; toggleKeys(); return; }
-    // No gesture to suppress the click of, so `handled` stays as it is: the
-    // cheat sheet closes on a tap, and the panel's own buttons still work.
+    // A gesture suppresses the click *it* produced, and a new touch is past
+    // that: the click a gesture makes is dispatched before the finger comes
+    // back down. Left standing, the flag ate the following tap instead —
+    // which is the tap that closes the sheet the two-finger tap just opened,
+    // because a multi-finger gesture makes no click for it to suppress.
+    handled = false;
+    if (e.touches.length > 1) {
+      touch = null;
+      two = e.touches.length === 2
+        ? Object.assign(pair(e.touches), { at: e.timeStamp })
+        : null;
+      return;
+    }
+    // A panel is scrolled and read, not swiped through: `touch` stays null so
+    // nothing in it can turn a page, and its own buttons still work.
     if (inPanel(e.target)) { touch = null; return; }
     const t = e.touches[0];
     touch = { x: t.clientX, y: t.clientY, held: selecting() };
-    handled = false;
   }, { passive: true });
 
+  addEventListener('touchmove', (e) => {
+    if (!two || e.touches.length !== 2) return;
+    const p = pair(e.touches);
+    if (Math.abs(p.gap - two.gap) > SPREAD || Math.hypot(p.x - two.x, p.y - two.y) > SPREAD) two = null;
+  }, { passive: true });
+
+  // The browser takes the touches away when it starts zooming with them, which
+  // is the clearest possible answer to what the gesture was.
+  addEventListener('touchcancel', () => { touch = null; two = null; }, { passive: true });
+
   addEventListener('touchend', (e) => {
+    if (two) {
+      // Both fingers off, quickly, having gone nowhere: a tap, not a pinch.
+      if (e.touches.length) return;
+      const quick = (e.timeStamp - two.at) < TWO_MS;
+      two = null;
+      if (quick) { handled = true; toggleKeys(); }
+      return;
+    }
     if (!touch) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - touch.x, dy = t.clientY - touch.y;
     const wasSelecting = touch.held;
     touch = null;
+    // Pinched in, a drag is the reader moving around the magnified slide.
+    if (zoomed) return;
     if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE) return;   // a tap, or a scroll
     // Dragging a selection handle travels exactly as far as a swipe does.
     // Whichever way it is read, a reader adjusting a selection is not asking
@@ -1335,6 +1457,10 @@
     // A gesture already decided what this touch meant.
     if (handled) { handled = false; return; }
     if (moved) return;
+    // Pinched in, a tap on the slide is the reader steadying a magnified page,
+    // and turning it under them would be the surest way to lose the detail
+    // they zoomed in for. The cluster's arrows still turn pages.
+    if (zoomed) return;
     if ((getSelection()?.toString() || '').trim()) return;
     // Anything a reader operates rather than reads: a click on a player, its
     // label, or the card around it is aimed at the player. Every one of those
@@ -1356,8 +1482,10 @@
   });
 
   // A repaint, not a page turn: keep the slide exactly where the presenter
-  // left it, animations and all.
-  const refit = () => { fit(); show(cur, { play: false }); };
+  // left it, animations and all. Never while the reader is pinched in: a fit
+  // is what takes the zoom back, and pinching out is a viewport resize of its
+  // own, which is where the fit they missed happens.
+  const refit = () => { if (zoomed) return; fit(); show(cur, { play: false }); };
   addEventListener('resize', refit);
   // A phone's viewport moves without a `resize`: the address bar retracts, a
   // panel opens, the screen turns over. `visualViewport` reports all of it,
@@ -1365,8 +1493,12 @@
   // recovered pixels into a bigger slide. Pinch zoom moves the same viewport
   // and must not: the reader is zooming in on the slide as it stands, and
   // re-fitting under them would take the zoom back as fast as they gave it.
-  if (window.visualViewport) {
-    visualViewport.addEventListener('resize', () => { if (visualViewport.scale === 1) refit(); });
+  if (vv) {
+    const settled = () => { markZoom(); if (!zoomed) refit(); };
+    vv.addEventListener('resize', settled);
+    // Scrolling a zoomed viewport does not resize it, and a pinch that ends
+    // mid-scroll is the one way the class would otherwise be left behind.
+    vv.addEventListener('scroll', markZoom);
   }
   // iOS reports the new size a beat after the turn, so the fit happens twice:
   // once now, once when the numbers have settled.

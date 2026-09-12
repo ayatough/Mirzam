@@ -7,7 +7,30 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+- **A phone can zoom into a slide again, and the controls no longer stand on
+  one.** Three things made a deck hard to read on a phone, and they were one
+  problem: the detail was too small and there was no way in. `touch-action`
+  claims the horizontal swipe for the page turns, and a `touch-action` that
+  names any pan drops every gesture it does not name — so `pan-y` had been
+  taking pinch zoom with it, and a reader who could not make out an axis label
+  had nothing to do about it. The gesture they reached for made it worse: two
+  fingers landing opened the cheat sheet, an overlay, over the slide they were
+  trying to see. And the control cluster, which never fades on a touchscreen
+  because those buttons are the only controls there are, sat on the
+  bottom-right corner of the slide whenever the deck was as tall as the screen
+  — which is a phone held sideways, the way a landscape slide is read.
+  Now: `pinch-zoom` is named, so the browser's own zoom works and the text is
+  re-drawn sharp at whatever scale the reader takes it to; while they are
+  zoomed in the deck stops answering swipes and taps and stops re-fitting
+  itself, so a drag moves them around the magnified slide instead of turning
+  the page out from under them, and pinching out gives the gestures back; the
+  two-finger tap is decided when the fingers *lift*, so a pinch is a pinch and
+  a tap is still the cheat sheet; and the deck steps clear of the cluster the
+  way it already stepped clear of the source panel, giving up whichever of
+  width or height costs the slide less — often nothing at all, and never the
+  corner of a slide. A tap immediately after a two-finger tap is no longer
+  swallowed, which is what closing the sheet had become.
 
 ## [0.11.0] - 2026-09-10
 

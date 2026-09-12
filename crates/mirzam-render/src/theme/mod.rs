@@ -833,8 +833,48 @@ mod tests {
     /// gesture, the browser reads it as *back* and the presenter loses the deck.
     #[test]
     fn a_horizontal_swipe_belongs_to_the_deck() {
-        assert!(BASE_CSS.contains("touch-action: pan-y;"));
+        assert!(BASE_CSS.contains("touch-action: pan-y pinch-zoom;"));
         assert!(BASE_CSS.contains("overscroll-behavior: none;"));
+    }
+
+    /// Claiming the swipe must not cost the reader the pinch: `touch-action`
+    /// drops every gesture it does not name, so `pan-y` on its own left a
+    /// phone unable to magnify a slide at all. The zoomed state gets both
+    /// axes back, because travelling around a magnified slide is a horizontal
+    /// drag and the page turns are not listening while it is on.
+    #[test]
+    fn a_phone_can_zoom_into_a_slide() {
+        assert!(BASE_CSS.contains("pinch-zoom"));
+        assert!(BASE_CSS.contains("html.mz-zoomed, html.mz-zoomed body"));
+        assert!(VIEWER_JS.contains("visualViewport"));
+        assert!(VIEWER_JS.contains("mz-zoomed"));
+        // Navigation stands down while the reader is zoomed in: a drag is them
+        // travelling around the slide, and a tap is them steadying it.
+        assert!(VIEWER_JS.contains("if (zoomed) return;"));
+    }
+
+    /// A pinch starts as two fingers landing, which is also how a two-finger
+    /// tap starts: deciding on `touchstart` meant every attempt to zoom in
+    /// opened the cheat sheet over the slide instead. Nothing is decided until
+    /// the fingers lift, and the browser taking them away for its own zoom
+    /// settles the question first.
+    #[test]
+    fn a_pinch_is_not_a_two_finger_tap() {
+        assert!(VIEWER_JS.contains("touchcancel"));
+        // The sheet is opened from the end of the gesture, not its start.
+        let start = VIEWER_JS.find("addEventListener('touchstart'").unwrap();
+        let end = VIEWER_JS.find("addEventListener('touchmove'").unwrap();
+        assert!(!VIEWER_JS[start..end].contains("toggleKeys()"));
+        assert!(VIEWER_JS.contains("if (quick) { handled = true; toggleKeys(); }"));
+    }
+
+    /// On a touchscreen the cluster never fades — those buttons are the only
+    /// controls there are — so a deck as tall as the screen wore them over its
+    /// bottom-right corner. The deck keeps off that strip instead.
+    #[test]
+    fn the_control_cluster_does_not_stand_on_the_slide() {
+        assert!(VIEWER_JS.contains("function chromeReserve("));
+        assert!(VIEWER_JS.contains("matchMedia('(pointer: coarse)')"));
     }
 
     /// The cheat sheet's whole reason for existing is the keys nobody can

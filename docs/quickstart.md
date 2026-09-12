@@ -310,7 +310,8 @@ away from your machine.
 - **Writing:** the browser editor, above. It is the whole toolchain. **New**
   starts an empty deck, which is how you begin one on a phone.
 - **Reviewing:** open a built `.html` from your files or a share. Swipe to turn
-  the page, swipe up for notes, two-finger tap for the shortcut sheet.
+  the page, swipe up for notes, pinch to look closer, two-finger tap for the
+  shortcut sheet.
 - **Presenting from it:** the deck is one file, so AirDrop or a cloud folder is
   the entire deployment step.
 
@@ -347,7 +348,16 @@ bar above it and the toolbar below. Three ways out, in the order they help:
 A phone held upright has room for the page turns and **⛶**; the rest of the
 controls — all slides, the colour mode, the shortcut sheet — sit behind **⋯**,
 which opens them in a column above the cluster. Sideways, or on anything
-wider, they are all on the row and **⋯** is not there at all.
+wider, they are all on the row and **⋯** is not there at all. The row never
+stands on the slide: on a touchscreen it stays visible — those buttons are the
+only controls there are — so the deck sits clear of it instead, giving up
+whichever of width or height costs the slide less.
+
+And when a slide still has something on it too small to read — an axis label, a
+citation, a figure's caption — **pinch**. It is the browser's own zoom, so the
+text is re-drawn sharp rather than magnified as pixels, and a drag moves you
+around the enlarged slide. The deck stops turning pages while you are zoomed
+in, so nothing moves under you; pinch back out and the swipes and taps return.
 
 The shortcut sheet — two-finger tap, or the **?** button — names whichever of
 these the browser you are holding can do.
