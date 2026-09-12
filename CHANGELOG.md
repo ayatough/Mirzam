@@ -8,6 +8,49 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Fixed
+- **`import pdf`: two floats sharing a band are two pictures.** A narrow figure
+  in a column beside a wide one taking the rest of the width is one band, held
+  up and held down by the same two paragraphs, with nothing inside it to tell
+  the two apart. So both captions were handed the whole band — a crop five
+  times the size of the figure it was meant to hold, with the neighbour's
+  figure sitting in it and no way to ask for either one alone. Reported from a
+  two-column conference paper where six of ten figures needed re-cropping by
+  hand.
+
+  A band was already bounded in one direction: it stops at a line of prose, and
+  at a caption, which is why two floats *stacked* in a column come out
+  separately. It is the sideways direction that had no boundary in it. It has
+  one now — the captions set beside this one, which are exactly the ones that
+  do not share any of the page's width with it — and three things follow:
+
+  - **Ink goes to the caption it lines up with.** The union that gathers a
+    figure out of its band now passes over what belongs to the float beside it.
+    Measured against the caption rather than split down the middle of the gap
+    between two, because a caption is often much narrower than what it names —
+    one line under a figure three times its width — and a boundary drawn
+    halfway would cut that figure in half.
+  - **A neighbour reaching across is no longer read as this figure spanning.**
+    What said a float ran the width of the page was ink in its band reaching
+    into another column, without asking whose ink it was. A figure beside this
+    one, overhanging by a third of itself, was enough to have the band measured
+    again at the full text width and the neighbour swallowed whole. One third:
+    a neighbour 0.27 of the way in left the crop correct and one 0.31 of the
+    way in quintupled it, with nothing about the figure being cropped having
+    changed.
+  - **A float beside this one no longer ends its band.** A figure taller than
+    its neighbour pushes its own caption below the neighbour's, and that
+    neighbour then stands between this caption and its picture — close enough,
+    once the band runs the full width, to cut it to nothing. That figure was
+    not cropped wrongly; it was **dropped**, which is worse, since there is
+    nothing left to re-crop by hand.
+
+  What deliberately did not change: panels under *one* caption stay one
+  picture, `Fig. 1: (a) … (b) …` being one caption and not two. Splitting a
+  band is for the captions in it.
+
+  Finding the captions and cutting out the pictures are now two passes rather
+  than one, because what bounds a float sideways is the caption beside it, and
+  in reading order that one has not been seen yet.
 - **`--help` is answered by every command, not only by `mirzam` itself.**
   `mirzam import pdf --help` read the flag as the PDF to open and failed with
   `cannot read --help: No such file or directory`; so did `build`, `check`,

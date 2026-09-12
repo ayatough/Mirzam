@@ -209,14 +209,22 @@ pub fn find(page: Rect, lines: &[Line], ink: &[Rect]) -> Vec<Figure> {
     });
 
     let body = body_size(lines);
-    let sheet = Sheet {
+    let mut sheet = Sheet {
         lines,
         ink,
         columns: columns(lines, body, page),
         body,
         rect: page,
+        captions: Vec::new(),
     };
-    let mut found = Vec::new();
+
+    // Pass one: which lines open a caption, and how far each caption runs.
+    //
+    // All of them are read before any picture is cut out, because what bounds a
+    // float sideways is the caption beside it — and in reading order that one
+    // has not been seen yet. Deciding a figure the moment its caption is found
+    // is what let two floats sharing a band each be handed the other's picture.
+    let mut opened = Vec::new();
     for (at, &i) in ordered.iter().enumerate() {
         let Some(label) = Label::parse(&lines[i].text) else {
             continue;
@@ -238,6 +246,17 @@ pub fn find(page: Rect, lines: &[Line], ink: &[Rect]) -> Vec<Figure> {
         }
         let column = column_for(&lines[i].rect, &sheet.columns, page);
         let caption = caption_block(lines, &ordered, at, &column);
+        opened.push((label, caption, column));
+    }
+
+    // Only the captions that survived those tests bound anything. A
+    // cross-reference that reads like a caption was rejected above; letting it
+    // fence off a band here would undo that on the other axis.
+    sheet.captions = opened.iter().map(|(_, c, _)| c.rect).collect();
+
+    // Pass two: the picture each caption owns, now that all of them are known.
+    let mut found = Vec::new();
+    for (label, caption, column) in opened {
         let Some(art) = art_box(&label.kind, &caption.rect, &column, &sheet) else {
             continue;
         };
@@ -406,6 +425,66 @@ struct Sheet<'a> {
     /// The dominant text size, which is what makes a line prose.
     body: f64,
     rect: Rect,
+    /// Every accepted caption on the page, as the block each one covers. Empty
+    /// while the captions are still being gathered, which is why nothing in
+    /// pass one may read it.
+    captions: Vec<Rect>,
+}
+
+impl Sheet<'_> {
+    /// The captions set *beside* `caption`, which are the ones that compete
+    /// with it for what is in its band.
+    ///
+    /// Beside means exactly what it sounds like: two floats side by side are
+    /// two captions that do not share any of the page's width. That is the
+    /// whole test, and it is the right one because the other direction is
+    /// already handled — a band stops at a caption the way it stops at a line
+    /// of prose, so a float above or below is cut off before any of this runs.
+    ///
+    /// It also has to be the whole test. Two floats *stacked* in one column
+    /// have captions at the same place across the page, and a wider lower one
+    /// would out-pull the upper one for the upper one's own picture. They are
+    /// not rivals, they never needed to be, and here they are not: their
+    /// captions overlap.
+    ///
+    /// A hair of overlap is still beside — a caption's box carries the slop of
+    /// whatever descender ends it — so the line is drawn at one character of
+    /// the body text rather than at nothing.
+    fn rivals(&self, caption: &Rect) -> Vec<Rect> {
+        self.captions
+            .iter()
+            .filter(|c| {
+                *c != caption && (c.x1.min(caption.x1) - c.x0.max(caption.x0)).max(0.0) < self.body
+            })
+            .copied()
+            .collect()
+    }
+}
+
+/// Whether `r` belongs to `caption` rather than to one of the captions beside
+/// it.
+///
+/// A caption is set against the float it names, so ink goes to the caption it
+/// lines up with; ink under none of them goes to the nearest one along the
+/// page. Nearness is measured against the caption rather than split down the
+/// middle of the gap between two, because a caption is often much narrower
+/// than what it names — one line under a figure three times its width — and a
+/// boundary drawn halfway would cut that figure in half.
+///
+/// With nothing beside it a caption owns everything in its band, which is what
+/// this did before there was a rule at all.
+fn owned_by(caption: &Rect, r: &Rect, rivals: &[Rect]) -> bool {
+    let pull = |c: &Rect| {
+        let overlap = (r.x1.min(c.x1) - r.x0.max(c.x0)).max(0.0);
+        if overlap > 0.0 {
+            overlap
+        } else {
+            // No overlap at all: the further away, the weaker the claim.
+            -((r.x0 - c.x1).max(c.x0 - r.x1))
+        }
+    };
+    let mine = pull(caption);
+    rivals.iter().all(|c| mine >= pull(c))
 }
 
 /// A caption, gathered from the line that names it.
@@ -512,8 +591,15 @@ fn band(caption: &Rect, column: &(f64, f64), sheet: &Sheet, above: bool) -> Opti
     // one's edge: a table is often a little wider than the prose beside it,
     // and the column's edges are measured from that prose.
     let reaches = |r: &Rect, c: &(f64, f64)| (r.x1.min(c.1) - r.x0.max(c.0)).max(0.0);
+    // And it means *this* caption's own picture reaching there. A float beside
+    // this one, poking a little way into this column, used to be read as proof
+    // that this figure spanned the page - so the band was measured again at the
+    // full text width and swallowed the neighbour whole, a crop five times the
+    // size of the figure it was supposed to hold.
+    let rivals = sheet.rivals(caption);
     let crosses = ink.iter().any(|r| {
         r.share_inside(&narrow.0) > 0.3
+            && owned_by(caption, r, &rivals)
             && columns
                 .iter()
                 .any(|c| c != column && reaches(r, c) > (c.1 - c.0) * 0.3)
@@ -534,6 +620,12 @@ fn within(
 ) -> Option<(Rect, Option<Rect>)> {
     let (lines, ink, body, page) = (sheet.lines, sheet.ink, sheet.body, sheet.rect);
     let in_column = |r: &Rect| r.x1 > column.0 + 1.0 && r.x0 < column.1 - 1.0;
+    // The captions set beside this one. They are not boundaries in either
+    // direction: sideways they own their own ink rather than this caption's,
+    // and vertically they bound nothing at all, being level with this caption
+    // rather than over it.
+    let rivals = sheet.rivals(caption);
+    let beside = |r: &Rect| rivals.iter().any(|c| r.share_inside(c) > 0.5);
     // Prose: a line at the body size that runs the width of its column. A
     // table's cells are the same size and stop well short of it, which is what
     // lets a band swallow a table but not the paragraph under it.
@@ -548,7 +640,14 @@ fn within(
         // cells are set smaller than the body and inset from the column's edge,
         // so a band still swallows the table it was opened for.
         let running = l.rect.width() > (own.1 - own.0) * 0.6 || l.rect.x0 <= own.0 + 1.0;
+        // A caption beside this one must not end the band. A float taller than
+        // its neighbour pushes its own caption below the neighbour's, and that
+        // neighbour then stands between this caption and its picture - close
+        // enough, when the band runs the full width, to cut it to nothing. The
+        // figure was not merely cropped wrong then; it was dropped, since a
+        // band shorter than four points holds nothing at all.
         in_column(&l.rect)
+            && !beside(&l.rect)
             && ((l.size - body).abs() < 0.35 && running || Label::parse(&l.text).is_some())
     };
 
@@ -569,9 +668,14 @@ fn within(
         return None;
     }
 
+    // Two floats side by side - a narrow one in a column and a wide one taking
+    // the rest of the width - share a band, are held up by the same prose and
+    // held down by the same prose. Nothing about the band tells them apart, so
+    // the union below used to gather both and hand each caption a picture with
+    // the other one's figure in it.
     let mut art: Option<Rect> = None;
     let mut take = |r: &Rect| {
-        if r.share_inside(&band) > 0.6 {
+        if r.share_inside(&band) > 0.6 && owned_by(caption, r, &rivals) {
             art = Some(match art {
                 Some(a) => a.union(r),
                 None => *r,
@@ -1099,5 +1203,250 @@ mod tests {
             let label = Label::parse(src).unwrap();
             assert_eq!(&src[label.consumed..], want, "{src:?}");
         }
+    }
+
+    /// Two floats sharing a band are two pictures, not one picture twice.
+    ///
+    /// A narrow figure in a column beside a wide one taking the rest of the
+    /// width: one band, one pair of paragraphs holding it up and down, and
+    /// nothing in the band itself to tell the two apart. Both captions used to
+    /// be handed the whole band - a crop five times the size of the figure it
+    /// was meant to hold, with the neighbour's figure sitting in it.
+    #[test]
+    fn two_floats_side_by_side_are_two_pictures() {
+        let mut lines = prose(LEFT, 800.0, 4);
+        lines.extend(prose(RIGHT, 800.0, 4));
+        lines.push(line(LEFT, 600.0, 100.0, 8.0, "Fig. 1: the narrow one."));
+        lines.push(line(
+            LEFT + 120.0,
+            600.0,
+            375.0,
+            8.0,
+            "Fig. 2: the wide one.",
+        ));
+        lines.extend(prose(LEFT, 560.0, 4));
+        lines.extend(prose(RIGHT, 560.0, 4));
+        let ink = vec![
+            Rect::new(LEFT, 610.0, LEFT + 100.0, 700.0),
+            Rect::new(LEFT + 120.0, 610.0, 545.0, 700.0),
+        ];
+
+        let found = find(PAGE, &lines, &ink);
+        assert_eq!(found.len(), 2, "{found:?}");
+        assert_eq!(found[0].art, ink[0]);
+        assert_eq!(found[1].art, ink[1]);
+    }
+
+    /// A neighbour poking into this column is not this figure spanning.
+    ///
+    /// What said a float ran across the page was ink in its band reaching into
+    /// another column - without asking whose ink it was. A figure beside this
+    /// one, overhanging by a third of itself, was enough to have this band
+    /// measured again at the full text width and the neighbour swallowed. The
+    /// figure named here never changes; only the one beside it moves.
+    #[test]
+    fn a_neighbour_reaching_across_does_not_widen_this_crop() {
+        let narrow = Rect::new(LEFT, 610.0, LEFT + 100.0, 700.0);
+        for over in [160.0, 170.0, 190.0, 220.0] {
+            let mut lines = prose(LEFT, 800.0, 4);
+            lines.extend(prose(RIGHT, 800.0, 4));
+            lines.push(line(LEFT, 600.0, 100.0, 8.0, "Fig. 1: the narrow one."));
+            lines.push(line(
+                LEFT + 120.0,
+                600.0,
+                375.0,
+                8.0,
+                "Fig. 2: the wide one.",
+            ));
+            lines.extend(prose(LEFT, 560.0, 4));
+            lines.extend(prose(RIGHT, 560.0, 4));
+            let ink = vec![narrow, Rect::new(over, 610.0, 545.0, 700.0)];
+
+            let found = find(PAGE, &lines, &ink);
+            assert_eq!(found.len(), 2, "neighbour from {over}: {found:?}");
+            assert_eq!(found[0].art, narrow, "neighbour from {over}");
+        }
+    }
+
+    /// Three panels, three captions, three pictures.
+    #[test]
+    fn every_caption_in_a_band_gets_its_own_picture() {
+        let mut lines = prose(LEFT, 800.0, 4);
+        lines.extend(prose(RIGHT, 800.0, 4));
+        lines.push(line(50.0, 600.0, 110.0, 8.0, "Fig. 1: left panel."));
+        lines.push(line(215.0, 600.0, 110.0, 8.0, "Fig. 2: middle panel."));
+        lines.push(line(380.0, 600.0, 110.0, 8.0, "Fig. 3: right panel."));
+        lines.extend(prose(LEFT, 560.0, 4));
+        lines.extend(prose(RIGHT, 560.0, 4));
+        let ink = vec![
+            Rect::new(50.0, 610.0, 175.0, 700.0),
+            Rect::new(215.0, 610.0, 340.0, 700.0),
+            Rect::new(380.0, 610.0, 505.0, 700.0),
+        ];
+
+        let found = find(PAGE, &lines, &ink);
+        assert_eq!(found.len(), 3, "{found:?}");
+        for (got, want) in found.iter().zip(&ink) {
+            assert_eq!(&got.art, want);
+        }
+    }
+
+    /// A float beside this one does not end its band.
+    ///
+    /// A figure taller than its neighbour pushes its own caption below the
+    /// neighbour's, and that neighbour then stands between this caption and
+    /// its picture. A band stops at a caption the way it stops at a line of
+    /// prose, so this band was cut to nothing and the figure was not reported
+    /// at all — worse than a bad crop, since there was nothing left to re-crop.
+    #[test]
+    fn a_caption_beside_this_one_does_not_end_its_band() {
+        let mut lines = prose(LEFT, 800.0, 4);
+        lines.extend(prose(RIGHT, 800.0, 4));
+        lines.push(line(LEFT, 600.0, 100.0, 8.0, "Fig. 1: the narrow one."));
+        lines.push(line(
+            LEFT + 120.0,
+            592.0,
+            375.0,
+            8.0,
+            "Fig. 2: the wide one, whose caption",
+        ));
+        lines.push(line(
+            LEFT + 120.0,
+            583.0,
+            180.0,
+            8.0,
+            "runs to a second line.",
+        ));
+        lines.extend(prose(LEFT, 550.0, 4));
+        lines.extend(prose(RIGHT, 550.0, 4));
+        let ink = vec![
+            Rect::new(LEFT, 610.0, LEFT + 100.0, 700.0),
+            Rect::new(LEFT + 120.0, 602.0, 545.0, 700.0),
+        ];
+
+        let found = find(PAGE, &lines, &ink);
+        assert_eq!(found.len(), 2, "{found:?}");
+        assert_eq!(found[0].art, ink[0]);
+        assert_eq!(found[1].art, ink[1]);
+    }
+
+    /// A table beside a figure keeps to itself, though their captions sit on
+    /// opposite sides of the ink they name.
+    #[test]
+    fn a_table_beside_a_figure_keeps_to_itself() {
+        let mut lines = prose(LEFT, 800.0, 4);
+        lines.extend(prose(RIGHT, 800.0, 4));
+        lines.push(line(
+            LEFT,
+            710.0,
+            300.0,
+            8.0,
+            "Table I. A table whose title runs wide.",
+        ));
+        lines.push(line(
+            RIGHT + 40.0,
+            600.0,
+            150.0,
+            8.0,
+            "Fig. 1: beside the table.",
+        ));
+        lines.extend(prose(LEFT, 560.0, 4));
+        lines.extend(prose(RIGHT, 560.0, 4));
+        let ink = vec![
+            Rect::new(LEFT, 620.0, 285.0, 700.0),
+            Rect::new(RIGHT, 620.0, 545.0, 700.0),
+        ];
+
+        let found = find(PAGE, &lines, &ink);
+        assert_eq!(found.len(), 2, "{found:?}");
+        assert_eq!(found[0].art, ink[0], "the table took the figure as well");
+        assert_eq!(found[1].art, ink[1]);
+    }
+
+    /// Panels under *one* caption are one picture. Splitting a band is for the
+    /// captions in it, and `Fig. 1: (a) … (b) …` is one of them.
+    #[test]
+    fn panels_under_one_caption_stay_one_picture() {
+        let mut lines = prose(LEFT, 800.0, 4);
+        lines.extend(prose(RIGHT, 800.0, 4));
+        lines.push(line(
+            LEFT,
+            600.0,
+            480.0,
+            8.0,
+            "Fig. 1: (a) the first and (b) the second.",
+        ));
+        lines.extend(prose(LEFT, 560.0, 4));
+        lines.extend(prose(RIGHT, 560.0, 4));
+        let ink = vec![
+            Rect::new(LEFT, 610.0, 285.0, 700.0),
+            Rect::new(RIGHT, 610.0, 545.0, 700.0),
+        ];
+
+        let found = find(PAGE, &lines, &ink);
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert_eq!(found[0].art, Rect::new(LEFT, 610.0, 545.0, 700.0));
+    }
+
+    /// A float *above* or *below* is not a rival, however wide its caption.
+    ///
+    /// Ink goes to the caption it lines up with, so a wide caption lower in the
+    /// column would out-pull the narrow one above it and take that figure away.
+    /// Two floats stacked in a column are not side by side, their captions
+    /// cover the same width, and the band between them already tells them
+    /// apart.
+    #[test]
+    fn a_wider_caption_below_does_not_claim_the_figure_above_it() {
+        let mut lines = prose(LEFT, 800.0, 4);
+        lines.extend(prose(RIGHT, 800.0, 8));
+        lines.push(line(LEFT, 700.0, 70.0, 8.0, "Fig. 1: short."));
+        lines.push(line(
+            LEFT,
+            600.0,
+            230.0,
+            8.0,
+            "Fig. 2: a much longer caption here.",
+        ));
+        lines.extend(prose(LEFT, 560.0, 4));
+        let ink = vec![
+            Rect::new(LEFT, 710.0, LEFT + 200.0, 750.0),
+            Rect::new(LEFT, 610.0, LEFT + 200.0, 690.0),
+        ];
+
+        let found = find(PAGE, &lines, &ink);
+        assert_eq!(found.len(), 2, "{found:?}");
+        assert_eq!(found[0].art, ink[0]);
+        assert_eq!(found[1].art, ink[1]);
+    }
+
+    /// Nor does a figure spanning the page claim the column figure under it.
+    #[test]
+    fn a_spanning_figure_does_not_claim_the_one_below_it() {
+        let mut lines = vec![line(
+            LEFT,
+            780.0,
+            495.0,
+            8.0,
+            "Fig. 1: across both columns.",
+        )];
+        lines.extend(prose(LEFT, 760.0, 6));
+        lines.extend(prose(RIGHT, 760.0, 10));
+        lines.push(line(
+            LEFT,
+            660.0,
+            100.0,
+            8.0,
+            "Fig. 2: down in the left column.",
+        ));
+        lines.extend(prose(LEFT, 560.0, 4));
+        let ink = vec![
+            Rect::new(LEFT, 790.0, 545.0, 830.0),
+            Rect::new(LEFT, 670.0, LEFT + 200.0, 690.0),
+        ];
+
+        let found = find(PAGE, &lines, &ink);
+        assert_eq!(found.len(), 2, "{found:?}");
+        assert_eq!(found[0].art, ink[0]);
+        assert_eq!(found[1].art, ink[1]);
     }
 }
