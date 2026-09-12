@@ -354,10 +354,14 @@ only controls there are — so the deck sits clear of it instead, giving up
 whichever of width or height costs the slide less.
 
 And when a slide still has something on it too small to read — an axis label, a
-citation, a figure's caption — **pinch**. It is the browser's own zoom, so the
-text is re-drawn sharp rather than magnified as pixels, and a drag moves you
-around the enlarged slide. The deck stops turning pages while you are zoomed
-in, so nothing moves under you; pinch back out and the swipes and taps return.
+citation, a figure's caption — **pinch**. The deck magnifies itself through the
+same transform that fits it to the screen, so the text is re-drawn sharp rather
+than blown up as pixels, and a drag moves you around the enlarged slide. It
+works in full screen, which is the point: a browser refuses to zoom a page that
+is in full screen, so a deck that left the job to the browser had no zoom in
+the one mode a phone reads a slide in. The controls stay put and keep working,
+the swipes and taps stop turning pages while you are zoomed in, and turning the
+page from **‹** or **›** brings the whole slide back.
 
 The shortcut sheet — two-finger tap, or the **?** button — names whichever of
 these the browser you are holding can do.

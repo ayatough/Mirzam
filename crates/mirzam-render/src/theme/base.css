@@ -42,6 +42,15 @@ body { background: var(--mz-bg); }
 #deck {
   position: absolute; top: 50%; left: 50%;
   transform-origin: center center;
+  /* The pinch that lands on a slide belongs to the viewer, which magnifies
+     the deck itself: a browser will not zoom a page in full screen, and full
+     screen is where a phone reads a slide, so leaving the gesture to the
+     browser means it is declined in the one mode that needed it. `pan-y` is
+     `html`'s claim minus `pinch-zoom`, so nothing else changes — a widget
+     inside a slide scrolls exactly as far as it did, because a descendant can
+     never win back what an ancestor gave up. Off the deck — the margin, the
+     panels, the sheet — the browser's own zoom is untouched. */
+  touch-action: pan-y;
   background: var(--mz-slide-bg);
   border-radius: 6px;
   box-shadow: 0 12px 60px rgba(0,0,0,.5); /* theme-independent: a shadow, not a surface */

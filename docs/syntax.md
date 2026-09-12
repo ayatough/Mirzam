@@ -2210,7 +2210,7 @@ There is no keyboard, so every control has a gesture:
 |---|---|
 | Swipe left / right | Next / previous |
 | Swipe up / down | Show / hide speaker notes |
-| Pinch | Zoom in on the slide — the page turns wait |
+| Pinch | Zoom in on the slide; drag to move around it |
 | Two-finger tap | The cheat sheet |
 | Tap left third / elsewhere | Back / forward |
 | Long press | Select text, as anywhere else |
@@ -2219,13 +2219,26 @@ The deck claims horizontal swipes from the browser, so swiping right turns the
 page instead of navigating away from the deck. On a touch device the cheat
 sheet leads with these gestures rather than with the keys.
 
-**A pinch is the browser's own zoom**, which is what makes the small print on a
-slide — an axis label, a citation, a figure's caption — readable on a screen
-the width of a hand. While the reader is zoomed in, the deck stops answering
-swipes and taps: a drag across a magnified slide is them travelling around it,
-and re-fitting the deck under them would take the zoom straight back. Pinch out
-and the page turns come back. The two-finger tap is decided when the fingers
-lift, so a pinch never opens the cheat sheet on its way past.
+**A pinch magnifies the deck**, which is what makes the small print on a slide
+— an axis label, a citation, a figure's caption — readable on a screen the
+width of a hand. The deck does this itself rather than leaving it to the
+browser, because *a browser will not zoom a page that is in full screen*, and
+full screen is how a landscape slide is read on a phone: the `⛶` button, or a
+deck opened from the home screen. It is the same transform that fits the deck
+to the screen, so the text is re-drawn sharp at any factor, and it behaves the
+same in a tab, in full screen and from the home screen. The controls stay where
+they are, too — the browser's own zoom pushes them off the side of the screen.
+
+While the reader is zoomed in, a drag moves them around the slide and the deck
+stops answering swipes and taps: they are travelling inside the slide, not
+asking for the next one. The **‹** and **›** buttons still turn the page, and
+turning it comes back to the whole slide — arriving already magnified into the
+corner the last slide was interesting in would show almost none of the new one.
+Pinch back out and the gestures return. The two-finger tap is decided when the
+fingers lift, so a pinch never opens the cheat sheet on its way past.
+
+Off the slide — the margin around the deck, the panels, the cheat sheet — the
+browser's own pinch zoom is untouched.
 
 The control cluster is never over the slide. Where the deck would otherwise
 reach it — a phone held sideways, where the deck is as tall as the screen, and

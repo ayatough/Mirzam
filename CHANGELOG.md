@@ -20,14 +20,23 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   because those buttons are the only controls there are, sat on the
   bottom-right corner of the slide whenever the deck was as tall as the screen
   — which is a phone held sideways, the way a landscape slide is read.
-  Now: `pinch-zoom` is named, so the browser's own zoom works and the text is
-  re-drawn sharp at whatever scale the reader takes it to; while they are
-  zoomed in the deck stops answering swipes and taps and stops re-fitting
-  itself, so a drag moves them around the magnified slide instead of turning
-  the page out from under them, and pinching out gives the gestures back; the
-  two-finger tap is decided when the fingers *lift*, so a pinch is a pinch and
-  a tap is still the cheat sheet; and the deck steps clear of the cluster the
-  way it already stepped clear of the source panel, giving up whichever of
+  Now: **the deck magnifies itself.** `pinch-zoom` was named alongside `pan-y`
+  first, which got the browser's zoom back — and then only outside full
+  screen, because a browser refuses to zoom a page with a fullscreen element
+  on it, and full screen is exactly how a landscape slide is read on a phone
+  (`⛶`, or a deck opened from the home screen). So the pinch is the viewer's
+  now: the deck is already drawn through a transform that fits it to the
+  screen, and the reader's zoom multiplies that scale and adds an offset —
+  the same vector re-draw, sharp at any factor, identical in a tab, in full
+  screen and from the home screen, and it leaves the controls on screen and
+  working where the browser's zoom pushes them off the side. A drag moves
+  around the magnified slide and never off it; swipes and taps stop turning
+  pages while it is magnified, and a page turn from the buttons comes back to
+  the whole slide. Off the deck — the margin, the panels, the sheet — the
+  browser's own zoom is untouched.
+  The two-finger tap is decided when the fingers *lift*, so a pinch is a pinch
+  and a tap is still the cheat sheet. And the deck steps clear of the cluster
+  the way it already stepped clear of the source panel, giving up whichever of
   width or height costs the slide less — often nothing at all, and never the
   corner of a slide. A tap immediately after a two-finger tap is no longer
   swallowed, which is what closing the sheet had become.

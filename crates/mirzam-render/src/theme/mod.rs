@@ -839,8 +839,8 @@ mod tests {
 
     /// Claiming the swipe must not cost the reader the pinch: `touch-action`
     /// drops every gesture it does not name, so `pan-y` on its own left a
-    /// phone unable to magnify a slide at all. The zoomed state gets both
-    /// axes back, because travelling around a magnified slide is a horizontal
+    /// phone unable to magnify anything at all. The zoomed state gets both
+    /// axes back, because travelling around a magnified page is a horizontal
     /// drag and the page turns are not listening while it is on.
     #[test]
     fn a_phone_can_zoom_into_a_slide() {
@@ -848,9 +848,35 @@ mod tests {
         assert!(BASE_CSS.contains("html.mz-zoomed, html.mz-zoomed body"));
         assert!(VIEWER_JS.contains("visualViewport"));
         assert!(VIEWER_JS.contains("mz-zoomed"));
-        // Navigation stands down while the reader is zoomed in: a drag is them
-        // travelling around the slide, and a tap is them steadying it.
-        assert!(VIEWER_JS.contains("if (zoomed) return;"));
+        // Navigation stands down while the reader is zoomed in, by either
+        // route: a drag is them travelling around the slide, and a tap is
+        // them steadying it.
+        assert!(VIEWER_JS.contains("if (zoomedIn()) return;"));
+    }
+
+    /// A browser will not zoom a page that is in full screen — and full screen
+    /// is how a landscape slide is read on a phone, so a deck that left the
+    /// zoom to the browser had none in the mode that needed it most. The deck
+    /// magnifies itself through the transform that already fits it to the
+    /// screen, which works in a tab, in full screen and from the home screen
+    /// alike.
+    #[test]
+    fn the_deck_magnifies_itself() {
+        for piece in [
+            "function place()",    // the fit, times the reader's zoom
+            "function clampPan()", // which never lets go of the screen
+            "function pinchTo(",   // two fingers, about the point between them
+            "maxZoom",
+        ] {
+            assert!(VIEWER_JS.contains(piece), "viewer.js is missing {piece}");
+        }
+        // The gesture has to reach the script rather than being spent on a
+        // zoom the browser declines: the deck is `html`'s claim minus
+        // `pinch-zoom`. Off the deck the browser's own zoom is untouched.
+        assert!(BASE_CSS.contains("touch-action: pan-y;"));
+        assert!(BASE_CSS.contains("touch-action: pan-y pinch-zoom;"));
+        // A page turn is a new composition, not a new corner of the old one.
+        assert!(VIEWER_JS.contains("if (changed) resetZoom();"));
     }
 
     /// A pinch starts as two fingers landing, which is also how a two-finger
@@ -865,7 +891,10 @@ mod tests {
         let start = VIEWER_JS.find("addEventListener('touchstart'").unwrap();
         let end = VIEWER_JS.find("addEventListener('touchmove'").unwrap();
         assert!(!VIEWER_JS[start..end].contains("toggleKeys()"));
-        assert!(VIEWER_JS.contains("if (quick) { handled = true; toggleKeys(); }"));
+        assert!(VIEWER_JS.contains("if (tap) { handled = true; toggleKeys(); }"));
+        // And a pair of fingers that moved is a pinch from that moment on,
+        // which is what the deck's own zoom answers.
+        assert!(VIEWER_JS.contains("if (!two.tap) pinchTo(two, p);"));
     }
 
     /// On a touchscreen the cluster never fades — those buttons are the only

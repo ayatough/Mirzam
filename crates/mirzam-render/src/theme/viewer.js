@@ -148,6 +148,33 @@
     || matchMedia('(display-mode: standalone)').matches
     || navigator.standalone === true;
 
+  // ---- The reader's own zoom ----
+  // A browser will not zoom a page that is in full screen. Not a setting and
+  // not a bug to route around: ask Chromium for a scale factor with a
+  // fullscreen element on screen and nothing happens at all. Full screen is
+  // also how a landscape slide is read on a phone — it is what the `⛶` button
+  // and the home screen are for — so leaving the zoom to the browser meant
+  // handing it over in exactly the mode a phone reader spends their time in,
+  // and the small print on a slide stayed out of reach.
+  //
+  // So the deck magnifies itself. It is already drawn through a transform that
+  // fits it to the screen, so the reader's zoom is that scale multiplied and
+  // an offset added — the same vector re-draw, sharp at any factor, and it
+  // works the same in a tab, in full screen and on a deck opened from the home
+  // screen. It leaves the controls where they are, too: the browser's zoom
+  // pushes the fixed cluster off the side of the screen, and this does not.
+  let zoom = 1;
+  const pan = { x: 0, y: 0 };
+  // What `fit` last decided: the scale that fits the deck to `w` by `h`, and
+  // the offset that keeps it clear of the chrome. The reader's gestures
+  // multiply the first and add to the second; nothing here is written back.
+  let base = { s: 1, x: 0, y: 0, w: 0, h: 0 };
+  // How far in the reader may go, as a multiple of the fitted deck. Enough to
+  // read a figure's caption on a phone, where the fit is around a third of the
+  // slide's own pixels and 2.5x *those* is what makes 12px legible; a desk,
+  // where the deck is already life size, needs far less of it.
+  const maxZoom = () => Math.max(4, 2.5 / base.s);
+
   /**
    * The room the deck keeps off, as `{x, y}` pixels of the right edge and the
    * bottom — the open source panel's, and the control cluster's where that
@@ -221,8 +248,38 @@
     const s = Math.min((box.width - keep.x) / (W + edge), (box.height - keep.y) / (H + edge));
     deck.style.width = W + 'px';
     deck.style.height = H + 'px';
+    base = { s, x: -keep.x / 2, y: -keep.y / 2, w: box.width, h: box.height };
+    place();
+  }
+
+  /** Draws the deck where the fit and the reader's zoom between them say. */
+  function place() {
+    clampPan();
     deck.style.transform =
-      `translate(calc(-50% - ${keep.x / 2}px), calc(-50% - ${keep.y / 2}px)) scale(${s})`;
+      `translate(calc(-50% + ${base.x + pan.x}px), calc(-50% + ${base.y + pan.y}px))`
+      + ` scale(${base.s * zoom})`;
+  }
+
+  /**
+   * A magnified deck may be dragged around, but never off the screen: the
+   * reader travels inside the slide, and every edge they reach is the slide's
+   * own. An axis that still fits goes back to where the fit put it.
+   */
+  function clampPan() {
+    for (const [axis, span, size] of [['x', 'w', W], ['y', 'h', H]]) {
+      const half = size * base.s * zoom / 2;
+      const edge = base[span] / 2;
+      if (half <= edge) { pan[axis] = 0; continue; }
+      pan[axis] = Math.min(Math.max(pan[axis], edge - half - base[axis]), half - edge - base[axis]);
+    }
+  }
+
+  /** Back to the whole slide, fitted. */
+  function resetZoom() {
+    if (zoom === 1 && !pan.x && !pan.y) return;
+    zoom = 1;
+    pan.x = pan.y = 0;
+    place();
   }
 
   // `play` is what separates a page turn from a repaint: a resize, a font
@@ -244,6 +301,11 @@
     if (play && from && idx === cur && !(opts && opts.first) && !wrap) return;
     const backwards = idx < cur && !wrap;
     const changed = (from && idx !== cur) || wrap;
+    // A page turn is a new composition. Arriving already magnified into the
+    // corner the last slide was interesting in would show a reader almost
+    // none of this one, so the deck comes back to whole. A repaint - a resize,
+    // a font arriving, a live edit - is not a page turn and keeps the zoom.
+    if (changed) resetZoom();
     // Parts of a slide broken by `<!-- next -->` are one slide the author chose
     // to serve in instalments: every other pane holds the same elements in the
     // same places, so moving between them is a cut, not a page turn.
@@ -638,7 +700,7 @@
     [['⊞ button'], 'All slides — tap one to go there'],
     [['Swipe ←', 'Swipe →'], 'Next / previous'],
     [['Swipe ↑', 'Swipe ↓'], 'Show / hide notes'],
-    [['Pinch'], 'Zoom in — the page turns wait'],
+    [['Pinch'], 'Zoom in — then drag to move around'],
     [['Two-finger tap'], 'This sheet'],
     [['Tap left', 'Tap right'], 'Back / forward'],
     [['Long press'], 'Select text, as anywhere else'],
@@ -1249,23 +1311,46 @@
   // ---- Pinched in ----
   // A slide is a landscape rectangle on a screen the width of a hand, so the
   // smallest thing on it — an axis label, a citation, a figure's caption — can
-  // be below what the reader's eyes can do. Pinch zoom is the answer every
-  // other page on the phone already gives them (`base.css` names `pinch-zoom`
-  // so the browser keeps the gesture), and the deck's job is to stay out of
-  // its way once they have used it: a drag across a magnified slide is the
-  // reader travelling around it and a tap is them steadying it, neither a page
-  // turn, and `refit` re-fitting the deck under them would hand the zoom
-  // straight back. So navigation waits until they pinch out again.
+  // be below what the reader's eyes can do. The deck magnifies itself for
+  // them (see `place`), because the browser will not do it in full screen,
+  // which is where a phone reads a deck.
+  //
+  // The browser's own zoom is still there for everything that is not the
+  // slide — the panels, the sheet, the margin around the deck — so both are
+  // asked before navigation moves: a reader who is looking closely by either
+  // route is not asking for the next page. A drag is them travelling around
+  // the slide, a tap is them steadying it.
   const vv = window.visualViewport || null;
-  let zoomed = false;
+  let vvZoom = false;
   // Not `> 1`: a pinch that settles a hair off its starting scale is a reader
   // who changed their mind, not one who wants the deck to stop turning pages.
   const markZoom = () => {
     const on = !!vv && vv.scale > 1.01;
-    if (on === zoomed) return;
-    zoomed = on;
+    if (on === vvZoom) return;
+    vvZoom = on;
     html.classList.toggle('mz-zoomed', on);
   };
+  const zoomedIn = () => zoom > 1.01 || vvZoom;
+
+  /**
+   * Applies a two-finger gesture: the deck scales by how far the fingers have
+   * spread since they landed, about the point between them — so whatever the
+   * reader put their fingers either side of stays where they put it, and a
+   * pair of fingers travelling together carries the slide along.
+   */
+  function pinchTo(from, now) {
+    const next = Math.min(Math.max(from.zoom * (now.gap / from.gap), 1), maxZoom());
+    // Where the midpoint sat on the deck when the fingers landed, in the
+    // slide's own pixels. That point is the one that must not move.
+    const q = {
+      x: (from.x - (base.w / 2 + base.x + from.pan.x)) / (base.s * from.zoom),
+      y: (from.y - (base.h / 2 + base.y + from.pan.y)) / (base.s * from.zoom),
+    };
+    zoom = next;
+    pan.x = now.x - base.w / 2 - base.x - q.x * base.s * next;
+    pan.y = now.y - base.h / 2 - base.y - q.y * base.s * next;
+    place();
+  }
 
   // ---- Touch: a phone has no keyboard ----
   // Swipe to turn the page, swipe up for notes, a two-finger tap for the cheat
@@ -1314,8 +1399,11 @@
     handled = false;
     if (e.touches.length > 1) {
       touch = null;
+      // Where the deck stood when the fingers landed: a pinch is measured
+      // against that, so the slide follows the fingers instead of drifting
+      // by however much it had already been moved.
       two = e.touches.length === 2
-        ? Object.assign(pair(e.touches), { at: e.timeStamp })
+        ? Object.assign(pair(e.touches), { at: e.timeStamp, tap: true, zoom, pan: { ...pan } })
         : null;
       return;
     }
@@ -1323,13 +1411,30 @@
     // nothing in it can turn a page, and its own buttons still work.
     if (inPanel(e.target)) { touch = null; return; }
     const t = e.touches[0];
-    touch = { x: t.clientX, y: t.clientY, held: selecting() };
+    // `lx`/`ly` follow the finger for dragging a magnified slide; `x`/`y` stay
+    // where it landed, because a swipe is measured from there.
+    touch = { x: t.clientX, y: t.clientY, lx: t.clientX, ly: t.clientY, held: selecting() };
   }, { passive: true });
 
   addEventListener('touchmove', (e) => {
-    if (!two || e.touches.length !== 2) return;
-    const p = pair(e.touches);
-    if (Math.abs(p.gap - two.gap) > SPREAD || Math.hypot(p.x - two.x, p.y - two.y) > SPREAD) two = null;
+    if (two && e.touches.length === 2) {
+      const p = pair(e.touches);
+      // Fingers that have spread, closed or travelled are no longer a tap —
+      // and from that moment they are a pinch, which the deck answers.
+      if (Math.abs(p.gap - two.gap) > SPREAD || Math.hypot(p.x - two.x, p.y - two.y) > SPREAD) two.tap = false;
+      if (!two.tap) pinchTo(two, p);
+      return;
+    }
+    // One finger on a magnified slide: the reader is moving around inside it,
+    // which is not a swipe and must not leave a page turn behind it.
+    if (!touch || zoom <= 1.01 || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    pan.x += t.clientX - touch.lx;
+    pan.y += t.clientY - touch.ly;
+    touch.lx = t.clientX;
+    touch.ly = t.clientY;
+    handled = true;
+    place();
   }, { passive: true });
 
   // The browser takes the touches away when it starts zooming with them, which
@@ -1340,9 +1445,9 @@
     if (two) {
       // Both fingers off, quickly, having gone nowhere: a tap, not a pinch.
       if (e.touches.length) return;
-      const quick = (e.timeStamp - two.at) < TWO_MS;
+      const tap = two.tap && (e.timeStamp - two.at) < TWO_MS;
       two = null;
-      if (quick) { handled = true; toggleKeys(); }
+      if (tap) { handled = true; toggleKeys(); }
       return;
     }
     if (!touch) return;
@@ -1350,8 +1455,8 @@
     const dx = t.clientX - touch.x, dy = t.clientY - touch.y;
     const wasSelecting = touch.held;
     touch = null;
-    // Pinched in, a drag is the reader moving around the magnified slide.
-    if (zoomed) return;
+    // Pinched in, a drag was the reader moving around the magnified slide.
+    if (zoomedIn()) return;
     if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE) return;   // a tap, or a scroll
     // Dragging a selection handle travels exactly as far as a swipe does.
     // Whichever way it is read, a reader adjusting a selection is not asking
@@ -1460,7 +1565,7 @@
     // Pinched in, a tap on the slide is the reader steadying a magnified page,
     // and turning it under them would be the surest way to lose the detail
     // they zoomed in for. The cluster's arrows still turn pages.
-    if (zoomed) return;
+    if (zoomedIn()) return;
     if ((getSelection()?.toString() || '').trim()) return;
     // Anything a reader operates rather than reads: a click on a player, its
     // label, or the card around it is aimed at the player. Every one of those
@@ -1482,10 +1587,12 @@
   });
 
   // A repaint, not a page turn: keep the slide exactly where the presenter
-  // left it, animations and all. Never while the reader is pinched in: a fit
-  // is what takes the zoom back, and pinching out is a viewport resize of its
-  // own, which is where the fit they missed happens.
-  const refit = () => { if (zoomed) return; fit(); show(cur, { play: false }); };
+  // left it, animations and all. The reader's own zoom rides through it — the
+  // fit writes a new base and `place` re-applies the magnification on top —
+  // but the browser's does not: a fit is what takes *that* one back, and
+  // pinching out is a viewport resize of its own, which is where the fit they
+  // missed happens.
+  const refit = () => { if (vvZoom) return; fit(); show(cur, { play: false }); };
   addEventListener('resize', refit);
   // A phone's viewport moves without a `resize`: the address bar retracts, a
   // panel opens, the screen turns over. `visualViewport` reports all of it,
@@ -1494,7 +1601,7 @@
   // and must not: the reader is zooming in on the slide as it stands, and
   // re-fitting under them would take the zoom back as fast as they gave it.
   if (vv) {
-    const settled = () => { markZoom(); if (!zoomed) refit(); };
+    const settled = () => { markZoom(); if (!vvZoom) refit(); };
     vv.addEventListener('resize', settled);
     // Scrolling a zoomed viewport does not resize it, and a pinch that ends
     // mid-scroll is the one way the class would otherwise be left behind.
