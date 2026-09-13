@@ -121,7 +121,7 @@ pub(crate) fn export_video(input: &Path, out_path: &Path, args: &VideoArgs) -> R
 
     let (secs, verb) = if args.stills {
         (
-            export_stills(&out, &dwells, &chromium, &ffmpeg, out_path)?,
+            export_stills(&out, &dwells, &chromium.bin, &ffmpeg, out_path)?,
             "wrote",
         )
     } else {
@@ -131,7 +131,13 @@ pub(crate) fn export_video(input: &Path, out_path: &Path, args: &VideoArgs) -> R
             .unwrap_or(DEFAULT_DWELL_MS);
         (
             export_recording(
-                &out, &dwells, interval, &chromium, &ffmpeg, args.mute, out_path,
+                &out,
+                &dwells,
+                interval,
+                &chromium.bin,
+                &ffmpeg,
+                args.mute,
+                out_path,
             )?,
             "recorded",
         )

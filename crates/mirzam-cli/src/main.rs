@@ -9,6 +9,7 @@ mod audio;
 mod cdp;
 mod check;
 mod pptx;
+mod proc;
 mod video;
 
 use mirzam_cli::{pdfimport, pipeline, scaffold, serve, skill};
@@ -26,6 +27,7 @@ fn main() -> ExitCode {
             let mut i = 1;
             while i < args.len() {
                 match args[i].as_str() {
+                    "--help" | "-h" => return help(),
                     "-o" | "--out" => {
                         i += 1;
                         match args.get(i) {
@@ -70,6 +72,7 @@ fn main() -> ExitCode {
             let mut i = 1;
             while i < args.len() {
                 match args[i].as_str() {
+                    "--help" | "-h" => return help(),
                     "--empty" => empty = true,
                     other if path.is_none() => path = Some(PathBuf::from(other)),
                     other => return usage(&format!("unknown argument: {other}")),
@@ -91,6 +94,7 @@ fn main() -> ExitCode {
             let mut i = 1;
             while i < args.len() {
                 match args[i].as_str() {
+                    "--help" | "-h" => return help(),
                     "-p" | "--port" => {
                         i += 1;
                         match args.get(i).and_then(|p| p.parse().ok()) {
@@ -117,6 +121,9 @@ fn main() -> ExitCode {
         }
         Some("export") => {
             let format = args.get(1).map(String::as_str);
+            if wants_help(format) {
+                return help();
+            }
             let Some(format @ ("pdf" | "pptx" | "video")) = format else {
                 return usage("export takes a format: pdf, pptx or video");
             };
@@ -133,6 +140,7 @@ fn main() -> ExitCode {
             let mut i = 2;
             while i < args.len() {
                 match args[i].as_str() {
+                    "--help" | "-h" => return help(),
                     "-o" | "--out" => {
                         i += 1;
                         match args.get(i) {
@@ -245,6 +253,7 @@ fn main() -> ExitCode {
             let mut i = 1;
             while i < args.len() {
                 match args[i].as_str() {
+                    "--help" | "-h" => return help(),
                     "--base-url" => {
                         i += 1;
                         match args.get(i) {
@@ -265,6 +274,13 @@ fn main() -> ExitCode {
                         match args.get(i).and_then(|v| v.parse().ok()) {
                             Some(px) => opts.min_slack = Some(px),
                             None => return usage("--min-slack requires a number of pixels"),
+                        }
+                    }
+                    "--timeout" => {
+                        i += 1;
+                        match args.get(i).and_then(|v| v.parse().ok()) {
+                            Some(secs) => opts.timeout_secs = Some(secs),
+                            None => return usage("--timeout requires a number of seconds"),
                         }
                     }
                     "--format" => {
@@ -290,6 +306,9 @@ fn main() -> ExitCode {
             run(check::check(&input, &opts))
         }
         Some("import") => {
+            if wants_help(args.get(1).map(String::as_str)) {
+                return help();
+            }
             if args.get(1).map(String::as_str) != Some("pdf") {
                 return usage("import takes a format: pdf");
             }
@@ -298,6 +317,7 @@ fn main() -> ExitCode {
             let mut i = 2;
             while i < args.len() {
                 match args[i].as_str() {
+                    "--help" | "-h" => return help(),
                     "-o" | "--out" => {
                         i += 1;
                         match args.get(i) {
@@ -363,12 +383,18 @@ fn main() -> ExitCode {
             run(import_pdf(&opts))
         }
         Some("lsp") => {
+            if wants_help(args.get(1).map(String::as_str)) {
+                return help();
+            }
             if args.len() > 1 {
                 return usage("lsp takes no arguments - the editor starts it and speaks to it");
             }
             run(mirzam_cli::lsp::serve_stdio())
         }
         Some("skill") => {
+            if wants_help(args.get(1).map(String::as_str)) {
+                return help();
+            }
             if args.get(1).map(String::as_str) != Some("install") {
                 return usage("install is currently the only skill subcommand");
             }
@@ -376,6 +402,7 @@ fn main() -> ExitCode {
             let mut i = 2;
             while i < args.len() {
                 match args[i].as_str() {
+                    "--help" | "-h" => return help(),
                     "--user" => opts.user = true,
                     "--force" => opts.force = true,
                     "--zip" => {
@@ -401,11 +428,7 @@ fn main() -> ExitCode {
             println!("mirzam {}", env!("CARGO_PKG_VERSION"));
             ExitCode::SUCCESS
         }
-        // Asking for help is not an error: it goes to stdout and succeeds.
-        Some("--help" | "-h" | "help") => {
-            println!("{}", help_text());
-            ExitCode::SUCCESS
-        }
+        Some("--help" | "-h" | "help") => help(),
         None => usage(""),
         Some(other) => usage(&unknown_command(other)),
     }
@@ -497,6 +520,26 @@ fn run(result: Result<(), String>) -> ExitCode {
     }
 }
 
+/// Asking for help is not an error, wherever in the command line it is asked:
+/// it goes to stdout and succeeds.
+///
+/// A subcommand's flag loop reaches this only when `--help` stands on its own.
+/// A file genuinely named `--help` handed to a flag that takes a value - `-o
+/// --help` - is consumed as that value before the loop sees it, which is the
+/// behaviour of every other parser and the reason this is not a scan of the
+/// whole argument list.
+fn help() -> ExitCode {
+    println!("{}", help_text());
+    ExitCode::SUCCESS
+}
+
+/// Whether a subcommand's own second word is a request for help, for the
+/// commands that name a format (`export pdf`, `import pdf`) and validate it
+/// before any flag loop runs.
+fn wants_help(arg: Option<&str>) -> bool {
+    matches!(arg, Some("--help" | "-h"))
+}
+
 fn usage(msg: &str) -> ExitCode {
     if !msg.is_empty() {
         eprintln!("error: {msg}\n");
@@ -530,7 +573,7 @@ Usage:
   mirzam check <input.md> [--split h1|h2|h3] [--theme <name|file.css>]...
                [--fit shrink] [--mode light|dark] [--base-url <url>]
                [--debug-layout] [--chromium <bin>] [--min-slack <px>]
-               [--format text|json]
+               [--format text|json] [--timeout <secs>]
   mirzam import pdf <paper.pdf> [-o <dir>] [--figure <n>] [--page <n>]
                [--format auto|svg|png|image|pdf] [--dpi <n>] [--cite <key>]
                [--tool <bin>] [--list]
@@ -661,6 +704,11 @@ Usage:
           source file and line it came from, through transclusion. The exit
           code is unchanged, and errors still go to stderr, so the document is
           safe to pipe. The schema is versioned in docs/agents.md (check only)
+  --timeout is how many seconds the browser gets before the check gives up on
+          it and says so, naming the browser it launched and where that path
+          came from. 120 by default, which is far above any deck this was
+          measured on; `--timeout 0` waits as long as it takes, for the deck
+          that is the exception (check only)
   --strict exits non-zero when the build produced any warnings - a shape
           block inside a pane, a footnote with no definition on its slide, a
           connect endpoint that matches nothing - so CI can catch a silent
@@ -1141,7 +1189,7 @@ fn export_pdf(
     let out_abs = std::env::current_dir()
         .map_err(|e| e.to_string())?
         .join(out_path);
-    let status = std::process::Command::new(&bin)
+    let status = std::process::Command::new(&bin.bin)
         .args([
             "--headless",
             "--disable-gpu",
@@ -1238,12 +1286,12 @@ pub(crate) fn photograph_slides(
 }
 
 /// Locates Chromium: explicit flag, then $MIRZAM_CHROMIUM, then well-known names.
-fn find_chromium(explicit: Option<&str>) -> Result<String, String> {
+fn find_chromium(explicit: Option<&str>) -> Result<Chromium, String> {
     if let Some(c) = explicit {
-        return Ok(c.to_string());
+        return Ok(Chromium::new(c, "from --chromium"));
     }
     if let Ok(c) = std::env::var("MIRZAM_CHROMIUM") {
-        return Ok(c);
+        return Ok(Chromium::new(&c, "from MIRZAM_CHROMIUM"));
     }
     for cand in [
         "chromium",
@@ -1252,18 +1300,46 @@ fn find_chromium(explicit: Option<&str>) -> Result<String, String> {
         "google-chrome-stable",
         "chrome",
     ] {
-        let found = std::process::Command::new(cand)
-            .arg("--version")
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false);
-        if found {
-            return Ok(cand.to_string());
+        // Bounded, because this is the discovery step: a browser on PATH that
+        // hangs on `--version` would otherwise hang the search for one that
+        // works, and a probe that cannot answer in five seconds has answered.
+        let mut probe = std::process::Command::new(cand);
+        probe.arg("--version");
+        if proc::succeeds_within(&mut probe, PROBE_TIMEOUT) {
+            return Ok(Chromium::new(cand, "found on PATH"));
         }
     }
     Err("Chromium not found; pass --chromium or set MIRZAM_CHROMIUM".into())
+}
+
+/// How long a candidate browser has to say its own version before the search
+/// moves on to the next one.
+const PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// The browser to run, and how it was chosen.
+///
+/// The second half is not decoration: when the browser is the thing that is
+/// wrong - it hangs, it is not a Chromium, it is a stub - the reader's next
+/// question is which knob put it there, and the three answers (`--chromium`,
+/// `MIRZAM_CHROMIUM`, PATH) send them to three different places.
+pub(crate) struct Chromium {
+    pub(crate) bin: String,
+    how: &'static str,
+}
+
+impl Chromium {
+    fn new(bin: &str, how: &'static str) -> Chromium {
+        Chromium {
+            bin: bin.to_string(),
+            how,
+        }
+    }
+}
+
+impl std::fmt::Display for Chromium {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "`{}` ({})", self.bin, self.how)
+    }
 }
 
 #[cfg(test)]

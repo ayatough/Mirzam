@@ -36,6 +36,16 @@ the caller that wants to *act* on a finding rather than only stop.
 warnings, no verdict. Errors and the exit message go to `stderr`, so the
 output is safe to pipe.
 
+The run is bounded. `check` renders the deck in headless Chromium, and a
+browser that cannot start — one missing a library, one that cannot lock its
+profile, a stub standing in for the real thing — otherwise leaves the caller
+waiting with nothing on either stream, unable to tell a large deck from a run
+that will never return. So the browser gets 120 seconds, and a run that
+exceeds them fails naming the browser it launched and which of the three
+routes (`--chromium`, `MIRZAM_CHROMIUM`, `PATH`) produced that path.
+`--timeout <seconds>` moves the ceiling; `--timeout 0` takes it off, for the
+deck that genuinely needs longer.
+
 ## The document
 
 ```json

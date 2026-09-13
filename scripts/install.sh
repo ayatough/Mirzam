@@ -28,12 +28,31 @@ target() {
   esac
 }
 
-# The releases API answers with the tag of the latest release; asking for it is
-# how `MIRZAM_VERSION` gets a default without this script knowing the version.
+# The tag of the latest release, which is how `MIRZAM_VERSION` gets a default
+# without this script knowing the version.
+#
+# Two ways of asking, because the obvious one has a budget attached: the API
+# allows 60 unauthenticated requests an hour *per IP*, and on a shared or
+# NAT'd address - CI, a container host, a sandbox - that hour's budget is
+# often already spent by somebody else. The releases page redirects to the
+# tagged release instead, and that redirect is served from github.com with no
+# budget at all. The API is still asked first: it is the answer that stays
+# right if the redirect ever changes shape.
+#
+# Tested by outcome, not by exit status. `curl | sed` reports the exit status
+# of `sed`, so a rate-limited API - whose body is a JSON error carrying no
+# `tag_name` - ends the pipeline successfully with nothing in it, and a `||`
+# written here would never run.
 latest() {
-  curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" \
+  version=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null \
     | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' \
-    | head -1
+    | head -1)
+  if [ -z "$version" ]; then
+    version=$(curl -fsSL -o /dev/null -w '%{url_effective}' \
+      "https://github.com/$REPO/releases/latest" 2>/dev/null \
+      | sed -n 's#.*/releases/tag/##p')
+  fi
+  echo "$version"
 }
 
 command -v curl >/dev/null || die "curl is required"
