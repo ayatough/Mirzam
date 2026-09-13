@@ -8,6 +8,53 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Fixed
+- **A phone can zoom into a slide again, and the controls no longer stand on
+  one.** Three things made a deck hard to read on a phone, and they were one
+  problem: the detail was too small and there was no way in. `touch-action`
+  claims the horizontal swipe for the page turns, and a `touch-action` that
+  names any pan drops every gesture it does not name — so `pan-y` had been
+  taking pinch zoom with it, and a reader who could not make out an axis label
+  had nothing to do about it. The gesture they reached for made it worse: two
+  fingers landing opened the cheat sheet, an overlay, over the slide they were
+  trying to see. And the control cluster, which never fades on a touchscreen
+  because those buttons are the only controls there are, sat on the
+  bottom-right corner of the slide whenever the deck was as tall as the screen
+  — which is a phone held sideways, the way a landscape slide is read.
+  Now: **the deck magnifies itself.** `pinch-zoom` was named alongside `pan-y`
+  first, which got the browser's zoom back — and then only outside full
+  screen, because a browser refuses to zoom a page with a fullscreen element
+  on it, and full screen is exactly how a landscape slide is read on a phone
+  (`⛶`, or a deck opened from the home screen). So the pinch is the viewer's
+  now: the deck is already drawn through a transform that fits it to the
+  screen, and the reader's zoom multiplies that scale and adds an offset —
+  the same vector re-draw, sharp at any factor, identical in a tab, in full
+  screen and from the home screen, and it leaves the controls on screen and
+  working where the browser's zoom pushes them off the side. A drag moves
+  around the magnified slide and never off it; swipes and taps stop turning
+  pages while it is magnified, and a page turn from the buttons comes back to
+  the whole slide. Off the deck — the margin, the panels, the sheet — the
+  browser's own zoom is untouched.
+  The two-finger tap is decided when the fingers *lift*, so a pinch is a pinch
+  and a tap is still the cheat sheet. And the deck steps clear of the cluster
+  the way it already stepped clear of the source panel, giving up whichever of
+  width or height costs the slide less — often nothing at all, and never the
+  corner of a slide. A tap immediately after a two-finger tap is no longer
+  swallowed, which is what closing the sheet had become.
+
+- **CI is green again, and the sample decks have room to breathe.** Two jobs
+  had been failing on `main` since before the viewer work, which is why the
+  site stopped publishing: Pages waits for a green CI run and had been
+  skipping every deploy. The language-server probe spawned `cargo run` and
+  gave the server thirty seconds to answer `initialize` — on a cold cache the
+  compiler was still running when the clock ran out, and the job's cleanup
+  killed `rustc` to prove it; the probe now builds first, so the thirty
+  seconds measure the server and not the compiler. The layout check found
+  five clipped panes across `02-writing`, `03-layout` and `06-theming`: a
+  runner's fonts are not the author's, and those panes had been sitting on one
+  to three pixels, so a fallback face a hair wider than Inter pushed the last
+  line out of the box. They were widened by a band or shortened by a line, and
+  every deck now clears the check both with the fonts its themes name and with
+  none of them installed.
 - **`import pdf`: two floats sharing a band are two pictures.** A narrow figure
   in a column beside a wide one taking the rest of the width is one band, held
   up and held down by the same two paragraphs, with nothing inside it to tell

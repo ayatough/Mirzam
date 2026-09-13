@@ -110,27 +110,22 @@ Read at a desk.
 </section>
 <section class="slide" data-index="4">
 <div class="grid" style='grid-template-columns:16fr 16fr 16fr;grid-template-rows:1fr 3fr 3fr;grid-template-areas:"head head head" "one two three" "four five how"'>
-<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Gallery</span> <strong>Every theme, in the deck's own mode</strong> — no pane below
-names a mode, so <code>D</code> flips all five along with the slide around them.</p>
+<div class="pane pane-head" data-pane="head" style="grid-area:head"><p><span class="eyebrow">Gallery</span> <strong>Every theme, in the deck's own mode</strong> — no pane names
+one, so <code>D</code> flips all five at once.</p>
 </div>
-<div class="pane pane-one" data-pane="one" data-theme="mirzam" style="grid-area:one;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">mirzam</span></p>
-<p>Ink on paper, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
+<div class="pane pane-one" data-pane="one" data-theme="mirzam" style="grid-area:one;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">mirzam</span> Ink on paper, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
 <p><span class="small">Ours, and what naming nothing gets.</span></p>
 </div>
-<div class="pane pane-two" data-pane="two" data-theme="nord" style="grid-area:two;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">nord</span></p>
-<p>Cool blues, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
+<div class="pane pane-two" data-pane="two" data-theme="nord" style="grid-area:two;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">nord</span> Cool blues, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
 <p><span class="small">Arctic and even, from Nord.</span></p>
 </div>
-<div class="pane pane-three" data-pane="three" data-theme="solarized" style="grid-area:three;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">solarized</span></p>
-<p>Low glare, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
+<div class="pane pane-three" data-pane="three" data-theme="solarized" style="grid-area:three;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">solarized</span> Low glare, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
 <p><span class="small">Tuned for reading for a long time.</span></p>
 </div>
-<div class="pane pane-four" data-pane="four" data-theme="vscode" style="grid-area:four;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">vscode</span></p>
-<p>Editor colours, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
-<p><span class="small">Light+ and Dark+, for a deck about code.</span></p>
+<div class="pane pane-four" data-pane="four" data-theme="vscode" style="grid-area:four;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">vscode</span> Editor colours, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
+<p><span class="small">Light+ and Dark+, for code decks.</span></p>
 </div>
-<div class="pane pane-five" data-pane="five" data-theme="wuwei" style="grid-area:five;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">wuwei</span></p>
-<p>Warm greys in roman, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
+<div class="pane pane-five" data-pane="five" data-theme="wuwei" style="grid-area:five;display:flex;flex-direction:column;justify-content:center"><p><span class="eyebrow">wuwei</span> Warm greys, <a href="https://example.com">a link</a>, <strong>bold</strong>.</p>
 <p><span class="small">A serif; quiet on purpose.</span></p>
 </div>
 <div class="pane pane-how card" data-pane="how" style="grid-area:how;display:flex;flex-direction:column;justify-content:center"><ul>
@@ -163,11 +158,11 @@ names a mode, so <code>D</code> flips all five along with the slide around them.
 </div>
 <div class="pane pane-what" data-pane="what" style="grid-area:what;display:flex;flex-direction:column;justify-content:center"><ul>
 <li>All optional; a deck with no frontmatter builds</li>
-<li><code>theme:</code> takes a built-in name, a <code>.css</code> path <strong>relative to the deck file</strong>,
-or a list of both in cascade order</li>
+<li><code>theme:</code> a built-in name, or a <code>.css</code> path <strong>relative to the deck file</strong>;
+a list of both cascades</li>
 <li><code>split:</code> starts a slide at every heading of that level</li>
 <li><code>transition:</code> is the deck-wide page turn; a slide can override its half</li>
-<li><code>math:</code> picks the formula syntax, <code>latex</code> (the default) or <code>typst</code></li>
+<li><code>math:</code> picks <code>latex</code> (the default) or <code>typst</code></li>
 <li><code>vars:</code> are substituted with <code>{{ }}</code>, and arithmetic works: <code>{{ seats * 12 }}</code></li>
 </ul>
 </div>
@@ -231,8 +226,8 @@ and the classes your stylesheet styles</li>
 <li><code>.center</code>, <code>.right</code>, <code>.small</code>, <code>.u</code>, <code>.box</code>, <code>.card</code>, <code>.eyebrow</code> and
 <code>.metric</code> come with the renderer; anything else is yours to define</li>
 </ul>
-<p><em>In a plain Markdown reader the braces are literal text — that is the price,
-and the reason the syntax is this quiet.</em></p>
+<p><em>In a plain Markdown reader the braces are literal text: the price of a
+syntax this quiet.</em></p>
 </div>
 </div>
 <div class="mz-slide-chrome"><span class="mz-footer">Theming and settings</span><span class="mz-slide-number">8 / 16</span></div>
@@ -316,8 +311,8 @@ deck to one mode. <code>D</code> then changes <code>data-mode</code> and nothing
 </code></pre>
 </div>
 <div class="pane pane-out" data-pane="out" style="grid-area:out;display:flex;flex-direction:column;justify-content:center"><p>Six tokens set a deck's margins, the gap between panes, and the padding,
-border and radius of a pane. Every one carries its built-in value as a
-fallback, so a deck that sets none renders exactly as it always did.</p>
+border and radius of a pane. Each falls back to its built-in value, so a deck
+that sets none renders as it always did.</p>
 <p>These are <strong>not</strong> palette tokens — no built-in theme defines one, and <code>theme:</code>
 stays a choice of colour.</p>
 <p>Because custom properties inherit, the same names work at any scale: on
@@ -418,10 +413,9 @@ trailing space</strong>, since the browser adds none after one.</p>
 </div>
 <div class="pane pane-what" data-pane="what" style="grid-area:what;display:flex;flex-direction:column;justify-content:center"><p>Without it, a pane that overflows is <strong>clipped</strong> — the last line simply is not
 there, and nothing on screen says so.</p>
-<p><code>fit: shrink</code> scales the pane's text down until it fits instead. It is the
-right default for a document you converted rather than wrote, and the wrong
-one for a deck you are still editing, where you want to see the overflow and
-cut something.</p>
+<p><code>fit: shrink</code> scales the pane's text down to fit instead. It is the right
+default for a document you converted rather than wrote, and the wrong one for
+a deck you are still editing.</p>
 <p><em><code>node scripts/check-layout.mjs</code> finds them either way.</em></p>
 </div>
 </div>

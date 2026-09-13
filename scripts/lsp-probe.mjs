@@ -18,7 +18,7 @@
 // No dependencies, deliberately: it speaks the same `Content-Length` framing
 // the server does, in about thirty lines.
 
-import { spawn } from "child_process";
+import { spawn, spawnSync } from "child_process";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import { pathToFileURL } from "url";
@@ -46,6 +46,21 @@ const expectClean = flag("--expect-clean");
 const [cmd, base] = bin
   ? [bin, ["lsp"]]
   : ["cargo", ["run", "-q", "--bin", "mirzam", "--", "lsp"]];
+
+// Compiling is not answering. A fresh checkout - CI on a cold cache is the one
+// that bites - builds the server on the first `cargo run`, and that build used
+// to happen inside the thirty seconds `waitFor` allows for a reply: the probe
+// reported a language server that never spoke while the compiler was still
+// running, and the job's cleanup shot `rustc` in the back to prove it. Building
+// first costs a warm tree a freshness check and turns a cold one into a slow
+// start rather than a failure.
+if (!bin) {
+  const built = spawnSync("cargo", ["build", "-q", "--bin", "mirzam"], { stdio: "inherit" });
+  if (built.status !== 0) {
+    console.error("the language server would not build");
+    process.exit(built.status ?? 1);
+  }
+}
 
 const server = spawn(cmd, base, { stdio: ["pipe", "pipe", "inherit"] });
 
