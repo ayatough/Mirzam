@@ -8,6 +8,18 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Fixed
+- **A `fit=contain` picture stays inside a pane under `fit: shrink`.** The
+  shrink moves a pane's children into a wrapper and scales the text in that,
+  and the wrapper was as tall as its content rather than the pane: a
+  picture's `height:100%` had nothing to resolve against, so a figure that
+  fitted with the fit off came out at its natural height and ran off the
+  bottom with it on - captioned or not, per pane or for the whole deck - and
+  the fit then shrank the pane's text to the floor trying to make room. The
+  wrapper now fills the pane and lays its children out as the pane would
+  (its `valign=` flex, its own margins, the `.pane >` rules), so turning the
+  fit on changes nothing on a pane that already fits. The fit also measures
+  what a `valign=middle` or `bottom` pane pushes out of its top edge, which it
+  had not seen before and stopped shrinking too early for.
 - **A phone can zoom into a slide again, and the controls no longer stand on
   one.** Three things made a deck hard to read on a phone, and they were one
   problem: the detail was too small and there was no way in. `touch-action`

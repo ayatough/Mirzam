@@ -299,3 +299,65 @@ fn an_unknown_format_is_refused() {
         "the error should name the valid values"
     );
 }
+
+/// A picture taller than its pane, with `fit=contain`, under `fit: shrink`:
+/// once bare and once with a caption and credit. It fits without the fit, and
+/// turning the fit on must not change that - the wrapper `fit.js` moves the
+/// pane's children into once had no height of its own, so `height:100%` had
+/// nothing to resolve against and the picture came out at its natural size.
+const CONTAIN_UNDER_SHRINK: &str = r#"---
+title: Contain under shrink
+fit: shrink
+---
+
+```pane
++------------------+-----------------+
+|  fig             |  cap            |
++------------------+-----------------+
+```
+
+::: pane fig
+![A tall picture](tall.svg){fit=contain}
+:::
+
+::: pane cap
+- One line
+:::
+
+---
+
+```pane
++------------------+-----------------+
+|  fig             |  cap            |
++------------------+-----------------+
+```
+
+::: pane fig {valign=middle}
+![A tall picture](tall.svg){fit=contain caption="A caption" credit="A credit"}
+:::
+
+::: pane cap
+- One line
+:::
+"#;
+
+const TALL_SVG: &str = r##"<svg xmlns="http://www.w3.org/2000/svg" width="400" height="1200" viewBox="0 0 400 1200"><rect width="400" height="1200" fill="#888"/></svg>"##;
+
+#[test]
+fn a_contained_picture_still_fits_a_shrinking_pane() {
+    if !chromium_available() {
+        eprintln!("skipping: no Chromium; set MIRZAM_CHROMIUM to run this test");
+        return;
+    }
+    let dir = TempDir::new("contain-shrink");
+    dir.deck("tall.svg", TALL_SVG);
+    let deck = dir.deck("contain.md", CONTAIN_UNDER_SHRINK);
+    let (report, ok) = check_json(&deck);
+
+    assert!(ok, "a contained picture fits its pane: {report}");
+    assert_eq!(
+        report["diagnostics"].as_array().map(Vec::len),
+        Some(0),
+        "{report}"
+    );
+}

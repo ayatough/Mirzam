@@ -101,9 +101,21 @@ section.slide { background: var(--mz-slide-bg); border-radius: inherit; }
 }
 /* A pane that shrinks its text rather than clipping it. The wrapper is what
    `fit.js` scales; without the script the pane behaves exactly as any other,
-   which is to say it clips - the documented fallback, not a broken state. */
-#deck[data-fit="shrink"] .pane .mz-fit-inner, .pane.mz-fit .mz-fit-inner {
-  transform-origin: top left;
+   which is to say it clips - the documented fallback, not a broken state.
+
+   The wrapper has to be the pane's content box and lay its children out the
+   way the pane would, or turning the fit on changes the slide before anything
+   has been shrunk. An auto-height wrapper gives `height:100%` nothing to
+   resolve against: a `fit=contain` picture came out at its natural size and
+   ran off the bottom of the pane it fitted without the fit. So it takes the
+   pane's height, and the pane's flex layout when `valign=` gave it one (a
+   block pane's wrapper becomes `flow-root` in `fit.js`, so margins stay
+   inside it the way they stay inside the pane). The rules below that are
+   written against `.pane >` say the same of the wrapper for the same reason. */
+.pane > .mz-fit-inner {
+  height: 100%;
+  display: inherit; flex-direction: inherit; justify-content: inherit;
+  align-items: inherit; gap: inherit;
 }
 /* A heading band that is drawn too short would silently clip its heading.
    Allow the text to stay legible instead, and let the author widen the band. */
@@ -130,8 +142,8 @@ section.slide { background: var(--mz-slide-bg); border-radius: inherit; }
   padding: 18px 22px;
 }
 .pane-head, .pane-title { overflow: visible; }
-.pane > :first-child { margin-top: 0; }
-.pane > :last-child { margin-bottom: 0; }
+.pane > :first-child, .pane > .mz-fit-inner > :first-child { margin-top: 0; }
+.pane > :last-child, .pane > .mz-fit-inner > :last-child { margin-bottom: 0; }
 
 /* `columns=N` on the pane: the content is balanced across N columns, so ten
    short items become five and five instead of running down the pane's left
@@ -791,6 +803,7 @@ figure.mz-figure > .mz-embed, figure.mz-figure > .mz-video-still {
    height and hands what it does not need to the picture. Anywhere else it is
    as tall as what is in it, exactly like the bare image it wraps. */
 .pane > figure.mz-figure:only-child,
+.pane > .mz-fit-inner > figure.mz-figure:only-child,
 .mz-bg-content > figure.mz-figure:only-child { height: 100%; }
 /* Centred as a box, not as text: a caption short enough to sit under a centred
    picture centres with it, and one long enough to wrap fills the width and
@@ -810,6 +823,8 @@ figcaption.mz-figcaption > span { max-width: 100%; }
    block drops the baseline gap that otherwise pushes it past the pane. */
 p > img:only-child, p > video:only-child, p > svg:only-child,
 .pane > img:only-child, .pane > video:only-child, .pane > svg:only-child,
+.mz-fit-inner > img:only-child, .mz-fit-inner > video:only-child,
+.mz-fit-inner > svg:only-child,
 .mz-bg-content > img:only-child, .mz-bg-content > video:only-child,
 .mz-bg-content > svg:only-child {
   display: block; margin: 0 auto;
@@ -897,13 +912,16 @@ video { background: #000; /* theme-independent: letterbox behind the frame */ bo
    would come out at the pane's full height and overflow a column that the
    width-driven box fitted. There the fallback is already right. */
 @supports (container-type: size) {
-  .pane:has(> .mz-embed), .pane:has(> figure.mz-figure > .mz-embed) {
+  .pane:has(> .mz-embed), .pane:has(> figure.mz-figure > .mz-embed),
+  .pane:has(> .mz-fit-inner > .mz-embed),
+  .pane:has(> .mz-fit-inner > figure.mz-figure > .mz-embed) {
     container-type: size; display: flex; flex-direction: column;
   }
   /* A credited frame is one level further in and the pane still describes it,
      so it is sized here too. The figure is a flex column, so the shrink takes
      the credit's line back off the height this asks for. */
-  .pane > .mz-embed, .pane > figure.mz-figure > .mz-embed {
+  .pane > .mz-embed, .pane > figure.mz-figure > .mz-embed,
+  .mz-fit-inner > .mz-embed, .mz-fit-inner > figure.mz-figure > .mz-embed {
     height: min(100cqh, calc(100cqw * 9 / 16));
     width: fit-content; max-width: 100%; min-height: 0;
     margin-inline: auto;

@@ -24,13 +24,32 @@
   // How far past its box the content runs. Measured on a wrapper rather than
   // the pane, because a pane is the thing doing the clipping: its own
   // scrollHeight stops growing once the overflow is hidden in some browsers.
+  //
+  // The wrapper is exactly as tall as the pane's content box (`base.css`), so
+  // its scrollHeight sees only what runs out of the bottom. Under `valign=`
+  // the wrapper centres or bottom-aligns like the pane does, and the overflow
+  // goes out of the top as well, where no scroll height counts it - so the
+  // children's own boxes are measured too. Rects are divided back out of the
+  // viewer's scale, which scrollHeight never sees.
   function overflow(pane) {
     const inner = pane.__mzFit;
     const cs = getComputedStyle(pane);
     const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
     const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    const box = inner.getBoundingClientRect();
+    const k = inner.offsetHeight ? box.height / inner.offsetHeight : 1;
+    let top = 0;
+    let bottom = inner.scrollHeight;
+    for (const el of inner.children) {
+      const ecs = getComputedStyle(el);
+      if (ecs.position === 'absolute' || ecs.position === 'fixed') continue;
+      const r = el.getBoundingClientRect();
+      if (!r.height && !r.width) continue;
+      top = Math.min(top, (r.top - box.top) / k - parseFloat(ecs.marginTop));
+      bottom = Math.max(bottom, (r.bottom - box.top) / k + parseFloat(ecs.marginBottom));
+    }
     return {
-      y: inner.scrollHeight - (pane.clientHeight - padY),
+      y: bottom - top - (pane.clientHeight - padY),
       x: inner.scrollWidth - (pane.clientWidth - padX),
     };
   }
@@ -52,6 +71,12 @@
     if (!pane.clientHeight) return;
     wrap(pane);
     const inner = pane.__mzFit;
+    // The wrapper takes the pane's display (`base.css`), except that a block
+    // pane is its own formatting context - it clips - and a plain block
+    // wrapper is not: a first paragraph's top margin would collapse through
+    // it and push the whole wrapper down past the pane's bottom edge.
+    inner.style.display = '';
+    if (getComputedStyle(inner).display === 'block') inner.style.display = 'flow-root';
     inner.style.fontSize = '';
     let scale = 1;
     // Straight search rather than bisection: the relationship between font
@@ -65,6 +90,10 @@
     }
     pane.dataset.mzFit = scale.toFixed(2);
   }
+
+  // The layout checker measures a wrapped pane with this same function, so
+  // the fit and the check agree on when a pane is still overflowing.
+  window.__mirzamFitOverflow = (pane) => (pane.__mzFit ? overflow(pane) : null);
 
   // `root` narrows the work to one slide, which is what a page turn needs.
   const all = (root) => panes(root).forEach(fit);

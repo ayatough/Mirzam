@@ -186,12 +186,16 @@ function mzSlideIssues(sec, tol, slack) {
     // the scroll height of the type size it started at: a pane the fit had
     // already rescued was still reported as overflowing, and turning on the
     // safety net cost you the tool that tells you whether you need it. This is
-    // the same measurement `fit.js` makes to decide when to stop shrinking, so
-    // the two now agree by construction — including when they should both
-    // fail, on a pane still overflowing at the 55% floor.
+    // the measurement `fit.js` makes to decide when to stop shrinking - it
+    // hands its own function over as `__mirzamFitOverflow` - so the two agree
+    // by construction, including when they should both fail, on a pane still
+    // overflowing at the 55% floor.
     const wrap = pane.querySelector(":scope > .mz-fit-inner, :scope > .mz-bg-content");
     let overY, overX;
-    if (wrap) {
+    const fitted = window.__mirzamFitOverflow && window.__mirzamFitOverflow(pane);
+    if (fitted) {
+      ({ y: overY, x: overX } = fitted);
+    } else if (wrap) {
       const cs = getComputedStyle(pane);
       const pad = (a, b) => parseFloat(cs[a]) + parseFloat(cs[b]);
       overY = wrap.scrollHeight - (pane.clientHeight - pad("paddingTop", "paddingBottom"));
