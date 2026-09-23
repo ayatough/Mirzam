@@ -420,6 +420,15 @@ async function mzRunCheck(opts) {
       dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" }));
       mzFinishAnimations();
     }
+    // A face only starts loading once a slide that uses it is shown - the
+    // maths face, on the first slide with a formula - so the `fonts.ready`
+    // awaited at the start did not cover it, and this slide would be measured
+    // in the fallback. Wait for it, then give the fit its turn to run again
+    // (`fit.js` refits on `loadingdone`), as it does in front of a reader.
+    if (document.fonts && document.fonts.status === "loading") {
+      await document.fonts.ready;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
     // A step can move or reveal a connector's own endpoint (an annotation
     // mark placed on a later click), so the redraw runs again after stepping.
     if (window.__mirzamConnectors) window.__mirzamConnectors();

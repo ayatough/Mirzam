@@ -20,6 +20,14 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   fit on changes nothing on a pane that already fits. The fit also measures
   what a `valign=middle` or `bottom` pane pushes out of its top edge, which it
   had not seen before and stopped shrinking too early for.
+- **`fit: shrink` fits a formula again once the maths face has loaded.** A
+  face only starts loading when a slide that uses it is first shown, so the
+  fit on that page turn measured display maths in the fallback and stopped a
+  step early; the real face then made the formula wider than the pane, and
+  nothing fitted it again. The fit now reruns whenever a face finishes
+  loading, and `mirzam check` waits for a face a slide has just started
+  loading before it measures that slide, instead of passing it on the
+  fallback's metrics.
 - **A phone can zoom into a slide again, and the controls no longer stand on
   one.** Three things made a deck hard to read on a phone, and they were one
   problem: the detail was too small and there was no way in. `touch-action`

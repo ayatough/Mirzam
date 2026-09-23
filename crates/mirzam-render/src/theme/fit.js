@@ -109,6 +109,14 @@
     addEventListener('resize', again);
     addEventListener('load', again);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(again);
+    // `fonts.ready` settles once, at load, and a face only starts loading when
+    // a slide that uses it is first shown: the maths face arrives after the
+    // page turn that needed it, so that turn's fit measured the fallback, and
+    // a formula a few percent narrower than the real one passed. Every face
+    // that finishes later lays the slide out again, so it is fitted again.
+    if (document.fonts && document.fonts.addEventListener) {
+      document.fonts.addEventListener('loadingdone', again);
+    }
   }
 
   if (document.readyState === 'loading') addEventListener('DOMContentLoaded', init);
