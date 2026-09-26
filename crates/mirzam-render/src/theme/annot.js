@@ -298,6 +298,38 @@
 
   const layers = [];
 
+  // Finds every annotation block currently in the document and mounts the
+  // ones this module has not seen yet, dropping any layer whose script left
+  // the page. A live-reload patch replaces a whole `<section>` via
+  // `outerHTML` (`preview.js`), which orphans the `sec`/`target`/`overlay`
+  // a previous mount captured and writes a brand-new, un-mounted
+  // `script.mz-annot` — unlike a `<script>` parsed by the browser, one
+  // written through `innerHTML`/`outerHTML` never runs. Mounting can
+  // therefore not be a one-time, load-time pass; it has to be redone
+  // whenever something might have moved, which is why `refresh` calls this
+  // before it draws anything.
+  function mountAll() {
+    const scripts = document.querySelectorAll('script.mz-annot');
+    const live = new Set(scripts);
+    for (let i = layers.length - 1; i >= 0; i--) {
+      if (!live.has(layers[i].script)) {
+        layers[i].observer.disconnect();
+        layers.splice(i, 1);
+      }
+    }
+    const known = new Set(layers.map((l) => l.script));
+    for (const script of scripts) {
+      if (known.has(script)) continue;
+      const l = mount(script);
+      if (!l) continue;
+      l.script = script;
+      if (l.target.tagName === 'IMG' && !l.target.complete) l.target.addEventListener('load', refresh);
+      l.observer = new ResizeObserver(refresh);
+      l.observer.observe(l.target);
+      layers.push(l);
+    }
+  }
+
   // How far through the slide's clicks we are. `Infinity` until a viewer says
   // otherwise, so a page with no viewer — the PDF export above all — shows
   // every mark. An annotation waits for a click; it does not depend on one.
@@ -305,6 +337,7 @@
   const stepOn = (sec) => (steps.has(sec) ? steps.get(sec) : Infinity);
 
   function refresh(only) {
+    mountAll();
     for (const l of layers) {
       if (only && l.sec !== only) continue;
       const m = metrics(l.sec);
@@ -316,10 +349,7 @@
   }
 
   function init() {
-    for (const script of document.querySelectorAll('script.mz-annot')) {
-      const l = mount(script);
-      if (l) layers.push(l);
-    }
+    mountAll();
     if (!layers.length) return;
     refresh();
     // The overlay is measured from the laid-out page, so anything that changes
@@ -327,10 +357,6 @@
     // decoding, or a live-reload patch.
     addEventListener('resize', refresh);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(refresh);
-    for (const l of layers) {
-      if (l.target.tagName === 'IMG' && !l.target.complete) l.target.addEventListener('load', refresh);
-      new ResizeObserver(refresh).observe(l.target);
-    }
     window.__mirzamAnnot = refresh;
   }
 

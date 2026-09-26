@@ -226,6 +226,12 @@ jobs:
             examples/04-components.md examples/05-motion.md examples/06-theming.md \
             examples/07-charts.md \
             examples/pitch.md examples/research.md examples/seminar.md
+      # And a live-reload patch specifically, which neither check above runs:
+      # both render a deck once, and the bug this catches only exists on the
+      # second render - a stale annotation overlay after `serve`'s hot-reload
+      # client or the VS Code preview patches the slide it sits on.
+      - name: check annotation live-reload
+        run: node scripts/check-annot-reload.mjs
 
   bench:
     name: benchmark

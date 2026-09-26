@@ -8,6 +8,18 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Fixed
+- **An annotation follows a live-reload edit again, instead of freezing or
+  vanishing.** `mirzam serve`'s hot-reload client and the VS Code preview both
+  patch a changed slide by replacing its whole `<section>` and calling back
+  into the viewer - and a `<script>` written in that way never runs, unlike
+  one the browser parses itself. The annotation overlay used to mount every
+  mark once, at load, and keep it forever; a patch orphaned that mount without
+  ever running the fresh mark the new markup carried, so nudging a rectangle's
+  or circle's coordinates while a preview was open left the old mark on
+  screen, sometimes with nothing where the edit should have moved it.
+  Annotations now re-mount from the live page before every redraw, so an edit
+  to `annotate` shows up the same way any other edit does - closing and
+  reopening the preview is no longer the fix.
 - **A `fit=contain` picture stays inside a pane under `fit: shrink`.** The
   shrink moves a pane's children into a wrapper and scales the text in that,
   and the wrapper was as tall as its content rather than the pane: a
