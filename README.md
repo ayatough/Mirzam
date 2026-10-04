@@ -282,7 +282,7 @@ thing it measures.
 
 ## Status
 
-`v0.11.0` is the current release, covered by regression tests in CI. It is
+`v0.11.1` is the current release, covered by regression tests in CI. It is
 `0.x`: the markup will keep changing, so pin a version if you depend on it.
 
 - **Working:** build, live-reload server, PDF export, ASCII pane layout, slide

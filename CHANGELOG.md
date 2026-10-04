@@ -7,6 +7,10 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.11.1] - 2026-10-04
+
 ### Fixed
 - **A `fit=contain` picture stays inside a pane under `fit: shrink`.** The
   shrink moves a pane's children into a wrapper and scales the text in that,
