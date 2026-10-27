@@ -164,6 +164,18 @@ jobs:
           MIRZAM_SITE_VERSION: ${{ steps.v.outputs.dev }}
         run: ./scripts/build-site.sh site/next
 
+      # Search Console proves ownership by finding this tag on the root page.
+      # It is stamped here rather than in `build-site.sh` because the root is
+      # built from the newest tag's copy of that script: a change on `main`
+      # would reach the front page only with the next release, and the
+      # verification has to be live now. Skipped when the tag is already there.
+      - name: stamp the search console verification
+        run: |
+          tag='<meta name="google-site-verification" content="aUW0AKKCnU0VkFypZfGFOugvqITvGSf-BFrzri3R6MU" />'
+          grep -q google-site-verification site/index.html ||
+            sed -i "0,/<title>/s||${tag}\n<title>|" site/index.html
+          grep -q google-site-verification site/index.html
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
