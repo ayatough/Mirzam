@@ -169,6 +169,12 @@ That last one writes `.claude/skills/mirzam/` from files embedded in the binary,
 so the syntax a model reads is the syntax it drives —
 [docs/agents.md](docs/agents.md) covers it, the machine-readable checker
 `mirzam check --format json`, and the `.zip` for claude.ai and phones.
+The same skill is also a Claude Code plugin, for a machine with no binary yet:
+
+```text
+/plugin marketplace add ayatough/Mirzam
+/plugin install mirzam@mirzam
+```
 
 In the viewer: `←` `→` to navigate (and to step through a slide's animation),
 `O` for every slide at once — click one, or type its number — `N` for speaker

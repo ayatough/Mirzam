@@ -1,0 +1,12 @@
+{
+  "name": "mirzam",
+  "version": "0.11.1",
+  "description": "Write, check and build Mirzam slide decks - Markdown whose layout is an ASCII box drawing, rendered to one self-contained HTML file or a PDF.",
+  "author": {
+    "name": "ayatough"
+  },
+  "homepage": "https://ayatough.github.io/Mirzam/",
+  "repository": "https://github.com/ayatough/Mirzam",
+  "license": "MIT",
+  "keywords": ["slides", "presentation", "markdown", "deck", "pdf"]
+}
