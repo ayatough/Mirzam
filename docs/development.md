@@ -371,8 +371,9 @@ push or tag, because those are the steps worth looking at.
    stranger would, and look at `/next/` — it is the release candidate, rendered
 7. **Land the commit on `main`.** A release is cut from `main`, so a bump
    sitting on a branch cannot be tagged. `git commit -am "Release vX.Y.Z"`,
-   saying in the body why this bump rather than what changed, then `git push
-   origin HEAD:main`
+   saying in the body why this bump rather than what changed, then push the
+   branch and open a pull request with that commit alone. Cut the release only
+   after it is merged
 8. Cut the release, either way round:
    - `git tag vX.Y.Z && git push origin vX.Y.Z`, or
    - run the **Release** workflow with `publish` checked, which makes the tag

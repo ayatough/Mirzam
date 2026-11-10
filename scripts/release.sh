@@ -202,7 +202,8 @@ Still to do, in order:
 
   1. git add plugins && git commit -am "Release v$VERSION"
                                             — say why this bump, for the notes
-  2. git push origin HEAD:main              — the release is cut from main
+  2. push the branch and open a pull request into main; the release is
+     cut from main, so wait until it is merged
   3. run the Release workflow with 'publish' checked:
        gh workflow run release.yml --ref main -f publish=true
      No gh? Actions tab -> Release -> Run workflow, or POST to

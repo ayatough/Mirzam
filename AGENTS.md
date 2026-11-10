@@ -61,12 +61,14 @@ plus, when the change is user-visible:
 - golden snapshots updated **deliberately**, with the diff reviewed:
   `MIRZAM_UPDATE_SNAPSHOTS=1 cargo test -p mirzam-cli --test golden`
 
-**Then push it to `main`.** There is no second reader waiting on a branch, and
-the preview site publishes from `main` and nowhere else, so a change parked on a
-branch cannot be looked at where it matters. This makes the gate above the whole
-of the review: run it before you push, not after. If something does land broken,
-`git revert` it — reverting a small commit costs less than the branch dance
-would have cost every commit that was fine.
+**Then open a pull request into `main`.** Push your branch and open a pull
+request; do not push to `main` yourself, and do not merge your own pull request
+— the author merges. The gate above is still the whole of the *automated*
+review, so run it before you push, not after, and say in the description how
+you know the change works. Keep one pull request to one change: a small pull
+request that is wrong is cheap to close, and one that mixes three things cannot
+be merged until all three are right. If something does land broken, `git
+revert` it in a pull request of its own.
 
 ### Where a change shows up
 
@@ -78,14 +80,15 @@ and the person arriving from a link want different things.
 | [`/`](https://ayatough.github.io/Mirzam/) | the latest tag | the released version, indexed |
 | [`/next/`](https://ayatough.github.io/Mirzam/next/) | the tip of `main` | a `DEV` banner, `v<tag> +<n> · <sha>`, the changelog's `[Unreleased]` section, and `noindex` |
 
-So **a push to `main` moves `/next/`, and only a release moves `/`.** That is
-what lets work land directly on `main` without a half-finished afternoon
-becoming the front page. It also means the author reviews a change at
-`/next/` — say where to look when a change is visual.
+So **a merge into `main` moves `/next/`, and only a release moves `/`.** That
+is what keeps a half-finished afternoon off the front page. A pull request is
+not on `/next/` until it is merged, so when a change is visual, put the
+screenshots you took in the pull request description, and say which deck and
+slide to open at `/next/` once it lands.
 
 `.github/workflows/pages.yml` runs on CI *finishing*, not on the push, so a
-commit whose tests are red is never published. Do not change that back: with no
-pull request in the way, it is the only gate there is. It also runs on `release:
+commit whose tests are red is never published. Do not change that back: it is
+the gate between a merge and the site. It also runs on `release:
 published`, because a release is tagged *after* its commit's CI has already
 rebuilt the site — without that second trigger the root lands on the previous
 release every time.
@@ -223,8 +226,9 @@ a test fixture if it is small. Check whether `scripts/check-layout.mjs` could ha
 caught it; if not, consider teaching it to.
 
 **Cut a release.** `./scripts/release.sh <version>` writes the version into
-every file that carries it, closes the changelog and runs the gate; then commit,
-push to `main`, and dispatch the Release workflow with `publish`. The checklist
+every file that carries it, closes the changelog and runs the gate; then commit
+and open a pull request with that commit alone. Once the author has merged it,
+dispatch the Release workflow with `publish` against `main`. The checklist
 at the end of [docs/development.md](docs/development.md) says what the script
 does not.
 
@@ -260,7 +264,8 @@ does not.
   scoped to branches) — but cutting the release is still yours to do, and the
   403 is not a reason to hand it back. Two facts make it work: the version-bump
   commit has to be **on `main`** (a release is cut from `main`, not from the
-  branch you were given), and the **Release** workflow with `publish` checked
+  branch you were given — so it goes in through a pull request, and you
+  dispatch only once the author has merged it), and the **Release** workflow with `publish` checked
   makes the tag from the manifest itself. Dispatch it however you can reach the
   API — `gh workflow run release.yml --ref main -f publish=true`, the GitHub
   MCP server's workflow-dispatch tool, or a `POST` to
