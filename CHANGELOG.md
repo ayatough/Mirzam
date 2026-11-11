@@ -7,7 +7,14 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- **A Claude Code plugin marketplace.** `/plugin marketplace add
+  ayatough/Mirzam`, then `/plugin install mirzam@mirzam`, installs the `mirzam`
+  skill - the same `SKILL.md` and syntax card `mirzam skill install` writes -
+  without a binary installed first. `.claude-plugin/marketplace.json` lists the
+  plugin in `plugins/mirzam/`, whose skill `scripts/build-plugin.sh` generates
+  from the binary; `scripts/release.sh` runs it, so the plugin moves with each
+  release, and `scripts/check-versions.sh` holds its version to the manifest.
 
 ## [0.11.1] - 2026-10-04
 

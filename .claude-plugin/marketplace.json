@@ -1,0 +1,18 @@
+{
+  "name": "mirzam",
+  "owner": {
+    "name": "ayatough"
+  },
+  "metadata": {
+    "description": "Claude Code plugins for Mirzam, the Markdown slide renderer whose layout is an ASCII box drawing."
+  },
+  "plugins": [
+    {
+      "name": "mirzam",
+      "source": "./plugins/mirzam",
+      "description": "Write, check and build Mirzam slide decks: the authoring loop and the syntax card, as written by the mirzam binary.",
+      "category": "productivity",
+      "keywords": ["slides", "presentation", "markdown", "deck", "pdf"]
+    }
+  ]
+}

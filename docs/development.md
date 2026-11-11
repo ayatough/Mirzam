@@ -343,8 +343,9 @@ the same crate — which is what the ownership tables in
 ./scripts/release.sh 0.5.0            # or --dry-run first, to see the edits
 ```
 
-That is steps 1 to 5 below, in one command: it writes the version into the five
-files that carry it, closes `[Unreleased]` into a dated section with a fresh
+That is steps 1 to 5 below, in one command: it writes the version into the
+files that carry it, regenerates the Claude Code plugin in `plugins/mirzam/`
+with `scripts/build-plugin.sh`, closes `[Unreleased]` into a dated section with a fresh
 empty one above it, and runs the gate. It stops there — it does not commit,
 push or tag, because those are the steps worth looking at.
 
@@ -361,7 +362,8 @@ push or tag, because those are the steps worth looking at.
 4. `./scripts/build-vsix.sh` succeeds — it builds the WASM package on its way to
    the extension, so it covers `build-wasm.sh` too
 5. `CHANGELOG.md` closed, and the version written in the root `Cargo.toml`,
-   `editors/vscode/package.json`, `Cargo.lock`, and the status sentence in both
+   `editors/vscode/package.json`, `plugins/mirzam/.claude-plugin/plugin.json`
+   (and the plugin's `SKILL.md` stamp), `Cargo.lock`, and the status sentence in both
    `README.md` and `docs/roadmap.md`. `./scripts/check-versions.sh` is the same
    check, and CI runs it on every push
 6. **Read what you are about to release.** The script writes the version
@@ -369,8 +371,9 @@ push or tag, because those are the steps worth looking at.
    stranger would, and look at `/next/` — it is the release candidate, rendered
 7. **Land the commit on `main`.** A release is cut from `main`, so a bump
    sitting on a branch cannot be tagged. `git commit -am "Release vX.Y.Z"`,
-   saying in the body why this bump rather than what changed, then `git push
-   origin HEAD:main`
+   saying in the body why this bump rather than what changed, then push the
+   branch and open a pull request with that commit alone. Cut the release only
+   after it is merged
 8. Cut the release, either way round:
    - `git tag vX.Y.Z && git push origin vX.Y.Z`, or
    - run the **Release** workflow with `publish` checked, which makes the tag

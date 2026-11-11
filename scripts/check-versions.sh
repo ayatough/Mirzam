@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Every place the version is written down has to agree with the manifest.
 #
-# The number lives in five files and nothing but somebody's memory kept them in
+# The number lives in seven files and nothing but somebody's memory kept them in
 # step, which is how the README sat at `v0.2.0` through the whole of v0.3.0 and
 # was only noticed a release later. This is that memory, run in CI.
 #
@@ -21,6 +21,10 @@ cd "$(dirname "$0")/.."
 manifest=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
 
 vscode=$(grep -m1 '"version"' editors/vscode/package.json | cut -d'"' -f4)
+plugin=$(grep -m1 '"version"' plugins/mirzam/.claude-plugin/plugin.json | cut -d'"' -f4)
+# The version the plugin's generated SKILL.md was stamped with.
+plugin_skill=$(grep -m1 -oE '<!-- mirzam-skill version="[^"]+"' plugins/mirzam/skills/mirzam/SKILL.md \
+  | cut -d'"' -f2 || true)
 
 # The topmost *released* heading. `[Unreleased]` sits above it and is skipped
 # by requiring a digit, so this is the version the changelog last closed.
@@ -45,6 +49,8 @@ report() { # label, found
 
 echo "workspace version: $manifest"
 report "editors/vscode/package.json" "$vscode"
+report "plugins/mirzam plugin.json" "$plugin"
+report "plugins/mirzam SKILL.md stamp" "$plugin_skill"
 report "CHANGELOG.md heading" "$changelog"
 report "README.md status" "$readme"
 report "docs/roadmap.md status" "$roadmap"

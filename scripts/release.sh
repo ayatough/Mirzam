@@ -35,7 +35,8 @@ esac
 
 CURRENT=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
 DATE=$(date -u +%Y-%m-%d)
-FILES=(Cargo.toml Cargo.lock CHANGELOG.md README.md docs/roadmap.md editors/vscode/package.json)
+FILES=(Cargo.toml Cargo.lock CHANGELOG.md README.md docs/roadmap.md editors/vscode/package.json
+       plugins/mirzam)
 
 # --- preflight ---------------------------------------------------------------
 
@@ -124,6 +125,12 @@ done
 # or `cargo build --locked` in the release workflow fails on a stale lock.
 cargo update --workspace --offline >/dev/null 2>&1 || cargo check --workspace --quiet
 
+# The Claude Code plugin: the marketplace serves what is committed, so its
+# version and its skill - SKILL.md and the syntax card - are rewritten from the
+# binary being released.
+echo "==> Claude Code plugin"
+./scripts/build-plugin.sh
+
 ./scripts/check-versions.sh
 
 if [ "$DRY_RUN" -eq 1 ]; then
@@ -193,8 +200,10 @@ cat <<EOF
 
 Still to do, in order:
 
-  1. git commit -am "Release v$VERSION"     — say why this bump, for the notes
-  2. git push origin HEAD:main              — the release is cut from main
+  1. git add plugins && git commit -am "Release v$VERSION"
+                                            — say why this bump, for the notes
+  2. push the branch and open a pull request into main; the release is
+     cut from main, so wait until it is merged
   3. run the Release workflow with 'publish' checked:
        gh workflow run release.yml --ref main -f publish=true
      No gh? Actions tab -> Release -> Run workflow, or POST to

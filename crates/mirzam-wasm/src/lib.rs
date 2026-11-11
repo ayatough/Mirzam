@@ -79,10 +79,16 @@ fn normalize(path: &Path) -> String {
 }
 
 /// Result of rendering a whole page.
-#[wasm_bindgen(getter_with_clone)]
+///
+/// `getter_with_clone` goes on the `String` fields alone: on the struct it
+/// also cloned `slide_count`, which is `Copy`, and clippy's `clone_on_copy`
+/// rejects that generated getter.
+#[wasm_bindgen]
 pub struct RenderOutput {
+    #[wasm_bindgen(getter_with_clone)]
     pub html: String,
     /// Warnings, as a JSON array.
+    #[wasm_bindgen(getter_with_clone)]
     pub warnings: String,
     pub slide_count: usize,
 }
