@@ -67,7 +67,9 @@ request; do not push to `main` yourself, and do not merge your own pull request
 review, so run it before you push, not after, and say in the description how
 you know the change works. Keep one pull request to one change: a small pull
 request that is wrong is cheap to close, and one that mixes three things cannot
-be merged until all three are right. If something does land broken, `git
+be merged until all three are right. Write the title and the description
+in Japanese and English both, each Japanese sentence followed by its English —
+the author reads Japanese first. If something does land broken, `git
 revert` it in a pull request of its own.
 
 ### Where a change shows up
