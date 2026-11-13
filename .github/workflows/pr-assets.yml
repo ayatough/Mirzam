@@ -1,0 +1,62 @@
+name: PR assets
+
+# Removes a pull request's pictures once it is closed.
+#
+# `scripts/pr-evidence.sh --publish` files the before-and-after pictures a
+# description shows on the `pr-assets` branch, under the pull request's branch
+# name, because a description can only link to a picture that is a file
+# somewhere. Merged or closed, the description has done its work, and a branch
+# that kept every picture of every change would grow without bound - so the
+# directory goes when the pull request does. History on that branch is not
+# kept either: it is rewritten to one commit, since nothing there is worth
+# going back to.
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr-assets
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    name: remove the closed pull request's pictures
+    # A fork's pull request gets a read-only token, and never published here.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: sweep
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Through the environment, never into the script: a branch name is
+          # text its author chose.
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git init -q assets
+          cd assets
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if ! git fetch -q --depth 1 origin pr-assets; then
+            echo "no pr-assets branch; nothing to sweep"
+            exit 0
+          fi
+          tip=$(git rev-parse FETCH_HEAD)
+          git checkout -q FETCH_HEAD
+          if [ ! -d "$BRANCH" ]; then
+            echo "nothing published for $BRANCH"
+            exit 0
+          fi
+          git rm -rq -- "$BRANCH"
+          tree=$(git write-tree)
+          commit=$(git -c user.name="github-actions[bot]" \
+                       -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+                       commit-tree "$tree" -m "Pictures for the pull requests still open")
+          # With a lease on the tip that was read: a pull request publishing
+          # at this moment must not have its pictures swept with the rest. A
+          # lost race fails this job, and the next closed pull request sweeps.
+          git push -q --force-with-lease="refs/heads/pr-assets:$tip" origin "$commit:refs/heads/pr-assets"
+          echo "removed $BRANCH"

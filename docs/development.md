@@ -74,6 +74,22 @@ JavaScript ends on and the only one a still can honestly be about. `--theme`,
 slide numbers from 1, and `--no-chrome` drops the viewer's page counter for a
 picture that is standing in for something else.
 
+### Before and after, for a pull request
+
+```bash
+./scripts/pr-evidence.sh path/to/deck.md               # every slide that changed
+./scripts/pr-evidence.sh path/to/deck.md --slide 3 --publish
+```
+
+Builds the renderer at the commit where the branch left `main` and at the
+working tree, renders the one deck with both, and prints the Markdown a pull
+request description wants: `mirzam check` on each side, the slides whose
+pixels differ set side by side, and a count of the ones that did not move.
+`--publish` hosts the pictures on the `pr-assets` branch.
+[AGENTS.md](../AGENTS.md#show-it-the-description-is-the-review) says when to
+use it. The "before" checkout and its build live under `target/`, so the
+second run on a branch is quick.
+
 ### The themes gallery
 
 ```bash
@@ -220,6 +236,11 @@ definition of done, crate ownership, and which work streams can run in parallel
 without colliding. `CLAUDE.md` points there too. Keep it in sync when the build
 commands or quality gates change — an agent that follows a stale checklist will
 confidently produce work that fails CI.
+
+Agents are also started without anybody at a terminal: by the author writing
+on an issue or a pull request, and by a daily clock. [agent-loop.md](agent-loop.md)
+is that arrangement - what starts a run, what it may do, and what the author
+sets up once.
 
 That is an agent changing *Mirzam*. For an agent writing a *deck* with it,
 [agents.md](agents.md) is the contract: the versioned JSON schema of

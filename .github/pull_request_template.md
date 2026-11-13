@@ -15,3 +15,9 @@ later; the diff already says the what.
 
 **How you know it works.** Not which tests exist — what you did to convince
 yourself. If it is visual, say what you looked at.
+
+**Evidence.** The description is what gets reviewed, so show the change
+rather than describing it: for anything a slide shows, the output of
+`./scripts/pr-evidence.sh <deck.md> --publish` — the deck before and after,
+side by side, with what `mirzam check` said about each. For anything a slide
+does not show, the command and its output before and after.

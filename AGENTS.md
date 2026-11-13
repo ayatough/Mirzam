@@ -84,9 +84,9 @@ and the person arriving from a link want different things.
 
 So **a merge into `main` moves `/next/`, and only a release moves `/`.** That
 is what keeps a half-finished afternoon off the front page. A pull request is
-not on `/next/` until it is merged, so when a change is visual, put the
-screenshots you took in the pull request description, and say which deck and
-slide to open at `/next/` once it lands.
+not on `/next/` until it is merged, so the description has to carry the
+evidence itself - see [Show it](#show-it-the-description-is-the-review) - and
+say which deck and slide to open at `/next/` once it lands.
 
 `.github/workflows/pages.yml` runs on CI *finishing*, not on the push, so a
 commit whose tests are red is never published. Do not change that back: it is
@@ -118,6 +118,43 @@ cargo run --bin mirzam -- check examples/pitch.md      # automated checks
 If you have a browser driver available, screenshot the slides you touched and
 look at them. Claiming a visual change works without having seen it is not
 acceptable here.
+
+## Show it: the description is the review
+
+The author merges from the pull request description, on a phone, without
+checking the branch out. So the description does not *say* the change works;
+it shows the two states side by side, and a reader who trusts nothing can
+still see it.
+
+```bash
+./scripts/pr-evidence.sh path/to/deck.md --publish            # every slide that changed
+./scripts/pr-evidence.sh path/to/deck.md --slide 3 --publish  # that slide, changed or not
+```
+
+That builds the renderer as it was where your branch left `main` and as it is
+in your working tree, renders the same deck with both, photographs every
+slide, and prints Markdown: what `mirzam check` said on each side, a
+before/after table of the slides whose pixels differ, and a count of the ones
+that did not move. `--publish` puts the pictures on the `pr-assets` branch and
+links to them, because the API offers no way to attach a picture to a
+description; without it the links are local files, which is right for looking
+and useless for posting. Commit first - the pictures are filed under the
+commit they show. Paste the output under **Evidence** in the description, and
+run it again after every push that changes what a slide looks like.
+
+What counts as evidence depends on the change:
+
+| The change | The description shows |
+|---|---|
+| Fixes something a slide gets wrong | The smallest deck that shows it, and that deck before and after. If `check` reported it, its two verdicts are in the output already |
+| Adds markup, or changes how something looks | The Markdown you wrote, and the slide it draws. The "before" is what the old renderer makes of that source, which is the degradation a reader on an old version gets |
+| Changes rendered output on purpose | The sample deck it touches, without `--slide`, so the count of slides that did *not* move is on the page |
+| Fixes something no slide shows - the CLI, the cache, an export, a script | The command and its output before and after, as two code blocks. A test that fails without the change and passes with it, named, with both results |
+| Changes no behaviour | Say so, and say how you know: the snapshots did not move |
+
+Look at the pictures before you post them. The script cannot tell a slide
+that changed as intended from one that changed by accident; it only makes
+sure both are in front of the reviewer.
 
 ## Where things live
 
@@ -226,6 +263,14 @@ GitHub loads no webfonts - regenerate it rather than retyping the paths, and see
 **Fix a rendering bug.** Reproduce it in a minimal deck first and keep that deck as
 a test fixture if it is small. Check whether `scripts/check-layout.mjs` could have
 caught it; if not, consider teaching it to.
+
+**Work the loop.** Agents here are also started by GitHub Actions - by the
+author writing on an issue or a pull request, and by a daily clock - and
+those runs follow `.github/agent/respond.md` and `.github/agent/build.md`.
+[docs/agent-loop.md](docs/agent-loop.md) describes the whole arrangement. A
+session started any other way has no part in it, with one thing to know: a
+branch named `agent/...` is one the loop will keep answering comments on, so
+do not use that prefix for a branch of your own.
 
 **Cut a release.** `./scripts/release.sh <version>` writes the version into
 every file that carries it, closes the changelog and runs the gate; then commit
