@@ -38,6 +38,15 @@ text skips the wait. The flag is in the text, not a reaction, because GitHub
 sends no event when somebody reacts to a comment: a reaction could only be
 noticed by polling, which is the opposite of "now".
 
+A review, or a comment on a line of the diff, takes one step more than a plain
+comment. GitHub starts those workflows from the pull request's branch, and the
+Claude app will not give a token to a workflow file that differs from
+`main`'s - which any branch cut before the last change to the workflow does.
+So for those two events the workflow only asks for itself to be run again from
+`main`, naming the thread; the wait and the agent happen in that second run.
+A branch older than this arrangement cannot do even that: until `main` has
+been merged into it, write in the conversation box rather than as a review.
+
 Only the repository owner's events start anything. The repository is public,
 and an agent holds a write token and runs on the owner's Claude subscription;
 a stranger's comment is read as material when the owner points at it, and
