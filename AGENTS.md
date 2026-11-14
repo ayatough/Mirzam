@@ -129,6 +129,7 @@ still see it.
 ```bash
 ./scripts/pr-evidence.sh path/to/deck.md --publish            # every slide that changed
 ./scripts/pr-evidence.sh path/to/deck.md --slide 3 --publish  # that slide, changed or not
+./scripts/pr-evidence.sh path/to/deck.md --pdf --publish      # the exported PDF's pages instead
 ```
 
 That builds the renderer as it was where your branch left `main` and as it is
@@ -149,7 +150,8 @@ What counts as evidence depends on the change:
 | Fixes something a slide gets wrong | The smallest deck that shows it, and that deck before and after. If `check` reported it, its two verdicts are in the output already |
 | Adds markup, or changes how something looks | The Markdown you wrote, and the slide it draws. The "before" is what the old renderer makes of that source, which is the degradation a reader on an old version gets |
 | Changes rendered output on purpose | The sample deck it touches, without `--slide`, so the count of slides that did *not* move is on the page |
-| Fixes something no slide shows - the CLI, the cache, an export, a script | The command and its output before and after, as two code blocks. A test that fails without the change and passes with it, named, with both results |
+| Fixes what an export gets wrong while the viewer is right | The same, with `--pdf`: the pages of the exported file before and after. Without it the script photographs the viewer and reports that nothing changed |
+| Fixes something no slide shows - the CLI, the cache, a script | The command and its output before and after, as two code blocks. A test that fails without the change and passes with it, named, with both results |
 | Changes no behaviour | Say so, and say how you know: the snapshots did not move |
 
 Look at the pictures before you post them. The script cannot tell a slide

@@ -180,6 +180,9 @@ jobs:
           done
           echo "the browser would not install in three attempts"
           exit 1
+      # `pr-evidence.sh --pdf` rasterises an exported PDF's pages with it.
+      - name: install the PDF rasteriser
+        run: sudo apt-get install -y --no-install-recommends poppler-utils
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -267,6 +270,10 @@ jobs:
           done
           echo "the browser would not install in three attempts"
           exit 1
+      # `pr-evidence.sh --pdf` rasterises an exported PDF's pages with it.
+      - name: install the PDF rasteriser
+        if: steps.room.outputs.go == 'true'
+        run: sudo apt-get install -y --no-install-recommends poppler-utils
       - uses: anthropics/claude-code-action@v1
         if: steps.room.outputs.go == 'true'
         with:

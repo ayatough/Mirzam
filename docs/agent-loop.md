@@ -91,9 +91,30 @@ These are the author's to do; an agent cannot.
 3. **Optionally, protect `main`**: require a pull request and green CI. Two
    things to know first. `demo.yml` commits the re-recorded README GIF straight
    to `main` after every merge, so the rule needs `github-actions[bot]` on its
-   bypass list. And the Claude app cannot edit files under
-   `.github/workflows/`, which is deliberate: the loop cannot rewrite its own
-   leash, and a change to it is the author's to make.
+   bypass list. And the rule is the only hard stop there is: the Claude app's
+   token can write anywhere in the repository, workflows included, so "never
+   push to `main`" and "never touch `.github/workflows/`" are instructions to
+   the agent until a branch rule makes the first of them a fact.
+
+## What an agent can reach
+
+A run happens on a GitHub runner that holds this public repository and two
+credentials: the Claude token, and a GitHub token that can write to this
+repository for as long as the run lasts. Nothing of the author's own machine
+is involved.
+
+The agent has a shell and the network, because building and photographing a
+deck need both. So what keeps a credential from leaving is, in order: only the
+owner can start a run; a fork's code is never built; and the agent reads as
+little as possible that the owner did not write - it does not open issues
+from other people unless the owner has labelled them, and it does not fetch
+documents from the web to test with. Those narrow the ways in; they are not a
+sandbox. If the Claude token is ever exposed, delete the secret and issue a
+new one with `claude setup-token`.
+
+Restricting the Claude app to this repository alone (its settings, "Only
+select repositories") keeps a run's GitHub token away from everything else
+the account owns.
 
 ## What it costs, and how to stop it
 
