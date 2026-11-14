@@ -338,6 +338,7 @@ mod tests {
         ("viewer.js", include_str!("viewer.js"), Lang::Js),
         ("anim.js", include_str!("anim.js"), Lang::Js),
         ("annot.js", include_str!("annot.js"), Lang::Js),
+        ("connect.js", include_str!("connect.js"), Lang::Js),
         ("effects.js", include_str!("effects.js"), Lang::Js),
         ("fit.js", include_str!("fit.js"), Lang::Js),
         ("presenter.js", include_str!("presenter.js"), Lang::Js),

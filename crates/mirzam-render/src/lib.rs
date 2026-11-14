@@ -416,6 +416,12 @@ fn deck_has_anim(meta: &DeckMeta, sections: &[String]) -> bool {
     meta.transition.is_some() || sections.iter().any(|s| s.contains("class=\"mz-anim\""))
 }
 
+/// Whether the deck declares a connector, deciding if the connector layer is
+/// inlined - into the print page as well as the viewer.
+fn deck_has_connect(sections: &[String]) -> bool {
+    sections.iter().any(|s| s.contains(" data-connectors=\""))
+}
+
 /// Whether the deck annotates anything, deciding if the annotation overlay is
 /// inlined — into the print page as well as the viewer.
 fn deck_has_annot(sections: &[String]) -> bool {
@@ -648,6 +654,11 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
     } else {
         String::new()
     };
+    let connect_js = if deck_has_connect(sections) {
+        format!("<script>{}</script>\n", theme::CONNECT_JS)
+    } else {
+        String::new()
+    };
     let effects_js = if effects::deck_has_effects(sections) {
         format!("<script>{}</script>\n", theme::EFFECTS_JS)
     } else {
@@ -713,7 +724,7 @@ pub fn assemble_page(meta: &DeckMeta, sections: &[String], opts: &PageOptions) -
 <div id="notes-panel" hidden></div>
 <div id="source-panel" hidden></div>
 <div id="overview" hidden></div>
-{source_script}{fit_js}{anim_js}{annot_js}<script>{js}</script>
+{source_script}{fit_js}{anim_js}{connect_js}{annot_js}<script>{js}</script>
 <script>{presenter_js}</script>
 {effects_js}{live_js}</body>
 </html>
@@ -956,6 +967,11 @@ pub fn assemble_print_page(
     } else {
         String::new()
     };
+    let connect_js = if deck_has_connect(sections) {
+        format!("<script>{}</script>\n", theme::CONNECT_JS)
+    } else {
+        String::new()
+    };
     let fit_js = if deck_has_fit(meta, sections) {
         format!("<script>{}</script>\n", theme::FIT_JS)
     } else {
@@ -981,7 +997,7 @@ section.slide {{ width: {w}px; height: {h}px; }}
 <body{body_theme}>
 <div id="deck"{fit}>
 {sections}</div>
-{fit_js}{annot_js}</body>
+{fit_js}{connect_js}{annot_js}</body>
 </html>
 "#,
         title = inline::html_escape(title),
@@ -1065,6 +1081,11 @@ pub fn assemble_handout_page(
     } else {
         String::new()
     };
+    let connect_js = if deck_has_connect(pages) {
+        format!("<script>{}</script>\n", theme::CONNECT_JS)
+    } else {
+        String::new()
+    };
     let fit_js = if deck_has_fit(meta, pages) {
         format!("<script>{}</script>\n", theme::FIT_JS)
     } else {
@@ -1100,7 +1121,7 @@ section.slide {{ width: {w}px; height: {h}px; transform: scale({scale}); }}
 <body{body_theme}>
 <div id="deck"{fit}>
 {pages}</div>
-{fit_js}{annot_js}</body>
+{fit_js}{connect_js}{annot_js}</body>
 </html>
 "#,
         title = inline::html_escape(title),
@@ -1134,6 +1155,11 @@ pub fn assemble_shot_page(meta: &DeckMeta, section: &str, file_themes: &[FileThe
     } else {
         String::new()
     };
+    let connect_js = if deck_has_connect(sections) {
+        format!("<script>{}</script>\n", theme::CONNECT_JS)
+    } else {
+        String::new()
+    };
     let fit_js = if deck_has_fit(meta, sections) {
         format!("<script>{}</script>\n", theme::FIT_JS)
     } else {
@@ -1157,7 +1183,7 @@ section.slide {{ width: {w}px; height: {h}px; break-after: auto; page-break-afte
 <body{body_theme}>
 <div id="deck"{fit}>
 {section}</div>
-{fit_js}{annot_js}</body>
+{fit_js}{connect_js}{annot_js}</body>
 </html>
 "#,
         css = theme::theme_css_for(&themes_used(meta, sections, false)),
