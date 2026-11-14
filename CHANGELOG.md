@@ -8,6 +8,9 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Fixed
+- **A box shadow survives `export pptx`.** A card's shadow was read off the
+  page and then never written, so every shadowed surface went flat in
+  PowerPoint. It is now an outer shadow with the same colour, offset and blur.
 - **`connect` arrows now appear in the PDF, the handout and the PowerPoint
   file.** They were drawn only by the viewer, so every export silently lost
   them - slide 4 of `pitch.md` had no arrow from the sentence to the chart's

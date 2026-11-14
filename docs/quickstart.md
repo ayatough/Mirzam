@@ -133,7 +133,7 @@ at the cost of editability.
   its placeholder; an animated GIF goes in as a GIF, which PowerPoint plays.
   A `connect` arrow is in the file as a picture laid over the slide, not as
   a line you can drag.
-- **Smaller things.** A box shadow is dropped; a gradient that is not a
+- **Smaller things.** A gradient that is not a
   plain linear one is photographed; text that a pane clips in the browser
   is not clipped in the file; speaker notes arrive as plain text without
   their emphasis; a link to another slide jumps to it, any other link opens
