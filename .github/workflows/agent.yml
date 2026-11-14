@@ -259,6 +259,12 @@ jobs:
 
             The owner has written on this thread. Read AGENTS.md, then read
             .github/agent/respond.md and do what it says for this thread.
+
+            You are on the pull request's branch, which may be older than
+            `main`. Read those two files as `main` has them:
+            `git fetch origin main`, then `git show origin/main:AGENTS.md` and
+            `git show origin/main:.github/agent/respond.md`. The same goes for
+            `scripts/pr-evidence.sh` if the branch's copy lacks an option.
           claude_args: |
             --max-turns 300
             --allowedTools "Bash,Read,Write,Edit,Glob,Grep,mcp__github_ci__get_ci_status,mcp__github_ci__get_workflow_run_details,mcp__github_ci__download_job_log"
@@ -426,6 +432,12 @@ jobs:
             `main` has moved and this pull request no longer merges into it.
             Read AGENTS.md, then read .github/agent/respond.md and do what its
             section "When main has moved" says for this pull request.
+
+            You are on the pull request's branch, which is older than `main`
+            by definition, so its copy of those files may lack that section.
+            Read them as `main` has them: `git fetch origin main`, then
+            `git show origin/main:AGENTS.md` and
+            `git show origin/main:.github/agent/respond.md`.
           claude_args: |
             --max-turns 200
             --allowedTools "Bash,Read,Write,Edit,Glob,Grep,mcp__github_ci__get_ci_status,mcp__github_ci__get_workflow_run_details,mcp__github_ci__download_job_log"
