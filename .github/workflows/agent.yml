@@ -2,12 +2,16 @@ name: Agent
 
 # The loop that lets the author do nothing but review.
 #
-# Two things start an agent here, and both end in a pull request the author
+# Three things start an agent here, and both end in a pull request the author
 # reads, comments on and merges - never in a push to `main`:
 #
 #   respond  the author wrote something: opened an issue, commented on one,
 #            reviewed or commented on a pull request. The agent reads
 #            the whole thread and acts on it.
+#   mend     the author merged something. Any open pull request the merge
+#            left in conflict with `main` gets an agent that brings `main`
+#            in and resolves it, so the next one is still mergeable when the
+#            author gets to it.
 #   build    the clock. Once a day the agent takes the next piece of work from
 #            the backlog and opens a pull request for it - unless enough of its
 #            pull requests are already waiting for the author.
@@ -29,6 +33,8 @@ on:
     types: [submitted, edited]
   pull_request_review_comment:
     types: [created, edited, deleted]
+  push:
+    branches: ["main"]
   schedule:
     # 04:17 in Japan: the pull request is there in the morning, and the minute
     # is off the hour because the hour is when every schedule on GitHub fires.
@@ -68,6 +74,7 @@ jobs:
     if: >-
       github.event_name != 'schedule' &&
       github.event_name != 'workflow_dispatch' &&
+      github.event_name != 'push' &&
       github.event.sender.login == github.repository_owner &&
       (github.event_name != 'issues' || github.event.action != 'labeled' ||
        github.event.label.name == 'agent:ready') &&
@@ -199,6 +206,147 @@ jobs:
             .github/agent/respond.md and do what it says for this thread.
           claude_args: |
             --max-turns 300
+            --allowedTools "Bash,Read,Write,Edit,Glob,Grep,mcp__github_ci__get_ci_status,mcp__github_ci__get_workflow_run_details,mcp__github_ci__download_job_log"
+
+  # ---------------------------------------------------------------------------
+  # `main` moved. Which open pull requests does it now conflict with?
+  #
+  # The loop's own pull requests nearly all add a line to the same section of
+  # the changelog, so merging one puts the next in conflict as a matter of
+  # course - and a pull request that cannot be merged is one the author has to
+  # write a comment about before reviewing it. This looks after every merge
+  # and starts an agent only where there is a conflict to resolve; when there
+  # is none, which is most merges, no model is called.
+  # ---------------------------------------------------------------------------
+  conflicts:
+    name: find pull requests the merge left in conflict
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pull-requests: read
+    outputs:
+      prs: ${{ steps.find.outputs.prs }}
+    steps:
+      - name: find
+        id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HAS_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+        run: |
+          if [ "$HAS_TOKEN" != "true" ]; then
+            echo "::notice::CLAUDE_CODE_OAUTH_TOKEN is not set, so there is no agent to start. See docs/agent-loop.md."
+            echo "prs=[]" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # GitHub works out whether a pull request still merges some seconds
+          # after the push, and says UNKNOWN until it has. Ask until every one
+          # has an answer, and give up after three minutes with what there is.
+          for attempt in $(seq 1 12); do
+            list=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --limit 100 \
+                     --json number,headRefName,isCrossRepository,isDraft,mergeable)
+            unknown=$(jq '[.[] | select(.mergeable == "UNKNOWN")] | length' <<<"$list")
+            if [ "$unknown" -eq 0 ]; then break; fi
+            sleep 15
+          done
+          # A fork's pull request is never built here, and a draft is not yet
+          # waiting to be merged.
+          prs=$(jq -c '[.[] | select(.mergeable == "CONFLICTING"
+                               and (.isCrossRepository | not)
+                               and (.isDraft | not))
+                        | {number, ref: .headRefName}]' <<<"$list")
+          echo "prs=$prs" >> "$GITHUB_OUTPUT"
+          echo "::notice::in conflict with main: $(jq -r 'map("#\(.number)") | join(", ") | if . == "" then "none" else . end' <<<"$prs")"
+
+  mend:
+    name: bring main into #${{ matrix.pr.number }}
+    needs: conflicts
+    if: needs.conflicts.outputs.prs != '[]' && needs.conflicts.outputs.prs != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        pr: ${{ fromJSON(needs.conflicts.outputs.prs) }}
+    # The same group as `respond`, so a pull request never has one agent
+    # answering a comment while another merges `main` into it.
+    concurrency:
+      group: agent-thread-${{ matrix.pr.number }}
+      cancel-in-progress: false
+    steps:
+      # This job may have waited behind another agent on the same pull request,
+      # or behind a second merge. Look again before spending anything.
+      - name: is it still in conflict
+        id: still
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ matrix.pr.number }}
+        run: |
+          for attempt in $(seq 1 12); do
+            pr=$(gh pr view "$NUMBER" --repo "$GITHUB_REPOSITORY" --json state,mergeable)
+            if [ "$(jq -r .mergeable <<<"$pr")" != "UNKNOWN" ]; then break; fi
+            sleep 15
+          done
+          if [ "$(jq -r .state <<<"$pr")" = "OPEN" ] && [ "$(jq -r .mergeable <<<"$pr")" = "CONFLICTING" ]; then
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::#$NUMBER is no longer open and in conflict; nothing to do."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.still.outputs.go == 'true'
+        with:
+          ref: ${{ matrix.pr.ref }}
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        if: steps.still.outputs.go == 'true'
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        if: steps.still.outputs.go == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.still.outputs.go == 'true'
+        with:
+          node-version: 20
+      - name: install browser
+        if: steps.still.outputs.go == 'true'
+        run: |
+          for attempt in 1 2 3; do
+            if timeout -k 30s 5m bash -c 'npm i --no-save playwright-core && npx playwright-core install --with-deps chromium'; then
+              chromium="$(node -e "console.log(require('playwright-core').chromium.executablePath())")"
+              echo "MIRZAM_CHROMIUM=$chromium" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            echo "attempt $attempt did not finish inside five minutes; retrying"
+          done
+          echo "the browser would not install in three attempts"
+          exit 1
+      - name: install the PDF rasteriser
+        if: steps.still.outputs.go == 'true'
+        run: sudo apt-get install -y --no-install-recommends poppler-utils
+      - uses: anthropics/claude-code-action@v1
+        if: steps.still.outputs.go == 'true'
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          additional_permissions: |
+            actions: read
+          prompt: |
+            REPOSITORY: ${{ github.repository }}
+            OWNER: ${{ github.repository_owner }}
+            THREAD: pull request #${{ matrix.pr.number }}
+
+            `main` has moved and this pull request no longer merges into it.
+            Read AGENTS.md, then read .github/agent/respond.md and do what its
+            section "When main has moved" says for this pull request.
+          claude_args: |
+            --max-turns 200
             --allowedTools "Bash,Read,Write,Edit,Glob,Grep,mcp__github_ci__get_ci_status,mcp__github_ci__get_workflow_run_details,mcp__github_ci__download_job_log"
 
   # ---------------------------------------------------------------------------

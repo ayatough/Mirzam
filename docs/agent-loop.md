@@ -16,7 +16,7 @@ change is held to is [AGENTS.md](../AGENTS.md).
 | Ask for something different | Comment on the pull request, or on a line of it. An agent starts on it about five minutes later |
 | Get an answer now | Put 🚀 anywhere in the comment |
 | Take back a comment | Edit or delete it inside the five minutes. The agent reads the thread as it stands when the wait ends, not the comment as first posted |
-| Accept a change | Merge it |
+| Accept a change | Merge it. If that leaves another pull request in conflict, an agent fixes it up unasked |
 | Turn a change down | Close the pull request, with a sentence saying why. The agent reads closed pull requests before choosing work and does not offer the same thing again |
 | Report a bug | Open an issue: the Markdown that does it, and a screenshot if it is visual. The agent reproduces it and opens a pull request, or asks for what is missing |
 | Ask for a feature | Open an issue. Anything with a design decision in it comes back as a proposal first, not as code |
@@ -49,6 +49,13 @@ its code on a machine that holds the tokens. The `agent/` prefix only marks
 the pull requests the loop opened itself, which is what the daily limit
 counts. A Claude Code session that opened a pull request should therefore not
 also subscribe to it: two agents answering one comment is worse than none.
+
+**The author merges something** (`mend`). After every merge into `main` the
+workflow asks GitHub which open pull requests no longer merge, and starts an
+agent on each of those to bring `main` in and resolve the conflict. The loop's
+own pull requests nearly all add to the same section of the changelog, so
+without this, merging one would leave the next needing a comment before it
+could be reviewed. A merge that leaves nothing in conflict starts no agent.
 
 **The clock** (`build`). Once a day the workflow starts an agent with no
 thread at all. It takes, in order: an issue labelled `agent:ready`; a bug it

@@ -70,6 +70,34 @@ After pushing, wait for CI on the new commit and fix what it finds before you
 finish: `mcp__github_ci__get_ci_status`, and `download_job_log` for a failure.
 A red pull request is not one the owner can review.
 
+## When main has moved
+
+You may have been started with no comment to answer: the owner merged
+something, and this pull request no longer merges into `main`. Then the whole
+job is to make it mergeable again without changing what it does.
+
+```bash
+git fetch origin main
+git merge origin/main        # a merge commit; never a rebase, never a force-push
+```
+
+Resolve each conflict so that both changes survive. Most are two pull
+requests adding to the same list - two entries under `[Unreleased]` in the
+changelog, two bullets in one paragraph of the docs - and the answer is both,
+in the order `main` already has followed by yours. If a golden snapshot
+conflicts, do not pick a side: take `main`'s, regenerate
+(`MIRZAM_UPDATE_SNAPSHOTS=1 cargo test -p mirzam-cli --test golden`), and
+read the diff.
+
+If the two changes genuinely disagree - `main` now does differently the very
+thing this pull request changes - do not guess. Leave the branch as it was,
+and comment with what collides and the question that decides it.
+
+Otherwise run the gate, push, and wait for CI as above. If what a slide looks
+like could have changed, redo the evidence. Then leave one short comment
+saying which files conflicted and how you resolved them; when it was only the
+changelog, one sentence is enough.
+
 ## On an issue
 
 Decide which of these it is, and say which in your first reply:
