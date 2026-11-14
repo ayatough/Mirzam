@@ -243,6 +243,13 @@ jobs:
         id: claude
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # A relayed review and a mending run are both started by this
+          # workflow itself, so the actor the action sees is the Actions bot,
+          # and it turns a bot away unless told otherwise. Naming this one is
+          # safe here because nothing reaches this step on a bot's say-so: the
+          # jobs above act on the owner's events only, and a dispatch needs
+          # write access to this repository.
+          allowed_bots: "github-actions[bot]"
           additional_permissions: |
             actions: read
           prompt: |
@@ -252,6 +259,12 @@ jobs:
 
             The owner has written on this thread. Read AGENTS.md, then read
             .github/agent/respond.md and do what it says for this thread.
+
+            You are on the pull request's branch, which may be older than
+            `main`. Read those two files as `main` has them:
+            `git fetch origin main`, then `git show origin/main:AGENTS.md` and
+            `git show origin/main:.github/agent/respond.md`. The same goes for
+            `scripts/pr-evidence.sh` if the branch's copy lacks an option.
           claude_args: |
             --max-turns 300
             --allowedTools "Bash,Read,Write,Edit,Glob,Grep,mcp__github_ci__get_ci_status,mcp__github_ci__get_workflow_run_details,mcp__github_ci__download_job_log"
@@ -402,6 +415,13 @@ jobs:
         if: steps.still.outputs.go == 'true'
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # A relayed review and a mending run are both started by this
+          # workflow itself, so the actor the action sees is the Actions bot,
+          # and it turns a bot away unless told otherwise. Naming this one is
+          # safe here because nothing reaches this step on a bot's say-so: the
+          # jobs above act on the owner's events only, and a dispatch needs
+          # write access to this repository.
+          allowed_bots: "github-actions[bot]"
           additional_permissions: |
             actions: read
           prompt: |
@@ -412,6 +432,12 @@ jobs:
             `main` has moved and this pull request no longer merges into it.
             Read AGENTS.md, then read .github/agent/respond.md and do what its
             section "When main has moved" says for this pull request.
+
+            You are on the pull request's branch, which is older than `main`
+            by definition, so its copy of those files may lack that section.
+            Read them as `main` has them: `git fetch origin main`, then
+            `git show origin/main:AGENTS.md` and
+            `git show origin/main:.github/agent/respond.md`.
           claude_args: |
             --max-turns 200
             --allowedTools "Bash,Read,Write,Edit,Glob,Grep,mcp__github_ci__get_ci_status,mcp__github_ci__get_workflow_run_details,mcp__github_ci__download_job_log"
