@@ -6,7 +6,7 @@ name: Agent
 # reads, comments on and merges - never in a push to `main`:
 #
 #   respond  the author wrote something: opened an issue, commented on one,
-#            reviewed or commented on an agent's pull request. The agent reads
+#            reviewed or commented on a pull request. The agent reads
 #            the whole thread and acts on it.
 #   build    the clock. Once a day the agent takes the next piece of work from
 #            the backlog and opens a pull request for it - unless enough of its
@@ -122,11 +122,13 @@ jobs:
           ref=$(jq -r .headRefName <<<"$pr")
           fork=$(jq -r .isCrossRepository <<<"$pr")
           # A pull request from a fork is somebody else's code, and answering it
-          # means building that code on a machine that holds the token. And a
-          # branch outside `agent/` belongs to whoever opened it - a person, or
-          # a Claude session that is already watching its own pull request.
-          if [ "$state" != "OPEN" ] || [ "$fork" != "false" ] || [[ "$ref" != agent/* ]]; then
-            echo "::notice::#$NUMBER ($ref, $state) is not an open agent/ pull request; leaving it alone."
+          # means building that code on a machine that holds the token. Every
+          # other open pull request is answered, whoever opened it: the owner
+          # commenting should not have to know which branch names count. That
+          # was tried - only `agent/` branches were answered - and the first
+          # comment the owner ever left went unanswered.
+          if [ "$state" != "OPEN" ] || [ "$fork" != "false" ]; then
+            echo "::notice::#$NUMBER ($ref, $state) is closed or comes from a fork; leaving it alone."
             echo "go=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi

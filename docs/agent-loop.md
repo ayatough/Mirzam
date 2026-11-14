@@ -43,10 +43,12 @@ and an agent holds a write token and runs on the owner's Claude subscription;
 a stranger's comment is read as material when the owner points at it, and
 never obeyed.
 
-On pull requests, only branches named `agent/...` are answered. A branch with
-another name belongs to whoever opened it - a person, or a Claude Code session
-that is already following its own pull request - and two agents answering one
-comment is worse than none.
+Every open pull request from a branch of this repository is answered,
+whoever opened it; one from a fork never is, because answering means building
+its code on a machine that holds the tokens. The `agent/` prefix only marks
+the pull requests the loop opened itself, which is what the daily limit
+counts. A Claude Code session that opened a pull request should therefore not
+also subscribe to it: two agents answering one comment is worse than none.
 
 **The clock** (`build`). Once a day the workflow starts an agent with no
 thread at all. It takes, in order: an issue labelled `agent:ready`; a bug it

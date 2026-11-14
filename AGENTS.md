@@ -270,9 +270,12 @@ caught it; if not, consider teaching it to.
 author writing on an issue or a pull request, and by a daily clock - and
 those runs follow `.github/agent/respond.md` and `.github/agent/build.md`.
 [docs/agent-loop.md](docs/agent-loop.md) describes the whole arrangement. A
-session started any other way has no part in it, with one thing to know: a
-branch named `agent/...` is one the loop will keep answering comments on, so
-do not use that prefix for a branch of your own.
+session started any other way has no part in it, with two things to know.
+The loop answers the author's comments on every open pull request, yours
+included, so do not also watch your own pull request for comments - one of
+you answers, not both. And the prefix `agent/` marks the pull requests the
+loop opened and counts against its daily limit, so do not use it for a branch
+of your own.
 
 **Cut a release.** `./scripts/release.sh <version>` writes the version into
 every file that carries it, closes the changelog and runs the gate; then commit

@@ -104,7 +104,7 @@ thrown away.
 
 Branch `agent/<issue number>-<two or three words>` from `main` - or
 `agent/<two or three words>` when there is no issue. The prefix matters: it
-is how the loop knows a pull request is yours to keep answering.
+is how the loop counts the pull requests it has waiting for the author.
 
 Follow AGENTS.md: reproduce first, verify by rendering, the whole definition
 of done. Then open the pull request with `gh pr create`, to the template, with
