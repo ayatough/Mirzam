@@ -400,9 +400,10 @@ pub struct Slide {
     pub nodes: Vec<Node>,
     #[serde(default)]
     pub rasters: Vec<Raster>,
-    /// Speaker notes, as text; not part of the extractor's output.
-    #[serde(default)]
-    pub notes: Option<String>,
+    /// Speaker notes, one entry per paragraph; not part of the extractor's
+    /// output. See [`notes_paragraphs`].
+    #[serde(skip)]
+    pub notes: Option<Vec<Vec<NoteRun>>>,
 }
 
 impl Slide {
@@ -1168,17 +1169,31 @@ fn slide_xml(
 }
 
 /// A notes page: the note text in the body placeholder, one paragraph per
-/// line the author wrote.
-fn notes_xml(text: &str) -> String {
-    let paragraphs: String = text
-        .lines()
-        .map(|l| {
-            let l = l.trim_end();
-            if l.is_empty() {
-                "<a:p/>".to_string()
-            } else {
-                format!("<a:p><a:r><a:t>{}</a:t></a:r></a:p>", xml_escape(l))
+/// line the author wrote, with the emphasis the author gave it.
+fn notes_xml(notes: &[Vec<NoteRun>]) -> String {
+    let paragraphs: String = notes
+        .iter()
+        .map(|runs| {
+            if runs.is_empty() {
+                return "<a:p/>".to_string();
             }
+            let runs: String = runs
+                .iter()
+                .map(|r| {
+                    let mut attrs = String::new();
+                    if r.bold {
+                        attrs.push_str(" b=\"1\"");
+                    }
+                    if r.italic {
+                        attrs.push_str(" i=\"1\"");
+                    }
+                    format!(
+                        "<a:r><a:rPr lang=\"en-US\"{attrs}/><a:t>{}</a:t></a:r>",
+                        xml_escape(&r.text)
+                    )
+                })
+                .collect();
+            format!("<a:p>{runs}</a:p>")
         })
         .collect();
     format!(
@@ -1385,35 +1400,105 @@ pub fn package(w: u32, h: u32, slides: &[Slide], media: &HashMap<u32, Media>) ->
     zip::archive_bytes(&files)
 }
 
-/// Speaker notes arrive as rendered HTML; PowerPoint's notes pane wants text.
-/// Paragraphs and `<br>` become line breaks, tags go, entities come back.
-pub fn notes_text(html: &str) -> String {
-    let mut out = String::with_capacity(html.len());
+/// One stretch of a note that shares its emphasis.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct NoteRun {
+    pub text: String,
+    pub bold: bool,
+    pub italic: bool,
+}
+
+/// Speaker notes arrive as rendered HTML; PowerPoint's notes pane wants
+/// paragraphs of runs. Paragraphs, `<br>` and list items become paragraph
+/// breaks, `<strong>`/`<b>` and `<em>`/`<i>` become bold and italic runs, other
+/// tags go, and entities come back.
+pub fn notes_paragraphs(html: &str) -> Vec<Vec<NoteRun>> {
+    fn unescape(s: &str) -> String {
+        // `&amp;` last, so `&amp;lt;` stays the text `&lt;`.
+        s.replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", "\"")
+            .replace("&#39;", "'")
+            .replace("&amp;", "&")
+    }
+    fn push_text(paras: &mut Vec<Vec<NoteRun>>, text: &str, bold: bool, italic: bool) {
+        for (i, piece) in text.split('\n').enumerate() {
+            if i > 0 {
+                paras.push(Vec::new());
+            }
+            if piece.is_empty() {
+                continue;
+            }
+            let runs = paras.last_mut().expect("always one paragraph");
+            match runs.last_mut() {
+                Some(last) if last.bold == bold && last.italic == italic => {
+                    last.text.push_str(piece);
+                }
+                _ => runs.push(NoteRun {
+                    text: piece.to_string(),
+                    bold,
+                    italic,
+                }),
+            }
+        }
+    }
+    let mut paras: Vec<Vec<NoteRun>> = vec![Vec::new()];
+    let (mut bold, mut italic) = (0u32, 0u32);
     let mut rest = html;
     while let Some(at) = rest.find('<') {
-        out.push_str(&rest[..at]);
+        push_text(&mut paras, &unescape(&rest[..at]), bold > 0, italic > 0);
         let Some(end) = rest[at..].find('>') else {
+            rest = "";
             break;
         };
         let tag = &rest[at + 1..at + end];
+        let closing = tag.starts_with('/');
         let name = tag
             .trim_start_matches('/')
             .split([' ', '/'])
             .next()
             .unwrap_or("");
-        if matches!(name, "p" | "br" | "li" | "div") && !out.ends_with('\n') && !out.is_empty() {
-            out.push('\n');
+        match name {
+            "p" | "br" | "li" | "div" => {
+                if !paras.last().is_some_and(Vec::is_empty) {
+                    paras.push(Vec::new());
+                }
+            }
+            "strong" | "b" => {
+                bold = if closing {
+                    bold.saturating_sub(1)
+                } else {
+                    bold + 1
+                };
+            }
+            "em" | "i" => {
+                italic = if closing {
+                    italic.saturating_sub(1)
+                } else {
+                    italic + 1
+                };
+            }
+            _ => {}
         }
         rest = &rest[at + end + 1..];
     }
-    out.push_str(rest);
-    let out = out
-        .replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&#39;", "'");
-    out.trim().to_string()
+    push_text(&mut paras, &unescape(rest), bold > 0, italic > 0);
+    // Trailing space on a line is noise, and so are blank lines at either end.
+    for runs in &mut paras {
+        if let Some(last) = runs.last_mut() {
+            last.text.truncate(last.text.trim_end().len());
+        }
+        runs.retain(|r| !r.text.is_empty());
+    }
+    while paras.last().is_some_and(Vec::is_empty) {
+        paras.pop();
+    }
+    let lead = paras.iter().take_while(|p| p.is_empty()).count();
+    paras.drain(..lead);
+    if let Some(first) = paras.first_mut().and_then(|p| p.first_mut()) {
+        first.text = first.text.trim_start().to_string();
+    }
+    paras
 }
 
 #[cfg(test)]
@@ -1493,7 +1578,10 @@ mod tests {
                         ..Default::default()
                     }),
                 ],
-                notes: Some("a note".into()),
+                notes: Some(vec![vec![NoteRun {
+                    text: "a note".into(),
+                    ..Default::default()
+                }]]),
                 ..Default::default()
             },
             Slide::default(),
@@ -1947,18 +2035,48 @@ mod tests {
 
     #[test]
     fn note_text_is_escaped_into_the_xml() {
-        let xml = notes_xml("a < b & \"c\"\nsecond");
+        let xml = notes_xml(&notes_paragraphs("a &lt; b &amp; &quot;c&quot;\nsecond"));
         assert!(xml.contains("a &lt; b &amp; &quot;c&quot;"));
         assert_eq!(xml.matches("<a:p>").count(), 2);
     }
 
     #[test]
-    fn notes_html_becomes_lines_of_text() {
+    fn notes_html_becomes_paragraphs() {
+        let flat = |h: &str| -> Vec<String> {
+            notes_paragraphs(h)
+                .iter()
+                .map(|p| p.iter().map(|r| r.text.as_str()).collect())
+                .collect()
+        };
         assert_eq!(
-            notes_text("<p>One &amp; two</p><p>Three<br>four</p>"),
-            "One & two\nThree\nfour"
+            flat("<p>One &amp; two</p><p>Three<br>four</p>"),
+            ["One & two", "Three", "four"]
         );
-        assert_eq!(notes_text("plain"), "plain");
+        assert_eq!(flat("plain"), ["plain"]);
+        assert_eq!(flat("&amp;lt;"), ["&lt;"]);
+    }
+
+    #[test]
+    fn notes_keep_their_emphasis() {
+        let paras = notes_paragraphs("<p>Say <strong>this</strong> and <em>that</em>.</p>");
+        assert_eq!(paras.len(), 1);
+        let marks: Vec<_> = paras[0]
+            .iter()
+            .map(|r| (r.text.as_str(), r.bold, r.italic))
+            .collect();
+        assert_eq!(
+            marks,
+            [
+                ("Say ", false, false),
+                ("this", true, false),
+                (" and ", false, false),
+                ("that", false, true),
+                (".", false, false),
+            ]
+        );
+        let xml = notes_xml(&paras);
+        assert!(xml.contains("b=\"1\"/><a:t>this</a:t>"), "{xml}");
+        assert!(xml.contains("i=\"1\"/><a:t>that</a:t>"), "{xml}");
     }
 
     #[test]

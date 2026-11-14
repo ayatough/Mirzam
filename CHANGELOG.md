@@ -8,6 +8,9 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Fixed
+- **Speaker notes keep their bold and italic in `export pptx`.** A note was
+  flattened to plain lines, so a word the speaker had stressed came out
+  unmarked in PowerPoint's notes pane. Bold and italic now carry over as runs.
 - **A box shadow survives `export pptx`.** A card's shadow was read off the
   page and then never written, so every shadowed surface went flat in
   PowerPoint. It is now an outer shadow with the same colour, offset and blur.
