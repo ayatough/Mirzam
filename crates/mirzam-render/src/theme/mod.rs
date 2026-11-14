@@ -62,6 +62,11 @@ pub const ANIM_JS: &str = concat!("\n", shipped!("anim.js"));
 /// the document.
 pub const EFFECTS_JS: &str = concat!("\n", shipped!("effects.js"));
 
+/// The connector layer. Inlined only into decks that declare a connector, and
+/// into the print page as well: an arrow is drawn over the slide and hides
+/// nothing, so the PDF and the PowerPoint file would otherwise lose it.
+pub const CONNECT_JS: &str = concat!("\n", shipped!("connect.js"));
+
 /// The annotation overlay. Inlined only into decks that annotate something —
 /// and, unlike every other script here, into the print page as well: an
 /// annotation is additive, so drawing it cannot hide content, and the PDF
@@ -1091,6 +1096,24 @@ mod tests {
             assert!(
                 !ANNOT_JS.contains(viewer_only),
                 "annot.js reaches for `{viewer_only}`, which the print page does not have"
+            );
+        }
+    }
+
+    /// The connector layer ships into the print page too, so like the
+    /// annotation overlay it may not depend on the viewer being there.
+    #[test]
+    fn the_connector_layer_stands_alone() {
+        assert!(CONNECT_JS.contains("mz-connect"));
+        for viewer_only in [
+            "MZAnim",
+            "__mirzamGoto",
+            "getElementById('hud')",
+            "slides()",
+        ] {
+            assert!(
+                !CONNECT_JS.contains(viewer_only),
+                "connect.js reaches for `{viewer_only}`, which the print page does not have"
             );
         }
     }
