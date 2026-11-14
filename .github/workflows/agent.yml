@@ -53,6 +53,10 @@ on:
         description: "With thread: skip the five-minute wait"
         required: false
         default: "false"
+      mend:
+        description: "Bring main into this pull request and resolve the conflict (set by the conflicts job)"
+        required: false
+        default: ""
 
 # Each job asks for what it needs.
 permissions: {}
@@ -113,7 +117,7 @@ jobs:
   gate:
     name: wait for the thread to settle
     if: >-
-      (github.event_name == 'workflow_dispatch' && inputs.thread != '') ||
+      (github.event_name == 'workflow_dispatch' && inputs.thread != '' && inputs.mend == '') ||
       ((github.event_name == 'issues' || github.event_name == 'issue_comment') &&
        github.event.sender.login == github.repository_owner &&
        (github.event_name != 'issues' || github.event.action != 'labeled' ||
@@ -281,10 +285,9 @@ jobs:
     timeout-minutes: 10
     permissions:
       pull-requests: read
-    outputs:
-      prs: ${{ steps.find.outputs.prs }}
+      actions: write
     steps:
-      - name: find
+      - name: find, and start a run for each
         id: find
         env:
           GH_TOKEN: ${{ github.token }}
@@ -292,7 +295,6 @@ jobs:
         run: |
           if [ "$HAS_TOKEN" != "true" ]; then
             echo "::notice::CLAUDE_CODE_OAUTH_TOKEN is not set, so there is no agent to start. See docs/agent-loop.md."
-            echo "prs=[]" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           # GitHub works out whether a pull request still merges some seconds
@@ -311,13 +313,19 @@ jobs:
                                and (.isCrossRepository | not)
                                and (.isDraft | not))
                         | {number, ref: .headRefName}]' <<<"$list")
-          echo "prs=$prs" >> "$GITHUB_OUTPUT"
           echo "::notice::in conflict with main: $(jq -r 'map("#\(.number)") | join(", ") | if . == "" then "none" else . end' <<<"$prs")"
+          # The agent cannot be started from here: the Claude action does not
+          # run on a `push` event at all ("Unsupported event type: push" is
+          # how the first conflict this loop ever met was left unresolved).
+          # So each pull request gets a run of this workflow of its own,
+          # dispatched by hand as it were, and the agent runs there.
+          for n in $(jq -r '.[].number' <<<"$prs"); do
+            gh workflow run agent.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME" -f mend="$n"
+          done
 
   mend:
-    name: bring main into #${{ matrix.pr.number }}
-    needs: conflicts
-    if: needs.conflicts.outputs.prs != '[]' && needs.conflicts.outputs.prs != ''
+    name: bring main into the pull request
+    if: github.event_name == 'workflow_dispatch' && inputs.mend != ''
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
@@ -326,15 +334,10 @@ jobs:
       issues: write
       actions: read
       id-token: write
-    strategy:
-      fail-fast: false
-      max-parallel: 2
-      matrix:
-        pr: ${{ fromJSON(needs.conflicts.outputs.prs) }}
     # The same group as `respond`, so a pull request never has one agent
     # answering a comment while another merges `main` into it.
     concurrency:
-      group: agent-thread-${{ matrix.pr.number }}
+      group: agent-thread-${{ inputs.mend }}
       cancel-in-progress: false
     steps:
       # This job may have waited behind another agent on the same pull request,
@@ -343,14 +346,21 @@ jobs:
         id: still
         env:
           GH_TOKEN: ${{ github.token }}
-          NUMBER: ${{ matrix.pr.number }}
+          NUMBER: ${{ inputs.mend }}
         run: |
+          if ! [[ "$NUMBER" =~ ^[0-9]+$ ]]; then
+            echo "::error::\"$NUMBER\" is not a pull request number."
+            exit 1
+          fi
           for attempt in $(seq 1 12); do
-            pr=$(gh pr view "$NUMBER" --repo "$GITHUB_REPOSITORY" --json state,mergeable)
+            pr=$(gh pr view "$NUMBER" --repo "$GITHUB_REPOSITORY" \
+                   --json state,mergeable,headRefName,isCrossRepository)
             if [ "$(jq -r .mergeable <<<"$pr")" != "UNKNOWN" ]; then break; fi
             sleep 15
           done
-          if [ "$(jq -r .state <<<"$pr")" = "OPEN" ] && [ "$(jq -r .mergeable <<<"$pr")" = "CONFLICTING" ]; then
+          if [ "$(jq -r .state <<<"$pr")" = "OPEN" ] && [ "$(jq -r .mergeable <<<"$pr")" = "CONFLICTING" ] \
+             && [ "$(jq -r .isCrossRepository <<<"$pr")" = "false" ]; then
+            echo "ref=$(jq -r .headRefName <<<"$pr")" >> "$GITHUB_OUTPUT"
             echo "go=true" >> "$GITHUB_OUTPUT"
           else
             echo "::notice::#$NUMBER is no longer open and in conflict; nothing to do."
@@ -359,7 +369,7 @@ jobs:
       - uses: actions/checkout@v4
         if: steps.still.outputs.go == 'true'
         with:
-          ref: ${{ matrix.pr.ref }}
+          ref: ${{ steps.still.outputs.ref }}
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
         if: steps.still.outputs.go == 'true'
@@ -397,7 +407,7 @@ jobs:
           prompt: |
             REPOSITORY: ${{ github.repository }}
             OWNER: ${{ github.repository_owner }}
-            THREAD: pull request #${{ matrix.pr.number }}
+            THREAD: pull request #${{ inputs.mend }}
 
             `main` has moved and this pull request no longer merges into it.
             Read AGENTS.md, then read .github/agent/respond.md and do what its
@@ -425,7 +435,7 @@ jobs:
     name: take the next piece of work
     if: >-
       github.event_name == 'schedule' ||
-      (github.event_name == 'workflow_dispatch' && inputs.thread == '')
+      (github.event_name == 'workflow_dispatch' && inputs.thread == '' && inputs.mend == '')
     runs-on: ubuntu-latest
     timeout-minutes: 120
     permissions:
