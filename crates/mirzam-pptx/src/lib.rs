@@ -285,7 +285,7 @@ pub struct Shape {
     pub kind: Option<String>,
     /// The first `box-shadow`, drawn outside the box.
     #[serde(default)]
-    pub shadow: Option<Shadow>,
+    pub shadow: Option<Box<Shadow>>,
     #[serde(default)]
     pub text: Option<TextBody>,
 }
@@ -853,7 +853,7 @@ fn shape_xml(sh: &Shape, id: u32, links: &mut Links) -> String {
         xml_escape(&name),
         xfrm(&sh.rect),
         line_xml(sh.line.as_ref()),
-        shadow_xml(sh.shadow.as_ref())
+        shadow_xml(sh.shadow.as_deref())
     )
 }
 
@@ -1602,7 +1602,7 @@ mod tests {
                 h: 100.0,
             },
             fill: Some(color("ffffff")),
-            shadow: Some(Shadow {
+            shadow: Some(Box::new(Shadow {
                 color: Color {
                     hex: "000000".into(),
                     alpha: 0.5,
@@ -1610,7 +1610,7 @@ mod tests {
                 dx: 0.0,
                 dy: 12.0,
                 blur: 60.0,
-            }),
+            })),
             ..Default::default()
         };
         let xml = shape_xml(&sh, 2, &mut Links::new(1, 1));
