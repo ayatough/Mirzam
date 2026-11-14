@@ -7,6 +7,11 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+### Fixed
+- **A box shadow survives `export pptx`.** A card's shadow was read off the
+  page and then never written, so every shadowed surface went flat in
+  PowerPoint. It is now an outer shadow with the same colour, offset and blur.
+
 ### Added
 - **A Claude Code plugin marketplace.** `/plugin marketplace add
   ayatough/Mirzam`, then `/plugin install mirzam@mirzam`, installs the `mirzam`

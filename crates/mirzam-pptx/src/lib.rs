@@ -283,8 +283,24 @@ pub struct Shape {
     /// a rule or a leader — instead of a box.
     #[serde(default)]
     pub kind: Option<String>,
+    /// The first `box-shadow`, drawn outside the box.
+    #[serde(default)]
+    pub shadow: Option<Shadow>,
     #[serde(default)]
     pub text: Option<TextBody>,
+}
+
+/// An outer shadow: its colour, how far it is thrown in CSS pixels, and how
+/// far it blurs.
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct Shadow {
+    pub color: Color,
+    #[serde(default)]
+    pub dx: f64,
+    #[serde(default)]
+    pub dy: f64,
+    #[serde(default)]
+    pub blur: f64,
 }
 
 /// A picture: one of the slide's photographs (by the id the extractor gave
@@ -544,6 +560,29 @@ fn line_xml(line: Option<&Line>) -> String {
             }
         ),
         _ => "<a:ln><a:noFill/></a:ln>".into(),
+    }
+}
+
+/// `<a:effectLst>` with an outer shadow. DrawingML gives the throw as a
+/// distance and a direction, clockwise from "to the right".
+fn shadow_xml(shadow: Option<&Shadow>) -> String {
+    match shadow {
+        Some(s) if s.color.alpha > 0.0 => {
+            let dist = s.dx.hypot(s.dy);
+            let dir = if dist == 0.0 {
+                0.0
+            } else {
+                s.dy.atan2(s.dx).to_degrees().rem_euclid(360.0)
+            };
+            format!(
+                "<a:effectLst><a:outerShdw blurRad=\"{}\" dist=\"{}\" dir=\"{}\" algn=\"ctr\" rotWithShape=\"0\">{}</a:outerShdw></a:effectLst>",
+                emu(s.blur.max(0.0)),
+                emu(dist),
+                (dir * 60_000.0).round() as i64,
+                srgb(&s.color)
+            )
+        }
+        _ => String::new(),
     }
 }
 
@@ -810,10 +849,11 @@ fn shape_xml(sh: &Shape, id: u32, links: &mut Links) -> String {
     };
     format!(
         "<p:sp><p:nvSpPr><p:cNvPr id=\"{id}\" name=\"{}\"/><p:cNvSpPr txBox=\"1\"/><p:nvPr/></p:nvSpPr>\
-         <p:spPr>{}{geom}{fill}{}</p:spPr>{text}</p:sp>",
+         <p:spPr>{}{geom}{fill}{}{}</p:spPr>{text}</p:sp>",
         xml_escape(&name),
         xfrm(&sh.rect),
-        line_xml(sh.line.as_ref())
+        line_xml(sh.line.as_ref()),
+        shadow_xml(sh.shadow.as_ref())
     )
 }
 
@@ -1550,6 +1590,39 @@ mod tests {
         };
         assert!(geometry(&circle, 40.0).contains("ellipse"));
         assert!(geometry(&circle, 0.0).contains("prst=\"rect\""));
+    }
+
+    #[test]
+    fn a_box_shadow_is_an_outer_shadow() {
+        let sh = Shape {
+            rect: Rect {
+                x: 0.0,
+                y: 0.0,
+                w: 200.0,
+                h: 100.0,
+            },
+            fill: Some(color("ffffff")),
+            shadow: Some(Shadow {
+                color: Color {
+                    hex: "000000".into(),
+                    alpha: 0.5,
+                },
+                dx: 0.0,
+                dy: 12.0,
+                blur: 60.0,
+            }),
+            ..Default::default()
+        };
+        let xml = shape_xml(&sh, 2, &mut Links::new(1, 1));
+        // Straight down is 90 degrees, in sixty-thousandths.
+        assert!(xml.contains("dir=\"5400000\""));
+        assert!(xml.contains("dist=\"114300\""));
+        assert!(xml.contains("blurRad=\"571500\""));
+        assert!(xml.contains("<a:alpha val=\"50000\"/>"));
+        // The effect comes after the edge, as the schema orders it.
+        assert!(xml.find("<a:effectLst>").unwrap() > xml.find("<a:solidFill>").unwrap());
+        let plain = Shape { shadow: None, ..sh };
+        assert!(!shape_xml(&plain, 2, &mut Links::new(1, 1)).contains("effectLst"));
     }
 
     #[test]

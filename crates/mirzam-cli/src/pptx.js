@@ -224,6 +224,9 @@
     if (!c) return null;
     return { color: c, dx: px(m[2]), dy: px(m[3]), blur: px(m[4] || 0) };
   }
+  function shadowFaded(sh, op) {
+    return sh ? { color: faded(sh.color, op), dx: sh.dx, dy: sh.dy, blur: sh.blur } : null;
+  }
   function paintOf(el, st) {
     const fill = color(st.backgroundColor);
     const image = st.backgroundImage && st.backgroundImage !== 'none';
@@ -260,7 +263,7 @@
         k: 'shape', name: tagOf(el), rect: R(r),
         fill: faded(paint.fill, ctx.op), gradient: fadedGradient(paint.gradient, ctx.op),
         line: paint.line ? { width: paint.line.width, color: faded(paint.line.color, ctx.op), dash: paint.line.dash } : null,
-        radius: paint.radius,
+        radius: paint.radius, shadow: shadowFaded(paint.shadow, ctx.op),
       });
     }
     if (paint.sides) {
