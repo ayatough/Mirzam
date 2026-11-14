@@ -7,6 +7,15 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+### Fixed
+- **`connect` arrows now appear in the PDF, the handout and the PowerPoint
+  file.** They were drawn only by the viewer, so every export silently lost
+  them - slide 4 of `pitch.md` had no arrow from the sentence to the chart's
+  last point. The routing moved out of the viewer into its own script, which
+  the print, handout and photograph pages now run; in the PowerPoint file an
+  arrow is a picture over the slide, not an editable line. Open
+  `examples/pitch.md` at `/next/`, slide 4, and export it to compare.
+
 ### Added
 - **A Claude Code plugin marketplace.** `/plugin marketplace add
   ayatough/Mirzam`, then `/plugin install mirzam@mirzam`, installs the `mirzam`

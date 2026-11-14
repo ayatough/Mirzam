@@ -131,7 +131,8 @@ at the cost of editability.
   slide shows its finished state. A video becomes its poster frame, an
   audio player a picture of the player, an embedded page or a hosted video
   its placeholder; an animated GIF goes in as a GIF, which PowerPoint plays.
-  A `connect` arrow is routed by the viewer at show time and is not drawn.
+  A `connect` arrow is in the file as a picture laid over the slide, not as
+  a line you can drag.
 - **Smaller things.** A box shadow is dropped; a gradient that is not a
   plain linear one is photographed; text that a pane clips in the browser
   is not clipped in the file; speaker notes arrive as plain text without

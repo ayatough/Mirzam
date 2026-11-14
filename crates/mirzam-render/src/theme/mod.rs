@@ -1105,7 +1105,12 @@ mod tests {
     #[test]
     fn the_connector_layer_stands_alone() {
         assert!(CONNECT_JS.contains("mz-connect"));
-        for viewer_only in ["MZAnim", "__mirzamGoto", "getElementById('hud')", "slides()"] {
+        for viewer_only in [
+            "MZAnim",
+            "__mirzamGoto",
+            "getElementById('hud')",
+            "slides()",
+        ] {
             assert!(
                 !CONNECT_JS.contains(viewer_only),
                 "connect.js reaches for `{viewer_only}`, which the print page does not have"

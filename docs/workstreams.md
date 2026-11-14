@@ -1943,7 +1943,7 @@ snapshots move; land after W26's sample slide or before it, not alongside.
 
 ## W28 — What the PowerPoint export still cannot carry
 
-**Difficulty B · Opus for stage 1, Sonnet after · not started.** `export pptx`
+**Difficulty B · Opus for stage 1, Sonnet after · stage 1 (arrows as pictures) done.** `export pptx`
 landed in two stages: pictures plus real speaker notes, then the words as
 words — text boxes, shapes, tables and links, read off the browser's layout by
 `crates/mirzam-cli/src/pptx.js` and written as OOXML by the `mirzam-pptx`
