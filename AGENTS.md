@@ -129,6 +129,7 @@ still see it.
 ```bash
 ./scripts/pr-evidence.sh path/to/deck.md --publish            # every slide that changed
 ./scripts/pr-evidence.sh path/to/deck.md --slide 3 --publish  # that slide, changed or not
+./scripts/pr-evidence.sh path/to/deck.md --pdf --publish      # the exported PDF's pages instead
 ```
 
 That builds the renderer as it was where your branch left `main` and as it is
@@ -149,7 +150,8 @@ What counts as evidence depends on the change:
 | Fixes something a slide gets wrong | The smallest deck that shows it, and that deck before and after. If `check` reported it, its two verdicts are in the output already |
 | Adds markup, or changes how something looks | The Markdown you wrote, and the slide it draws. The "before" is what the old renderer makes of that source, which is the degradation a reader on an old version gets |
 | Changes rendered output on purpose | The sample deck it touches, without `--slide`, so the count of slides that did *not* move is on the page |
-| Fixes something no slide shows - the CLI, the cache, an export, a script | The command and its output before and after, as two code blocks. A test that fails without the change and passes with it, named, with both results |
+| Fixes what an export gets wrong while the viewer is right | The same, with `--pdf`: the pages of the exported file before and after. Without it the script photographs the viewer and reports that nothing changed |
+| Fixes something no slide shows - the CLI, the cache, a script | The command and its output before and after, as two code blocks. A test that fails without the change and passes with it, named, with both results |
 | Changes no behaviour | Say so, and say how you know: the snapshots did not move |
 
 Look at the pictures before you post them. The script cannot tell a slide
@@ -268,9 +270,12 @@ caught it; if not, consider teaching it to.
 author writing on an issue or a pull request, and by a daily clock - and
 those runs follow `.github/agent/respond.md` and `.github/agent/build.md`.
 [docs/agent-loop.md](docs/agent-loop.md) describes the whole arrangement. A
-session started any other way has no part in it, with one thing to know: a
-branch named `agent/...` is one the loop will keep answering comments on, so
-do not use that prefix for a branch of your own.
+session started any other way has no part in it, with two things to know.
+The loop answers the author's comments on every open pull request, yours
+included, so do not also watch your own pull request for comments - one of
+you answers, not both. And the prefix `agent/` marks the pull requests the
+loop opened and counts against its daily limit, so do not use it for a branch
+of your own.
 
 **Cut a release.** `./scripts/release.sh <version>` writes the version into
 every file that carries it, closes the changelog and runs the gate; then commit

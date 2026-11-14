@@ -4,8 +4,10 @@
 #   ./scripts/pr-evidence.sh <deck.md>                 every slide that changed
 #   ./scripts/pr-evidence.sh <deck.md> --slide 2,5     those slides, changed or not
 #   ./scripts/pr-evidence.sh <deck.md> --publish       and host the pictures
+#   ./scripts/pr-evidence.sh <deck.md> --pdf           the exported PDF's pages
 #
 #   --base <ref>     what "before" is; default: where this branch left origin/main
+#   --pdf            photograph `export pdf`, not the viewer
 #   --mode dark      build and photograph both sides in that mode
 #   --out <dir>      where the pictures and evidence.md go; default: out/evidence
 #   --branch <name>  the directory the pictures are published under
@@ -23,6 +25,13 @@
 # The deck is always the one in the working tree. A fix's reproduction deck did
 # not exist before the fix, and that is fine: the question a "before" answers
 # is what the old renderer does with this source, not what the old source was.
+#
+# --pdf is for a change the viewer does not show: something the exported file
+# gets wrong while the deck on screen is right. It exports the deck to PDF on
+# each side and rasterises the pages, so what is compared is the file a reader
+# is handed. The first pull request this loop ever opened fixed arrows missing
+# from the PDF, and could show nothing, because the viewer had drawn them all
+# along. Needs `pdftoppm` (poppler-utils).
 #
 # Without --slide it shows the slides whose pixels differ and counts the rest,
 # so "nothing else moved" is on the page too rather than taken on trust.
@@ -46,6 +55,7 @@ DECK=""
 SLIDES=""
 BASE=""
 MODE=""
+PDF=0
 OUT="out/evidence"
 PUBLISH=0
 BRANCH="${GITHUB_HEAD_REF:-}"
@@ -61,8 +71,9 @@ while [ $# -gt 0 ]; do
     --branch) BRANCH="$2"; shift 2 ;;
     --repo) REPO="$2"; shift 2 ;;
     --publish) PUBLISH=1; shift ;;
+    --pdf) PDF=1; shift ;;
     --) shift; EXTRA=("$@"); break ;;
-    -h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "error: unknown flag $1" >&2; exit 2 ;;
     *)
       if [ -n "$DECK" ]; then echo "error: one deck at a time, got $DECK and $1" >&2; exit 2; fi
@@ -71,7 +82,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$DECK" ]; then
-  echo "usage: ./scripts/pr-evidence.sh <deck.md> [--slide 2,5] [--base <ref>] [--mode light|dark]" >&2
+  echo "usage: ./scripts/pr-evidence.sh <deck.md> [--slide 2,5] [--pdf] [--base <ref>] [--mode light|dark]" >&2
   echo "       [--out <dir>] [--publish] [--branch <name>] [--repo <owner/repo>] [-- <build flags>]" >&2
   exit 2
 fi
@@ -96,6 +107,11 @@ FLAGS+=("${EXTRA[@]}")
 if ! node -e 'import("playwright-core").catch(() => process.exit(1))' 2>/dev/null; then
   echo "error: playwright-core is not installed; it is not a repository dependency." >&2
   echo "       npm i playwright-core   (node_modules is ignored; delete package*.json after)" >&2
+  exit 2
+fi
+
+if [ "$PDF" -eq 1 ] && ! command -v pdftoppm >/dev/null; then
+  echo "error: --pdf rasterises the pages with pdftoppm; install poppler-utils" >&2
   exit 2
 fi
 
@@ -146,7 +162,18 @@ render() { # side, binary
   # Spelled out, because `render ... || x=0` below switches `set -e` off for
   # the whole function: a browser that would not start must still stop the run
   # rather than produce a page that says no slide differs.
-  if ! "${shoot[@]}" >/dev/null; then
+  if [ "$PDF" -eq 1 ]; then
+    if ! "$bin" export pdf "$DECK" -o "$work/$side.pdf" "${FLAGS[@]}" >"$work/$side.export.log" 2>&1; then
+      cat "$work/$side.export.log" >&2
+      echo "error: could not export the $side deck to PDF" >&2
+      exit 1
+    fi
+    # One page is one slide, so the pages are numbered as the slides are.
+    if ! pdftoppm -png -scale-to-x 1280 -scale-to-y -1 "$work/$side.pdf" "$OUT/$side"; then
+      echo "error: could not rasterise the $side PDF" >&2
+      exit 1
+    fi
+  elif ! "${shoot[@]}" >/dev/null; then
     echo "error: could not photograph the $side deck" >&2
     exit 1
   fi
@@ -178,10 +205,11 @@ fi
 
 # --- the Markdown ------------------------------------------------------------
 
-node - "$OUT" "$DECK" "$URL" "$SLIDES" "$before_built" "${BASE_SHA:0:7}" "$SHORT" <<'EOF' >"$OUT/evidence.md"
+node - "$OUT" "$DECK" "$URL" "$SLIDES" "$before_built" "${BASE_SHA:0:7}" "$SHORT" "$PDF" <<'EOF' >"$OUT/evidence.md"
 const { readdirSync, readFileSync, existsSync } = require("fs");
 const { join } = require("path");
-const [out, deck, url, only, beforeBuilt, baseSha, headSha] = process.argv.slice(2);
+const [out, deck, url, only, beforeBuilt, baseSha, headSha, pdf] = process.argv.slice(2);
+const what = pdf === "1" ? ", exported to PDF" : "";
 
 const shots = (side) => {
   const m = new Map();
@@ -229,7 +257,7 @@ const list = (c) =>
     .join("\n");
 
 const lines = [];
-lines.push(`### \`${deck}\` — before \`${baseSha}\`, after \`${headSha}\``, "");
+lines.push(`### \`${deck}\`${what} — before \`${baseSha}\`, after \`${headSha}\``, "");
 
 const cb = beforeBuilt === "1" ? check("before") : null;
 const ca = check("after");

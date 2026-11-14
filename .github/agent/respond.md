@@ -2,7 +2,7 @@
 
 You were started because the repository owner wrote on a thread: opened or
 edited an issue, labelled one `agent:ready`, commented, or reviewed a pull
-request of yours. The workflow told you which thread. [AGENTS.md](../../AGENTS.md)
+request. The workflow told you which thread. [AGENTS.md](../../AGENTS.md)
 is the standard for any change you make; this file is what to do with the
 thread. The loop as a whole is described in
 [docs/agent-loop.md](../../docs/agent-loop.md).
@@ -39,7 +39,11 @@ from you after it and no commit of yours that addresses it. If there is
 nothing - the comment was deleted, or an earlier run already dealt with it -
 stop without posting anything. Silence is the right answer to nothing.
 
-## On a pull request of yours
+## On a pull request
+
+It may be one the loop opened or one somebody else did - a Claude Code session,
+or the owner. Either way the owner's comment is addressed to you, and the
+branch is yours to push to for as long as you are answering it.
 
 For each unanswered comment, one of three things:
 
@@ -65,6 +69,34 @@ not one summary for all of them, unless they are the same point.
 After pushing, wait for CI on the new commit and fix what it finds before you
 finish: `mcp__github_ci__get_ci_status`, and `download_job_log` for a failure.
 A red pull request is not one the owner can review.
+
+## When main has moved
+
+You may have been started with no comment to answer: the owner merged
+something, and this pull request no longer merges into `main`. Then the whole
+job is to make it mergeable again without changing what it does.
+
+```bash
+git fetch origin main
+git merge origin/main        # a merge commit; never a rebase, never a force-push
+```
+
+Resolve each conflict so that both changes survive. Most are two pull
+requests adding to the same list - two entries under `[Unreleased]` in the
+changelog, two bullets in one paragraph of the docs - and the answer is both,
+in the order `main` already has followed by yours. If a golden snapshot
+conflicts, do not pick a side: take `main`'s, regenerate
+(`MIRZAM_UPDATE_SNAPSHOTS=1 cargo test -p mirzam-cli --test golden`), and
+read the diff.
+
+If the two changes genuinely disagree - `main` now does differently the very
+thing this pull request changes - do not guess. Leave the branch as it was,
+and comment with what collides and the question that decides it.
+
+Otherwise run the gate, push, and wait for CI as above. If what a slide looks
+like could have changed, redo the evidence. Then leave one short comment
+saying which files conflicted and how you resolved them; when it was only the
+changelog, one sentence is enough.
 
 ## On an issue
 
@@ -94,7 +126,7 @@ comment or label that you are answering, and the issue body is the material.
 ## What you never do here
 
 - Merge, approve, or push to `main`. The owner merges.
-- Push to a branch that is not yours (`agent/...`).
+- Push to any branch but the pull request's own, or a new `agent/...` one.
 - Force-push, or rewrite a branch's history.
 - Change anything under `.github/workflows/`. If the loop itself needs
   changing, say what and why in a reply; the owner makes that change.

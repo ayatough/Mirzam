@@ -217,6 +217,11 @@ land in the PDF at exactly the coordinates the viewer shows.
 viewer, the active slide or the animation runtime, and a unit test enforces
 that.
 
+Connectors follow the same rule. `theme/connect.js` routes the arrows from the
+live layout, stands alone under the same kind of unit test, and runs in the
+print, handout and shot pages as well as the viewer, so an arrow reaches the
+PDF and the PowerPoint file.
+
 ## Runtime
 
 The viewer shipped inside each deck handles navigation, scaling, speaker notes,
