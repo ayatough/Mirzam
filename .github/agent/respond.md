@@ -2,7 +2,7 @@
 
 You were started because the repository owner wrote on a thread: opened or
 edited an issue, labelled one `agent:ready`, commented, or reviewed a pull
-request of yours. The workflow told you which thread. [AGENTS.md](../../AGENTS.md)
+request. The workflow told you which thread. [AGENTS.md](../../AGENTS.md)
 is the standard for any change you make; this file is what to do with the
 thread. The loop as a whole is described in
 [docs/agent-loop.md](../../docs/agent-loop.md).
@@ -39,7 +39,11 @@ from you after it and no commit of yours that addresses it. If there is
 nothing - the comment was deleted, or an earlier run already dealt with it -
 stop without posting anything. Silence is the right answer to nothing.
 
-## On a pull request of yours
+## On a pull request
+
+It may be one the loop opened or one somebody else did - a Claude Code session,
+or the owner. Either way the owner's comment is addressed to you, and the
+branch is yours to push to for as long as you are answering it.
 
 For each unanswered comment, one of three things:
 
@@ -94,7 +98,7 @@ comment or label that you are answering, and the issue body is the material.
 ## What you never do here
 
 - Merge, approve, or push to `main`. The owner merges.
-- Push to a branch that is not yours (`agent/...`).
+- Push to any branch but the pull request's own, or a new `agent/...` one.
 - Force-push, or rewrite a branch's history.
 - Change anything under `.github/workflows/`. If the loop itself needs
   changing, say what and why in a reply; the owner makes that change.

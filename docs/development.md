@@ -79,6 +79,7 @@ picture that is standing in for something else.
 ```bash
 ./scripts/pr-evidence.sh path/to/deck.md               # every slide that changed
 ./scripts/pr-evidence.sh path/to/deck.md --slide 3 --publish
+./scripts/pr-evidence.sh path/to/deck.md --pdf           # the exported PDF's pages
 ```
 
 Builds the renderer at the commit where the branch left `main` and at the
