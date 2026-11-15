@@ -141,6 +141,36 @@ fn embed_within(
 /// would be the wrong direction for that boundary to point.
 const IMPORT_PDF_MARK: &str = "<!--mirzam:import-pdf-->";
 
+/// What `mirzam-cli`'s `pdfimport::image` writes into a PNG it lifted out of a
+/// paper and judged to be a drawing - `DRAWING_MARK` there, as the `tEXt`
+/// chunk it sits in. Duplicated as a literal for the reason above.
+const PNG_DRAWING_MARK: &[u8] = b"tEXtmirzam\0import-pdf drawing";
+
+/// Whether a PNG says it is a drawing cut from a paper.
+///
+/// The mark is the chunk after the header, so only the head of the file is
+/// decoded - a deck's photographs are not unpacked a second time to find out
+/// that they are photographs.
+fn is_marked_drawing(source: &dyn AssetSource, rel: &str) -> bool {
+    let (result, _) = source.resolve(rel);
+    let Ok(uri) = result else {
+        return false;
+    };
+    let Some(payload) = uri.strip_prefix("data:image/png;base64,") else {
+        return false;
+    };
+    // 256 bytes: the signature, the header, and room for this chunk.
+    let head = &payload.as_bytes()[..payload.len().min(344)];
+    let head = &head[..head.len() - head.len() % 4];
+    base64::engine::general_purpose::STANDARD
+        .decode(head)
+        .is_ok_and(|bytes| {
+            bytes
+                .windows(PNG_DRAWING_MARK.len())
+                .any(|w| w == PNG_DRAWING_MARK)
+        })
+}
+
 /// The class `pdfimport::Imported::markdown` puts on every reference it
 /// writes, vector or raster alike - the one signal a stored raster picture
 /// can carry at all, since it has no comment the way an SVG does. Read here
@@ -193,10 +223,23 @@ fn inline_ink_figures(
             .rsplit('.')
             .next()
             .is_some_and(|ext| ext.eq_ignore_ascii_case("svg"));
+        let rel = join_rel(base, src);
         if !is_svg {
+            // A plot the paper stored as a picture: `import pdf` marks the
+            // PNG, and a marked PNG turns with the deck as an SVG does.
+            let is_png = src
+                .rsplit('.')
+                .next()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("png"));
+            if is_png && is_marked_drawing(source, &rel) {
+                return if resolve_invert(tag, dark_figures, true) {
+                    add_class(tag, "mz-dark-invert")
+                } else {
+                    tag.to_string()
+                };
+            }
             return mark_raster_figure(tag, dark_figures);
         }
-        let rel = join_rel(base, src);
         // Not recorded yet: the ordinary embedding pass below runs over
         // whatever `src` this leaves untouched, and it is the one that
         // reports a miss and tracks the file for every picture that is not a
@@ -221,7 +264,7 @@ fn inline_ink_figures(
 /// that, the deck's `dark-figures:` decides, `auto` being the split `dark=`
 /// itself defaults to - invert a converted vector figure, leave a stored
 /// raster one alone.
-fn resolve_invert(tag: &str, dark_figures: mirzam_core::DarkFigures, is_svg: bool) -> bool {
+fn resolve_invert(tag: &str, dark_figures: mirzam_core::DarkFigures, is_drawing: bool) -> bool {
     use mirzam_core::DarkFigures;
     match img_attr(tag, "data-mz-dark").as_deref() {
         Some("keep") => false,
@@ -229,7 +272,7 @@ fn resolve_invert(tag: &str, dark_figures: mirzam_core::DarkFigures, is_svg: boo
         _ => match dark_figures {
             DarkFigures::Keep => false,
             DarkFigures::Invert => true,
-            DarkFigures::Auto => is_svg,
+            DarkFigures::Auto => is_drawing,
         },
     }
 }
@@ -951,6 +994,73 @@ mod tests {
             };
             (result, Some(PathBuf::from(rel)))
         }
+    }
+
+    /// PNG files by name, each given as the bytes it holds.
+    struct Pngs(&'static [(&'static str, &'static [u8])]);
+
+    impl AssetSource for Pngs {
+        fn resolve(&self, rel: &str) -> (Result<String, String>, Option<PathBuf>) {
+            let result = match self.0.iter().find(|(name, _)| *name == rel) {
+                Some((_, body)) => Ok(format!(
+                    "data:image/png;base64,{}",
+                    base64::engine::general_purpose::STANDARD.encode(body)
+                )),
+                None => Err("file not found".to_string()),
+            };
+            (result, Some(PathBuf::from(rel)))
+        }
+    }
+
+    /// The head of a PNG `import pdf` lifted and marked as a drawing: the
+    /// signature, a header chunk, then the mark. Nothing reads further.
+    const PLOT_PNG: &[u8] = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x08\0\0\0\x08\x08\x02\0\0\0CRC_\
+\0\0\0\x19tEXtmirzam\0import-pdf drawingCRC_\0\0\0\0IDAT";
+
+    /// The same file without the mark: any other PNG, a photograph included.
+    const PHOTO_PNG: &[u8] =
+        b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x08\0\0\0\x08\x08\x02\0\0\0CRC_\0\0\0\0IDAT";
+
+    /// A plot a paper stored as a picture is still a plot. Cut out as the
+    /// image it is, it used to stop following the deck into dark mode - only
+    /// an SVG did - so tightening the crop until `import pdf` recognised the
+    /// image cost the figure its dark treatment. A marked PNG turns over by
+    /// default, exactly as an SVG cut-out does, however the reference is
+    /// written.
+    #[test]
+    fn a_marked_png_follows_the_deck_into_the_dark() {
+        let (out, _, _) = embed_with(r#"<img src="plot.png">"#, &Pngs(&[("plot.png", PLOT_PNG)]));
+        assert!(out.contains("mz-dark-invert"), "{out}");
+        assert!(
+            out.contains("data:image/png;base64,"),
+            "still embedded: {out}"
+        );
+    }
+
+    /// And a PNG with no mark is left alone - the author's own photograph, or
+    /// one `import pdf` judged to be a photograph.
+    #[test]
+    fn an_unmarked_png_is_left_as_it_is() {
+        let (out, _, _) = embed_with(
+            r#"<img src="photo.png">"#,
+            &Pngs(&[("photo.png", PHOTO_PNG)]),
+        );
+        assert!(!out.contains("mz-dark-invert"), "{out}");
+    }
+
+    /// `dark=keep` on the reference and `dark-figures: keep` on the deck both
+    /// still win over the mark, as they do over an SVG's.
+    #[test]
+    fn a_marked_png_can_still_be_told_to_stay() {
+        let source = Pngs(&[("plot.png", PLOT_PNG)]);
+        let (out, _, _) = embed_with(r#"<img data-mz-dark="keep" src="plot.png">"#, &source);
+        assert!(!out.contains("mz-dark-invert"), "{out}");
+        let (out, _, _) = embed_with_mode(
+            r#"<img src="plot.png">"#,
+            &source,
+            mirzam_core::DarkFigures::Keep,
+        );
+        assert!(!out.contains("mz-dark-invert"), "{out}");
     }
 
     const MARKED: &str = "<svg viewBox=\"0 0 10 10\" xmlns=\"http://www.w3.org/2000/svg\">\

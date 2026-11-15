@@ -26,6 +26,14 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
   not part of it. Run `import pdf` again to get the tighter cut-outs - and
   note that a figure which is one stored image now comes out as that image,
   a `.png`, where the looser crop used to make an `.svg` of the region.
+- **A plot stored as a picture still follows the deck into the dark.** Only a
+  converted SVG did, so a figure `import pdf` lifted out as the image it is
+  stayed white on a dark slide. `import pdf` now marks a lifted PNG that is
+  mostly blank paper - a plot, a diagram - inside the file, and a marked PNG
+  is inverted in a dark deck by default, as an SVG cut-out is. A photograph
+  gets no mark and stays as printed; `dark=keep` and `dark-figures:` work on
+  both as before. A PNG lifted by an earlier version carries no mark: run
+  `import pdf` again.
 - **Speaker notes keep their bold and italic in `export pptx`.** A note was
   flattened to plain lines, so a word the speaker had stressed came out
   unmarked in PowerPoint's notes pane. Bold and italic now carry over as runs.
