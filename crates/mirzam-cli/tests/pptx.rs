@@ -52,7 +52,7 @@ data: |
   b, 2
 ```
 
-<!-- note: Remember to breathe. -->
+<!-- note: Remember to **breathe**. -->
 "#;
 
 /// Runs one export and returns the bytes of the package it wrote.
@@ -143,7 +143,9 @@ fn the_words_come_out_as_text_and_the_rest_as_what_it_is() {
     assert!(slide.contains("<p:bg><p:bgPr>"), "{slide}");
     // And the notes are where presenter view reads them.
     let notes = part(&zip, "ppt/notesSlides/notesSlide1.xml");
-    assert!(notes.contains("Remember to breathe."), "{notes}");
+    assert!(notes.contains("Remember to "), "{notes}");
+    // Its emphasis comes with it.
+    assert!(notes.contains("b=\"1\"/><a:t>breathe</a:t>"), "{notes}");
 }
 
 #[test]
@@ -162,7 +164,7 @@ fn pictures_mode_is_one_photograph_per_slide() {
         "{slide}"
     );
     let notes = part(&zip, "ppt/notesSlides/notesSlide1.xml");
-    assert!(notes.contains("Remember to breathe."), "{notes}");
+    assert!(notes.contains("<a:t>breathe</a:t>"), "{notes}");
 }
 
 #[test]
