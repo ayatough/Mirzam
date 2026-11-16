@@ -113,11 +113,59 @@ pub fn extract(doc: &Document, id: ObjectId) -> Result<Extracted, String> {
         what.push_str(" with its transparency");
     }
 
+    // A plot saved as a picture is still a plot: black axes on white paper,
+    // which is what a dark deck turns over. A photograph is not, and must
+    // stay as it was taken. The file says which it is, because once it is on
+    // disk nothing else can - see `DRAWING_MARK`.
+    let drawing = on_a_light_ground(&rgb, &colour);
+    if drawing {
+        what.push_str(" of a drawing");
+    }
+
     Ok(Extracted {
-        bytes: png(width, height, colour, &rgb)?,
+        bytes: png(width, height, colour, &rgb, drawing)?,
         extension: "png",
         what,
     })
+}
+
+/// What a PNG carries to say it is a drawing `import pdf` lifted out of a
+/// paper, as the body of a `tEXt` chunk: the keyword, a NUL, the text.
+///
+/// It is the raster half of the comment an imported SVG carries. A figure cut
+/// from a paper follows the deck into dark mode - black lines turn white, the
+/// white ground turns dark - and for an SVG that is safe to do by default,
+/// since nothing that is drawn in vectors is a photograph. A stored image may
+/// be either. So it is marked only when it is a drawing, and the renderer
+/// (`mirzam_render`'s `assets`, which holds the same bytes as a literal for
+/// the reason given there) inverts a marked PNG exactly as it does an SVG.
+///
+/// In the file rather than on the reference to it, as with the SVG: a
+/// reference is retyped by hand in most decks, and a class left off it would
+/// silently turn the behaviour off.
+pub const DRAWING_MARK: &[u8] = b"mirzam\0import-pdf drawing";
+
+/// Whether a picture is mostly blank paper: at least half its pixels close to
+/// white, or see-through.
+///
+/// That is a plot, a diagram, a table saved as an image. A photograph has no
+/// ground at all, and the rare one that does - a product on a white sweep -
+/// can be told to stay with `dark=keep` on its reference.
+fn on_a_light_ground(pixels: &[u8], colour: &Colour) -> bool {
+    let channels = match colour {
+        Colour::Rgb => 3,
+        Colour::Rgba => 4,
+    };
+    let mut light = 0usize;
+    let mut total = 0usize;
+    for pixel in pixels.chunks_exact(channels) {
+        total += 1;
+        let clear = channels == 4 && pixel[3] < 16;
+        if clear || pixel[..3].iter().all(|&c| c >= 232) {
+            light += 1;
+        }
+    }
+    total > 0 && light * 2 >= total
 }
 
 /// Zlib, or nothing: a stream that will not inflate is left to the library,
@@ -393,7 +441,13 @@ enum Colour {
 /// simplest file the format allows: eight bits a channel, no interlacing, and
 /// every scanline left unfiltered so the only compression is the deflate that
 /// `flate2`, already here to read the PDF, performs.
-fn png(width: usize, height: usize, colour: Colour, pixels: &[u8]) -> Result<Vec<u8>, String> {
+fn png(
+    width: usize,
+    height: usize,
+    colour: Colour,
+    pixels: &[u8],
+    drawing: bool,
+) -> Result<Vec<u8>, String> {
     let (colour_type, channels) = match colour {
         Colour::Rgb => (2u8, 3usize),
         Colour::Rgba => (6, 4),
@@ -424,6 +478,10 @@ fn png(width: usize, height: usize, colour: Colour, pixels: &[u8]) -> Result<Vec
 
     let mut png = vec![0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
     chunk(&mut png, b"IHDR", &header);
+    // Straight after the header, where a reader finds it without the pixels.
+    if drawing {
+        chunk(&mut png, b"tEXt", DRAWING_MARK);
+    }
     chunk(&mut png, b"IDAT", &data);
     chunk(&mut png, b"IEND", &[]);
     Ok(png)
@@ -458,10 +516,42 @@ fn int(doc: &Document, object: Option<&Object>) -> Option<i64> {
 mod tests {
     use super::*;
 
+    /// A plot stored as a picture says so in the file, straight after the
+    /// header, and a photograph says nothing: that mark is the only thing
+    /// that lets a dark deck turn the one over and leave the other alone.
+    #[test]
+    fn a_drawing_is_marked_in_the_file_and_a_photograph_is_not() {
+        // Mostly paper, with one line across it.
+        let mut plot = vec![255u8; 8 * 8 * 3];
+        plot[..8 * 3].fill(0);
+        assert!(on_a_light_ground(&plot, &Colour::Rgb));
+        let file = png(8, 8, Colour::Rgb, &plot, true).unwrap();
+        assert_eq!(&file[37..41], b"tEXt", "the chunk after the header");
+        assert!(file.windows(DRAWING_MARK.len()).any(|w| w == DRAWING_MARK));
+
+        // Mid-tones edge to edge.
+        let photo: Vec<u8> = (0..8 * 8 * 3).map(|i| 40 + (i % 150) as u8).collect();
+        assert!(!on_a_light_ground(&photo, &Colour::Rgb));
+        let file = png(8, 8, Colour::Rgb, &photo, false).unwrap();
+        assert!(!file.windows(DRAWING_MARK.len()).any(|w| w == DRAWING_MARK));
+        assert_eq!(&file[37..41], b"IDAT");
+    }
+
+    /// A diagram with a clear background is on a light ground too: what shows
+    /// through it is the slide.
+    #[test]
+    fn see_through_counts_as_paper() {
+        let mut pixels = vec![0u8; 4 * 4 * 4];
+        for pixel in 0..4 {
+            pixels[pixel * 4 + 3] = 255;
+        }
+        assert!(on_a_light_ground(&pixels, &Colour::Rgba));
+    }
+
     #[test]
     fn a_png_carries_its_own_size_and_checksums() {
         let pixels = vec![255u8, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255];
-        let png = png(2, 2, Colour::Rgb, &pixels).unwrap();
+        let png = png(2, 2, Colour::Rgb, &pixels, false).unwrap();
         assert_eq!(&png[..8], &[0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a]);
         assert_eq!(&png[12..16], b"IHDR");
         assert_eq!(&png[16..20], &2u32.to_be_bytes());

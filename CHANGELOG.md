@@ -8,6 +8,32 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 ## [Unreleased]
 
 ### Fixed
+- **Figures cut from a paper no longer borrow each other's letters.** A deck
+  with one `import pdf` figure on each of several slides - a paper summary -
+  drew every figure after the first with the first one's glyphs and clip
+  paths: `Tracking` came out as `Tra`, a neighbour's boxes ghosted across a
+  plot, an edge was sheared off. Each inlined figure's ids were numbered from
+  one on every slide, so in the finished page they were all `mz-fig1-`; they
+  are now tagged by the figure's own content. Rebuild the deck; the figures
+  on disk were never wrong.
+- **`import pdf` cuts a figure, not the page above it.** A float at the top of
+  its column came with the running head and the page number, the one on a
+  first page with the end of the author line, a figure set under another with
+  the last lines of that one's caption, and a figure under a table with the
+  table. A band now ends at the whole of the next caption, a table and the
+  figure under it divide the gap between their captions at its widest strip
+  of blank paper, and text alone more than a line away from the drawing is
+  not part of it. Run `import pdf` again to get the tighter cut-outs - and
+  note that a figure which is one stored image now comes out as that image,
+  a `.png`, where the looser crop used to make an `.svg` of the region.
+- **A plot stored as a picture still follows the deck into the dark.** Only a
+  converted SVG did, so a figure `import pdf` lifted out as the image it is
+  stayed white on a dark slide. `import pdf` now marks a lifted PNG that is
+  mostly blank paper - a plot, a diagram - inside the file, and a marked PNG
+  is inverted in a dark deck by default, as an SVG cut-out is. A photograph
+  gets no mark and stays as printed; `dark=keep` and `dark-figures:` work on
+  both as before. A PNG lifted by an earlier version carries no mark: run
+  `import pdf` again.
 - **Speaker notes keep their bold and italic in `export pptx`.** A note was
   flattened to plain lines, so a word the speaker had stressed came out
   unmarked in PowerPoint's notes pane. Bold and italic now carry over as runs.

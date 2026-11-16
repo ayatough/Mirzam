@@ -216,6 +216,7 @@ pub fn find(page: Rect, lines: &[Line], ink: &[Rect]) -> Vec<Figure> {
         body,
         rect: page,
         captions: Vec::new(),
+        kinds: Vec::new(),
     };
 
     // Pass one: which lines open a caption, and how far each caption runs.
@@ -253,6 +254,7 @@ pub fn find(page: Rect, lines: &[Line], ink: &[Rect]) -> Vec<Figure> {
     // cross-reference that reads like a caption was rejected above; letting it
     // fence off a band here would undo that on the other axis.
     sheet.captions = opened.iter().map(|(_, c, _)| c.rect).collect();
+    sheet.kinds = opened.iter().map(|(l, _, _)| l.kind).collect();
 
     // Pass two: the picture each caption owns, now that all of them are known.
     let mut found = Vec::new();
@@ -429,6 +431,10 @@ struct Sheet<'a> {
     /// while the captions are still being gathered, which is why nothing in
     /// pass one may read it.
     captions: Vec<Rect>,
+    /// What each of those captions calls itself, in the same order: a table
+    /// looks below its caption and a figure above, which is what says whether
+    /// two captions with nothing but floats between them are sharing the gap.
+    kinds: Vec<Kind>,
 }
 
 impl Sheet<'_> {
@@ -659,6 +665,30 @@ fn within(
             edge = edge.max(line.rect.y1);
         }
     }
+    // Another caption ends the band too, and all of it does. The loop above
+    // stops on a caption's *first* line, the one that carries the label, and
+    // measures from that line's far side - so the band over a figure set under
+    // another figure ran up through the upper caption's second, third and
+    // fourth lines, and the cut-out came with two lines of somebody else's
+    // caption across the top of it.
+    //
+    // `facing` is the other thing a caption at the end of a band can mean: a
+    // table's caption over a figure's, or a figure's under a table's, with
+    // both floats in the one gap between them. Then the band belongs to two
+    // captions, and it is divided further down.
+    let mut facing = false;
+    for (other, kind) in sheet.captions.iter().zip(&sheet.kinds) {
+        if other == caption || !in_column(other) || beside(other) {
+            continue;
+        }
+        if above && other.y0 >= caption.y1 - 1.0 && other.y0 <= edge {
+            edge = other.y0;
+            facing = matches!(kind, Kind::Table);
+        } else if !above && other.y1 <= caption.y0 + 1.0 && other.y1 >= edge {
+            edge = other.y1;
+            facing = matches!(kind, Kind::Figure);
+        }
+    }
     let band = if above {
         Rect::new(column.0, caption.y1, column.1, edge)
     } else {
@@ -673,23 +703,21 @@ fn within(
     // held down by the same prose. Nothing about the band tells them apart, so
     // the union below used to gather both and hand each caption a picture with
     // the other one's figure in it.
-    let mut art: Option<Rect> = None;
-    let mut take = |r: &Rect| {
+    let mut pieces: Vec<Piece> = Vec::new();
+    let mut take = |r: &Rect, ink: bool| {
         if r.share_inside(&band) > 0.6 && owned_by(caption, r, &rivals) {
-            art = Some(match art {
-                Some(a) => a.union(r),
-                None => *r,
-            });
+            pieces.push(Piece { rect: *r, ink });
         }
     };
     for r in ink {
-        take(r);
+        take(r, true);
     }
     for line in lines {
         if line.rect != *caption {
-            take(&line.rect);
+            take(&line.rect, false);
         }
     }
+    let art = nearest_run(&pieces, above, facing, body);
 
     // Trimmed to the band's *height* but not to its width: a table a little
     // wider than the prose beside it is still that table, and cutting its
@@ -703,6 +731,90 @@ fn within(
         // picture. Six points is the smallest thing worth cutting out.
         .filter(|a| a.height() >= 6.0 && a.width() >= 6.0);
     Some((band, found))
+}
+
+/// Something in a band: a painted shape or picture, or a line of text.
+struct Piece {
+    rect: Rect,
+    ink: bool,
+}
+
+/// The part of a band that is the caption's float: what lies next to the
+/// caption, up to the first stretch of blank paper that ends it.
+///
+/// A band runs from a caption to the nearest prose, and on a page whose float
+/// is at the top of its column there is no prose - the band runs to the edge
+/// of the sheet. Everything in it used to be the picture. So a figure came
+/// with the running head and the page number over it, the one on a paper's
+/// first page with the end of the author line, and the one under a table with
+/// the table.
+///
+/// Read outward from the caption, the pieces fall into runs separated by blank
+/// paper, and two things decide whether a gap is the end of the float:
+///
+/// - **Words alone are not a picture.** When nothing past a gap is painted -
+///   only text - a gap taller than a line of body text ends the float. A
+///   label that belongs to a figure sits against it; a running head, a page
+///   number, an author line and the tail of another caption do not.
+/// - **A painted piece has to be further off to be something else.** The rows
+///   of a figure in several panels are painted and are apart, so past a gap
+///   with ink beyond it the float goes on unless the gap is a real one, two
+///   and a half lines of body text.
+///
+/// `facing` is a band two captions share - a table's caption at one end and a
+/// figure's at the other, both floats between. Neither rule above can divide
+/// that, because the two floats may be a few points apart. There the band is
+/// cut once, at its widest gap, and each caption keeps its own side.
+fn nearest_run(pieces: &[Piece], above: bool, facing: bool, body: f64) -> Option<Rect> {
+    // Distance from the caption's side of the band, so that one loop reads a
+    // band above a caption and a band below one.
+    let near = |r: &Rect| if above { r.y0 } else { -r.y1 };
+    let far = |r: &Rect| if above { r.y1 } else { -r.y0 };
+    let mut order: Vec<&Piece> = pieces.iter().collect();
+    order.sort_by(|a, b| {
+        near(&a.rect)
+            .partial_cmp(&near(&b.rect))
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    let first = order.first()?;
+
+    // Every gap, as (index of the first piece past it, its height).
+    let mut gaps: Vec<(usize, f64)> = Vec::new();
+    let mut reach = far(&first.rect);
+    for (i, piece) in order.iter().enumerate().skip(1) {
+        let gap = near(&piece.rect) - reach;
+        if gap > 0.0 {
+            gaps.push((i, gap));
+        }
+        reach = reach.max(far(&piece.rect));
+    }
+
+    let mut end = order.len();
+    if facing {
+        // Shared: one cut, at the widest gap, if there is one worth the name.
+        if let Some(&(i, _)) = gaps
+            .iter()
+            .filter(|(_, gap)| *gap > body * 0.6)
+            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
+        {
+            end = i;
+        }
+    }
+    for &(i, gap) in &gaps {
+        if i >= end {
+            break;
+        }
+        let painted_beyond = order[i..end].iter().any(|p| p.ink);
+        let limit = if painted_beyond { body * 2.5 } else { body };
+        if gap > limit {
+            end = i;
+            break;
+        }
+    }
+    order[..end]
+        .iter()
+        .map(|p| p.rect)
+        .reduce(|a, b| a.union(&b))
 }
 
 /// What a caption calls itself, parsed off the front of its first line.
@@ -1448,5 +1560,155 @@ mod tests {
         assert_eq!(found.len(), 2, "{found:?}");
         assert_eq!(found[0].art, ink[0]);
         assert_eq!(found[1].art, ink[1]);
+    }
+
+    /// The body size has to come from somewhere: a page that is all float has
+    /// no dominant size but the float's own, and no columns either. These
+    /// pages carry prose beside the floats and under them, as a real one does.
+    fn page_with(lines: Vec<Line>) -> Vec<Line> {
+        let mut all = prose(RIGHT, 700.0, 30);
+        all.extend(prose(LEFT, 440.0, 8));
+        all.extend(lines);
+        all
+    }
+
+    /// A float at the top of its column has no prose over it, so the band runs
+    /// to the edge of the sheet - and the running head and the page number are
+    /// in it. They are words a long way from any picture.
+    #[test]
+    fn a_running_head_is_not_part_of_the_figure_under_it() {
+        let lines = page_with(vec![
+            line(LEFT, 766.0, 60.0, 7.0, "SHU et al.: NIF-VIO"),
+            line(LEFT, 730.0, 40.0, 8.0, "Tracking"),
+            line(LEFT, 590.0, COLUMN * 0.5, 8.0, "Fig. 2. System overview."),
+        ]);
+        let ink = vec![Rect::new(LEFT, 600.0, LEFT + COLUMN, 736.0)];
+
+        let found = find(PAGE, &lines, &ink);
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert_eq!(found[0].art, ink[0], "the head, 23pt up, stays out");
+    }
+
+    /// A label set just outside the drawing - an axis title under a plot, a
+    /// panel name over one - is still the figure's. The rule that drops a
+    /// running head must not drop these.
+    #[test]
+    fn a_label_against_the_drawing_stays_with_it() {
+        let lines = page_with(vec![
+            line(LEFT + 80.0, 746.0, 60.0, 8.0, "Subway 02"),
+            line(LEFT, 590.0, COLUMN * 0.5, 8.0, "Fig. 4. Trajectories."),
+        ]);
+        let ink = vec![Rect::new(LEFT, 600.0, LEFT + COLUMN, 734.0)];
+
+        let found = find(PAGE, &lines, &ink);
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert_eq!(found[0].art.y1, 746.0, "the title 4pt over the plot is in");
+    }
+
+    /// One figure under another. The band over the lower one used to stop on
+    /// the upper caption's first line and take the rest of that caption with
+    /// it, so the cut-out opened with two lines of another figure's caption.
+    #[test]
+    fn a_figure_does_not_take_the_tail_of_the_caption_over_it() {
+        let lines = page_with(vec![
+            line(
+                LEFT,
+                640.0,
+                COLUMN,
+                8.0,
+                "Fig. 5. Ablation of the transition strategy. Translation",
+            ),
+            line(
+                LEFT,
+                631.0,
+                COLUMN,
+                8.0,
+                "and rotation RMSE distributions summarize pose errors",
+            ),
+            line(
+                LEFT,
+                622.0,
+                COLUMN * 0.7,
+                8.0,
+                "for four configurations in each scenario.",
+            ),
+            line(
+                LEFT,
+                480.0,
+                COLUMN * 0.5,
+                8.0,
+                "Fig. 6. Ablation of retention.",
+            ),
+        ]);
+        let ink = vec![
+            Rect::new(LEFT, 650.0, LEFT + COLUMN, 740.0),
+            Rect::new(LEFT, 494.0, LEFT + COLUMN, 598.0),
+        ];
+
+        let found = find(PAGE, &lines, &ink);
+        assert_eq!(found.len(), 2, "{found:?}");
+        assert_eq!(found[0].art, ink[0]);
+        assert_eq!(found[1].art, ink[1], "nothing of Fig. 5's caption");
+    }
+
+    /// A table over a figure, with nothing between their captions but the two
+    /// floats. Both captions look into the same gap - the table's down, the
+    /// figure's up - and each used to come back with the other's float
+    /// attached. The gap is divided where the paper divides it: at the widest
+    /// strip of blank paper.
+    #[test]
+    fn a_table_and_the_figure_under_it_divide_the_gap_between_their_captions() {
+        let mut lines = page_with(vec![
+            line(LEFT + 90.0, 740.0, 50.0, 8.0, "TABLE II"),
+            line(LEFT, 480.0, COLUMN * 0.5, 8.0, "Fig. 4. Trajectories."),
+        ]);
+        for i in 0..6 {
+            lines.push(line(
+                LEFT + 10.0,
+                722.0 - i as f64 * 9.0,
+                150.0,
+                8.0,
+                "OKVIS2 0.020 0.861 68.95",
+            ));
+        }
+        let ink = vec![
+            // The table's rules, top and bottom.
+            Rect::new(LEFT, 727.0, LEFT + COLUMN, 727.5),
+            Rect::new(LEFT, 664.0, LEFT + COLUMN, 664.5),
+            // The figure, 14pt under the table.
+            Rect::new(LEFT, 490.0, LEFT + COLUMN, 650.0),
+        ];
+
+        let found = find(PAGE, &lines, &ink);
+        assert_eq!(found.len(), 2, "{found:?}");
+        let (table, figure) = (&found[0], &found[1]);
+        assert_eq!(table.kind, Kind::Table);
+        assert!(
+            table.art.y0 >= 664.0,
+            "the table stops at its last rule: {table:?}"
+        );
+        assert_eq!(figure.art, ink[2], "and the figure starts under it");
+    }
+
+    /// A figure in two rows of panels is one figure. The rows are painted, and
+    /// further apart than a label is from its plot - which is exactly why a
+    /// gap with ink beyond it has to be a wide one before it ends the float.
+    #[test]
+    fn rows_of_panels_are_one_figure() {
+        let lines = page_with(vec![line(
+            LEFT,
+            480.0,
+            COLUMN * 0.5,
+            8.0,
+            "Fig. 8. AR demonstration.",
+        )]);
+        let ink = vec![
+            Rect::new(LEFT, 490.0, LEFT + COLUMN, 560.0),
+            Rect::new(LEFT, 578.0, LEFT + COLUMN, 650.0),
+        ];
+
+        let found = find(PAGE, &lines, &ink);
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert_eq!(found[0].art, ink[0].union(&ink[1]), "18pt apart, still one");
     }
 }

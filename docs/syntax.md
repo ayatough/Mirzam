@@ -935,11 +935,17 @@ One figure needs something else, and says so on the reference:
 
 `dark=keep` is the opt-out, for the figure that must stay exactly as printed —
 a photograph, a screenshot with its own chrome, where inverting would turn it
-into a negative. Whether an embedded picture is a photograph is a guess
-`import pdf` does not make, so this is the author's to say. A figure `import
-pdf` lifted out whole rather than converting — the stored image in the page,
-rather than a drawing — is left exactly as printed by this default, the same
-as `dark=keep` would leave it, unless `dark-figures:` below says otherwise.
+into a negative. Whether a picture *inside* a drawn figure is a photograph is
+a guess `import pdf` does not make, so this is the author's to say.
+
+A figure that is one stored image - lifted out of the page whole rather than
+converted - is judged once, when it is lifted. A plot or a diagram the paper
+happened to store as a picture is mostly blank paper, and it follows the deck
+into the dark like any other drawing: the PNG carries a mark saying so, and
+the mark is in the file, so it holds however the reference is written. A
+photograph has no paper in it, gets no mark, and is left exactly as printed,
+the same as `dark=keep` would leave it, unless `dark-figures:` below says
+otherwise.
 
 **`dark-figures:` in frontmatter sets the deck-wide default**, for a deck that
 wants a different split than the usual one:
@@ -950,7 +956,7 @@ dark-figures: invert   # every figure, raster included
 
 | `dark-figures:` | Inverts |
 |---|---|
-| *(unset)*, `auto` | a converted vector figure; a stored raster one stays as printed |
+| *(unset)*, `auto` | a converted vector figure, and a stored image that is a drawing; a stored photograph stays as printed |
 | `invert` | every figure `import pdf` produced, raster included |
 | `keep` | none of them; every figure stays exactly as printed |
 

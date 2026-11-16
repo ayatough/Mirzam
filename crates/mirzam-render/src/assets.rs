@@ -51,17 +51,7 @@ pub fn embed_assets(
     warnings: &mut Vec<String>,
     referenced: &mut Vec<PathBuf>,
 ) -> String {
-    let mut next_id = 0usize;
-    embed_within(
-        html,
-        source,
-        "",
-        0,
-        dark_figures,
-        warnings,
-        referenced,
-        &mut next_id,
-    )
+    embed_within(html, source, "", 0, dark_figures, warnings, referenced)
 }
 
 /// One document's references, resolved relative to the directory it lives in.
@@ -78,12 +68,11 @@ fn embed_within(
     dark_figures: mirzam_core::DarkFigures,
     warnings: &mut Vec<String>,
     referenced: &mut Vec<PathBuf>,
-    next_id: &mut usize,
 ) -> String {
     // A cut-out `import pdf` marked for a dark deck goes in as an `<svg>`
     // element before anything else touches it: once the generic pass below
     // has turned its `src` into a data URI, the file it pointed at is gone.
-    let html = inline_ink_figures(html, source, base, dark_figures, referenced, next_id);
+    let html = inline_ink_figures(html, source, base, dark_figures, referenced);
 
     // `srcset` is here because a `<picture>` is how a deck offers one image for
     // a light background and another for a dark one. Miss it and the deck looks
@@ -102,7 +91,6 @@ fn embed_within(
                     dark_figures,
                     warnings,
                     referenced,
-                    next_id,
                 )
             } else {
                 embed_one(
@@ -113,7 +101,6 @@ fn embed_within(
                     dark_figures,
                     warnings,
                     referenced,
-                    next_id,
                 )
             };
             format!("{attr}=\"{embedded}\"")
@@ -139,7 +126,6 @@ fn embed_within(
                 dark_figures,
                 warnings,
                 referenced,
-                next_id
             ),
             &c[3]
         )
@@ -154,6 +140,36 @@ fn embed_within(
 /// `pdfimport`, and pulling in a CLI crate from the renderer for one string
 /// would be the wrong direction for that boundary to point.
 const IMPORT_PDF_MARK: &str = "<!--mirzam:import-pdf-->";
+
+/// What `mirzam-cli`'s `pdfimport::image` writes into a PNG it lifted out of a
+/// paper and judged to be a drawing - `DRAWING_MARK` there, as the `tEXt`
+/// chunk it sits in. Duplicated as a literal for the reason above.
+const PNG_DRAWING_MARK: &[u8] = b"tEXtmirzam\0import-pdf drawing";
+
+/// Whether a PNG says it is a drawing cut from a paper.
+///
+/// The mark is the chunk after the header, so only the head of the file is
+/// decoded - a deck's photographs are not unpacked a second time to find out
+/// that they are photographs.
+fn is_marked_drawing(source: &dyn AssetSource, rel: &str) -> bool {
+    let (result, _) = source.resolve(rel);
+    let Ok(uri) = result else {
+        return false;
+    };
+    let Some(payload) = uri.strip_prefix("data:image/png;base64,") else {
+        return false;
+    };
+    // 256 bytes: the signature, the header, and room for this chunk.
+    let head = &payload.as_bytes()[..payload.len().min(344)];
+    let head = &head[..head.len() - head.len() % 4];
+    base64::engine::general_purpose::STANDARD
+        .decode(head)
+        .is_ok_and(|bytes| {
+            bytes
+                .windows(PNG_DRAWING_MARK.len())
+                .any(|w| w == PNG_DRAWING_MARK)
+        })
+}
 
 /// The class `pdfimport::Imported::markdown` puts on every reference it
 /// writes, vector or raster alike - the one signal a stored raster picture
@@ -185,15 +201,15 @@ const IMPORT_PDF_CLASS: &str = "mz-pdf-figure";
 /// is never touched here and embeds exactly as it always has.
 ///
 /// Each figure's own ids are prefixed, because hayro numbers a page's glyph
-/// outlines from `g0` and two figures on one slide would otherwise collide -
+/// outlines from `g0` and two figures in one document would otherwise collide -
 /// the second figure's `<use href="#g0">` finding the first figure's glyph.
+/// The prefix is taken from the figure itself: see [`figure_tag`].
 fn inline_ink_figures(
     html: &str,
     source: &dyn AssetSource,
     base: &str,
     dark_figures: mirzam_core::DarkFigures,
     referenced: &mut Vec<PathBuf>,
-    next_id: &mut usize,
 ) -> String {
     static IMG: OnceLock<Regex> = OnceLock::new();
     let img = IMG.get_or_init(|| Regex::new(r#"<img\b[^>]*\bsrc="([^"]+)"[^>]*>"#).unwrap());
@@ -207,10 +223,23 @@ fn inline_ink_figures(
             .rsplit('.')
             .next()
             .is_some_and(|ext| ext.eq_ignore_ascii_case("svg"));
+        let rel = join_rel(base, src);
         if !is_svg {
+            // A plot the paper stored as a picture: `import pdf` marks the
+            // PNG, and a marked PNG turns with the deck as an SVG does.
+            let is_png = src
+                .rsplit('.')
+                .next()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("png"));
+            if is_png && is_marked_drawing(source, &rel) {
+                return if resolve_invert(tag, dark_figures, true) {
+                    add_class(tag, "mz-dark-invert")
+                } else {
+                    tag.to_string()
+                };
+            }
             return mark_raster_figure(tag, dark_figures);
         }
-        let rel = join_rel(base, src);
         // Not recorded yet: the ordinary embedding pass below runs over
         // whatever `src` this leaves untouched, and it is the one that
         // reports a miss and tracks the file for every picture that is not a
@@ -225,8 +254,7 @@ fn inline_ink_figures(
         if let Some(p) = path {
             referenced.push(p);
         }
-        *next_id += 1;
-        inline_svg(tag, &svg, *next_id, resolve_invert(tag, dark_figures, true))
+        inline_svg(tag, &svg, resolve_invert(tag, dark_figures, true))
     })
     .into_owned()
 }
@@ -236,7 +264,7 @@ fn inline_ink_figures(
 /// that, the deck's `dark-figures:` decides, `auto` being the split `dark=`
 /// itself defaults to - invert a converted vector figure, leave a stored
 /// raster one alone.
-fn resolve_invert(tag: &str, dark_figures: mirzam_core::DarkFigures, is_svg: bool) -> bool {
+fn resolve_invert(tag: &str, dark_figures: mirzam_core::DarkFigures, is_drawing: bool) -> bool {
     use mirzam_core::DarkFigures;
     match img_attr(tag, "data-mz-dark").as_deref() {
         Some("keep") => false,
@@ -244,7 +272,7 @@ fn resolve_invert(tag: &str, dark_figures: mirzam_core::DarkFigures, is_svg: boo
         _ => match dark_figures {
             DarkFigures::Keep => false,
             DarkFigures::Invert => true,
-            DarkFigures::Auto => is_svg,
+            DarkFigures::Auto => is_drawing,
         },
     }
 }
@@ -309,8 +337,35 @@ fn decode_svg(uri: &str) -> Option<String> {
 /// `alt` becomes `aria-label` rather than staying `alt`, which an `<svg>` does
 /// not have; a screen reader is told what the picture is exactly as it would
 /// have been for the `<img>` this replaces.
-fn inline_svg(img_tag: &str, svg: &str, id: usize, invert: bool) -> String {
-    let svg = prefix_ids(svg, &format!("mz-fig{id}-"));
+/// What tells one inlined figure's ids from another's: a hash of the figure.
+///
+/// It used to be a count - the first figure `mz-fig1-`, the next `mz-fig2-` -
+/// and the count started again on every slide, because slides are rendered one
+/// at a time and joined afterwards. So a deck with one figure on each of eight
+/// slides, which is what a paper summary is, called all eight `mz-fig1-`, and
+/// every figure after the first drew the first one's glyphs and was cut by the
+/// first one's clip paths: letters missing from labels, a neighbour's boxes
+/// ghosted across a plot, an edge sheared off.
+///
+/// A hash of the content needs no knowledge of the rest of the deck, which a
+/// slide rendered alone - or taken from the build cache - does not have. The
+/// same figure placed twice gets the same prefix twice, and that is harmless:
+/// the definitions that share an id are then the same definitions.
+///
+/// FNV-1a, folded to 32 bits, and written out here because the value is in
+/// every deck's HTML and so in the golden snapshots: it must not change with
+/// the compiler, which `std`'s hasher is free to do.
+fn figure_tag(svg: &str) -> u32 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for b in svg.bytes() {
+        h ^= u64::from(b);
+        h = h.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    (h ^ (h >> 32)) as u32
+}
+
+fn inline_svg(img_tag: &str, svg: &str, invert: bool) -> String {
+    let svg = prefix_ids(svg, &format!("mz-fig{:08x}-", figure_tag(svg)));
     let Some(end) = svg.find('>') else {
         return svg;
     };
@@ -424,7 +479,6 @@ fn embed_one(
     dark_figures: mirzam_core::DarkFigures,
     warnings: &mut Vec<String>,
     referenced: &mut Vec<PathBuf>,
-    next_id: &mut usize,
 ) -> String {
     if src.starts_with("data:") || src.starts_with('#') {
         return src.to_string();
@@ -443,16 +497,7 @@ fn embed_one(
         referenced.push(p);
     }
     match result {
-        Ok(uri) => nested(
-            uri,
-            source,
-            &rel,
-            depth,
-            dark_figures,
-            warnings,
-            referenced,
-            next_id,
-        ),
+        Ok(uri) => nested(uri, source, &rel, depth, dark_figures, warnings, referenced),
         Err(e) => {
             warnings.push(format!("{rel}: {e}"));
             placeholder_uri(&rel)
@@ -475,7 +520,6 @@ fn nested(
     dark_figures: mirzam_core::DarkFigures,
     warnings: &mut Vec<String>,
     referenced: &mut Vec<PathBuf>,
-    next_id: &mut usize,
 ) -> String {
     // The head is spelled more than one way: Mirzam writes the charset, and a
     // host handing over a file the reader dropped on the page may not. Both are
@@ -508,7 +552,6 @@ fn nested(
         dark_figures,
         warnings,
         referenced,
-        next_id,
     );
     format!(
         "{head};base64,{}",
@@ -528,7 +571,6 @@ fn embed_srcset(
     dark_figures: mirzam_core::DarkFigures,
     warnings: &mut Vec<String>,
     referenced: &mut Vec<PathBuf>,
-    next_id: &mut usize,
 ) -> String {
     let mut out: Vec<String> = Vec::new();
     for candidate in split_srcset(value) {
@@ -540,16 +582,7 @@ fn embed_srcset(
             Some((u, d)) => (u, d.trim()),
             None => (candidate, ""),
         };
-        let embedded = embed_one(
-            url,
-            source,
-            base,
-            depth,
-            dark_figures,
-            warnings,
-            referenced,
-            next_id,
-        );
+        let embedded = embed_one(url, source, base, depth, dark_figures, warnings, referenced);
         out.push(if descriptor.is_empty() {
             embedded
         } else {
@@ -963,8 +996,79 @@ mod tests {
         }
     }
 
+    /// PNG files by name, each given as the bytes it holds.
+    struct Pngs(&'static [(&'static str, &'static [u8])]);
+
+    impl AssetSource for Pngs {
+        fn resolve(&self, rel: &str) -> (Result<String, String>, Option<PathBuf>) {
+            let result = match self.0.iter().find(|(name, _)| *name == rel) {
+                Some((_, body)) => Ok(format!(
+                    "data:image/png;base64,{}",
+                    base64::engine::general_purpose::STANDARD.encode(body)
+                )),
+                None => Err("file not found".to_string()),
+            };
+            (result, Some(PathBuf::from(rel)))
+        }
+    }
+
+    /// The head of a PNG `import pdf` lifted and marked as a drawing: the
+    /// signature, a header chunk, then the mark. Nothing reads further.
+    const PLOT_PNG: &[u8] = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x08\0\0\0\x08\x08\x02\0\0\0CRC_\
+\0\0\0\x19tEXtmirzam\0import-pdf drawingCRC_\0\0\0\0IDAT";
+
+    /// The same file without the mark: any other PNG, a photograph included.
+    const PHOTO_PNG: &[u8] =
+        b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x08\0\0\0\x08\x08\x02\0\0\0CRC_\0\0\0\0IDAT";
+
+    /// A plot a paper stored as a picture is still a plot. Cut out as the
+    /// image it is, it used to stop following the deck into dark mode - only
+    /// an SVG did - so tightening the crop until `import pdf` recognised the
+    /// image cost the figure its dark treatment. A marked PNG turns over by
+    /// default, exactly as an SVG cut-out does, however the reference is
+    /// written.
+    #[test]
+    fn a_marked_png_follows_the_deck_into_the_dark() {
+        let (out, _, _) = embed_with(r#"<img src="plot.png">"#, &Pngs(&[("plot.png", PLOT_PNG)]));
+        assert!(out.contains("mz-dark-invert"), "{out}");
+        assert!(
+            out.contains("data:image/png;base64,"),
+            "still embedded: {out}"
+        );
+    }
+
+    /// And a PNG with no mark is left alone - the author's own photograph, or
+    /// one `import pdf` judged to be a photograph.
+    #[test]
+    fn an_unmarked_png_is_left_as_it_is() {
+        let (out, _, _) = embed_with(
+            r#"<img src="photo.png">"#,
+            &Pngs(&[("photo.png", PHOTO_PNG)]),
+        );
+        assert!(!out.contains("mz-dark-invert"), "{out}");
+    }
+
+    /// `dark=keep` on the reference and `dark-figures: keep` on the deck both
+    /// still win over the mark, as they do over an SVG's.
+    #[test]
+    fn a_marked_png_can_still_be_told_to_stay() {
+        let source = Pngs(&[("plot.png", PLOT_PNG)]);
+        let (out, _, _) = embed_with(r#"<img data-mz-dark="keep" src="plot.png">"#, &source);
+        assert!(!out.contains("mz-dark-invert"), "{out}");
+        let (out, _, _) = embed_with_mode(
+            r#"<img src="plot.png">"#,
+            &source,
+            mirzam_core::DarkFigures::Keep,
+        );
+        assert!(!out.contains("mz-dark-invert"), "{out}");
+    }
+
     const MARKED: &str = "<svg viewBox=\"0 0 10 10\" xmlns=\"http://www.w3.org/2000/svg\">\
 <!--mirzam:import-pdf--><use xlink:href=\"#g0\"/><defs><path id=\"g0\" d=\"M0,0 L1,1\"/></defs></svg>";
+
+    /// A second cut-out: the same shape of file, a different picture.
+    const MARKED_OTHER: &str = "<svg viewBox=\"0 0 10 10\" xmlns=\"http://www.w3.org/2000/svg\">\
+<!--mirzam:import-pdf--><use xlink:href=\"#g0\"/><defs><path id=\"g0\" d=\"M0,0 L2,2\"/></defs></svg>";
 
     /// W27: a figure `import pdf` marked goes in as a live `<svg>`, not a
     /// base64 `<img>` - the theme's text layer stays selectable in the HTML
@@ -1105,14 +1209,55 @@ mod tests {
     fn two_marked_figures_do_not_share_ids() {
         let (out, _, _) = embed_with(
             r#"<img src="a.svg">middle<img src="b.svg">"#,
-            &Svgs(&[("a.svg", MARKED), ("b.svg", MARKED)]),
+            &Svgs(&[("a.svg", MARKED), ("b.svg", MARKED_OTHER)]),
         );
-        assert!(out.contains("mz-fig1-g0"), "{out}");
-        assert!(out.contains("mz-fig2-g0"), "{out}");
+        let prefixes = glyph_prefixes(&out);
+        assert_eq!(prefixes.len(), 2, "one prefix per figure: {out}");
+        assert_ne!(prefixes[0], prefixes[1], "{out}");
         assert!(
             !out.contains("\"g0\"") && !out.contains("#g0\""),
             "the unprefixed id is gone: {out}"
         );
+    }
+
+    /// The deck this was written for: a paper summary, one figure to a slide.
+    /// Slides are rendered one at a time and joined afterwards, so each call
+    /// here is one slide - and when the prefix was a count that began again
+    /// with every call, both of these were `mz-fig1-`. In the joined page the
+    /// second slide's `<use href="#mz-fig1-g0">` then found the first slide's
+    /// glyph, which is how a figure lost letters from its own labels.
+    #[test]
+    fn figures_on_different_slides_do_not_share_ids() {
+        let (first, _, _) = embed_with(r#"<img src="a.svg">"#, &Svgs(&[("a.svg", MARKED)]));
+        let (second, _, _) = embed_with(r#"<img src="b.svg">"#, &Svgs(&[("b.svg", MARKED_OTHER)]));
+        let (a, b) = (glyph_prefixes(&first), glyph_prefixes(&second));
+        assert_eq!((a.len(), b.len()), (1, 1), "{first}\n{second}");
+        assert_ne!(a[0], b[0], "two slides, two figures, one prefix");
+    }
+
+    /// The same figure on two slides gets the same prefix on both, and that is
+    /// the point of taking it from the content: a slide comes out the same
+    /// whether it is rendered alone, with the deck, or out of the build cache.
+    #[test]
+    fn a_figure_is_tagged_the_same_wherever_it_appears() {
+        let (first, _, _) = embed_with(r#"<img src="a.svg">"#, &Svgs(&[("a.svg", MARKED)]));
+        let (second, _, _) = embed_with(
+            r#"<p>later</p><img src="a.svg">"#,
+            &Svgs(&[("a.svg", MARKED)]),
+        );
+        assert_eq!(glyph_prefixes(&first), glyph_prefixes(&second));
+    }
+
+    /// The distinct `mz-fig…-` prefixes in a page, in the order they appear.
+    fn glyph_prefixes(html: &str) -> Vec<String> {
+        let re = Regex::new(r#"id="(mz-fig[0-9a-f]+-)g0""#).unwrap();
+        let mut seen: Vec<String> = Vec::new();
+        for c in re.captures_iter(html) {
+            if !seen.contains(&c[1].to_string()) {
+                seen.push(c[1].to_string());
+            }
+        }
+        seen
     }
 
     /// An SVG with no mark `import pdf` writes is untouched: this path is for
