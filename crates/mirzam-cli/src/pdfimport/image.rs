@@ -542,8 +542,8 @@ mod tests {
     #[test]
     fn see_through_counts_as_paper() {
         let mut pixels = vec![0u8; 4 * 4 * 4];
-        for pixel in pixels.chunks_exact_mut(4).take(4) {
-            pixel[3] = 255;
+        for pixel in 0..4 {
+            pixels[pixel * 4 + 3] = 255;
         }
         assert!(on_a_light_ground(&pixels, &Colour::Rgba));
     }
