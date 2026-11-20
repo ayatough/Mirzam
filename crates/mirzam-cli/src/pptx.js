@@ -102,22 +102,25 @@
     if (!c || op >= 0.999) return c;
     return { hex: c.hex, alpha: rnd(c.alpha * op) };
   }
-  const fadedGradient = (g, op) => (g ? { angle: g.angle, stops: g.stops.map((s) => ({ pos: s.pos, color: faded(s.color, op) })) } : null);
+  const fadedGradient = (g, op) => (g ? { angle: g.angle, radial: g.radial, stops: g.stops.map((s) => ({ pos: s.pos, color: faded(s.color, op) })) } : null);
   function firstFamily(list) {
     const first = (list || '').split(',')[0].trim().replace(/^["']|["']$/g, '');
     return first || 'Arial';
   }
 
   // `linear-gradient(90deg, rgb(…), rgb(…) 60%)` as an angle and stops.
-  // Anything richer — a corner, a pixel position, a radial, a second layer
-  // — returns null and is photographed instead.
+  // A `radial-gradient` that starts at the centre — the CSS default, or
+  // `circle`/`ellipse at center` — comes through with `radial` set.
+  // Anything richer — a corner, a pixel position, an off-centre radial, a
+  // second layer — returns null and is photographed instead.
   function gradientOf(s) {
     if (!s || s === 'none') return null;
-    const m = s.match(/^linear-gradient\((.*)\)$/);
+    const m = s.match(/^(linear|radial)-gradient\((.*)\)$/);
     if (!m || s.indexOf('gradient(', 16) >= 0) return null;
+    const radial = m[1] === 'radial';
     const parts = [];
     let depth = 0, cur = '';
-    for (const ch of m[1]) {
+    for (const ch of m[2]) {
       if (ch === '(') depth++;
       if (ch === ')') depth--;
       if (ch === ',' && depth === 0) { parts.push(cur.trim()); cur = ''; } else cur += ch;
@@ -126,7 +129,14 @@
     let angle = 180;
     const first = parts[0];
     let am = first.match(/^(-?[\d.]+)deg$/);
-    if (am) { angle = px(am[1]); parts.shift(); }
+    if (radial) {
+      // Chromium reports the keywords it was given; a first part that is not
+      // a colour is the shape-and-position clause.
+      if (!/^(rgba?|color|hsla?)\(/.test(first) && !/^#/.test(first)) {
+        if (!/^(circle|ellipse)?(?:\s*(?:farthest-corner|closest-side|farthest-side|closest-corner))?(?:\s*at (?:center|50% 50%))?$/.test(first) || /(closest|farthest-side)/.test(first)) return null;
+        parts.shift();
+      }
+    } else if (am) { angle = px(am[1]); parts.shift(); }
     else if ((am = first.match(/^to (top|right|bottom|left)$/))) {
       angle = { top: 0, right: 90, bottom: 180, left: 270 }[am[1]];
       parts.shift();
@@ -141,7 +151,7 @@
     }
     if (stops.length < 2) return null;
     stops.forEach((st, i) => { if (st.pos === null) st.pos = i / (stops.length - 1); });
-    return { angle, stops };
+    return { angle, stops, radial };
   }
 
   function hidden(el, st) {

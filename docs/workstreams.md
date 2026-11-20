@@ -2068,8 +2068,9 @@ visible to a reader:
   most of it, and the honest answer for the rest is that `mirzam check`
   reports the overflow before anyone exports.
 - **A gradient that is not a plain linear one is photographed.** `gradientOf`
-  reads angles and stops and gives up on radial and on a pixel position;
-  DrawingML has `a:path` gradients for the radial case.
+  reads angles and stops and gives up on a corner, a pixel position and an
+  off-centre radial. A radial from the centre is done: it is written as an
+  `a:path` gradient.
 
 ### What is deliberately not here
 
