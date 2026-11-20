@@ -102,12 +102,15 @@ pub struct Stop {
     pub color: Color,
 }
 
-/// A linear gradient, at the angle CSS gives it: 0 runs upward, 90 to the
-/// right, 180 down.
+/// A gradient: linear at the angle CSS gives it (0 runs upward, 90 to the
+/// right, 180 down), or radial from the centre of the box.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct Gradient {
     pub angle: f64,
     pub stops: Vec<Stop>,
+    /// Spreads from the middle of the box outward instead of along `angle`.
+    #[serde(default)]
+    pub radial: bool,
 }
 
 /// A stroke: its width in CSS pixels and its colour, solid unless `dash`
@@ -545,6 +548,9 @@ fn gradient_fill(g: &Gradient) -> String {
             )
         })
         .collect();
+    if g.radial {
+        return format!("<a:gradFill rotWithShape=\"1\"><a:gsLst>{stops}</a:gsLst><a:path path=\"circle\"><a:fillToRect l=\"50000\" t=\"50000\" r=\"50000\" b=\"50000\"/></a:path></a:gradFill>");
+    }
     let ang = ((g.angle - 90.0).rem_euclid(360.0) * 60_000.0).round() as i64;
     format!("<a:gradFill rotWithShape=\"1\"><a:gsLst>{stops}</a:gsLst><a:lin ang=\"{ang}\" scaled=\"0\"/></a:gradFill>")
 }
@@ -1746,6 +1752,7 @@ mod tests {
                 h: 4.0,
             },
             gradient: Some(Gradient {
+                radial: false,
                 angle: 90.0,
                 stops: vec![
                     Stop {
@@ -1770,10 +1777,33 @@ mod tests {
         assert!(xml.contains("<a:gs pos=\"100000\"><a:srgbClr val=\"38B2AC\"><a:alpha val=\"0\"/>"));
         // `to top` is 0deg, a quarter turn back from DrawingML's zero.
         let up = Gradient {
+            radial: false,
             angle: 0.0,
             stops: sh.gradient.clone().unwrap().stops,
         };
         assert!(gradient_fill(&up).contains("ang=\"16200000\""));
+    }
+
+    #[test]
+    fn a_radial_gradient_spreads_from_the_centre() {
+        let g = Gradient {
+            angle: 0.0,
+            radial: true,
+            stops: vec![
+                Stop {
+                    pos: 0.0,
+                    color: color("ffffff"),
+                },
+                Stop {
+                    pos: 1.0,
+                    color: color("000000"),
+                },
+            ],
+        };
+        let xml = gradient_fill(&g);
+        assert!(xml.contains("<a:path path=\"circle\">"));
+        assert!(xml.contains("<a:fillToRect l=\"50000\" t=\"50000\" r=\"50000\" b=\"50000\"/>"));
+        assert!(!xml.contains("<a:lin"));
     }
 
     #[test]

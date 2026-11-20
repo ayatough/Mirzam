@@ -7,6 +7,12 @@ markup**. See [docs/development.md](docs/development.md#versioning) for the poli
 
 ## [Unreleased]
 
+### Changed
+- **A radial gradient stays a gradient in the PowerPoint file.** A box filled
+  with `radial-gradient(...)` from its centre was photographed, so its colours
+  could not be edited in PowerPoint. It is now a real gradient fill. A radial
+  centred anywhere else, or sized by `closest-side`, is still a picture.
+
 ### Fixed
 - **Figures cut from a paper no longer borrow each other's letters.** A deck
   with one `import pdf` figure on each of several slides - a paper summary -
