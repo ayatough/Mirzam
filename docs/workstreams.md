@@ -2055,11 +2055,11 @@ a nuisance, a wrong diagram is a lie.
 Small enough that one agent could take the lot in an afternoon, and each is
 visible to a reader:
 
-- **A box shadow is dropped**, and the extractor already parses the first one
+- **A box shadow is dropped** *(done)*, and the extractor already parses the first one
   (`shadowOf` in `pptx.js` fills `paint.shadow`, and nothing writes it). The
   OOXML is `a:effectLst` with `a:outerShdw`. Finish it or delete the parse;
   leaving a value nobody reads is the worst of the three.
-- **Speaker notes lose their emphasis.** `notes_text` flattens the rendered
+- **Speaker notes lose their emphasis** *(done)*. `notes_text` flattens the rendered
   HTML to lines, so bold in a note comes out plain. The notes part takes the
   same runs a slide's text box does.
 - **A pane clips in the browser and not in the file.** The extractor already

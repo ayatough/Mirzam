@@ -135,9 +135,8 @@ at the cost of editability.
   a line you can drag.
 - **Smaller things.** A gradient that is not a
   plain linear one is photographed; text that a pane clips in the browser
-  is not clipped in the file; speaker notes arrive as plain text without
-  their emphasis; a link to another slide jumps to it, any other link opens
-  in the browser.
+  is not clipped in the file; a link to another slide jumps to it, any other
+  link opens in the browser. Speaker notes keep their bold and italic.
 
 Line placement follows the way PowerPoint and Impress set exact line
 spacing, and was checked against LibreOffice Impress; Google Slides and
